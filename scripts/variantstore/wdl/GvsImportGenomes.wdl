@@ -252,7 +252,7 @@ workflow GvsImportGenomes {
           input:
             output_gcs_dir = defined_parquet_output_dir,
             billing_project_id = billing_project_id,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
+            variants_docker = effective_variants_docker,
         }
       }
 
@@ -1039,7 +1039,7 @@ task ConfigureParquetLifecycle {
   input {
     String output_gcs_dir
     String? billing_project_id
-    String cloud_sdk_docker
+    String variants_docker
   }
 
   command <<<
@@ -1112,7 +1112,7 @@ EOF
   >>>
 
   runtime {
-    docker: cloud_sdk_docker
+    docker: variants_docker
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
