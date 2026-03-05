@@ -43,7 +43,7 @@ public class VetCreator {
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
     }
 
-    public VetCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields, final MessageType parquetSchema) throws FileAlreadyExistsException {
+    public VetCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields, final MessageType parquetSchema) {
         this.sampleId = sampleId;
         this.outputType = outputType;
         this.forceLoadingFromNonAlleleSpecific = forceLoadingFromNonAlleleSpecific;
@@ -67,14 +67,9 @@ public class VetCreator {
                 case PARQUET:
                     String filename = getOutputFileName(tableNumber, sampleId, sampleIdentifierForOutputFileName, outputType);
                     final File parquetOutputFile = new File(outputDirectory, filename);
-                    if (parquetOutputFile.exists()) {
-                        throw new FileAlreadyExistsException("Parquet file already exists: " + parquetOutputFile.getAbsolutePath());
-                    }
                     vetParquetFileWriter = new GvsVariantParquetFileWriter(new Path(parquetOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
                     break;
             }
-        } catch (final FileAlreadyExistsException fs) {
-            throw fs;
         } catch (final IOException ioex) {
             throw new UserException("Could not create vet outputs", ioex);
         }
