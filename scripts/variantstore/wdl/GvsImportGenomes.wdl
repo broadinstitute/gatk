@@ -1066,11 +1066,30 @@ task ConfigureParquetLifecycle {
     echo "Configuring lifecycle for bucket: ${BUCKET_NAME}"
     echo "Path prefix: '${BUCKET_PATH_PREFIX}'"
 
-    # Create lifecycle configuration for parquet directories
-    cat > lifecycle.json << EOF
-{
-  "lifecycle": {
-    "rule": [
+    # Get existing lifecycle configuration if any
+    set +e
+    gcloud storage buckets describe gs://${BUCKET_NAME} \
+      ~{"--billing-project " + billing_project_id} \
+      --format="json(lifecycle_config)" > existing_lifecycle.json 2>/dev/null
+    EXISTING_RC=$?
+    set -e
+
+    echo "Hello"
+    echo $EXISTING_RC
+    echo "There"
+
+    if [ $EXISTING_RC -ne 0 ]; then
+      echo "Bucket $BUCKET_NAME does not have existing lifecycle rules or bucket does not exist"
+      exit 1;
+    fi
+
+    # If here, we successfully got lifecycle config (even if it's empty), check if it's empty or None
+    if [ -s existing_lifecycle.json ]; then
+      echo "Existing lifecycle configuration:"
+      cat existing_lifecycle.json
+
+      # Create the new lifecycle configuration for parquet directories
+      cat > new_lifecycle_rule.json << EOF
       {
         "action": {"type": "Delete"},
         "condition": {
@@ -1078,27 +1097,41 @@ task ConfigureParquetLifecycle {
           "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/"]
         }
       }
-    ]
-  }
-}
 EOF
 
-    # Get existing lifecycle configuration if any
-    set +e
-    gcloud storage buckets describe gs://${BUCKET_NAME} \
-      ~{"--billing-project " + billing_project_id} \
-      --format="value(lifecycle_config)" > existing_lifecycle.json 2>/dev/null
-    EXISTING_RC=$?
-    set -e
+    # Now use jq to merge the new lifecycle rule with the existing lifecycle configuration
+    jq --slurpfile new_rule new_lifecycle_rule.json '.lifecycle_config.rule += $new_rule' existing_lifecycle.json > updated_lifecycle.json
 
-    if [ $EXISTING_RC -eq 0 ] && [ -s existing_lifecycle.json ] && [ "$(cat existing_lifecycle.json)" != "None" ]; then
-      echo "Bucket has existing lifecycle rules, merging with parquet cleanup rules"
-      # Note: In production, you might want more sophisticated merging
-      # For now, we'll apply our rules and note that existing rules remain
-      echo "Existing lifecycle rules will be preserved alongside new parquet rules"
+
     else
-      echo "No existing lifecycle rules found"
+      echo "No existing lifecycle configuration found (file is empty)"
+      # Create the new lifecycle configuration for parquet directories
+      cat > updated_lifecycle.json << EOF
+      {
+        "lifecycle": {
+          "rule": [
+            {
+              "action": {"type": "Delete"},
+              "condition": {
+                "age": 14,
+                "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/"]
+              }
+            }
+          ]
+        }
+      }
+EOF
     fi
+
+
+#    if [ $EXISTING_RC -eq 0 ] && [ -s existing_lifecycle.json ] && [ "$(cat existing_lifecycle.json)" != "None" ]; then
+#    echo "Bucket has existing lifecycle rules, merging with parquet cleanup rules"
+#    # Note: In production, you might want more sophisticated merging
+#    # For now, we'll apply our rules and note that existing rules remain
+#    echo "Existing lifecycle rules will be preserved alongside new parquet rules"
+#    else
+#    echo "No existing lifecycle rules found"
+#    fi
 
     # Apply the lifecycle configuration
     # Lies! This will overwrite existing lifecycle rules rather than merging any existing lifecycle rules with the to-be-applied rules,
@@ -1121,7 +1154,8 @@ EOF
 
   output {
     Boolean done = true
-    File lifecycle_config = "lifecycle.json"
+    File new_lifecycle_config = "new_lifecycle_rule.json"
+    File updated_lifecycle_config = "updated_lifecycle.json"
     File existing_lifecycle_config = "existing_lifecycle.json"
   }
 }
