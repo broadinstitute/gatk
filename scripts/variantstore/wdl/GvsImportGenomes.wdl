@@ -1312,7 +1312,7 @@ task DeleteParquetFiles {
       fi
     done < parquet_dirs.txt
 
-    echo "✓ Completed deletion of vet and ref_ranges parquet files"
+    echo "✓ Completed deletion of Parquet files."
 
   >>>
   output {
