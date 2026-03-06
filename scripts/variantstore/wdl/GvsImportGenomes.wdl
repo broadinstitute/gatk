@@ -268,7 +268,7 @@ workflow GvsImportGenomes {
           project_id = project_id,
           dataset_name = dataset_name,
           table_prefixes = ["vet", "ref_ranges"],
-          go = select_all(GenerateParquetFilesFromInputGVCFs.done),
+          go = ConfigureParquetLifecycle && select_all(GenerateParquetFilesFromInputGVCFs.done),
           variants_docker = effective_variants_docker,
       }
 
@@ -1073,7 +1073,7 @@ task ConfigureParquetLifecycle {
     set -e
 
     if [ $EXISTING_RC -ne 0 ]; then
-      echo "Bucket $BUCKET_NAME does not have existing lifecycle rules or bucket does not exist"
+      echo "Error encountered retrieving lifecycle rules for bucket $BUCKET_NAME - does that bucket exist?"
       exit 1;
     fi
 
