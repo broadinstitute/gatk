@@ -1123,7 +1123,7 @@ EOF
       ~{"--billing-project " + billing_project_id} \
       --lifecycle-file=updated_lifecycle.json
 
-    echo "✓ Lifecycle rule applied: After 14 days, it will delete files in the bucket: ${BUCKET_NAME}, with path prefixes ${BUCKET_PATH_PREFIX}vet/ and ${BUCKET_PATH_PREFIX}ref_ranges/"
+    echo "✓ Lifecycle rule applied: After 14 days, it will delete files in the bucket: ${BUCKET_NAME}, with path prefixes ${BUCKET_PATH_PREFIX}vet/, ${BUCKET_PATH_PREFIX}ref_ranges/ and ${BUCKET_PATH_PREFIX}/sample_chromosome_ploidy"
   >>>
 
   runtime {
