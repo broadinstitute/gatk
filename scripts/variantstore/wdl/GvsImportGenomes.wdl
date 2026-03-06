@@ -1083,7 +1083,7 @@ task ConfigureParquetLifecycle {
       "action": {"type": "Delete"},
       "condition": {
         "age": 14,
-        "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/"]
+        "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/", "${BUCKET_PATH_PREFIX}sample_chromosome_ploidy/"]
       }
     }
 EOF
