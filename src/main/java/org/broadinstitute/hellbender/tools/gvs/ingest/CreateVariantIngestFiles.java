@@ -5,10 +5,11 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.*;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -19,7 +20,6 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.tools.gvs.ingest.bq.RefRangesBQWriter;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
@@ -27,11 +27,8 @@ import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 
-import org.apache.parquet.schema.MessageType;
-
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
 import java.util.*;
 
 /**
@@ -374,10 +371,19 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             MessageType refRangesParquetSchema = storeCompressedReferences ? refRangesCompressedRowSchema : refRangesRowSchema;
             refRangesCreator = new RefRangesCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences, refRangesParquetSchema);
 
-            // The ploidy table is really only needed for inferring reference ploidy, as variants store their genotypes
-            // directly.  If we're not ingesting references, we can't compute and ingest ploidy either
-            logger.info("Writing ploidy data for sample id = {}, name = {}", sampleId, sampleName);
-            samplePloidyCreator = new SamplePloidyCreator(sampleIdentifierForOutputFileName, sampleId, projectID, datasetName, outputDir, sampleChromosomePloidyRowSchema, outputType);
+            switch (outputType) {
+                case PARQUET:
+                case BQ:
+                    // The ploidy table is really only needed for inferring reference ploidy, as variants store their genotypes
+                    // directly.  If we're not ingesting references, we can't compute and ingest ploidy either
+                    logger.info("Writing ploidy data for sample id = {}, name = {}", sampleId, sampleName);
+                    samplePloidyCreator = new SamplePloidyCreator(sampleIdentifierForOutputFileName, sampleId, projectID, datasetName, outputDir, sampleChromosomePloidyRowSchema, outputType);
+                    break;
+                default:
+                    logger.info("Not Writing ploidy data for output type {}", outputType);
+                    // noop
+                    break;
+            }
         }
 
         if (enableVet && vetRowsExist == Boolean.FALSE) {

@@ -68,7 +68,9 @@ public class SamplePloidyCreator {
             // This is the happy path we'll normally follow--no mixed ploidy detected
             if (ploidiesWithCounts.size() == 1) {
                 // we know there's only one item here, so we can just send that off
-                samplePloidyWriter.write(this.sampleId, SchemaUtils.encodeLocation(ploidyLine.getKey(), 0), ploidiesWithCounts.keySet().iterator().next());
+                if (samplePloidyWriter != null) {
+                    samplePloidyWriter.write(this.sampleId, SchemaUtils.encodeLocation(ploidyLine.getKey(), 0), ploidiesWithCounts.keySet().iterator().next());
+                }
                 continue;
             }
 
@@ -107,7 +109,9 @@ public class SamplePloidyCreator {
             // It's a small enough number to just note and move on with
             logger.warn("WARNING: Detected mixed ploidy in sample " + this.sampleId + " on chromosome " + ploidyLine.getKey() + ", but second ploidy of " + secondBestPloidy + " detected in only " + (secondHighestPercentage * 100) + "% (" + secondHighestCount + " total)of samples. Going with dominant ploidy of " + bestPloidy);
 
-            samplePloidyWriter.write(this.sampleId, SchemaUtils.encodeLocation(ploidyLine.getKey(), 0), bestPloidy);
+            if (samplePloidyWriter != null) {
+                samplePloidyWriter.write(this.sampleId, SchemaUtils.encodeLocation(ploidyLine.getKey(), 0), bestPloidy);
+            }
         }
     }
 

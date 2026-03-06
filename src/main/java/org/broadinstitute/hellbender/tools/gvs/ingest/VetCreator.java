@@ -59,7 +59,9 @@ public class VetCreator {
         final int start = variant.getStart();
         final long location = SchemaUtils.encodeLocation(variant.getContig(), start);
 
-        vetWriter.write(location, variant, sampleId);
+        if (vetWriter != null) {
+            vetWriter.write(location, variant, sampleId);
+        }
     }
 
 
