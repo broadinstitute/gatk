@@ -1126,8 +1126,6 @@ EOF
 
   output {
     Boolean done = true
-    File existing_lifecycle_config = "existing_lifecycle.json"
-    File updated_lifecycle_config = "updated_lifecycle.json"
   }
 }
 
