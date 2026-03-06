@@ -1083,29 +1083,27 @@ task ConfigureParquetLifecycle {
       exit 1;
     fi
 
-    # If here, we successfully got lifecycle config (even if it's empty), check if it's empty or None
-    if [ -s existing_lifecycle.json ]; then
+    # Create the new lifecycle rule for parquet directories
+    cat > new_lifecycle_rule.json << EOF
+    {
+      "action": {"type": "Delete"},
+      "condition": {
+        "age": 14,
+        "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/"]
+      }
+    }
+EOF
+
+    # If here, we successfully got lifecycle config (even if it's empty), check if it's empty or null
+    if [ -s existing_lifecycle.json ] && [ "$(cat existing_lifecycle.json)" != "null" ]; then
       echo "Existing lifecycle configuration:"
       cat existing_lifecycle.json
       cp existing_lifecycle.json temp.json
       sed 's/lifecycle_config/lifecycle/g' temp.json > existing_lifecycle.json
       rm temp.json
-
-      # Create the new lifecycle configuration for parquet directories
-      cat > new_lifecycle_rule.json << EOF
-      {
-        "action": {"type": "Delete"},
-        "condition": {
-          "age": 14,
-          "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/"]
-        }
-      }
-EOF
-
     else
-      echo "No existing lifecycle configuration found (file is empty)"
-      # Create the new lifecycle configuration (actually just the outer structure since there are no existing rules) for parquet directories
-      # Create the new lifecycle configuration for parquet directories
+      echo "No existing lifecycle configuration found (file is empty or contains the string 'null'), starting with empty lifecycle configuration"
+      # Create the new lifecycle configuration (we'll add the rule further on) for parquet directories
       cat > existing_lifecycle.json << EOF
       {
         "lifecycle": {
