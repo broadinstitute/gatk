@@ -1074,16 +1074,12 @@ task ConfigureParquetLifecycle {
     EXISTING_RC=$?
     set -e
 
-    echo "Hello"
-    echo $EXISTING_RC
-    echo "There"
-
     if [ $EXISTING_RC -ne 0 ]; then
       echo "Bucket $BUCKET_NAME does not have existing lifecycle rules or bucket does not exist"
       exit 1;
     fi
 
-    # Create the new lifecycle rule for parquet directories
+    # Create the new lifecycle *rule* for parquet directories
     cat > new_lifecycle_rule.json << EOF
     {
       "action": {"type": "Delete"},
@@ -1094,16 +1090,15 @@ task ConfigureParquetLifecycle {
     }
 EOF
 
-    # If here, we successfully got lifecycle config (even if it's empty), check if it's empty or null
+    # If here, we successfully found a lifecycle config (even if it's empty), check if it's empty or null
     if [ -s existing_lifecycle.json ] && [ "$(cat existing_lifecycle.json)" != "null" ]; then
-      echo "Existing lifecycle configuration:"
-      cat existing_lifecycle.json
+      # Note: The gcloud command returns lifecycle_config with a key of "lifecycle_config" but the gcloud buckets update command expects the key to be "lifecycle", so we need to rename that key before merging with jq
       cp existing_lifecycle.json temp.json
       sed 's/lifecycle_config/lifecycle/g' temp.json > existing_lifecycle.json
       rm temp.json
     else
       echo "No existing lifecycle configuration found (file is empty or contains the string 'null'), starting with empty lifecycle configuration"
-      # Create the new lifecycle configuration (we'll add the rule further on) for parquet directories
+      # Create the new lifecycle configuration with no rules (we'll add the rule further on) for parquet directories
       cat > existing_lifecycle.json << EOF
       {
         "lifecycle": {
@@ -1112,37 +1107,10 @@ EOF
         }
       }
 EOF
-
-# Old
-#      cat > updated_lifecycle.json << EOF
-#      {
-#        "lifecycle": {
-#          "rule": [
-#            {
-#              "action": {"type": "Delete"},
-#              "condition": {
-#                "age": 14,
-#                "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/"]
-#              }
-#            }
-#          ]
-#        }
-#      }
-#EOF
-# OLD
     fi
 
     # Now use jq to merge the new lifecycle rule with the existing lifecycle configuration
     jq --slurpfile new_rule new_lifecycle_rule.json '.lifecycle.rule += $new_rule' existing_lifecycle.json > updated_lifecycle.json
-
-#    if [ $EXISTING_RC -eq 0 ] && [ -s existing_lifecycle.json ] && [ "$(cat existing_lifecycle.json)" != "None" ]; then
-#    echo "Bucket has existing lifecycle rules, merging with parquet cleanup rules"
-#    # Note: In production, you might want more sophisticated merging
-#    # For now, we'll apply our rules and note that existing rules remain
-#    echo "Existing lifecycle rules will be preserved alongside new parquet rules"
-#    else
-#    echo "No existing lifecycle rules found"
-#    fi
 
     # Apply the updated lifecycle configuration
     gcloud storage buckets update gs://${BUCKET_NAME} \
@@ -1162,9 +1130,8 @@ EOF
 
   output {
     Boolean done = true
-    File new_lifecycle_config = "new_lifecycle_rule.json"
-    File updated_lifecycle_config = "updated_lifecycle.json"
     File existing_lifecycle_config = "existing_lifecycle.json"
+    File updated_lifecycle_config = "updated_lifecycle.json"
   }
 }
 
