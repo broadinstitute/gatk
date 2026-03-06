@@ -1105,8 +1105,17 @@ EOF
 EOF
     fi
 
-    # Now use jq to merge the new lifecycle rule with the existing lifecycle configuration
-    jq --slurpfile new_rule new_lifecycle_rule.json '.lifecycle.rule += $new_rule' existing_lifecycle.json > updated_lifecycle.json
+    # Now use jq to merge the new lifecycle rule with the existing lifecycle configuration,
+    # but only add it if there isn't already a rule with the same condition.matchesPrefix values
+    jq --slurpfile new_rule new_lifecycle_rule.json '
+      . as $cfg
+      | $new_rule[0] as $nr
+      | ($cfg.lifecycle.rule // []) as $rules
+      | if ($rules | any(.condition.matchesPrefix == $nr.condition.matchesPrefix))
+        then $cfg
+        else $cfg | .lifecycle.rule += [$nr]
+        end
+    ' existing_lifecycle.json > updated_lifecycle.json
 
     # Apply the updated lifecycle configuration
     gcloud storage buckets update gs://${BUCKET_NAME} \
