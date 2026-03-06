@@ -257,6 +257,7 @@ workflow GvsImportGenomes {
         input:
           project_id = project_id,
           dataset_name = dataset_name,
+          go = ConfigureParquetLifecycle.done,
           variants_docker = effective_variants_docker,
       }
 
@@ -1140,6 +1141,7 @@ EOF
 
 task CreateParquetTrackingTable {
   input {
+    Boolean go
     String project_id
     String dataset_name
     String variants_docker
