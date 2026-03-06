@@ -17,7 +17,10 @@ public class AbstractBQWriter {
     protected void write(JSONObject object) throws IOException {
         try {
             pendingBQWriter.addJsonRow(object);
-        } catch (Descriptors.DescriptorValidationException | ExecutionException | InterruptedException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException(e);
+        } catch (Descriptors.DescriptorValidationException | ExecutionException e) {
             throw new IOException(e);
         }
     }
