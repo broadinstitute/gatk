@@ -222,6 +222,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1799_fix_parquet_exome_npe
          tags:
              - /.*/
    - name: BulkIngestParquet
@@ -232,7 +233,7 @@ workflows:
          - master
          - ah_var_store
          - gg_VS-1794_ParquetRemovalStrategy
-         - vs_1800_prep_for_merge
+         - vs_1799_fix_parquet_exome_npe
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
@@ -359,6 +360,37 @@ workflows:
              - vs_1800_prep_for_merge
          tags:
              - /.*/
+   - name: GvsQuickstartIntegrationParquet1799
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1799_fix_parquet_exome_npe
+       tags:
+         - /.*/
+   - name: GvsQuickstartIntegrationWriteAPI1799
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1799_fix_parquet_exome_npe
+       tags:
+         - /.*/
+   - name: GvsQuickstartIntegrationBGEOnlyParquet1799
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1799_fix_parquet_exome_npe
+         - vs_1800_prep_for_merge
+       tags:
+         - /.*/
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsIngestTieout.wdl

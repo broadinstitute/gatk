@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 import com.google.cloud.bigquery.BigQuery;
 import com.google.cloud.bigquery.Table;
 import com.google.cloud.bigquery.TableId;
-import com.google.protobuf.Descriptors;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
@@ -20,7 +19,6 @@ import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.gvs.parquet.GvsReferenceParquetFileWriter;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
@@ -37,7 +35,6 @@ public final class RefCreator {
 
     private final boolean writeReferenceRanges;
     private final Long sampleId;
-    private GvsReferenceParquetFileWriter refRangesParquetFileWriter = null;
     private SimpleInterval previousInterval;
     private final Set<GQStateEnum> gqStatesToIgnore;
     private final GenomeLocSortedSet coverageLocSortedSet;
@@ -114,7 +111,7 @@ public final class RefCreator {
                         refRangesWriter = new RefRangesAvroWriter(refOutputFile.getCanonicalPath());
                         break;
                     case PARQUET:
-                        refRangesParquetFileWriter = new GvsReferenceParquetFileWriter(new Path(refOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
+                        refRangesWriter = new GvsReferenceParquetFileWriter(new Path(refOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
                         break;
                 }
             }
@@ -179,43 +176,24 @@ public final class RefCreator {
                         int localStart = start;
                         while ( localStart <= end ) {
                             int length = Math.min(end - localStart + 1, IngestConstants.MAX_REFERENCE_BLOCK_BASES);
-                            switch(outputType) {
+                            switch (outputType) {
                                 case BQ:
-                                    try {
-                                        if (storeCompressedReferences) {
-                                            refRangesWriter.writeCompressed(
-                                                    SchemaUtils.encodeCompressedRefBlock(variantChr, localStart, length,
-                                                            getGQStateEnum(variant.getGenotype(0).getGQ()).getCompressedValue()),
-                                                    sampleId
-                                            );
-                                        } else {
-                                            refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, localStart),
-                                                    sampleId,
-                                                    length,
-                                                    getGQStateEnum(variant.getGenotype(0).getGQ()).getValue()
-                                            );
-                                        }
-                                    } catch (IOException ex) {
-                                        throw new IOException("BQ exception", ex);
-                                    }
-                                    break;
                                 case PARQUET:
                                     if (storeCompressedReferences) {
-                                        JSONObject record = GvsReferenceParquetFileWriter.writeCompressed(
+                                        refRangesWriter.writeCompressed(
                                                 SchemaUtils.encodeCompressedRefBlock(variantChr, localStart, length,
-                                                getGQStateEnum(variant.getGenotype(0).getGQ()).getCompressedValue()),
+                                                        getGQStateEnum(variant.getGenotype(0).getGQ()).getCompressedValue()),
                                                 sampleId
                                         );
-                                        refRangesParquetFileWriter.write(record);
                                     } else {
-                                        JSONObject record = GvsReferenceParquetFileWriter.writeJson(SchemaUtils.encodeLocation(variantChr, localStart), sampleId, length, getGQStateEnum(variant.getGenotype(0).getGQ()).getValue());
-                                        refRangesParquetFileWriter.write(record);
+                                        refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, localStart),
+                                                sampleId,
+                                                length,
+                                                getGQStateEnum(variant.getGenotype(0).getGQ()).getValue()
+                                        );
                                     }
                                     break;
-
                             }
-
-
 
                             localStart = localStart + length ;
                         }
@@ -370,17 +348,15 @@ public final class RefCreator {
     }
 
     public void commitData() {
-        if (outputType == CommonCode.OutputType.BQ) {
-            if (writeReferenceRanges && refRangesWriter != null) {
-                refRangesWriter.commitData();
-            }
-        } else if (outputType == CommonCode.OutputType.PARQUET && refRangesParquetFileWriter != null) {
-            try {
-                refRangesParquetFileWriter.close();
-            } catch (IOException exception) {
-                System.out.println("ERROR CLOSING PARQUET FILE: ");
-                exception.printStackTrace();
-            }
+        switch (outputType) {
+            case BQ:
+            case PARQUET:
+                if (writeReferenceRanges && refRangesWriter != null) {
+                    refRangesWriter.commitData();
+                }
+                break;
+            default:
+                break;
         }
     }
 
