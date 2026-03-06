@@ -268,7 +268,7 @@ workflow GvsImportGenomes {
           project_id = project_id,
           dataset_name = dataset_name,
           table_prefixes = ["vet", "ref_ranges"],
-          go = ConfigureParquetLifecycle && select_all(GenerateParquetFilesFromInputGVCFs.done),
+          go = flatten([[ConfigureParquetLifecycle.done], select_all(GenerateParquetFilesFromInputGVCFs.done)]),
           variants_docker = effective_variants_docker,
       }
 
