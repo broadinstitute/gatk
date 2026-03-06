@@ -232,6 +232,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - gg_VS-1794_ParquetRemovalStrategy
          - vs_1799_fix_parquet_exome_npe
        tags:
          - /.*/
