@@ -6,6 +6,8 @@ import org.apache.parquet.hadoop.ParquetWriter;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
+import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.gvs.ingest.RefRangesWriter;
 import org.json.JSONObject;
 
 import java.io.IOException;
@@ -65,7 +67,7 @@ public abstract class AbstractParquetFileWriter {
      * <p>
      * The WriteSupport is injected via constructor rather than created inside
      * getWriteSupport(), which provides better separation of concerns and testability.
-     * <p>
+     *<p>
      * Note: The getWriteSupport(Configuration) method is deprecated in Parquet 1.13.1
      * but there's no alternative method available yet.
      */
