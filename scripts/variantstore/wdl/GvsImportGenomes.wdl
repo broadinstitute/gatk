@@ -1090,9 +1090,8 @@ EOF
     # If here, we successfully found a lifecycle config (even if it's empty), check if it's empty or null
     if [ -s existing_lifecycle.json ] && [ "$(cat existing_lifecycle.json)" != "null" ]; then
       # Note: The gcloud command returns lifecycle_config with a key of "lifecycle_config" but the gcloud buckets update command expects the key to be "lifecycle", so we need to rename that key before merging with jq
-      cp existing_lifecycle.json temp.json
-      sed 's/lifecycle_config/lifecycle/g' temp.json > existing_lifecycle.json
-      rm temp.json
+      jq '{lifecycle: .lifecycle_config}' existing_lifecycle.json > temp.json
+      mv temp.json existing_lifecycle.json
     else
       echo "No existing lifecycle configuration found (file is empty or contains the string 'null'), starting with empty lifecycle configuration"
       # Create the new lifecycle configuration with no rules (we'll add the rule further on) for parquet directories
