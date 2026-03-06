@@ -49,7 +49,6 @@ workflow GvsImportGenomes {
     Boolean use_parquet_ingest = true
     # Dump these Parquet files to a bucket.
     String? parquet_output_gcs_dir
-    Boolean configure_parquet_bucket_lifecycle = false
 
     Boolean is_wgs = true
   }
@@ -245,15 +244,13 @@ workflow GvsImportGenomes {
   if (load_vet_and_ref_ranges) {
     if (use_parquet_ingest) {
       String defined_parquet_output_dir = select_first([parquet_output_gcs_dir])
-      if (configure_parquet_bucket_lifecycle) {
-        # Set up lifecycle rules for parquet directories before loading
-        # TODO - I'm having trouble getting this to run and so am hiding it behind a boolean for now.
-        call ConfigureParquetLifecycle {
-          input:
-            output_gcs_dir = defined_parquet_output_dir,
-            billing_project_id = billing_project_id,
-            variants_docker = effective_variants_docker,
-        }
+
+      # Set up lifecycle rules for parquet directories before loading
+      call ConfigureParquetLifecycle {
+        input:
+          output_gcs_dir = defined_parquet_output_dir,
+          billing_project_id = billing_project_id,
+          variants_docker = effective_variants_docker,
       }
 
       call CreateParquetTrackingTable {
