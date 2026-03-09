@@ -19,7 +19,7 @@ from parse_and_group_files import parse_table_from_path
 from load_parquet_to_bq import _make_job_id
 
 
-class TestParseTableFromPath(unittest.TestCase):
+class TestParseSuperpartitionedTableFromPath(unittest.TestCase):
     """Test parsing GCS paths to BigQuery table names."""
     
     def test_parse_vet_path_basic(self):
@@ -61,6 +61,16 @@ class TestParseTableFromPath(unittest.TestCase):
         """Test that paths without numbers return None."""
         path = "gs://bucket/vet/abc/file.parquet"
         self.assertIsNone(parse_table_from_path(path, ["vet", "ref_ranges"]))
+
+class TestParseRegularTableFromPath(unittest.TestCase):
+    def test_parse_ploidy_path_basic(self):
+        """Test basic ploidy path parsing."""
+        path = "gs://bucket/sample_chromosome_ploidy/file.parquet"
+        self.assertEqual(parse_table_from_path(path), "sample_chromosome_ploidy")
+
+    def test_parse_ploidy_path_with_subdirs(self):
+        path = "gs://fc-bucket/dir/subdir/sample_chromosome_ploidy/sample_chromosome_ploidy_1_input_vcf_0_FOOBAR.vcf.gz.parquet"
+        self.assertEqual(parse_table_from_path(path), "sample_chromosome_ploidy")
 
 
 class TestMakeJobId(unittest.TestCase):

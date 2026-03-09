@@ -5,10 +5,11 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.RuntimeIOException;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.*;
+import htsjdk.variant.vcf.VCFHeaderLine;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -19,18 +20,15 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.GATKException;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
+import org.broadinstitute.hellbender.tools.gvs.ingest.bq.RefRangesBQWriter;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 
-import org.apache.parquet.schema.MessageType;
-
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.FileAlreadyExistsException;
 import java.util.*;
 
 /**
@@ -45,7 +43,7 @@ import java.util.*;
 public final class CreateVariantIngestFiles extends VariantWalker {
     static final Logger logger = LogManager.getLogger(CreateVariantIngestFiles.class);
 
-    private RefCreator refCreator;
+    private RefRangesCreator refRangesCreator;
     private VetCreator vetCreator;
     private VcfHeaderLineScratchCreator vcfHeaderLineScratchCreator;
     private SamplePloidyCreator samplePloidyCreator;
@@ -219,6 +217,15 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
             """);
 
+    public final MessageType sampleChromosomePloidyRowSchema = MessageTypeParser
+            .parseMessageType("""
+            message HeaderRow {
+                required int64 sample_id;
+                required int64 chromosome;
+                required int64 ploidy;
+            }
+            """);
+
     public final MessageType headersRowSchema = MessageTypeParser
             .parseMessageType("""
             message HeaderRow {
@@ -302,8 +309,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                     logger.info("Sample ID {}: Reference ranges writing enabled but REFERENCES_LOADED status row found, skipping.", sampleId);
                 } else {
                     logger.info("Sample ID {}: Reference ranges writing enabled and no REFERENCES_LOADED status row found, looking for existing rows.", sampleId);
-                    RefCreator.sanityCheckRefRangesSchemaForCompressedReferences(projectID, datasetName, sampleId, storeCompressedReferences);
-                    refRangesRowsExist = RefCreator.doRowsExistFor(outputType, projectID, datasetName, tableNumber, sampleId);
+                    RefRangesBQWriter.sanityCheckRefRangesSchemaForCompressedReferences(projectID, datasetName, sampleId, storeCompressedReferences);
+                    refRangesRowsExist = RefRangesBQWriter.doRowsExistFor(outputType, projectID, datasetName, tableNumber, sampleId);
                     if (refRangesRowsExist) {
                         logger.warn("Reference ranges enabled for sample id = {}, name = {} but preexisting ref_ranges rows found, skipping ref_ranges writes.",
                                 sampleId, sampleName);
@@ -362,12 +369,21 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (enableReferenceRanges && refRangesRowsExist == Boolean.FALSE) {
             logger.info("Writing reference range data for sample id = {}, name = {}", sampleId, sampleName);
             MessageType refRangesParquetSchema = storeCompressedReferences ? refRangesCompressedRowSchema : refRangesRowSchema;
-            refCreator = new RefCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences, refRangesParquetSchema);
+            refRangesCreator = new RefRangesCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences, refRangesParquetSchema);
 
-            // The ploidy table is really only needed for inferring reference ploidy, as variants store their genotypes
-            // directly.  If we're not ingesting references, we can't compute and ingest ploidy either
-            logger.info("Writing ploidy data for sample id = {}, name = {}", sampleId, sampleName);
-            samplePloidyCreator = new SamplePloidyCreator(sampleId, projectID, datasetName, outputType);
+            switch (outputType) {
+                case PARQUET:
+                case BQ:
+                    // The ploidy table is really only needed for inferring reference ploidy, as variants store their genotypes
+                    // directly.  If we're not ingesting references, we can't compute and ingest ploidy either
+                    logger.info("Writing ploidy data for sample id = {}, name = {}", sampleId, sampleName);
+                    samplePloidyCreator = new SamplePloidyCreator(sampleIdentifierForOutputFileName, sampleId, projectID, datasetName, outputDir, sampleChromosomePloidyRowSchema, outputType);
+                    break;
+                default:
+                    logger.info("Not Writing ploidy data for output type {}", outputType);
+                    // noop
+                    break;
+            }
         }
 
         if (enableVet && vetRowsExist == Boolean.FALSE) {
@@ -385,7 +401,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         logger.info("shouldWriteReferencesLoadedStatus = {}, shouldWriteVariantsLoadedStatus = {}, shouldWriteVCFHeadersLoadedStatus = {}",
                 shouldWriteReferencesLoadedStatusRow, shouldWriteVariantsLoadedStatusRow, shouldWriteVCFHeadersLoadedStatusRow);
 
-        if (refCreator == null && vetCreator == null && vcfHeaderLineScratchCreator == null &&
+        if (refRangesCreator == null && vetCreator == null && vcfHeaderLineScratchCreator == null &&
                 !shouldWriteReferencesLoadedStatusRow && !shouldWriteVariantsLoadedStatusRow && !shouldWriteVCFHeadersLoadedStatusRow) {
             logger.info("No data to be written, exiting successfully.");
             System.exit(0);
@@ -430,8 +446,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
 
         try {
-            if (refCreator != null) {
-                refCreator.apply(variant, intervalsToWrite);
+            if (refRangesCreator != null) {
+                refRangesCreator.apply(variant, intervalsToWrite);
             }
         } catch (IOException ioe) {
             throw new GATKException("Error writing reference ranges", ioe);
@@ -454,24 +470,24 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
         }
 
-        if (refCreator != null) {
+        if (refRangesCreator != null) {
             if ((gqStatesToIgnore.size() != 1) || (!gqStatesToIgnore.contains(GQStateEnum.ZERO))) {
                 // We will write missing intervals as ZERO ('GQ0') unless that is the (ONLY???) GQ state that we are dropping.
                 // If ZERO/GQ0 is the ONLY state that we are dropping then we do not write those intervals.
                 try {
-                    refCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
+                    refRangesCreator.writeMissingIntervals(intervalArgumentGenomeLocSortedSet);
                 } catch (IOException ioe) {
                     throw new GATKException("Error writing missing intervals", ioe);
                 }
             }
             // Wait until all data has been submitted and in pending state to commit
-            refCreator.commitData();
+            refRangesCreator.commitData();
 
             // this is likely an unnecessary check as it currently stands, but it can't hurt to have it in case we
             // later separate their creation, throwing the ploidy stuff explicity behind a flag
             if (samplePloidyCreator != null) {
                 try {
-                    samplePloidyCreator.apply(refCreator.getReferencePloidyData(), refCreator.getTotalRefEntries());
+                    samplePloidyCreator.apply(refRangesCreator.getReferencePloidyData(), refRangesCreator.getTotalRefEntries());
                 } catch (IOException ioe) {
                     throw new GATKException("Error writing ploidy data", ioe);
                 }
@@ -495,8 +511,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Override
     public void closeTool() {
-        if (refCreator != null) {
-            refCreator.closeTool();
+        if (refRangesCreator != null) {
+            refRangesCreator.closeTool();
         }
         if (vetCreator != null) {
             vetCreator.closeTool();
@@ -535,7 +551,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (gqStateToIgnore != null) {
             gqStatesToIgnore.add(gqStateToIgnore);
             if (dropAboveGqThreshold) {
-                gqStatesToIgnore.addAll(RefCreator.getGQStateEnumGreaterThan(gqStateToIgnore));
+                gqStatesToIgnore.addAll(RefRangesCreator.getGQStateEnumGreaterThan(gqStateToIgnore));
             }
         }
         return seqDictionary;
