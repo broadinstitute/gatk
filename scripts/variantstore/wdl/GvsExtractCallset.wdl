@@ -136,12 +136,12 @@ workflow GvsExtractCallset {
 
   Int effective_scatter_count = if defined(scatter_count) then select_first([scatter_count])
                                 else if is_wgs then
-                                     if GetNumSamplesLoaded.num_samples < 5000 then 1
+                                     if GetNumSamplesLoaded.num_samples < 5000 then 500
                                      else if GetNumSamplesLoaded.num_samples < 20000 then 2000
                                           else if GetNumSamplesLoaded.num_samples < 50000 then 10000
                                                else 20000
                                      else
-                                     if GetNumSamplesLoaded.num_samples < 5000 then 1
+                                     if GetNumSamplesLoaded.num_samples < 5000 then 500
                                      else if GetNumSamplesLoaded.num_samples < 20000 then 1000
                                           else if GetNumSamplesLoaded.num_samples < 50000 then 2500
                                                else 7500
