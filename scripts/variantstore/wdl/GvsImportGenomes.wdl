@@ -49,7 +49,6 @@ workflow GvsImportGenomes {
     Boolean use_parquet_ingest = true
     # Dump these Parquet files to a bucket.
     String? parquet_output_gcs_dir
-    Boolean configure_parquet_bucket_lifecycle = false
 
     Boolean is_wgs = true
   }
@@ -245,21 +244,20 @@ workflow GvsImportGenomes {
   if (load_vet_and_ref_ranges) {
     if (use_parquet_ingest) {
       String defined_parquet_output_dir = select_first([parquet_output_gcs_dir])
-      if (configure_parquet_bucket_lifecycle) {
-        # Set up lifecycle rules for parquet directories before loading
-        # TODO - I'm having trouble getting this to run and so am hiding it behind a boolean for now.
-        call ConfigureParquetLifecycle {
-          input:
-            output_gcs_dir = defined_parquet_output_dir,
-            billing_project_id = billing_project_id,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-        }
+
+      # Set up lifecycle rules for parquet directories before loading
+      call ConfigureParquetLifecycle {
+        input:
+          output_gcs_dir = defined_parquet_output_dir,
+          billing_project_id = billing_project_id,
+          variants_docker = effective_variants_docker,
       }
 
       call CreateParquetTrackingTable {
         input:
           project_id = project_id,
           dataset_name = dataset_name,
+          go = ConfigureParquetLifecycle.done,
           variants_docker = effective_variants_docker,
       }
 
@@ -271,7 +269,7 @@ workflow GvsImportGenomes {
           dataset_name = dataset_name,
           regular_table_prefixes = ["sample_chromosome_ploidy"],
           superpartitioned_table_prefixes = ["vet", "ref_ranges"],
-          go = select_all(GenerateParquetFilesFromInputGVCFs.done),
+          go = flatten([[ConfigureParquetLifecycle.done], select_all(GenerateParquetFilesFromInputGVCFs.done)]),
           variants_docker = effective_variants_docker,
       }
 
@@ -1042,7 +1040,7 @@ task ConfigureParquetLifecycle {
   input {
     String output_gcs_dir
     String? billing_project_id
-    String cloud_sdk_docker
+    String variants_docker
   }
 
   command <<<
@@ -1051,52 +1049,88 @@ task ConfigureParquetLifecycle {
 
     # Extract bucket name from GCS path
     BUCKET_NAME=$(echo ~{output_gcs_dir} | sed 's|gs://||' | cut -d'/' -f1)
-    echo "Configuring lifecycle for bucket: ${BUCKET_NAME}"
 
-    # Create lifecycle configuration for parquet directories
-    cat > lifecycle.json << 'EOF'
-{
-  "lifecycle": {
-    "rule": [
-      {
-        "action": {"type": "Delete"},
-        "condition": {
-          "age": 14,
-          "matchesPrefix": ["vet/", "ref_ranges/"]
-        }
-      }
-    ]
-  }
-}
-EOF
+    # Extract bucket path prefix (if any) to ensure lifecycle rules are applied to the correct subdirectories
+    # For example, if output_gcs_dir is gs://my-bucket/path/to/data/, we want the prefix to be path/to/data/ to apply rules to that subdirectory rather than the whole bucket
+    # First, remove gs:// prefix and trailing slash, then check if there's a path component
+    TEMP_PATH=$(echo ~{output_gcs_dir} | sed 's|gs://||' | sed 's/\/$//')
+
+    # If TEMP_PATH contains a /, extract everything after the first /, otherwise set to empty
+    if [[ "$TEMP_PATH" == */* ]]; then
+      BUCKET_PATH_PREFIX=$(echo "$TEMP_PATH" | cut -d'/' -f2-)
+      # Append trailing slash since we have a path
+      BUCKET_PATH_PREFIX="${BUCKET_PATH_PREFIX}/"
+    else
+      BUCKET_PATH_PREFIX=""
+    fi
+
+    echo "Configuring lifecycle for bucket: ${BUCKET_NAME}"
+    echo "Path prefix: '${BUCKET_PATH_PREFIX}'"
 
     # Get existing lifecycle configuration if any
     set +e
     gcloud storage buckets describe gs://${BUCKET_NAME} \
       ~{"--billing-project " + billing_project_id} \
-      --format="value(lifecycle)" > existing_lifecycle.json 2>/dev/null
+      --format="json(lifecycle_config)" > existing_lifecycle.json 2>/dev/null
     EXISTING_RC=$?
     set -e
 
-    if [ $EXISTING_RC -eq 0 ] && [ -s existing_lifecycle.json ] && [ "$(cat existing_lifecycle.json)" != "None" ]; then
-      echo "Bucket has existing lifecycle rules, merging with parquet cleanup rules"
-      # Note: In production, you might want more sophisticated merging
-      # For now, we'll apply our rules and note that existing rules remain
-      echo "Existing lifecycle rules will be preserved alongside new parquet rules"
-    else
-      echo "No existing lifecycle rules found"
+    if [ $EXISTING_RC -ne 0 ]; then
+      echo "Error encountered retrieving lifecycle rules for bucket $BUCKET_NAME - does that bucket exist?"
+      exit 1;
     fi
 
-    # Apply the lifecycle configuration
+    # Create the new lifecycle *rule* for parquet directories
+    cat > new_lifecycle_rule.json << EOF
+    {
+      "action": {"type": "Delete"},
+      "condition": {
+        "age": 14,
+        "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/", "${BUCKET_PATH_PREFIX}sample_chromosome_ploidy/"]
+      }
+    }
+EOF
+
+    # If here, we successfully found a lifecycle config (even if it's empty), check if it's empty or null
+    if [ -s existing_lifecycle.json ] && [ "$(cat existing_lifecycle.json)" != "null" ]; then
+      # Note: The gcloud command returns lifecycle_config with a key of "lifecycle_config" but the gcloud buckets update command expects the key to be "lifecycle", so we need to rename that key before merging with jq
+      jq '{lifecycle: .lifecycle_config}' existing_lifecycle.json > temp.json
+      mv temp.json existing_lifecycle.json
+    else
+      echo "No existing lifecycle configuration found (file is empty or contains the string 'null'), starting with empty lifecycle configuration"
+      # Create the new lifecycle configuration with no rules (we'll add the rule further on) for parquet directories
+      cat > existing_lifecycle.json << EOF
+      {
+        "lifecycle": {
+          "rule": [
+          ]
+        }
+      }
+EOF
+    fi
+
+    # Now use jq to merge the new lifecycle rule with the existing lifecycle configuration,
+    # but only add it if there isn't already a rule with the same condition.matchesPrefix values
+    jq --slurpfile new_rule new_lifecycle_rule.json '
+      . as $cfg
+      | $new_rule[0] as $nr
+      | ($cfg.lifecycle.rule // []) as $rules
+      | if ($rules | any(.condition.matchesPrefix == $nr.condition.matchesPrefix))
+        then $cfg
+        else $cfg | .lifecycle.rule += [$nr]
+        end
+    ' existing_lifecycle.json > updated_lifecycle.json
+
+    # Apply the updated lifecycle configuration
     gcloud storage buckets update gs://${BUCKET_NAME} \
       ~{"--billing-project " + billing_project_id} \
-      --lifecycle-file=lifecycle.json
+      --lifecycle-file=updated_lifecycle.json
 
-    echo "✓ Lifecycle rule applied: Delete files in vet/ and ref_ranges/ after 14 days"
+    echo "✓ Lifecycle rule applied: After 14 days, it will delete files in the bucket: ${BUCKET_NAME}, with path prefixes ${BUCKET_PATH_PREFIX}vet/, ${BUCKET_PATH_PREFIX}ref_ranges/ and ${BUCKET_PATH_PREFIX}/sample_chromosome_ploidy"
   >>>
 
   runtime {
-    docker: cloud_sdk_docker
+    docker: variants_docker
     memory: "1 GB"
     disks: "local-disk 10 HDD"
     preemptible: 3
@@ -1110,6 +1144,7 @@ EOF
 
 task CreateParquetTrackingTable {
   input {
+    Boolean go
     String project_id
     String dataset_name
     String variants_docker
