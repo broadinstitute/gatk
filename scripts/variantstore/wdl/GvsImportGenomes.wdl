@@ -52,6 +52,7 @@ workflow GvsImportGenomes {
 
     # Delete parquet files from GCS after successfully loading them into BigQuery
     Boolean delete_parquet_files_after_loading = true
+    Boolean use_alternate_delete_strategy = false
 
     Boolean is_wgs = true
   }
