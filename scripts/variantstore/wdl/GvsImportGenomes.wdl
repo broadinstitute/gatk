@@ -1327,6 +1327,7 @@ task VerifyParquetLoading {
 task DeleteParquetFiles {
   input {
     String output_gcs_dir
+    Boolean use_alternate_delete_strategy = false
 
     String? billing_project_id
     String cloud_sdk_docker
@@ -1339,21 +1340,23 @@ task DeleteParquetFiles {
     # Normalize GCS path by removing any trailing slash
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
-    gcloud storage rm --recursive ~{"--billing-project " + billing_project_id} "${OUTPUT_GCS_DIR}/"
+    if [ "~{use_alternate_delete_strategy}" = "false" ]; then
+      gcloud storage rm --recursive ~{"--billing-project " + billing_project_id} "${OUTPUT_GCS_DIR}/"
+    else
+      # List the contents of the vet and ref_ranges directories for subsequent deletion in the loop below
+      echo "Listing directories under ${OUTPUT_GCS_DIR}/vet/ and ${OUTPUT_GCS_DIR}/ref_ranges/ for deletion..."
+      gcloud storage ls ~{"--billing-project " + billing_project_id} \
+      "${OUTPUT_GCS_DIR}/vet/" "${OUTPUT_GCS_DIR}/ref_ranges/" > parquet_dirs.txt
 
-#    # List the contents of the vet and ref_ranges directories for subsequent deletion in the loop below
-#    echo "Listing directories under ${OUTPUT_GCS_DIR}/vet/ and ${OUTPUT_GCS_DIR}/ref_ranges/ for deletion..."
-#    gcloud storage ls ~{"--billing-project " + billing_project_id} \
-#    "${OUTPUT_GCS_DIR}/vet/" "${OUTPUT_GCS_DIR}/ref_ranges/" > parquet_dirs.txt
-#
-#    # Iterate over all Google Cloud paths in parquet_dirs.txt and delete all objects therein
-#    echo "Deleting Parquet files..."
-#    while IFS= read -r gcs_path; do
-#      if [ -n "$gcs_path" ]; then
-#        echo "Deleting objects in: $gcs_path"
-#        gcloud storage rm ~{"--billing-project " + billing_project_id} "$gcs_path" --recursive
-#      fi
-#    done < parquet_dirs.txt
+      # Iterate over all Google Cloud paths in parquet_dirs.txt and delete all objects therein
+      echo "Deleting Parquet files..."
+      while IFS= read -r gcs_path; do
+        if [ -n "$gcs_path" ]; then
+          echo "Deleting objects in: $gcs_path"
+          gcloud storage rm ~{"--billing-project " + billing_project_id} "$gcs_path" --recursive
+        fi
+      done < parquet_dirs.txt
+    fi
 
     echo "✓ Completed deletion of Parquet files."
 
