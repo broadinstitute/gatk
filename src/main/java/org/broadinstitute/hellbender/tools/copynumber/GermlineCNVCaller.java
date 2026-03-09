@@ -371,8 +371,7 @@ public final class GermlineCNVCaller extends CommandLineProgram {
         if (pythonProcessOutput.getExitValue() != 0) {
             // We restart once if the inference diverged
             if (pythonProcessOutput.getExitValue() == DIVERGED_INFERENCE_EXIT_CODE) {
-                final Random generator = new Random(STARTING_SEED);
-                final int nextGCNVSeed = generator.nextInt();
+                final int nextGCNVSeed = generateRetrySeed();
                 logger.info("The inference failed to converge and will be restarted once with a different random seed.");
                 pythonProcessOutput = executor.executeScriptAndGetOutput(
                         new Resource(script, GermlineCNVCaller.class),
@@ -476,6 +475,10 @@ public final class GermlineCNVCaller extends CommandLineProgram {
                     intervalSubsetReadCountFiles.add(intervalSubsetReadCountFile);
                 });
         return intervalSubsetReadCountFiles;
+    }
+
+    static int generateRetrySeed() {
+        return new Random().nextInt(Integer.MAX_VALUE);
     }
 
     private List<String> composePythonArguments(final List<File> intervalSubsetReadCountFiles, final int randomSeed) {
