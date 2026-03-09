@@ -1,16 +1,16 @@
-package org.broadinstitute.hellbender.tools.gvs.ingest;
+package org.broadinstitute.hellbender.tools.gvs.ingest.tsv;
 
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
+import org.broadinstitute.hellbender.tools.gvs.ingest.RefRangesWriter;
 
 import java.io.BufferedWriter;
-import java.io.Closeable;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 
-public class RefRangesTsvWriter extends RefRangesWriter {
-    private BufferedWriter writer;
+public class RefRangesTsvWriter implements RefRangesWriter {
+    private final BufferedWriter writer;
     private final static char SEPARATOR = IngestConstants.SEPARATOR;
 
     public RefRangesTsvWriter(String outputFile) throws IOException{

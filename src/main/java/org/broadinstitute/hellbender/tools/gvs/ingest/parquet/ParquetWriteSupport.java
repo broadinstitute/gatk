@@ -1,4 +1,4 @@
-package org.broadinstitute.hellbender.utils.gvs.parquet;
+package org.broadinstitute.hellbender.tools.gvs.ingest.parquet;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.column.ColumnDescriptor;
@@ -12,13 +12,17 @@ import org.json.JSONObject;
 import java.util.HashMap;
 import java.util.List;
 
-public class GvsHeaderWriteSupport extends WriteSupport<JSONObject> {
+/**
+ * A generic WriteSupport implementation for writing JSONObject records to Parquet files
+ * in the GVS system.
+ */
+public class ParquetWriteSupport extends WriteSupport<JSONObject> {
     MessageType schema;
     RecordConsumer recordConsumer;
     List<ColumnDescriptor> cols;
 
     // support specifying encodings and compression?
-    public GvsHeaderWriteSupport(@NotNull MessageType schema) {
+    public ParquetWriteSupport(@NotNull MessageType schema) {
         this.schema = schema;
         this.cols = schema.getColumns();
     }
@@ -35,8 +39,8 @@ public class GvsHeaderWriteSupport extends WriteSupport<JSONObject> {
      * @param config Configuration object (unused in our implementation)
      * @return WriteContext containing the schema and metadata
      */
+    @Deprecated
     @Override
-    @SuppressWarnings("deprecation")
     public WriteContext init(Configuration config) {
         return new WriteContext(schema, new HashMap<>());
     }
@@ -48,23 +52,24 @@ public class GvsHeaderWriteSupport extends WriteSupport<JSONObject> {
 
     /**
      * Current implementation is a FLAT one.  Will want to separate it out and structure it a little better later!
-     * @param headerRow one record to write to the previously provided record consumer
+     * @param record one record to write to the previously provided record consumer
      */
     @Override
-    public void write(JSONObject headerRow) {
+    public void write(JSONObject record) {
         recordConsumer.startMessage();
         // let's iterate through the possible values we have in the JSON
         for (int field = 0; field < cols.size(); ++field) {
             ColumnDescriptor col = cols.get(field);
             String columnName = col.getPrimitiveType().getName();
             // if this isn't here, we're supposed to just skip right over it
-            if (headerRow.has(columnName) && headerRow.get(columnName) != JSONObject.NULL) {
+            if (record.has(columnName) && record.get(columnName) != JSONObject.NULL) {
                 recordConsumer.startField(columnName, field);
                 switch(col.getPrimitiveType().getPrimitiveTypeName()) {
-                    case INT64 -> recordConsumer.addLong(headerRow.getLong(columnName));
-                    case FLOAT -> recordConsumer.addFloat(headerRow.getFloat(columnName));
-                    case BINARY -> recordConsumer.addBinary(Binary.fromString(headerRow.getString(columnName)));
-                    default -> throw new UnsupportedOperationException("Haven't implemented other types yet! Can't process column "+columnName+ "with type "+col.getPrimitiveType().getName());
+                    case INT64 -> recordConsumer.addLong(record.getLong(columnName));
+                    case FLOAT -> recordConsumer.addFloat(record.getFloat(columnName));
+                    case BINARY -> recordConsumer.addBinary(Binary.fromString(record.getString(columnName)));
+                    default ->
+                            throw new UnsupportedOperationException("Haven't implemented other types yet! Can't process column " + columnName + " with type " + col.getPrimitiveType().getName());
                 }
                 recordConsumer.endField(columnName, field);
             }

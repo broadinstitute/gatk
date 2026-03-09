@@ -1,8 +1,5 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
-import com.google.cloud.bigquery.BigQuery;
-import com.google.cloud.bigquery.Table;
-import com.google.cloud.bigquery.TableId;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
@@ -13,23 +10,22 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
+import org.broadinstitute.hellbender.tools.gvs.ingest.avro.RefRangesAvroWriter;
+import org.broadinstitute.hellbender.tools.gvs.ingest.bq.RefRangesBQWriter;
+import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.RefRangesParquetFileWriter;
+import org.broadinstitute.hellbender.tools.gvs.ingest.tsv.RefRangesTsvWriter;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
-import org.broadinstitute.hellbender.utils.gvs.parquet.GvsReferenceParquetFileWriter;
 
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
 
-
-public final class RefCreator {
-    private static final Logger logger = LogManager.getLogger(RefCreator.class);
-
-    private final CommonCode.OutputType outputType;
+public final class RefRangesCreator {
+    private static final Logger logger = LogManager.getLogger(RefRangesCreator.class);
 
     private RefRangesWriter refRangesWriter = null;
 
@@ -42,50 +38,17 @@ public final class RefCreator {
     private static final String PREFIX_SEPARATOR = "_";
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
 
-    private Map<String, BitSet> ploidiesPerChromosome = null;
     private Map<String, Map<Integer, Long>> ploidiesCountPerChromosome = null;
 
     // for easily calculating percentages later
     private long totalRefEntries = 0L;
 
-    public static void sanityCheckRefRangesSchemaForCompressedReferences(String projectID, String datasetName, Long sampleId, boolean storeCompressedReferences) {
-        final BigQuery bigquery = BigQueryUtils.getBigQueryEndPoint(projectID);
-        final int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
-        final String tableName = REF_RANGES_FILETYPE_PREFIX + String.format("%03d", sampleTableNumber);
-        final TableId tableId = TableId.of(projectID, datasetName, tableName);
-
-        final Table table = bigquery.getTable(tableId);
-        table.getDefinition().getSchema();
-        final String COMPRESSED_REF_RANGES_COLUMN = "packed_ref_data";
-
-        boolean foundCompressedColumn = false;
-        for (com.google.cloud.bigquery.Field field : table.getDefinition().getSchema().getFields()) {
-            if (field.getName().equals(COMPRESSED_REF_RANGES_COLUMN)) {
-                foundCompressedColumn = true;
-                break;
-            }
-        }
-        if (foundCompressedColumn ^ storeCompressedReferences) {
-            throw new UserException("reference ranges table " + projectID + "." + datasetName + "." + tableName +
-                    " has a schema incompatible with the invocation of this tool. " +
-                    "This tool was invoked with storeCompressedReferences = " + storeCompressedReferences + ", but a check for " +
-                    "compressed references column '" + COMPRESSED_REF_RANGES_COLUMN + "' returned " + foundCompressedColumn + ".");
-        }
-    }
-
-    public static boolean doRowsExistFor(CommonCode.OutputType outputType, String projectId, String datasetName, String tableNumber, Long sampleId) {
-        if (outputType != CommonCode.OutputType.BQ) return false;
-        return BigQueryUtils.doRowsExistFor(projectId, datasetName, REF_RANGES_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
-    }
-
-    public RefCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, Set<GQStateEnum> gqStatesToIgnore, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName, final boolean storeCompressedReferences, final MessageType parquetSchema) {
+    public RefRangesCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, Set<GQStateEnum> gqStatesToIgnore, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName, final boolean storeCompressedReferences, final MessageType parquetSchema) {
         this.sampleId = sampleId;
-        this.outputType = outputType;
         this.writeReferenceRanges = writeReferenceRanges;
         this.storeCompressedReferences = storeCompressedReferences;
         this.gqStatesToIgnore = gqStatesToIgnore;
 
-        this.ploidiesPerChromosome = new HashMap<>();
         this.ploidiesCountPerChromosome = new HashMap<>();
 
         coverageLocSortedSet = new GenomeLocSortedSet(new GenomeLocParser(seqDictionary));
@@ -111,14 +74,12 @@ public final class RefCreator {
                         refRangesWriter = new RefRangesAvroWriter(refOutputFile.getCanonicalPath());
                         break;
                     case PARQUET:
-                        refRangesWriter = new GvsReferenceParquetFileWriter(new Path(refOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
+                        refRangesWriter = new RefRangesParquetFileWriter(new Path(refOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
                         break;
                 }
             }
-        } catch (final FileAlreadyExistsException fs) {
-            throw new UserException("This reference parquet file already exists", fs);
-        } catch (final IOException ioex) {
-            throw new UserException("Could not create reference range outputs", ioex);
+        } catch (final IOException e) {
+            throw new RuntimeException(e);
         }
     }
 
@@ -139,7 +100,7 @@ public final class RefCreator {
             }
 
             // Create output if the reference block's GQ is not the one to discard, or it's a variant.
-            if (!variant.isReferenceBlock() || !this.gqStatesToIgnore.contains(RefCreator.getGQStateEnum(variant.getGenotype(0).getGQ()))) {
+            if (!variant.isReferenceBlock() || !this.gqStatesToIgnore.contains(RefRangesCreator.getGQStateEnum(variant.getGenotype(0).getGQ()))) {
 
                 // add interval to "covered" intervals
                 setCoveredInterval(variantChr, start, end);
@@ -174,28 +135,23 @@ public final class RefCreator {
 
                         // break up reference blocks to be no longer than MAX_REFERENCE_BLOCK_SIZE
                         int localStart = start;
-                        while ( localStart <= end ) {
+                        while (localStart <= end) {
                             int length = Math.min(end - localStart + 1, IngestConstants.MAX_REFERENCE_BLOCK_BASES);
-                            switch (outputType) {
-                                case BQ:
-                                case PARQUET:
-                                    if (storeCompressedReferences) {
-                                        refRangesWriter.writeCompressed(
-                                                SchemaUtils.encodeCompressedRefBlock(variantChr, localStart, length,
-                                                        getGQStateEnum(variant.getGenotype(0).getGQ()).getCompressedValue()),
-                                                sampleId
-                                        );
-                                    } else {
-                                        refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, localStart),
-                                                sampleId,
-                                                length,
-                                                getGQStateEnum(variant.getGenotype(0).getGQ()).getValue()
-                                        );
-                                    }
-                                    break;
+                            if (storeCompressedReferences) {
+                                refRangesWriter.writeCompressed(
+                                        SchemaUtils.encodeCompressedRefBlock(variantChr, localStart, length,
+                                                getGQStateEnum(variant.getGenotype(0).getGQ()).getCompressedValue()),
+                                        sampleId
+                                );
+                            } else {
+                                refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, localStart),
+                                        sampleId,
+                                        length,
+                                        getGQStateEnum(variant.getGenotype(0).getGQ()).getValue()
+                                );
                             }
 
-                            localStart = localStart + length ;
+                            localStart = localStart + length;
                         }
 
                     // Write out no-calls as a single-base GQ0 reference.
@@ -348,15 +304,8 @@ public final class RefCreator {
     }
 
     public void commitData() {
-        switch (outputType) {
-            case BQ:
-            case PARQUET:
-                if (writeReferenceRanges && refRangesWriter != null) {
-                    refRangesWriter.commitData();
-                }
-                break;
-            default:
-                break;
+        if (writeReferenceRanges && refRangesWriter != null) {
+            refRangesWriter.commitData();
         }
     }
 

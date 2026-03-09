@@ -223,6 +223,7 @@ workflows:
              - master
              - ah_var_store
              - vs_1799_fix_parquet_exome_npe
+             - vs_1809_parquet_ploidy
          tags:
              - /.*/
    - name: BulkIngestParquet
@@ -234,6 +235,7 @@ workflows:
          - ah_var_store
          - gg_VS-1779_CleanUpParquetFilesImmediatement
          - vs_1799_fix_parquet_exome_npe
+         - vs_1809_parquet_ploidy
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
@@ -360,35 +362,34 @@ workflows:
              - vs_1800_prep_for_merge
          tags:
              - /.*/
-   - name: GvsQuickstartIntegrationParquet1799
+   - name: GvsQuickstartIntegrationParquet1809
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
      filters:
        branches:
          - master
          - ah_var_store
-         - vs_1799_fix_parquet_exome_npe
+         - vs_1809_parquet_ploidy
        tags:
          - /.*/
-   - name: GvsQuickstartIntegrationWriteAPI1799
+   - name: GvsQuickstartIntegrationWriteAPI1809
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
      filters:
        branches:
          - master
          - ah_var_store
-         - vs_1799_fix_parquet_exome_npe
+         - vs_1809_parquet_ploidy
        tags:
          - /.*/
-   - name: GvsQuickstartIntegrationBGEOnlyParquet1799
+   - name: GvsQuickstartIntegrationBGEOnlyParquet1809
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
      filters:
        branches:
          - master
          - ah_var_store
-         - vs_1799_fix_parquet_exome_npe
-         - vs_1800_prep_for_merge
+         - vs_1809_parquet_ploidy
        tags:
          - /.*/
    - name: GvsIngestTieout

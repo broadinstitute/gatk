@@ -26,24 +26,24 @@ import static org.broadinstitute.hellbender.utils.variant.GATKVCFConstants.VARIA
 
 /**
  * Expected headers for the Variant Table (VET)
- *     sample_id, // req
- *     location, // req
- *     reference_bases, // req
- *     alternate_bases_alt, // req
- *     alternate_bases_AS_RAW_MQ,
- *     alternate_bases_AS_RAW_MQRankSum,
- *     alternate_bases_AS_QUALapprox,
- *     alternate_bases_AS_RAW_ReadPosRankSum,
- *     alternate_bases_AS_SB_TABLE,
- *     alternate_bases_AS_VarDP,
- *     call_genotype, // req
- *     call_AD,
- *     call_DP, // Laura says consider removing for now-- so similar to AS_VarDP
- *     call_GQ, // req
- *     call_PGT,
- *     call_PID,
- *     call_PS,
- *     call_PL
+ * sample_id, // req
+ * location, // req
+ * reference_bases, // req
+ * alternate_bases_alt, // req
+ * alternate_bases_AS_RAW_MQ,
+ * alternate_bases_AS_RAW_MQRankSum,
+ * alternate_bases_AS_QUALapprox,
+ * alternate_bases_AS_RAW_ReadPosRankSum,
+ * alternate_bases_AS_SB_TABLE,
+ * alternate_bases_AS_VarDP,
+ * call_genotype, // req
+ * call_AD,
+ * call_DP, // Laura says consider removing for now-- so similar to AS_VarDP
+ * call_GQ, // req
+ * call_PGT,
+ * call_PID,
+ * call_PS,
+ * call_PL
  *
  */
 public enum VetFieldEnum {
@@ -54,6 +54,7 @@ public enum VetFieldEnum {
     location, // Required-- encoded chromosome and position
 
     ref { // Required
+
         public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             final String referenceBase = variant.getReference().getBaseString();
             if (referenceBase == null) {
@@ -64,10 +65,11 @@ public enum VetFieldEnum {
     },
 
     alt { // remove "<NON_REF>"
+
         //TODO what if this field is null and if <NON_REF> is not there--throw an error
         public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             List<String> outList = new ArrayList<>();
-            for(Allele a : variant.getAlternateAlleles()) {
+            for (Allele a : variant.getAlternateAlleles()) {
                 if (!a.isNonRefAllele()) { // TODO unit test this
                     outList.add(a.getDisplayString());
                 }
@@ -99,13 +101,13 @@ public enum VetFieldEnum {
                         .map(val -> val.endsWith(".00") ? val.substring(0, val.length() - 3) : val)
                         .collect(Collectors.joining(AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM));
                 return out;
-            // If we have gvcfs that are not allele specific from GATK4 we'll get RAW_MQandDP.
-            // We can drop DP here and use AS_VarDP when finalizing RMS Mapping Quality
+                // If we have gvcfs that are not allele specific from GATK4 we'll get RAW_MQandDP.
+                // We can drop DP here and use AS_VarDP when finalizing RMS Mapping Quality
             } else {
                 String outValue;
                 if (outNotAlleleSpecific != null) {
                     String[] outValues = outNotAlleleSpecific.split(",");
-                    if (outValues.length !=2) {
+                    if (outValues.length != 2) {
                         throw new UserException("Expected RAW_MQandDP to be two values separated by a comma.");
                     }
                     // First value is MQ the second is DP. Use the only MQ value we have for all alleles since we're faking allele specific annotations.
@@ -125,12 +127,14 @@ public enum VetFieldEnum {
                 return outNotAlleleSpecific;
             }
         }
+
         public boolean isVqsrSpecificField() {
             return true;
         }
     },
 
     AS_RAW_MQRankSum { // TODO -- maybe rely on 1/1 for call_GT, also get rid of the | at the beginning
+
         // Required for VQSR Data
         public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             // in the case where neither allele is reference, don't return a value
@@ -139,7 +143,7 @@ public enum VetFieldEnum {
             }
 
             // e.g. AS_RAW_MQRankSum=|1.4,1|NaN;
-            String out =  getAttribute(variant, GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY, null);
+            String out = getAttribute(variant, GATKVCFConstants.AS_RAW_MAP_QUAL_RANK_SUM_KEY, null);
 
             if (forceLoadingFromNonAlleleSpecific || out == null) {
                 // Try to use non-AS version
@@ -148,7 +152,7 @@ public enum VetFieldEnum {
                 String outNotAlleleSpecific = getAttribute(variant, GATKVCFConstants.MAP_QUAL_RANK_SUM_KEY, null);
 
 
-                if ( outNotAlleleSpecific == null || "".equals(outNotAlleleSpecific) || outNotAlleleSpecific.contentEquals("||") || outNotAlleleSpecific.contentEquals("|||") ) {
+                if (outNotAlleleSpecific == null || "".equals(outNotAlleleSpecific) || outNotAlleleSpecific.contentEquals("||") || outNotAlleleSpecific.contentEquals("|||")) {
                     return "";
                 }
 
@@ -164,7 +168,7 @@ public enum VetFieldEnum {
                 }
             }
 
-            if ( out == null || out.contentEquals("||") || out.contentEquals("|||") ) {
+            if (out == null || out.contentEquals("||") || out.contentEquals("|||")) {
                 out = "";
                 return out;
             }
@@ -182,6 +186,7 @@ public enum VetFieldEnum {
             }
             return out;
         }
+
         public boolean isVqsrSpecificField() {
             return true;
         }
@@ -196,6 +201,7 @@ public enum VetFieldEnum {
             }
             return out;
         }
+
         public boolean isVqsrSpecificField() {
             return true;
         }
@@ -230,12 +236,14 @@ public enum VetFieldEnum {
             }
             return out;
         }
+
         public boolean isVqsrSpecificField() {
             return true;
         }
     },
 
     AS_RAW_ReadPosRankSum {  // TODO -- maybe rely on 1/1 for call_GT
+
         public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             // in the case where neither allele is reference, don't return a value
             if (isGenotypeAllNonRef(variant.getGenotype(0))) {
@@ -243,7 +251,7 @@ public enum VetFieldEnum {
             }
 
             // e.g. AS_RAW_ReadPosRankSum=|-0.3,1|0.6,1
-            String out =  getAttribute(variant, GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY, null);
+            String out = getAttribute(variant, GATKVCFConstants.AS_RAW_READ_POS_RANK_SUM_KEY, null);
 
             if (forceLoadingFromNonAlleleSpecific || out == null) {
                 // Try to use non-AS version
@@ -251,7 +259,7 @@ public enum VetFieldEnum {
                 // e.g. ReadPosRankSum=-0.511 and turn it into |-0.511,1|
                 String outNotAlleleSpecific = getAttribute(variant, GATKVCFConstants.READ_POS_RANK_SUM_KEY, null);
 
-                if ( outNotAlleleSpecific == null || "".equals(outNotAlleleSpecific) || outNotAlleleSpecific.contentEquals("||") || outNotAlleleSpecific.contentEquals("|||") ) {
+                if (outNotAlleleSpecific == null || "".equals(outNotAlleleSpecific) || outNotAlleleSpecific.contentEquals("||") || outNotAlleleSpecific.contentEquals("|||")) {
                     return "";
                 }
 
@@ -266,7 +274,7 @@ public enum VetFieldEnum {
                 // As of VS-910, we aren't going to consider any number of alleles to necessarily be a UserException
             }
 
-            if (out == null || out.contentEquals("||") || out.contentEquals("|||") ) {
+            if (out == null || out.contentEquals("||") || out.contentEquals("|||")) {
                 out = "";
                 return out;
             }
@@ -284,6 +292,7 @@ public enum VetFieldEnum {
             }
             return out;
         }
+
         public boolean isVqsrSpecificField() {
             return true;
         }
@@ -300,7 +309,7 @@ public enum VetFieldEnum {
                 int numVariants = variant.getAlleles().size() - 2;
                 out = outValues[0] + "," + outValues[1];
                 for (int i = 0; i < numVariants; ++i) {
-                    out += "|" + Integer.parseInt(outValues[2])/numVariants + "," + Integer.parseInt(outValues[3])/numVariants;
+                    out += "|" + Integer.parseInt(outValues[2]) / numVariants + "," + Integer.parseInt(outValues[3]) / numVariants;
                 }
                 // As of VS-910, we aren't going to consider any number of alleles to necessarily be a UserException
 
@@ -315,6 +324,7 @@ public enum VetFieldEnum {
             }
             return out;
         }
+
         public boolean isVqsrSpecificField() {
             return true;
         }
@@ -342,6 +352,7 @@ public enum VetFieldEnum {
             }
             return out;
         }
+
         public boolean isVqsrSpecificField() {
             return true;
         }
@@ -384,11 +395,12 @@ public enum VetFieldEnum {
     // },
 
     call_GQ { // Required
+
         public String getColumnValue(final VariantContext variant, final boolean forceLoadingFromNonAlleleSpecific) {
             if (!variant.getGenotype(0).hasGQ()) {
                 throw new UserException("Cannot be missing required value for call.GQ");
             }
-            return  String.valueOf(variant.getGenotype(0).getGQ());
+            return String.valueOf(variant.getGenotype(0).getGQ());
         }
     },
 
@@ -432,13 +444,13 @@ public enum VetFieldEnum {
         return g.getAlleles().stream().allMatch(Allele::isNonReference);
     }
 
-    static final Logger logger = LogManager.getLogger(CreateVariantIngestFiles.class);
+    static final Logger logger = LogManager.getLogger(VetFieldEnum.class);
 
-    private static String getAttribute(VariantContext vc, String key, String defaultValue){
+    private static String getAttribute(VariantContext vc, String key, String defaultValue) {
         Object attr = vc.getAttribute(key);
-        if ( attr == null ) return defaultValue;
-        if ( attr instanceof String ) return (String)attr;
-        if ( attr instanceof List) return StringUtils.join((List)attr, VCFConstants.INFO_FIELD_ARRAY_SEPARATOR);
+        if (attr == null) return defaultValue;
+        if (attr instanceof String) return (String) attr;
+        if (attr instanceof List) return StringUtils.join((List) attr, VCFConstants.INFO_FIELD_ARRAY_SEPARATOR);
         return String.valueOf(attr); // throws an exception if this isn't a string
     }
 }
