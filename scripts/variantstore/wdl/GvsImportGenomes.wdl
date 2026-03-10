@@ -50,6 +50,10 @@ workflow GvsImportGenomes {
     # Dump these Parquet files to a bucket.
     String? parquet_output_gcs_dir
 
+    # Delete parquet files from GCS after successfully loading them into BigQuery
+    Boolean delete_parquet_files_after_loading = true
+    Boolean use_alternate_parquet_delete_strategy = false
+
     Boolean is_wgs = true
   }
 
@@ -292,6 +296,16 @@ workflow GvsImportGenomes {
           gcs_files_list = DiscoverParquetFiles.all_files_list,
           go = LoadParquetFilesToBQ.done,
           variants_docker = effective_variants_docker,
+      }
+
+      if (delete_parquet_files_after_loading && VerifyParquetLoading.all_loaded) {
+        call DeleteParquetFiles {
+          input:
+            output_gcs_dir = defined_parquet_output_dir,
+            use_alternate_delete_strategy = use_alternate_parquet_delete_strategy,
+            billing_project_id = billing_project_id,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
       }
     }
 
@@ -1309,5 +1323,56 @@ task VerifyParquetLoading {
     Int missing_files = read_json(results_json)["missing_files"]
     File? missing_files_list = "verification_output/missing_files.txt"
     Boolean done = true
+  }
+}
+
+task DeleteParquetFiles {
+  input {
+    String output_gcs_dir
+    Boolean use_alternate_delete_strategy = false
+
+    String? billing_project_id
+    String cloud_sdk_docker
+  }
+
+  command <<<
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o xtrace -o pipefail
+
+    # Normalize GCS path by removing any trailing slash
+    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+    if [ "~{use_alternate_delete_strategy}" = "false" ]; then
+      gcloud storage rm --recursive ~{"--billing-project " + billing_project_id} "${OUTPUT_GCS_DIR}/"'**/*.parquet'
+    else
+      # List the contents of the vet and ref_ranges directories for subsequent deletion in the loop below
+      echo "Listing directories under ${OUTPUT_GCS_DIR}/vet/ and ${OUTPUT_GCS_DIR}/ref_ranges/ ${OUTPUT_GCS_DIR}/sample_chromosome_ploidy/ for deletion..."
+      gcloud storage ls ~{"--billing-project " + billing_project_id} \
+        "${OUTPUT_GCS_DIR}/vet/" "${OUTPUT_GCS_DIR}/ref_ranges/" > parquet_dirs.txt
+      echo "${OUTPUT_GCS_DIR}/sample_chromosome_ploidy/" >> parquet_dirs.txt
+
+      # Iterate over all Google Cloud paths in parquet_dirs.txt and delete all objects therein
+      echo "Deleting Parquet files..."
+      while IFS= read -r gcs_path; do
+        if [ -n "$gcs_path" ]; then
+          echo "Deleting objects in: $gcs_path"
+          gcloud storage rm ~{"--billing-project " + billing_project_id} "$gcs_path" --recursive
+        fi
+      done < parquet_dirs.txt
+    fi
+
+    echo "✓ Completed deletion of Parquet files."
+
+  >>>
+  output {
+    Boolean done = true
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 100 HDD"
+    preemptible: 3
+    cpu: 1
   }
 }
