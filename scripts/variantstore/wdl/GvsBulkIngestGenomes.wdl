@@ -4,7 +4,6 @@ import "GvsUtils.wdl" as Utils
 import "GvsAssignIds.wdl" as AssignIds
 import "GvsImportGenomes.wdl" as ImportGenomes
 
-
 workflow GvsBulkIngestGenomes {
     input {
         # Begin GenerateImportFofnFromDataTable
@@ -53,6 +52,10 @@ workflow GvsBulkIngestGenomes {
         Boolean tighter_gcp_quotas = false
         Boolean is_wgs = true
         # End GvsImportGenomes
+
+        Boolean use_parquet_ingest = false
+        # Dump these parquet files to a bucket already
+        String? parquet_output_gcs_dir
 
         Boolean use_compressed_references = false
     }
@@ -161,6 +164,8 @@ workflow GvsBulkIngestGenomes {
             load_vet_and_ref_ranges = load_vet_and_ref_ranges,
             load_vcf_headers = load_vcf_headers,
             is_rate_limited_beta_customer = tighter_gcp_quotas,
+            use_parquet_ingest = use_parquet_ingest,
+            parquet_output_gcs_dir = parquet_output_gcs_dir,
             is_wgs = is_wgs,
     }
 

@@ -211,17 +211,32 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1736
+             - vs_1800_prep_for_merge
          tags:
              - /.*/
-   - name: GvsBulkIngestGenomes
+   - name: BulkIngestWriteAPI
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
      filters:
          branches:
              - master
              - ah_var_store
+             - vs_1799_fix_parquet_exome_npe
+             - vs_1809_parquet_ploidy
          tags:
              - /.*/
+   - name: BulkIngestParquet
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1799_fix_parquet_exome_npe
+         - vs_1809_parquet_ploidy
+       tags:
+         - /.*/
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -345,6 +360,36 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
+   - name: GvsQuickstartIntegrationParquet1809
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1809_parquet_ploidy
+       tags:
+         - /.*/
+   - name: GvsQuickstartIntegrationWriteAPI1809
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1809_parquet_ploidy
+       tags:
+         - /.*/
+   - name: GvsQuickstartIntegrationBGEOnlyParquet1809
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1809_parquet_ploidy
+       tags:
+         - /.*/
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsIngestTieout.wdl
