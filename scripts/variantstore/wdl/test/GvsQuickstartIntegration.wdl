@@ -172,7 +172,7 @@ workflow GvsQuickstartIntegration {
                 workspace_id = workspace_id,
                 submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
-                use_parquet_ingest = true,
+                use_parquet_ingest = use_parquet_ingest,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRIntegration {
             input:
