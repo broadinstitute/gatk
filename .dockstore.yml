@@ -340,6 +340,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1834_merge_it_already
          tags:
              - /.*/
    - name: GvsIngestTieout
