@@ -155,7 +155,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1730_clusters_leaking
        tags:
          - /.*/
    - name: GvsValidateVDS
@@ -174,7 +173,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1730_clusters_leaking
        tags:
          - /.*/
    - name: GvsTieOutVDS
@@ -211,8 +209,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1736
-             - vs_1800_prep_for_merge
          tags:
              - /.*/
    - name: BulkIngestWriteAPI
@@ -222,8 +218,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1799_fix_parquet_exome_npe
-             - vs_1809_parquet_ploidy
          tags:
              - /.*/
    - name: BulkIngestParquet
@@ -233,8 +227,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1799_fix_parquet_exome_npe
-         - vs_1809_parquet_ploidy
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
@@ -302,7 +294,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1737
          tags:
              - /.*/
    - name: GvsBeta
@@ -360,36 +351,6 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
-   - name: GvsQuickstartIntegrationParquet1809
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
-         - vs_1809_parquet_ploidy
-       tags:
-         - /.*/
-   - name: GvsQuickstartIntegrationWriteAPI1809
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
-         - vs_1809_parquet_ploidy
-       tags:
-         - /.*/
-   - name: GvsQuickstartIntegrationBGEOnlyParquet1809
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
-         - vs_1809_parquet_ploidy
-       tags:
-         - /.*/
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsIngestTieout.wdl
@@ -513,7 +474,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1757_dropped_duplicates
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -547,7 +507,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1757_dropped_duplicates
        tags:
          - /.*/
    - name: GvsMapDroppedDuplicateVIDs
@@ -557,6 +516,5 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1757_dropped_duplicates
        tags:
          - /.*/
