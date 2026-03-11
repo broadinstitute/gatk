@@ -211,24 +211,6 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
-   - name: BulkIngestWriteAPI
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
-     filters:
-         branches:
-             - master
-             - ah_var_store
-         tags:
-             - /.*/
-   - name: BulkIngestParquet
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
-       tags:
-         - /.*/
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
