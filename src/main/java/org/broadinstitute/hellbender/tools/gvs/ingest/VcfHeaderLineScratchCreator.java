@@ -6,10 +6,10 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
+import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.HeaderParquetFileWriter;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.PendingBQWriter;
-import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.HeaderParquetFileWriter;
 import org.json.JSONObject;
 
 import java.io.File;

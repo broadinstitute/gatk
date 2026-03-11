@@ -18,7 +18,7 @@ public interface VetWriter extends Closeable {
     // Similar to create row but with types for JSON object
     default JSONObject createJson(final long location, final VariantContext variant, final long sampleId, boolean skipLoadingVqsrFields, boolean forceLoadingFromNonAlleleSpecific) {
         JSONObject jsonObject = new JSONObject();
-        for ( final VetFieldEnum fieldEnum : VetFieldEnum.values() ) {
+        for (final VetFieldEnum fieldEnum : VetFieldEnum.values()) {
             if (fieldEnum.equals(VetFieldEnum.location)) {
                 jsonObject.put(VetFieldEnum.location.toString(), location);
             } else if (fieldEnum.equals(VetFieldEnum.sample_id)) {

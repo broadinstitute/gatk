@@ -28,29 +28,27 @@ public class VetCreatorUnitTest {
     String sampleIdentifierForOutputFileName = "parquet";
     public final MessageType PARQUET_SCHEMA = MessageTypeParser // do we want this in a utils file? or as part of a method?
             .parseMessageType("""
-            message VariantRow {
-            	required int64 sample_id;
-            	required int64 location;
-            	required binary ref (UTF8);
-            	required binary alt (UTF8);
-            	optional binary AS_RAW_MQ (UTF8);
-            	optional binary AS_RAW_MQRankSum (UTF8);
-            	optional binary AS_QUALapprox (UTF8);
-            	optional binary AS_RAW_ReadPosRankSum (UTF8);
-            	optional binary AS_SB_TABLE (UTF8);
-            	optional binary AS_VarDP (UTF8);
-            	required binary call_GT (UTF8);
-            	optional binary call_AD (UTF8);
-            	optional binary call_DP (UTF8);
-            	required int64 call_GQ;
-            	optional binary call_PGT (UTF8);
-            	optional binary call_PID (UTF8);
-            	optional binary call_PS (UTF8);
-            	optional binary call_PL (UTF8);
-            }
-            """);
-
-
+                    message VariantRow {
+                    	required int64 sample_id;
+                    	required int64 location;
+                    	required binary ref (UTF8);
+                    	required binary alt (UTF8);
+                    	optional binary AS_RAW_MQ (UTF8);
+                    	optional binary AS_RAW_MQRankSum (UTF8);
+                    	optional binary AS_QUALapprox (UTF8);
+                    	optional binary AS_RAW_ReadPosRankSum (UTF8);
+                    	optional binary AS_SB_TABLE (UTF8);
+                    	optional binary AS_VarDP (UTF8);
+                    	required binary call_GT (UTF8);
+                    	optional binary call_AD (UTF8);
+                    	optional binary call_DP (UTF8);
+                    	required int64 call_GQ;
+                    	optional binary call_PGT (UTF8);
+                    	optional binary call_PID (UTF8);
+                    	optional binary call_PS (UTF8);
+                    	optional binary call_PL (UTF8);
+                    }
+                    """);
 
     @Test
     public void testParquetOutputFileNaming() throws IOException {
@@ -84,16 +82,16 @@ public class VetCreatorUnitTest {
         try {
             // This should throw a FileAlreadyExistsException
             new VetCreator(
-                sampleIdentifierForOutputFileName,
-                SAMPLE_ID,
-                tableNumber,
-                outputDirectory,
-                outputType,
-                PROJECT_ID,
-                DATASET_NAME,
-                true,
-                false,
-                PARQUET_SCHEMA
+                    sampleIdentifierForOutputFileName,
+                    SAMPLE_ID,
+                    tableNumber,
+                    outputDirectory,
+                    outputType,
+                    PROJECT_ID,
+                    DATASET_NAME,
+                    true,
+                    false,
+                    PARQUET_SCHEMA
             );
 
             // If we get here, the test failed - no exception was thrown
@@ -108,4 +106,3 @@ public class VetCreatorUnitTest {
         }
     }
 }
-
