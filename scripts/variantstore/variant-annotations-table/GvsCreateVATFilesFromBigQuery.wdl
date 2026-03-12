@@ -12,7 +12,6 @@ workflow GvsCreateVATFilesFromBigQuery {
 
         String output_path
         Int? merge_vcfs_disk_size_override
-        Boolean precondition_met = true
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
     }
@@ -38,7 +37,6 @@ workflow GvsCreateVATFilesFromBigQuery {
                 dataset_name = dataset_name,
                 output_path = output_path,
                 vat_table = vat_table_name,
-                load_jsons_done = precondition_met,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
     }
@@ -49,6 +47,9 @@ workflow GvsCreateVATFilesFromBigQuery {
             contig_array = contig_array,
             output_path = output_path,
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
+            project_id = project_id,
+            dataset_name = dataset_name,
+            vat_table = vat_table_name,
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
     }
 
@@ -68,7 +69,6 @@ task BigQueryExportVat {
         String dataset_name
         String vat_table
         String output_path
-        Boolean load_jsons_done
         String cloud_sdk_docker
     }
 
@@ -81,128 +81,71 @@ task BigQueryExportVat {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-        # note: tab delimiter and compression creates tsv.gz files
+        # Write out a query to a file using an uninterpolated here doc. The single quotes around the delimiter tell bash
+        # not to interpolate within the here doc. Without the single quotes bash would evaluate anything that looked
+        # like a bash expression in the query body, which would be problematic here for backticks.
+        cat > query.sql <<'FIN'
+
+        DECLARE dynamic_vat_query STRING;
+        DECLARE vat_query STRING;
+        DECLARE export_query STRING;
+
+        -- `dynamic_vat_query` is a concatenation of three expressions: two literal strings sandwiching an inner query
+        -- of `INFORMATION_SCHEMA`. This inner query determines the names and types of columns in the VAT table.
+        -- Depending on whether a column type is primitive or `ARRAY`, the `CASE` statement returns a query fragment
+        -- that either returns the value of the field (for a primitive) or an expression that `STRING_AGG`s the array
+        -- values into a single comma-separated string. Note this logic is building a query string for determining the
+        -- shape of the VAT table based on the contents of `INFORMATION_SCHEMA`, but that query is not actually executed
+        -- until the *second* `EXECUTE IMMEDIATE` statement below.
+        SET dynamic_vat_query = """
+
+        SELECT 'SELECT ' ||
+        (
+            SELECT
+            STRING_AGG(
+                CASE
+                WHEN data_type LIKE 'ARRAY%' THEN FORMAT('(SELECT STRING_AGG(CAST(x AS STRING), ",") FROM UNNEST(%s) x) AS %s', column_name, column_name)
+                ELSE column_name
+                END,
+            ', ')
+            FROM
+                `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+            WHERE
+                table_name = '~{vat_table}'
+        ) ||
+        ' FROM `~{project_id}.~{dataset_name}.~{vat_table}` WHERE contig = "~{contig}" ORDER BY position'
+
+        """;
+
+        -- Run the query constructed above to materialize the string for querying the VAT table and store the result in
+        -- the variable `vat_query`.
+        EXECUTE IMMEDIATE dynamic_vat_query INTO vat_query;
+
+        -- Build a final export query by concatenating the VAT query built above with some export syntax.
+        -- The combination of tab delimiter and GZIP compression creates tsv.gz files.
+        SET export_query = """
+
+        EXPORT DATA OPTIONS(
+            uri="~{export_path}",
+            format="CSV",
+            compression="GZIP",
+            overwrite=true,
+            header=false,
+            field_delimiter="\t") AS
+
+        """ || vat_query;
+
+        -- Print out the export query for diagnostic purposes.
+        SELECT export_query;
+
+        -- Execute the export query.
+        EXECUTE IMMEDIATE export_query;
+        FIN
+
+        # Feed the query file to `bq` as input.
         # bq query --max_rows check: ok export
-        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} \
-        'EXPORT DATA OPTIONS(
-        uri="~{export_path}",
-        format="CSV",
-        compression="GZIP",
-        overwrite=true,
-        header=false,
-        field_delimiter="\t") AS
-        SELECT
-        vid,
-        transcript,
-        contig,
-        position,
-        ref_allele,
-        alt_allele,
-        gvs_all_ac,
-        gvs_all_an,
-        gvs_all_af,
-        gvs_all_sc,
-        gvs_max_af,
-        gvs_max_ac,
-        gvs_max_an,
-        gvs_max_sc,
-        gvs_max_subpop,
-        gvs_afr_ac,
-        gvs_afr_an,
-        gvs_afr_af,
-        gvs_afr_sc,
-        gvs_amr_ac,
-        gvs_amr_an,
-        gvs_amr_af,
-        gvs_amr_sc,
-        gvs_eas_ac,
-        gvs_eas_an,
-        gvs_eas_af,
-        gvs_eas_sc,
-        gvs_eur_ac,
-        gvs_eur_an,
-        gvs_eur_af,
-        gvs_eur_sc,
-        gvs_mid_ac,
-        gvs_mid_an,
-        gvs_mid_af,
-        gvs_mid_sc,
-        gvs_oth_ac,
-        gvs_oth_an,
-        gvs_oth_af,
-        gvs_oth_sc,
-        gvs_sas_ac,
-        gvs_sas_an,
-        gvs_sas_af,
-        gvs_sas_sc,
-        gene_symbol,
-        transcript_source,
-        aa_change,
-        (SELECT STRING_AGG(c, ", ") FROM UNNEST(ARRAY(SELECT x FROM UNNEST(consequence) AS x ORDER BY x)) as c) AS consequence,
-        dna_change_in_transcript,
-        variant_type,
-        exon_number,
-        intron_number,
-        genomic_location,
-        (SELECT STRING_AGG(d, ", ") FROM UNNEST(ARRAY(SELECT x FROM UNNEST(dbsnp_rsid) AS x ORDER BY x)) as d) AS dbsnp_rsid,
-        gene_id,
-        gene_omim_id,
-        is_canonical_transcript,
-        gnomad_all_af,
-        gnomad_all_ac,
-        gnomad_all_an,
-        gnomad_failed_filter,
-        gnomad_max_af,
-        gnomad_max_ac,
-        gnomad_max_an,
-        gnomad_max_subpop,
-        gnomad_afr_ac,
-        gnomad_afr_an,
-        gnomad_afr_af,
-        gnomad_amr_ac,
-        gnomad_amr_an,
-        gnomad_amr_af,
-        gnomad_asj_ac,
-        gnomad_asj_an,
-        gnomad_asj_af,
-        gnomad_eas_ac,
-        gnomad_eas_an,
-        gnomad_eas_af,
-        gnomad_fin_ac,
-        gnomad_fin_an,
-        gnomad_fin_af,
-        gnomad_nfe_ac,
-        gnomad_nfe_an,
-        gnomad_nfe_af,
-        gnomad_sas_ac,
-        gnomad_sas_an,
-        gnomad_sas_af,
-        gnomad_oth_ac,
-        gnomad_oth_an,
-        gnomad_oth_af,
-        revel,
-        splice_ai_acceptor_gain_score,
-        splice_ai_acceptor_gain_distance,
-        splice_ai_acceptor_loss_score,
-        splice_ai_acceptor_loss_distance,
-        splice_ai_donor_gain_score,
-        splice_ai_donor_gain_distance,
-        splice_ai_donor_loss_score,
-        splice_ai_donor_loss_distance,
-        (SELECT STRING_AGG(CAST(id AS STRING), ", ") FROM UNNEST(omim_phenotypes_id) id) as omim_phenotypes_id,
-        ARRAY_TO_STRING(omim_phenotypes_name, ", ") as omim_phenotypes_name,
-        ARRAY_TO_STRING(clinvar_classification, ", ") as clinvar_classification,
-        clinvar_last_updated,
-        ARRAY_TO_STRING(clinvar_phenotype, ", ") as clinvar_phenotype,
-        ARRAY_TO_STRING(clinvar_rcv_ids, ", ") as clinvar_rcv_ids,
-        ARRAY_TO_STRING(clinvar_rcv_classifications, ", ") as clinvar_rcv_classifications,
-        (SELECT STRING_AGG(CAST(num_stars AS STRING), ", ") FROM UNNEST(clinvar_rcv_num_stars) num_stars) as clinvar_num_stars,
-        mane_select_name,
-        mane_plus_clinical_name
-        FROM `~{dataset_name}.~{vat_table}`
-        WHERE contig="~{contig}"
-        ORDER BY position
-        '
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} < query.sql > export_query.sql
+
     >>>
     # ------------------------------------------------
     # Runtime settings:
@@ -217,6 +160,8 @@ task BigQueryExportVat {
     # Outputs:
     output {
         Boolean done = true
+        File query = "query.sql"
+        File export_query = "export_query.sql"
     }
 }
 
@@ -224,6 +169,9 @@ task MergeVatTSVs {
     input {
         Array[Boolean] export_done
         Array[String] contig_array
+        String project_id
+        String dataset_name
+        String vat_table
         String output_path
 
         Int? merge_vcfs_disk_size_override
@@ -253,6 +201,19 @@ task MergeVatTSVs {
         contigs=( ~{sep=' ' contig_array} )
         files="header.gz"
 
+        cat > query.sql <<'FIN'
+
+        SELECT STRING_AGG(column_name, "\t") FROM
+            `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+        WHERE
+            table_name = '~{vat_table}'
+
+        FIN
+
+        # Feed the query file to `bq` as input.
+        # bq query --max_rows check: ok 1 row
+        bq --apilog=false query --nouse_legacy_sql --format csv --project_id=~{project_id} < query.sql | sed 1d > header.tsv
+
         echo_date "looping over contigs: $contigs"
         for i in "${contigs[@]}"
         do
@@ -270,7 +231,7 @@ task MergeVatTSVs {
 
         echo_date "making header.gz"
         # NOTE: Contents of tsvs exported from BigQuery are tab-separated, the header must also be tab-separated!
-        echo -e "vid\ttranscript\tcontig\tposition\tref_allele\talt_allele\tgvs_all_ac\tgvs_all_an\tgvs_all_af\tgvs_all_sc\tgvs_max_af\tgvs_max_ac\tgvs_max_an\tgvs_max_sc\tgvs_max_subpop\tgvs_afr_ac\tgvs_afr_an\tgvs_afr_af\tgvs_afr_sc\tgvs_amr_ac\tgvs_amr_an\tgvs_amr_af\tgvs_amr_sc\tgvs_eas_ac\tgvs_eas_an\tgvs_eas_af\tgvs_eas_sc\tgvs_eur_ac\tgvs_eur_an\tgvs_eur_af\tgvs_eur_sc\tgvs_mid_ac\tgvs_mid_an\tgvs_mid_af\tgvs_mid_sc\tgvs_oth_ac\tgvs_oth_an\tgvs_oth_af\tgvs_oth_sc\tgvs_sas_ac\tgvs_sas_an\tgvs_sas_af\tgvs_sas_sc\tgene_symbol\ttranscript_source\taa_change\tconsequence\tdna_change_in_transcript\tvariant_type\texon_number\tintron_number\tgenomic_location\tdbsnp_rsid\tgene_id\tgene_omim_id\tis_canonical_transcript\tgnomad_all_af\tgnomad_all_ac\tgnomad_all_an\tgnomad_failed_filter\tgnomad_max_af\tgnomad_max_ac\tgnomad_max_an\tgnomad_max_subpop\tgnomad_afr_ac\tgnomad_afr_an\tgnomad_afr_af\tgnomad_amr_ac\tgnomad_amr_an\tgnomad_amr_af\tgnomad_asj_ac\tgnomad_asj_an\tgnomad_asj_af\tgnomad_eas_ac\tgnomad_eas_an\tgnomad_eas_af\tgnomad_fin_ac\tgnomad_fin_an\tgnomad_fin_af\tgnomad_nfe_ac\tgnomad_nfe_an\tgnomad_nfe_af\tgnomad_sas_ac\tgnomad_sas_an\tgnomad_sas_af\tgnomad_oth_ac\tgnomad_oth_an\tgnomad_oth_af\trevel\tsplice_ai_acceptor_gain_score\tsplice_ai_acceptor_gain_distance\tsplice_ai_acceptor_loss_score\tsplice_ai_acceptor_loss_distance\tsplice_ai_donor_gain_score\tsplice_ai_donor_gain_distance\tsplice_ai_donor_loss_score\tsplice_ai_donor_loss_distance\tomim_phenotypes_id\tomim_phenotypes_name\tclinvar_classification\tclinvar_last_updated\tclinvar_phenotype\tclinvar_rcv_ids\tclinvar_rcv_classifications\tclinvar_num_stars\tmane_select_name\tmane_plus_clinical_name" | gzip > header.gz
+        cat header.tsv | gzip > header.gz
 
         echo_date "concatenating $files"
         cat $(echo $files) > vat_complete.tsv.gz

@@ -155,7 +155,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1730_clusters_leaking
        tags:
          - /.*/
    - name: GvsValidateVDS
@@ -174,7 +173,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1730_clusters_leaking
        tags:
          - /.*/
    - name: GvsTieOutVDS
@@ -287,7 +285,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1737
          tags:
              - /.*/
    - name: GvsBeta
@@ -468,7 +465,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1757_dropped_duplicates
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -502,7 +498,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1757_dropped_duplicates
        tags:
          - /.*/
    - name: GvsMapDroppedDuplicateVIDs
@@ -512,6 +507,5 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1757_dropped_duplicates
        tags:
          - /.*/

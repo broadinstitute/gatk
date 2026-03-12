@@ -35,6 +35,12 @@ workflow GvsCreateVATfromVDS {
         String? gatk_docker
         String? variants_docker
         String? variants_nirvana_docker
+        String? vep_loftee_docker
+
+        String? vep_loftee_data_table_raw
+        String? vep_loftee_data_table_cooked
+
+        String loftee_references_dir = "gs://gvs-internal/loftee/"
     }
 
     parameter_meta {
@@ -84,6 +90,7 @@ workflow GvsCreateVATfromVDS {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_variants_nirvana_docker = select_first([variants_nirvana_docker, GetToolVersions.variants_nirvana_docker])
+    String effective_vep_loftee_docker = select_first([vep_loftee_docker, GetToolVersions.vep_loftee_docker])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
     String effective_google_project = select_first([workspace_gcs_project, GetToolVersions.google_project])
 
@@ -265,6 +272,18 @@ workflow GvsCreateVATfromVDS {
                     variants_docker = effective_variants_docker,
             }
 
+            call GenerateVepAndLofteeAnnotations {
+                input:
+                    vep_loftee_docker = effective_vep_loftee_docker,
+                    vep_cache = loftee_references_dir + "homo_sapiens_vep_115_GRCh38.tar.gz",
+                    loftee_human_ancestor_fa_gz = loftee_references_dir + "human_ancestor.fa.gz",
+                    loftee_human_ancestor_fa_gz_fai = loftee_references_dir + "human_ancestor.fa.gz.fai",
+                    loftee_human_ancestor_fa_gz_gzi = loftee_references_dir + "human_ancestor.fa.gz.gzi",
+                    loftee_gerp_scores = loftee_references_dir + "gerp_conservation_scores.homo_sapiens.GRCh38.bw",
+                    loftee_phylo_csf_database = loftee_references_dir + "loftee.sql",
+                    input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
+            }
+
             ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
             call AnnotateVCF {
                 input:
@@ -291,7 +310,27 @@ workflow GvsCreateVATfromVDS {
                     output_path = genes_output_path,
                     variants_docker = effective_variants_docker,
             }
+        }
 
+        call BigQueryLoadRawVepAndLofteeAnnotations {
+            input:
+                vep_loftee_raw_output = GenerateVepAndLofteeAnnotations.output_file,
+                project_id = project_id,
+                dataset_name = dataset_name,
+                raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
+                raw_data_table_schema = MakeSubpopulationFilesAndReadSchemaFiles.vep_loftee_raw_schema_json_file,
+                variants_docker = effective_variants_docker,
+        }
+
+        call BigQueryCookVepAndLofteeRawAnnotations {
+            input:
+                go = BigQueryLoadRawVepAndLofteeAnnotations.done,
+                project_id = project_id,
+                dataset_name = dataset_name,
+                raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
+                cooked_data_table = select_first([vep_loftee_data_table_cooked, "vep_loftee_data_table_cooked"]),
+                cooked_data_table_schema = MakeSubpopulationFilesAndReadSchemaFiles.vep_loftee_cooked_schema_json_file,
+                variants_docker = effective_variants_docker,
         }
 
         call Utils.MergeTsvs {
@@ -314,6 +353,7 @@ workflow GvsCreateVATfromVDS {
                 variant_transcript_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
                 genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
                 mane_table_name = LoadManeDataIntoBigQuery.mane_table,
+                vep_loftee_cooked_table_name = BigQueryCookVepAndLofteeRawAnnotations.cooked_table_name,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 variant_transcripts_path = variant_transcripts_output_path,
@@ -343,7 +383,6 @@ workflow GvsCreateVATfromVDS {
                 vat_table_name = DeduplicateVatInBigQuery.vat_table,
                 output_path = effective_output_path,
                 merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
-                precondition_met = BigQueryLoadJson.done,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
        }
@@ -508,6 +547,8 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
         String vat_schema_json_filename = "vat_schema.json"
         String variant_transcript_schema_json_filename = "variant_transcript_schema.json"
         String genes_schema_json_filename = "genes_schema.json"
+        String vep_loftee_115_raw_schema_json_filename = "vep_loftee_115_raw.json"
+        String vep_loftee_115_cooked_schema_json_filename = "vep_loftee_115_cooked.json"
         String variants_docker
     }
     String output_ancestry_filename =  "ancestry_mapping.tsv"
@@ -539,6 +580,8 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
         File vat_schema_json_file = vat_schema_json_filename
         File variant_transcript_schema_json_file = variant_transcript_schema_json_filename
         File genes_schema_json_file = genes_schema_json_filename
+        File vep_loftee_raw_schema_json_file = vep_loftee_115_raw_schema_json_filename
+        File vep_loftee_cooked_schema_json_file = vep_loftee_115_cooked_schema_json_filename
 
         File ancestry_mapping_list = output_ancestry_filename
         File custom_annotations_template_file = custom_annotations_template_filename
@@ -729,6 +772,347 @@ for line in sys.stdin:
         File output_vcf = "deduplicated.vcf"
         File filtered_synonyms = "filtered_synonyms.tsv"
         File monitoring_log = "monitoring.log"
+    }
+}
+
+task GenerateVepAndLofteeAnnotations {
+    input {
+        String vep_loftee_docker
+        # TODO make a reference disk for this stuff, some of these references are quite large.
+        File vep_cache
+        File loftee_human_ancestor_fa_gz
+        File loftee_human_ancestor_fa_gz_fai
+        File loftee_human_ancestor_fa_gz_gzi
+        File loftee_gerp_scores
+        File loftee_phylo_csf_database
+        File input_vcf
+        File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+        # The memory headroom left for other processes including the Batch agent.
+        Float overhead_memory_mib = 1.6 * 1024
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        echo "MEM_SIZE is ${MEM_SIZE}"
+        echo "MEM_UNIT is ${MEM_UNIT}"
+
+        if [[ -z "${MEM_UNIT:-}" ]]
+        then
+            echo "MEM_UNIT environment variable unexpectedly not set." 1>&2
+            exit 1
+        elif [[ ${MEM_UNIT} == "GB" ]]
+        then
+            vep_memory_kib=$(python -c "from math import floor; print(int(floor(((${MEM_SIZE} * 1024) - ~{overhead_memory_mib}) * 1024)))")
+        else
+            echo "Unexpected memory unit: ${MEM_UNIT}" 1>&2
+            exit 1
+        fi
+
+        echo "overhead_memory_mib is ~{overhead_memory_mib}"
+        echo "vep_memory_kib is ${vep_memory_kib}"
+
+        bash ~{monitoring_script} > monitoring.log &
+
+        if { grep -E -v '^#' ~{input_vcf} 2>&1 > /dev/null; }
+        then
+            # Only copy these references if there are actually data lines in the VCF to be processed,
+            # Most of the shards in 20/X/Y integration runs don't have any work to do and don't need
+            # to localize the references.
+            #
+            # gcloud storage cp ~{vep_cache} ~{vep_cache} ~{loftee_human_ancestor_fa_gz} ~{loftee_human_ancestor_fa_gz_fai} ~{loftee_human_ancestor_fa_gz_gzi} ~{loftee_gerp_scores} ~{loftee_phylo_csf_database} .
+            #
+            # TODO yeah that would be nice but here's no gcloud on the VEP + LOFTEE image. These references
+            # *really* should be on a reference disk.
+            tar xzf ~{vep_cache}
+
+            LOFTEE_PATH=/opt/vep/src/loftee-1.0.4_GRCh38
+            args=(
+
+                # Some logging please.
+                --verbose
+                --warning_file warnings.txt
+
+                # Explicitly turn off forking as LOFTEE might not deal well with that.
+                --fork 1
+
+                # Breaks out data into their own columns that otherwise would be nested (semicolon delimited) in the "Extra" column.
+                --tab
+
+                # Force writing versions on Ensembl transcripts for VAT compatibility.
+                --transcript_version
+
+                # Emit HGNC symbols and IDs.
+                --symbol
+
+                # Basic LOFTEE plugin setup
+                --plugin LoF,loftee_path:$LOFTEE_PATH,gerp_bigwig:~{loftee_gerp_scores},human_ancestor_fa:~{loftee_human_ancestor_fa_gz},conservation_file:~{loftee_phylo_csf_database},check_complete_cds:false
+                --dir_plugins $LOFTEE_PATH
+
+                # Basic VEP cache setup
+                --cache
+                --offline
+                --dir_cache .
+
+                # For GERP (Genomic Evolutionary Rate Profiling) score output.
+                --custom file=~{loftee_gerp_scores},short_name=GERP,format=bigwig,num_records=all
+
+                # Input and output files
+                --input_file ~{input_vcf}
+                --output_file vep_loftee_raw_output.txt
+            )
+
+            # Unfortunately we don't seem to be able to limit the amount of memory the Perl process uses. There are
+            # ways of limiting memory in Docker containers if one has access to Docker daemon configuration or in the
+            # way the `docker run` command is invoked (cgroups, ulimit, etc.), but unfortunately we don't have those
+            # options when running in GCP Batch. If we try to do a `ulimit -H -v <value>` when running under GCP Batch
+            # it has no effect.
+            #
+            # Run the vep process with these default memory settings and a very limited number of retries (maybe zero).
+            # Some shards will likely fail, which in turn will fail the workflow. After this happens, edit this wdl to
+            # increase the `memory` runtime attribute and rerun with call caching enabled. Repeat as necessary.
+
+            vep "${args[@]}"
+
+        else
+            echo "No data found for processing in VCF, exit 0."
+            touch "vep_loftee_raw_output.txt"
+        fi
+
+    >>>
+
+    runtime {
+        preemptible: 2
+        maxRetries: 2
+        noAddress: true
+        docker: vep_loftee_docker
+        memory: "4 GB"
+        disks: "local-disk 500 HDD"
+    }
+
+    output {
+        File output_file = "vep_loftee_raw_output.txt"
+        File monitoring_log = "monitoring.log"
+        File? warnings = "warnings.txt"
+        Boolean done = true
+    }
+}
+
+task BigQueryLoadRawVepAndLofteeAnnotations {
+    # Loads data into BQ in the same "raw" tab-delimited format that was emitted by VEP.
+    input {
+        String variants_docker
+        Array[File] vep_loftee_raw_output
+        String project_id
+        String dataset_name
+        String raw_data_table
+        File raw_data_table_schema
+    }
+
+    meta {
+        volatile: true
+    }
+
+    parameter_meta {
+        vep_loftee_raw_output: {
+            localization_optional: true
+        }
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        set +o errexit
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{raw_data_table} > /dev/null
+        BQ_SHOW_RC=$?
+        set -o errexit
+
+        if [ $BQ_SHOW_RC -ne 0 ]; then
+            echo "Creating raw VEP + LOFTEE table ~{dataset_name}.~{raw_data_table}"
+
+            # 3 day TTL for this table
+            DATE=$((3 * 24 * 60 * 60))
+            bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{raw_data_table} ~{raw_data_table_schema}
+        fi
+
+        num_rows=$(bq --apilog=false show --project_id=~{project_id} --format json ~{dataset_name}.~{raw_data_table} | jq -r .numRows)
+        if ((num_rows != 0))
+        then
+            echo "Found preexisting table with data, not adding more raw data."
+        else
+            echo "Raw data table is empty, copying VEP output to be loaded."
+            for file in ~{sep=' ' vep_loftee_raw_output}
+            do
+                gcloud storage cp $file .
+                filename=$(basename $file)
+                if [ ! -e load_file.txt ]
+                then
+                    # Do a wee bit of processing of the raw output to create a load file for raw VEP + LOFTEE data
+                    # - Remove lines beginning with '##'.
+                    # - Remove the leading '#' from the one line that should be left with a single leading '#' so
+                    #   the line can serve as a TSV header.
+                    sed -E '/^##/d' $filename | sed -E 's/^#//' > load_file.txt
+                fi
+                set +o errexit
+                # In our integration tests when running on chromosomes 20/X/Y (the default), many of these files will be
+                # empty, so turn off errexit temporarily.
+                grep -E -v '^#' $filename >> load_file.txt
+                set -o errexit
+            done
+
+            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' \
+                --skip_leading_rows=1 --null_marker="-" ~{dataset_name}.~{raw_data_table} load_file.txt
+
+            echo "VEP + LOFTEE raw data loading complete."
+        fi
+    >>>
+
+    runtime {
+        docker: variants_docker
+        preemptible: 2
+        memory: "7 GB"
+        disks: "local-disk 1000 HDD"
+    }
+
+    output {
+        Boolean done = true
+    }
+}
+
+task BigQueryCookVepAndLofteeRawAnnotations {
+    # Reformat the "raw" data ("cooks" it) into a more directly queryable BigQuery format. This involves:
+    # - Creating a VID field by parsing information in the `Uploaded_variation` field.
+    # - Splitting nested fields into BigQuery REPEATEDs.
+    # - Extracting an HGNC ID.
+    # - Splitting and castng a nested GERP field into an array of floating point numbers.
+    # - Squashing any duplicate rows resulting from deletions spanning shards.
+    input {
+        Boolean go
+        String variants_docker
+        String project_id
+        String dataset_name
+        String raw_data_table
+        String cooked_data_table
+        File cooked_data_table_schema
+    }
+    meta {
+        volatile: true
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        set +o errexit
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{cooked_data_table} > /dev/null
+        BQ_SHOW_RC=$?
+        set -o errexit
+
+        if [ $BQ_SHOW_RC -ne 0 ]
+        then
+            echo 'Creating "cooked" VEP + LOFTEE table ~{dataset_name}.~{cooked_data_table}'
+
+            # 3 day TTL for this table
+            DATE=$((3 * 24 * 60 * 60))
+            bq --apilog=false mk --expiration=$DATE --project_id=~{project_id}  ~{dataset_name}.~{cooked_data_table} ~{cooked_data_table_schema}
+        fi
+
+        num_rows=$(bq --apilog=false show --project_id=~{project_id} --format json ~{dataset_name}.~{cooked_data_table} | jq -r .numRows)
+        if [ $num_rows -ne 0]
+        then
+          echo "Found preexisting table with data, not adding more cooked data."
+        else
+
+        bq --apilog=false query --nouse_legacy_sql --destination_table=~{dataset_name}.~{cooked_data_table} --replace \
+           --project_id=~{project_id} '
+
+        SELECT * EXCEPT(row_number) FROM (
+            SELECT
+            -- Make a VID-compatible string from the data in Uploaded_variation.
+            -- VEP appears to use a different convention for the encoding of indel positions than what is used in GVS:
+            -- VEP indel positions are based on the first *discrepant* base and not the first base mentioned, which in the
+            -- GVS convention agrees between reference and allele. Correct for that in the VID-building code below to
+            -- subtract 1 if the variant is an indel.
+            REGEXP_EXTRACT(Uploaded_variation, "^chr([^_]+)") || "-" ||
+                -- A Location specified with a "-" range is an indel. Single-base deletions are a special case with a single
+                -- position, but like all deletions they have a NULL Allele so look for that as well.
+                IF ((Location LIKE "%-%") OR (Allele is NULL),
+                    -- If this is an indel decrement the position by one for VAT compatibility.
+                    CAST((CAST(REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)") AS INT64) - 1) AS STRING),
+                    -- Else SNPs use position without adjustment.
+                    REGEXP_EXTRACT(Uploaded_variation, "_(\\d+)")) ||
+                "-" || REGEXP_EXTRACT(Uploaded_variation, "_([ACGT]+)/") || "-" ||
+                REGEXP_EXTRACT(Uploaded_variation, "([ACGT]+)$") AS vid,
+            Uploaded_variation,
+            Location,
+            Allele,
+            Gene,
+            Feature,
+            Feature_type,
+            Consequence,
+            cDNA_position,
+            CDS_position,
+            Protein_position,
+            Amino_acids,
+            Codons,
+            Existing_variation,
+            IMPACT,
+            DISTANCE,
+            STRAND,
+            -- FLAGS can be multi-valued so SPLIT to make this REPEATED.
+            SPLIT(FLAGS, ",") AS FLAGS,
+            SYMBOL as HGNC_SYMBOL,
+            SYMBOL_SOURCE,
+            -- HGNC IDs are formatted like HGNC:1234; we only want the number part.
+            CAST(SPLIT(HGNC_ID, ":")[OFFSET(1)] AS INTEGER) AS HGNC_ID,
+            SOURCE,
+            LoF,
+            -- These three appear to sometimes be multi-valued so SPLIT to make them REPEATEDs.
+            SPLIT(LoF_filter, ",") AS LoF_filter,
+            SPLIT(LoF_flags, ",") AS LoF_flags,
+            SPLIT(LoF_info, ",") AS LoF_info,
+            -- Split and cast the GERP string to REPEATED FLOAT64s.
+            (
+            SELECT
+            ARRAY_AGG(SAFE_CAST(s AS FLOAT64))
+            FROM
+            UNNEST(SPLIT(GERP, ",")) AS s
+            ) AS GERP,
+
+            -- Use the ROW_NUMBER() magic to squash duplicates. A small number of deletions span interval boundaries
+            -- and are assigned to two different VEP processing shards. This duplicate data would cause problems when
+            -- we try to assign back
+            ROW_NUMBER()
+            -- The expression below uses Uploaded_variation rather than vid because BigQuery claims to not be able to
+            -- find the vid identifier. Uploaded_variation contains equivalent information to vid in a different format.
+            OVER (PARTITION BY Uploaded_variation, Feature)
+            ROW_NUMBER
+
+            FROM
+            ~{project_id}.~{dataset_name}.~{raw_data_table}
+            )
+
+        WHERE ROW_NUMBER = 1
+
+        '
+        fi
+
+    >>>
+
+    runtime {
+        docker: variants_docker
+        memory: "7 GB"
+        disks: "local-disk 1000 HDD"
+    }
+
+    output {
+        Boolean done = true
+        String cooked_table_name = cooked_data_table
     }
 }
 
@@ -1049,6 +1433,7 @@ task BigQueryLoadJson {
         File variant_transcript_schema
         File genes_schema
         String mane_table_name
+        String vep_loftee_cooked_table_name
         String project_id
         String dataset_name
         String variant_transcripts_path
@@ -1100,6 +1485,30 @@ task BigQueryLoadJson {
         echo "Adding the Mane Plus Clinical annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
         'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Plus Clinical" AND vtt.transcript is not null;'
+
+        echo "Adding VEP + LOFTEE annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+
+        UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET
+
+        vtt.hgnc_symbol = vep.hgnc_symbol,
+        vtt.hgnc_id     = vep.hgnc_id,
+        vtt.LoF         = vep.LoF,
+        vtt.LoF_filter  = vep.LoF_filter,
+        vtt.LoF_flags   = vep.LoF_flags,
+        vtt.LoF_info    = vep.LoF_info,
+        vtt.GERP        = vep.GERP
+
+        FROM `~{dataset_name}.~{vep_loftee_cooked_table_name}` vep WHERE
+
+        vtt.transcript is not null AND
+        vep.Feature_type is not null AND
+        vtt.vid = vep.vid AND
+        -- Do not consider version numbers when matching on transcripts. In Quickstart about 25% of the transcripts are
+        -- mismatched on version number, with VEP having newer versions.
+        SPLIT(vtt.transcript, ".")[OFFSET(0)] = SPLIT(vep.Feature, ".")[OFFSET(0)]
+
+        '
 
         set +o errexit
         bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{genes_table} > /dev/null
@@ -1251,7 +1660,14 @@ task BigQueryLoadJson {
             v.clinvar_rcv_classifications,
             v.clinvar_rcv_num_stars,
             v.mane_select_name,
-            v.mane_plus_clinical_name
+            v.mane_plus_clinical_name,
+            v.hgnc_symbol,
+            v.hgnc_id,
+            v.LoF,
+            v.LoF_filter,
+            v.LoF_flags,
+            v.LoF_info,
+            v.GERP
         FROM `~{dataset_name}.~{variant_transcript_table}` as v
             left join
         (SELECT gene_symbol, ANY_VALUE(gene_omim_id) AS gene_omim_id, ANY_VALUE(omim_phenotypes_id) AS omim_phenotypes_id, ANY_VALUE(omim_phenotypes_name) AS omim_phenotypes_name FROM `~{dataset_name}.~{genes_table}` group by gene_symbol) as g
@@ -1263,7 +1679,7 @@ task BigQueryLoadJson {
         memory: "3 GB"
         preemptible: 3
         cpu: "1"
-        disks: "local-disk 100 HDD"
+        disks: "local-disk 1000 HDD"
     }
 
     output {

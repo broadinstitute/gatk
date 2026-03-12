@@ -1,0 +1,137 @@
+[
+  {
+    "name": "vid",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "Uploaded_variation",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "Location",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "Allele",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "Gene",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "Feature",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "Feature_type",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "Consequence",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "cDNA_position",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "CDS_position",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "Protein_position",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "Amino_acids",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "Codons",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "Existing_variation",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "IMPACT",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "DISTANCE",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "STRAND",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "FLAGS",
+    "type": "STRING",
+    "mode": "REPEATED"
+  },
+  {
+    "name": "HGNC_SYMBOL",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "SYMBOL_SOURCE",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "HGNC_ID",
+    "type": "INTEGER",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "SOURCE",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "LoF",
+    "type": "STRING",
+    "mode": "NULLABLE"
+  },
+  {
+    "name": "LoF_filter",
+    "type": "STRING",
+    "mode": "REPEATED"
+  },
+  {
+    "name": "LoF_flags",
+    "type": "STRING",
+    "mode": "REPEATED"
+  },
+  {
+    "name": "LoF_info",
+    "type": "STRING",
+    "mode": "REPEATED"
+  },
+  {
+    "name": "GERP",
+    "type": "FLOAT",
+    "mode": "REPEATED"
+  }
+]
