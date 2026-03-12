@@ -347,6 +347,16 @@ workflows:
              - vs_1520_loftee
          tags:
              - /.*/
+   - name: AssertIdentical
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/AssertIdentical.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1520_loftee
+       tags:
+         - /.*/
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsIngestTieout.wdl
