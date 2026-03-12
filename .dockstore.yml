@@ -347,9 +347,9 @@ workflows:
              - vs_1520_loftee
          tags:
              - /.*/
-   - name: AssertIdentical
+   - name: GvsAssertIdentical
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/test/AssertIdentical.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsAssertIdentical.wdl
      filters:
        branches:
          - master
