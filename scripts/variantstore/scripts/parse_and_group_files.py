@@ -141,7 +141,6 @@ def main():
     print(f"Grouped {sum(len(files) for files in table_files.values())} files into {len(table_files)} tables")
     
     # Write FOFNs for each table
-    table_names = []
     fofn_paths = []
     
     for table_name in sorted(table_files.keys()):
@@ -152,17 +151,16 @@ def main():
             for file_path in sorted(files):
                 f.write(f"{file_path}\n")
         
-        table_names.append(table_name)
         fofn_paths.append(str(fofn_path))
         print(f"  {table_name}: {len(files)} files -> {fofn_path}")
     
     # Write summary outputs
     with open(output_dir / "table_names.txt", 'w') as f:
-        for name in table_names:
+        for name in sorted(table_files.keys()):
             f.write(f"{name}\n")
     
     with open(output_dir / "fofn_paths.txt", 'w') as f:
-        for path in fofn_paths:
+        for path in sorted(fofn_paths):
             f.write(f"{path}\n")
     
     # Write statistics
