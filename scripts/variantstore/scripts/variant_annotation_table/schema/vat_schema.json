@@ -432,6 +432,48 @@
     "mode": "Nullable"
   },
   {
+    "description": "HGNC (HUGO Gene Nomenclature Committee) Symbol",
+    "name": "hgnc_symbol",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "HGNC_ID (HUGO Gene Nomenclature Committee) Identifier",
+    "name": "hgnc_id",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
+    "description": "LOFTEE Loss-of-function annotation (HC = High Confidence; LC = Low Confidence)",
+    "name": "LoF",
+    "type": "String",
+    "mode": "Nullable"
+  },
+  {
+    "description": "LOFTEE Reason for LoF not being HC",
+    "name": "LoF_filter",
+    "type": "String",
+    "mode": "Repeated"
+  },
+  {
+    "description": "LOFTEE Possible warning flags for LoF",
+    "name": "LoF_flags",
+    "type": "String",
+    "mode": "Repeated"
+  },
+  {
+    "description": "LOFTEE Info used for LoF annotation",
+    "name": "LoF_info",
+    "type": "String",
+    "mode": "Repeated"
+  },
+  {
+    "description": "GERP (Genomic Evolutionary Rate Profiling) Scores",
+    "name": "GERP",
+    "type": "Float",
+    "mode": "Repeated"
+  },
+  {
     "description": "gnomAD: 'Total' frequency",
     "name": "gnomad_all_af",
     "type": "Float",
