@@ -444,7 +444,7 @@ task AssertCostIsTrackedAndExpected {
                 DIFF_FOUND=$(echo $EXP_BYTES $OBS_BYTES | awk '{print ($1-$2)/$1}')
               fi
 
-              if ! awk "BEGIN{ exit ($DIFF_FOUND -gt $TOLERANCE) }"
+              if ! awk "BEGIN{ exit ($DIFF_FOUND > $TOLERANCE) }"
               then
                 echo "FAIL!!! The relative difference between these is $DIFF_FOUND, which is greater than the allowed tolerance ($TOLERANCE)"
                 echo "1" > ret_val.txt
