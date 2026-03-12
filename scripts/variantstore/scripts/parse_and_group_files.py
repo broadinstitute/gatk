@@ -14,7 +14,7 @@ from pathlib import Path
 from google.cloud import bigquery
 
 
-def parse_table_from_path(file_path, superpartitioned_table_prefixes=["vet", "ref_ranges"], regular_table_prefixes=["sample_chromosome_ploidy"]):
+def parse_table_from_path(file_path, superpartitioned_table_prefixes=None, regular_table_prefixes=None):
     """
     Extract table name from superpartitioned or regular (non-superpartitioned) GCS paths.
     
@@ -23,16 +23,16 @@ def parse_table_from_path(file_path, superpartitioned_table_prefixes=["vet", "re
         gs://bucket/ref_ranges/042/ref_042_sample.parquet -> ref_042
         gs://bucket/sample_chromosome_ploidy/sample_chromosome_ploidy.parquet -> sample_chromosome_ploidy
     """
+    if regular_table_prefixes is None:
+        regular_table_prefixes = ["sample_chromosome_ploidy"]
+    if superpartitioned_table_prefixes is None:
+        superpartitioned_table_prefixes = ["vet", "ref_ranges"]
     for prefix in superpartitioned_table_prefixes:
         # Match pattern: {prefix}/{digits}/
         pattern = rf'{prefix}/(\d+)/'
         match = re.search(pattern, file_path)
         if match:
             table_number = match.group(1)
-            # ref_ranges maps to ref_XXX tables
-            # Why would you remap ref_ranges to ref??
-            # table_prefix = "ref" if prefix == "ref_ranges" else prefix
-            # return f"{table_prefix}_{table_number}"
             return f"{prefix}_{table_number}"
 
     for prefix in regular_table_prefixes:
@@ -45,7 +45,7 @@ def parse_table_from_path(file_path, superpartitioned_table_prefixes=["vet", "re
     return None
 
 
-def get_loaded_files(project_id, dataset_name):
+def get_loaded_files_per_tracking_table(project_id, dataset_name):
     """Query tracking table to get set of already-loaded file paths."""
     client = bigquery.Client(project=project_id)
     tracking_table = f"{project_id}.{dataset_name}.parquet_load_status"
@@ -109,7 +109,7 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     
     # Get already-loaded files
-    loaded_files = get_loaded_files(args.project_id, args.dataset)
+    loaded_files = get_loaded_files_per_tracking_table(args.project_id, args.dataset)
     
     # Read all parquet files
     with open(args.input) as f:
