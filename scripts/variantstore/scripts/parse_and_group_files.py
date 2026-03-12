@@ -29,7 +29,7 @@ def parse_table_and_sample_id_from_file_path(file_path, superpartitioned_table_p
         superpartitioned_table_prefixes = ["vet", "ref_ranges"]
     for prefix in superpartitioned_table_prefixes:
         # Parse prefix + superpartition, sample id out of filename.
-        pattern = f'/({prefix}_[0-9]+)_([0-9]+)_input_vcf_[^/]+$'
+        pattern = f'/({prefix}_[0-9]+)_([0-9]+)_[^/]+$'
         match = re.search(pattern, file_path)
         if match:
             table = match.group(1)
