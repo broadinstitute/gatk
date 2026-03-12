@@ -351,12 +351,12 @@ workflows:
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsAssertIdentical.wdl
      filters:
-       branches:
-         - master
-         - ah_var_store
-         - vs_1520_loftee
-       tags:
-         - /.*/
+         branches:
+             - master
+             - ah_var_store
+             - vs_1520_loftee
+         tags:
+             - /.*/
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsIngestTieout.wdl
