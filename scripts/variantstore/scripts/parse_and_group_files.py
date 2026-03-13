@@ -170,12 +170,12 @@ def main():
 
     if already_loaded_data_count > 0:
         raise ValueError(f"Error: Found {already_loaded_data_count} files that appear to have data already loaded according to INFORMATION_SCHEMA but are not in the tracking table. See warnings above for details.")
-
     print(f"Skipped {skipped_count} already-loaded files")
     print(f"Could not match {unmatched_table_name_count} files to tables")
     print(f"Grouped {sum(len(files) for files in table_files.values())} files into {len(table_files)} tables")
 
     # Write FOFNs for each table
+    table_names = []
     fofn_paths = []
 
     for table_name in sorted(table_files.keys()):
@@ -186,6 +186,7 @@ def main():
             for file_path in sorted(files):
                 f.write(f"{file_path}\n")
 
+        table_names.append(table_name)
         fofn_paths.append(str(fofn_path))
         print(f"  {table_name}: {len(files)} files -> {fofn_path}")
 
@@ -213,6 +214,7 @@ def main():
 
     print(f"\nSummary written to {output_dir / 'stats.json'}")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
