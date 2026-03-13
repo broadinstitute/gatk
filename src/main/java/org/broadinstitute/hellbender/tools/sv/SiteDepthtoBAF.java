@@ -34,8 +34,8 @@ import java.util.List;
  * failing a Pearson's chi square test for goodness of fit to a bi-allelic model are excluded. (I.e.,
  * only samples that are judged to be heterozygous at a site are included.)</p>
  * <p>Across all evaluable samples, sites where the samples have bafs with too much variance
- * (controlled by --max-std) are excluded.  The median baf value at each site is adjusted to be
- * exactly 0.5.</p>
+ * (controlled by --max-std) are excluded.  By default, the median baf value at each site is adjusted to be
+ * exactly 0.5; use --unnormalized to preserve the raw alt-depth / total-depth values.</p>
  *
  * <h3>Inputs</h3>
  *
@@ -79,6 +79,7 @@ public class SiteDepthtoBAF extends MultiFeatureWalker<SiteDepth> {
     public static final String MAX_STD_NAME = "max-std";
     public static final String MIN_HET_PROBABILITY = "min-het-probability";
     public static final String COMPRESSION_LEVEL_NAME = "compression-level";
+    public static final String UNNORMALIZED_NAME = "unnormalized";
     public static ChiSquaredDistribution chiSqDist = new ChiSquaredDistribution(null, 1.);
 
     @Argument(
@@ -121,6 +122,12 @@ public class SiteDepthtoBAF extends MultiFeatureWalker<SiteDepth> {
             fullName = COMPRESSION_LEVEL_NAME,
             minValue = 0, maxValue = 9, optional = true )
     private int compressionLevel = 4;
+
+        @Argument(
+            doc = "Skip shifting each site's median BAF to 0.5 and emit raw alt-depth / total-depth values.",
+            fullName = UNNORMALIZED_NAME,
+            optional = true)
+        private boolean unnormalized = false;
 
     private FeatureDataSource<VariantContext> bafSitesSource;
     private Iterator<VariantContext> bafSitesIterator;
@@ -243,7 +250,7 @@ public class SiteDepthtoBAF extends MultiFeatureWalker<SiteDepth> {
             final int midIdx = nBafs / 2;
             final double median =
                     (nBafs % 2) != 0 ? vals[midIdx] : (vals[midIdx] + vals[midIdx - 1])/2.;
-            final double adj = .5 - median;
+            final double adj = unnormalized ? 0. : .5 - median;
             for ( final BafEvidence bafEvidence : beList ) {
                 writer.write(new BafEvidence(bafEvidence, bafEvidence.getValue()+adj));
             }

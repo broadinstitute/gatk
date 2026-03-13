@@ -75,4 +75,20 @@ public class SiteDepthtoBAFIntegrationTest extends CommandLineProgramTest {
         testSpec.setOutputFileExtension("baf.txt");
         testSpec.executeTest("test3: adjust median", this);
     }
+
+    @Test
+    public void testUnnormalizedSkipsMedianShift() throws IOException {
+        final ArgumentsBuilder argsBuilder = new ArgumentsBuilder();
+        argsBuilder.add(StandardArgumentDefinitions.VERBOSITY_NAME, Log.LogLevel.ERROR.name());
+        argsBuilder.add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, hg19_chr1_1M_dict);
+        argsBuilder.add(SiteDepthtoBAF.BAF_SITES_VCF_LONG_NAME, sd2bafTestDir + "test3.vcf");
+        argsBuilder.add(StandardArgumentDefinitions.FEATURE_SHORT_NAME, sd2bafTestDir + "test3.sd.txt");
+        argsBuilder.add(SiteDepthtoBAF.UNNORMALIZED_NAME, true);
+        argsBuilder.add(StandardArgumentDefinitions.OUTPUT_SHORT_NAME, "%s");
+        final IntegrationTestSpec testSpec =
+                new IntegrationTestSpec(argsBuilder.getString(),
+                        Collections.singletonList(sd2bafTestDir + "test3.unnormalized.baf.txt"));
+        testSpec.setOutputFileExtension("baf.txt");
+        testSpec.executeTest("test3: unnormalized skips median shift", this);
+    }
 }
