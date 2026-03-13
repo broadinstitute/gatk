@@ -46,7 +46,7 @@ def parse_table_and_sample_id_from_file_path(file_path, superpartitioned_table_p
     return None
 
 
-def get_loaded_tables_and_sample_ids_per_information_schema(project_id, dataset_name):
+def get_loaded_tables_and_sample_ids_from_information_schema(project_id, dataset_name):
     client = bigquery.Client(project=project_id)
 
     try:
@@ -54,20 +54,21 @@ def get_loaded_tables_and_sample_ids_per_information_schema(project_id, dataset_
             SELECT table_name, CAST(partition_id AS INT64) AS sample_id
             FROM `{project_id}.{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
             WHERE
-                partition_id NOT LIKE "__%" AND
-                -- TODO deal with sample_chromosome_ploidy, and someday headers once we Parquet-load them.
                 total_logical_bytes > 0 AND (
-                    REGEXP_CONTAINS(table_name, "^ref_ranges_[0-9]+$") OR REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
+                    table_name = 'sample_chromosome_ploidy' OR
+                    REGEXP_CONTAINS(table_name, "^ref_ranges_[0-9]+$") OR
+                    REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
                 )
             ORDER BY table_name, sample_id
         """
         results = client.query(query)
         return {(table_name, sample_id) for (table_name, sample_id) in results}
     except Exception as e:
-        print(f"Warning: Could not query partitions table: {e}")
+        print(f"ERROR: Could not query partitions table: {e}")
+        raise e
 
 
-def get_loaded_files_per_tracking_table(project_id, dataset_name):
+def get_loaded_files_from_tracking_table(project_id, dataset_name):
     """Query tracking table to get set of already-loaded file paths."""
     client = bigquery.Client(project=project_id)
     tracking_table = f"{project_id}.{dataset_name}.parquet_load_status"
@@ -130,10 +131,10 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
 
     # Get already-loaded files per the tracking table.
-    tracking_table_loaded_files = get_loaded_files_per_tracking_table(args.project_id, args.dataset)
+    tracking_table_loaded_files = get_loaded_files_from_tracking_table(args.project_id, args.dataset)
 
     # Get already-loaded table + sample_id combinations per INFORMATION_SCHEMA.
-    information_schema_loaded_tables_sample_ids = get_loaded_tables_and_sample_ids_per_information_schema(args.project_id, args.dataset)
+    information_schema_loaded_tables_sample_ids = get_loaded_tables_and_sample_ids_from_information_schema(args.project_id, args.dataset)
 
     # Read all parquet files
     with open(args.input) as f:
