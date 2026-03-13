@@ -160,17 +160,15 @@ def main():
             table_files[table_name].append(file_path)
         else:
             unmatched_table_name_count += 1
-            print(f"Warning: Could not determine table for: {file_path}")
+            print(f"ERROR: Could not determine table for: {file_path}")
 
         if (table_name, sample_id) in information_schema_loaded_tables_sample_ids:
-            print(f"Warning: No entry in Parquet load status table for {file_path} but INFORMATION_SCHEMA says this table {table_name} and sample_id {sample_id} already has data loaded!")
+            print(f"ERROR: No entry in Parquet load status table for {file_path} but INFORMATION_SCHEMA says sample_id {sample_id} already has data in table {table_name}.")
             already_loaded_data_count += 1
 
-    if unmatched_table_name_count > 0:
-        raise ValueError(f"Error: Could not match {unmatched_table_name_count} files to tables. See warnings above for details.")
+    if unmatched_table_name_count > 0 or already_loaded_data_count > 0:
+        raise ValueError(f"Error(s) examining Parquet files to load, see messages above for details.")
 
-    if already_loaded_data_count > 0:
-        raise ValueError(f"Error: Found {already_loaded_data_count} files that appear to have data already loaded according to INFORMATION_SCHEMA but are not in the tracking table. See warnings above for details.")
     print(f"Skipped {skipped_count} already-loaded files")
     print(f"Could not match {unmatched_table_name_count} files to tables")
     print(f"Grouped {sum(len(files) for files in table_files.values())} files into {len(table_files)} tables")
