@@ -162,7 +162,7 @@ def main():
             print(f"Warning: Could not determine table for: {file_path}")
 
         if (table_name, sample_id) in information_schema_loaded_tables_sample_ids:
-            print(f"Warning: No entry in Parquet load status table for {file_path} but INFORMATION_SCHEMA says this is already loaded!")
+            print(f"Warning: No entry in Parquet load status table for {file_path} but INFORMATION_SCHEMA says this table {table_name} and sample_id {sample_id} already has data loaded!")
             already_loaded_data_count += 1
 
     if unmatched_table_name_count > 0:
