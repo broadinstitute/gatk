@@ -64,12 +64,12 @@ class TestParseSuperpartitionedTableFromPath(unittest.TestCase):
 class TestParseRegularTableFromPath(unittest.TestCase):
     def test_parse_ploidy_path_basic(self):
         """Test basic ploidy path parsing."""
-        path = "gs://bucket/sample_chromosome_ploidy/file.parquet"
-        self.assertEqual(parse_table_and_sample_id_from_file_path(path), ("sample_chromosome_ploidy", None))
+        path = "gs://bucket/sample_chromosome_ploidy/sample_chromosome_ploidy_1_foo.parquet"
+        self.assertEqual(parse_table_and_sample_id_from_file_path(path), ("sample_chromosome_ploidy", "1"))
 
     def test_parse_ploidy_path_with_subdirs(self):
-        path = "gs://fc-bucket/dir/subdir/sample_chromosome_ploidy/sample_chromosome_ploidy_1_input_vcf_0_FOOBAR.vcf.gz.parquet"
-        self.assertEqual(parse_table_and_sample_id_from_file_path(path), ("sample_chromosome_ploidy", None))
+        path = "gs://fc-bucket/dir/subdir/sample_chromosome_ploidy/sample_chromosome_ploidy_100_input_vcf_0_FOOBAR.vcf.gz.parquet"
+        self.assertEqual(parse_table_and_sample_id_from_file_path(path), ("sample_chromosome_ploidy", "100"))
 
 
 class TestMakeJobId(unittest.TestCase):

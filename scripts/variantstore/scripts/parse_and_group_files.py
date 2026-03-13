@@ -21,7 +21,7 @@ def parse_table_and_sample_id_from_file_path(file_path, superpartitioned_table_p
     Example:
         gs://bucket/ref_ranges/ref_ranges_001_1_input_vcf_0_ERS4367795.vcf.gz.parquet -> (ref_ranges_001, 1)
         gs://bucket/vet/vet_123_4567_input_vcf_0_ERS4367795.vcf.gz.parquet -> (vet_123, 4567)
-        gs://bucket/sample_chromosome_ploidy/sample_chromosome_ploidy.parquet -> (sample_chromosome_ploidy, None)
+        gs://bucket/sample_chromosome_ploidy/sample_chromosome_ploidy_1_filename.parquet -> (sample_chromosome_ploidy, 1)
     """
     if regular_table_prefixes is None:
         regular_table_prefixes = ["sample_chromosome_ploidy"]
@@ -37,11 +37,13 @@ def parse_table_and_sample_id_from_file_path(file_path, superpartitioned_table_p
             return table, sample_id
 
     for prefix in regular_table_prefixes:
-        # Match pattern: /{prefix}/{filename} where filename does not contain slashes.
-        pattern = rf'/({prefix})/[^/]+$'
+        # Parse prefix, sample id out of filename.
+        pattern = rf'/({prefix})_([0-9]+)[^/]+$'
         match = re.search(pattern, file_path)
         if match:
-            return prefix, None
+            table = match.group(1)
+            sample_id = match.group(2)
+            return table, sample_id
 
     return None
 
@@ -55,10 +57,16 @@ def get_loaded_tables_and_sample_ids_from_information_schema(project_id, dataset
             FROM `{project_id}.{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
             WHERE
                 total_logical_bytes > 0 AND (
-                    table_name = 'sample_chromosome_ploidy' OR
                     REGEXP_CONTAINS(table_name, "^ref_ranges_[0-9]+$") OR
                     REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
                 )
+
+            UNION ALL
+
+            SELECT DISTINCT "sample_chromosome_ploidy" AS table_name, sample_id
+            FROM
+            `{project_id}.{dataset_name}.sample_chromosome_ploidy`
+
             ORDER BY table_name, sample_id
         """
         results = client.query(query)
@@ -163,7 +171,7 @@ def main():
             print(f"ERROR: Could not determine table for: {file_path}")
 
         if (table_name, sample_id) in information_schema_loaded_tables_sample_ids:
-            print(f"ERROR: No entry in Parquet load status table for {file_path} but INFORMATION_SCHEMA says sample_id {sample_id} already has data in table {table_name}.")
+            print(f"ERROR: No entry in Parquet load status table for {file_path}, but INFORMATION_SCHEMA shows sample_id {sample_id} already has data in table {table_name}.")
             already_loaded_data_count += 1
 
     if unmatched_table_name_count > 0 or already_loaded_data_count > 0:
