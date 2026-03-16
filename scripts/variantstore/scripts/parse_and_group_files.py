@@ -66,7 +66,7 @@ def get_loaded_tables_and_sample_ids_from_information_schema(project_id, dataset
                 parti.table_name = load_status.table_name AND
                 CAST(partition_id AS INT64) = load_status.sample_id
             WHERE
-                REGEXP_CONTAINS(parti.table_name, "^ref_ranges_[0-9]+$|^vet_[0-9]$") AND
+                REGEXP_CONTAINS(parti.table_name, "^ref_ranges_[0-9]+$|^vet_[0-9]+$") AND
                 parti.total_logical_bytes > 0 AND
                 load_status.table_name IS NULL
 

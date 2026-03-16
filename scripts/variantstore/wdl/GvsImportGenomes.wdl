@@ -18,7 +18,7 @@ workflow GvsImportGenomes {
 
     Boolean skip_loading_vqsr_fields = false
     Boolean use_compressed_references = false
-    # Turn Parquet lifecycle configuration off by default as pet service accounts by default don't seem to get the
+    # Turn Parquet lifecycle configuration off by default as pet service accounts don't seem to automatically get the
     # required permissions on the workspace bucket for this to work.
     Boolean configure_parquet_lifecycle = false
 
