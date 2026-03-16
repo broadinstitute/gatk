@@ -52,20 +52,31 @@ def get_loaded_tables_and_sample_ids_from_information_schema(project_id, dataset
     client = bigquery.Client(project=project_id)
 
     try:
+        # Left outer join vet and ref_ranges partition info to the Parquet load status table to only return rows for
+        # which there appears to be a loaded partition but no entry in the Parquet load status table. Similar logic
+        # applies for ploidy but without looking at partitions as this table is unpartitioned.
         query = f"""
-            SELECT table_name, CAST(partition_id AS INT64) AS sample_id
-            FROM `{project_id}.{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
+
+            SELECT partition.table_name AS table_name, CAST(partition_id AS INT64) AS sample_id
+            FROM
+                `{project_id}.{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` partition
+            LEFT OUTER JOIN `{project_id}.{dataset_name}.parquet_load_status` load_status
+            USING (table_name, sample_id)
             WHERE
-                total_logical_bytes > 0 AND (
-                    REGEXP_CONTAINS(table_name, "^ref_ranges_[0-9]+$") OR
-                    REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
-                )
+                REGEXP_CONTAINS(partition.table_name, "^ref_ranges_[0-9]+$|^vet_[0-9]$") AND
+                partition.total_logical_bytes > 0 AND
+                load_status.table_name IS NULL
 
             UNION ALL
 
-            SELECT DISTINCT "sample_chromosome_ploidy" AS table_name, sample_id
+            SELECT DISTINCT "sample_chromosome_ploidy" AS table_name, ploidy.sample_id AS sample_id
             FROM
-            `{project_id}.{dataset_name}.sample_chromosome_ploidy`
+                `{project_id}.{dataset_name}.sample_chromosome_ploidy` ploidy
+            LEFT OUTER JOIN `{project_id}.{dataset_name}.parquet_load_status` load_status
+            USING (sample_id)
+            WHERE
+                load_status.table_name = "sample_chromosome_ploidy" AND
+                load_status.sample_id IS NULL
 
             ORDER BY table_name, sample_id
         """
