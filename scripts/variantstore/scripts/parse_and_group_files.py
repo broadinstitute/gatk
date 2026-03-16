@@ -57,25 +57,31 @@ def get_loaded_tables_and_sample_ids_from_information_schema(project_id, dataset
         # applies for ploidy but without looking at partitions as this table is unpartitioned.
         query = f"""
 
-            SELECT partition.table_name AS table_name, CAST(partition_id AS INT64) AS sample_id
+            SELECT parti.table_name AS table_name, CAST(partition_id AS INT64) AS sample_id
             FROM
-                `{project_id}.{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` partition
-            LEFT OUTER JOIN `{project_id}.{dataset_name}.parquet_load_status` load_status
-            USING (table_name, sample_id)
+                `{project_id}.{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` parti
+            LEFT OUTER JOIN
+                `{project_id}.{dataset_name}.parquet_load_status` load_status
+            ON
+                parti.table_name = load_status.table_name AND
+                CAST(partition_id AS INT64) = load_status.sample_id
             WHERE
-                REGEXP_CONTAINS(partition.table_name, "^ref_ranges_[0-9]+$|^vet_[0-9]$") AND
-                partition.total_logical_bytes > 0 AND
+                REGEXP_CONTAINS(parti.table_name, "^ref_ranges_[0-9]+$|^vet_[0-9]$") AND
+                parti.total_logical_bytes > 0 AND
                 load_status.table_name IS NULL
 
             UNION ALL
 
-            SELECT DISTINCT "sample_chromosome_ploidy" AS table_name, ploidy.sample_id AS sample_id
+            SELECT "sample_chromosome_ploidy" AS table_name, ploidy.sample_id AS sample_id
             FROM
                 `{project_id}.{dataset_name}.sample_chromosome_ploidy` ploidy
-            LEFT OUTER JOIN `{project_id}.{dataset_name}.parquet_load_status` load_status
-            USING (sample_id)
+            LEFT OUTER JOIN
+                `{project_id}.{dataset_name}.parquet_load_status` load_status
+            ON
+                ploidy.sample_id = load_status.sample_id AND
+                load_status.table_name = "sample_chromosome_ploidy"
             WHERE
-                load_status.table_name = "sample_chromosome_ploidy" AND
+                ploidy.chromosome = 1 * 1000 * 1000 * 1000 * 1000 AND
                 load_status.sample_id IS NULL
 
             ORDER BY table_name, sample_id
