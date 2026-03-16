@@ -33,7 +33,7 @@ def parse_table_and_sample_id_from_file_path(file_path, superpartitioned_table_p
         match = re.search(pattern, file_path)
         if match:
             table = match.group(1)
-            sample_id = match.group(2)
+            sample_id = int(match.group(2))
             return table, sample_id
 
     for prefix in regular_table_prefixes:
@@ -42,7 +42,7 @@ def parse_table_and_sample_id_from_file_path(file_path, superpartitioned_table_p
         match = re.search(pattern, file_path)
         if match:
             table = match.group(1)
-            sample_id = match.group(2)
+            sample_id = int(match.group(2))
             return table, sample_id
 
     return None
@@ -188,7 +188,7 @@ def main():
             print(f"ERROR: Could not determine table for: {file_path}")
 
         if (table_name, sample_id) in information_schema_loaded_tables_sample_ids:
-            print(f"ERROR: No entry in Parquet load status table for {file_path}, but INFORMATION_SCHEMA shows sample_id {sample_id} already has data in table {table_name}.")
+            print(f"ERROR: No entry in Parquet load status table for {file_path}, but sample_id {sample_id} appears to already has data in table {table_name}.")
             already_loaded_data_count += 1
 
     if unmatched_table_name_count > 0 or already_loaded_data_count > 0:

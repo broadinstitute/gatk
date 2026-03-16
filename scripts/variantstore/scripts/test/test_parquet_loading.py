@@ -24,33 +24,33 @@ class TestParseSuperpartitionedTableFromPath(unittest.TestCase):
     def test_parse_vet_path_basic(self):
         """Test basic vet path parsing."""
         path = "gs://bucket/vet/042/vet_042_1_file.parquet"
-        self.assertEqual(parse_table_and_sample_id_from_file_path(path, ["vet", "ref_ranges"]), ("vet_042", "1"))
-    
+        self.assertEqual(parse_table_and_sample_id_from_file_path(path, ["vet", "ref_ranges"]), ("vet_042", 1))
+
     def test_parse_vet_path_single_digit(self):
         """Test single-digit vet path."""
         path = "gs://bucket/vet/001/vet_001_123_file.parquet"
-        self.assertEqual(parse_table_and_sample_id_from_file_path(path, ["vet", "ref_ranges"]), ("vet_001", "123"))
-    
+        self.assertEqual(parse_table_and_sample_id_from_file_path(path, ["vet", "ref_ranges"]), ("vet_001", 123))
+
     def test_parse_vet_path_three_digits(self):
         """Test three-digit vet path."""
         path = "gs://bucket/vet/999/vet_999_888_file.parquet"
-        self.assertEqual(parse_table_and_sample_id_from_file_path(path, ["vet", "ref_ranges"]), ("vet_999", "888"))
-    
+        self.assertEqual(parse_table_and_sample_id_from_file_path(path, ["vet", "ref_ranges"]), ("vet_999", 888))
+
     def test_parse_ref_ranges_path(self):
         """Test ref_ranges path parsing."""
         path = "gs://bucket/ref_ranges/123/ref_ranges_123_456_file.parquet"
-        self.assertEqual(parse_table_and_sample_id_from_file_path(path, ["vet", "ref_ranges"]), ("ref_ranges_123", "456"))
-    
+        self.assertEqual(parse_table_and_sample_id_from_file_path(path, ["vet", "ref_ranges"]), ("ref_ranges_123", 456))
+
     def test_parse_ref_ranges_path_with_subdirs(self):
         """Test ref_ranges path with subdirectories."""
         path = "gs://bucket/output/ref_ranges/042/subdir/ref_ranges_042_67_file.parquet"
-        self.assertEqual(parse_table_and_sample_id_from_file_path(path, ["vet", "ref_ranges"]), ("ref_ranges_042", "67"))
-    
+        self.assertEqual(parse_table_and_sample_id_from_file_path(path, ["vet", "ref_ranges"]), ("ref_ranges_042", 67))
+
     def test_parse_vet_path_with_subdirs(self):
         """Test vet path with nested subdirectories."""
         path = "gs://bucket/project/output/vet/007/part1/vet_007_42_file.parquet"
-        self.assertEqual(parse_table_and_sample_id_from_file_path(path, ["vet", "ref_ranges"]), ("vet_007", "42"))
-    
+        self.assertEqual(parse_table_and_sample_id_from_file_path(path, ["vet", "ref_ranges"]), ("vet_007", 42))
+
     def test_parse_invalid_path_returns_none(self):
         """Test that invalid paths return None."""
         path = "gs://bucket/other/042/file.parquet"
@@ -65,11 +65,11 @@ class TestParseRegularTableFromPath(unittest.TestCase):
     def test_parse_ploidy_path_basic(self):
         """Test basic ploidy path parsing."""
         path = "gs://bucket/sample_chromosome_ploidy/sample_chromosome_ploidy_1_foo.parquet"
-        self.assertEqual(parse_table_and_sample_id_from_file_path(path), ("sample_chromosome_ploidy", "1"))
+        self.assertEqual(parse_table_and_sample_id_from_file_path(path), ("sample_chromosome_ploidy", 1))
 
     def test_parse_ploidy_path_with_subdirs(self):
         path = "gs://fc-bucket/dir/subdir/sample_chromosome_ploidy/sample_chromosome_ploidy_100_input_vcf_0_FOOBAR.vcf.gz.parquet"
-        self.assertEqual(parse_table_and_sample_id_from_file_path(path), ("sample_chromosome_ploidy", "100"))
+        self.assertEqual(parse_table_and_sample_id_from_file_path(path), ("sample_chromosome_ploidy", 100))
 
 
 class TestMakeJobId(unittest.TestCase):
