@@ -479,9 +479,10 @@ task ProcessInputGVCFs {
       `~{temp_table}` AS temp ON
       samples.sample_name = temp.sample_name WHERE
       samples.sample_id NOT IN (
-        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
-        UNION DISTINCT
-        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_variant_data`
+        SELECT ref.sample_id FROM
+            `~{project_id}.~{dataset_name}.samples_with_reference_data` ref JOIN
+            `~{project_id}.~{dataset_name}.samples_with_variant_data` vet USING (sample_id) JOIN
+            `~{project_id}.~{dataset_name}.sample_chromosome_ploidy` ploidy USING(sample_id) WHERE ploidy.chromosome = 1 * 1000 * 1000 * 1000 * 1000
       ) AND
       samples.withdrawn IS NULL
 
