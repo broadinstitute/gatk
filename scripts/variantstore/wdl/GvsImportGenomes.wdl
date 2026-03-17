@@ -1018,8 +1018,7 @@ task CreateSampleDataViews {
 
         SET query_header_existence_clause = """
 
-        UNION DISTINCT
-        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_header_data`
+        JOIN `~{project_id}.~{dataset_name}.samples_with_header_data` header USING(sample_id)
 
         """;
       ELSE
@@ -1030,11 +1029,15 @@ task CreateSampleDataViews {
 
         CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_all_data` AS
         (
-          SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_variant_data`
-          UNION DISTINCT
-          SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
+          SELECT ref.sample_id FROM
+            `~{project_id}.~{dataset_name}.samples_with_reference_data` ref JOIN
+            `~{project_id}.~{dataset_name}.samples_with_variant_data` vet USING (sample_id) JOIN
+            `~{project_id}.~{dataset_name}.sample_chromosome_ploidy` ploidy USING(sample_id)
+      """ || query_header_existence_clause || """
+          WHERE ploidy.chromosome = 1 * 1000 * 1000 * 1000 * 1000
+        );
+      """;
 
-      """ || query_header_existence_clause || ");";
 
       EXECUTE IMMEDIATE create_all_sample_data_view;
       END;
