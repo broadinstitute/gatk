@@ -54,7 +54,7 @@ def get_loaded_tables_and_sample_ids_from_information_schema(project_id, dataset
     try:
         # Left outer join vet and ref_ranges partition info to the Parquet load status table to only return rows for
         # which there appears to be a loaded partition but no entry in the Parquet load status table. Similar logic
-        # applies for ploidy but without looking at partitions as this table is unpartitioned.
+        # applies for ploidy but without looking at partitions as the ploidy table is unpartitioned.
         query = f"""
 
             SELECT parti.table_name AS table_name, CAST(partition_id AS INT64) AS sample_id
