@@ -6,6 +6,7 @@ and filters out files that have already been loaded.
 
 import argparse
 import json
+import logging
 import re
 import sys
 from collections import defaultdict
@@ -13,15 +14,18 @@ from pathlib import Path
 
 from google.cloud import bigquery
 
+logging.basicConfig(stream=sys.stderr, level=logging.WARNING, format='%(levelname)s - %(message)s')
+log = logging.getLogger(__name__)
+
 
 def parse_table_and_sample_id_from_file_path(file_path, superpartitioned_table_prefixes=None, regular_table_prefixes=None):
     """
     Extract table name and sample_id from superpartitioned or regular (non-superpartitioned) GCS paths.
 
     Example:
-        gs://bucket/ref_ranges/ref_ranges_001_1_input_vcf_0_ERS4367795.vcf.gz.parquet -> (ref_ranges_001, 1)
-        gs://bucket/vet/vet_123_4567_input_vcf_0_ERS4367795.vcf.gz.parquet -> (vet_123, 4567)
-        gs://bucket/sample_chromosome_ploidy/sample_chromosome_ploidy_1_filename.parquet -> (sample_chromosome_ploidy, 1)
+        "gs://bucket/ref_ranges/ref_ranges_001_1_input_vcf_0_ERS4367795.vcf.gz.parquet" -> ("ref_ranges_001", 1)
+        "gs://bucket/vet/vet_123_4567_input_vcf_0_ERS4367795.vcf.gz.parquet" -> ("vet_123", 4567)
+        "gs://bucket/sample_chromosome_ploidy/sample_chromosome_ploidy_1_filename.parquet" -> ("sample_chromosome_ploidy", 1)
     """
     if regular_table_prefixes is None:
         regular_table_prefixes = ["sample_chromosome_ploidy"]
@@ -89,7 +93,7 @@ def get_loaded_tables_and_sample_ids_from_information_schema(project_id, dataset
         results = client.query(query)
         return {(table_name, sample_id) for (table_name, sample_id) in results}
     except Exception as e:
-        print(f"ERROR: Could not query partitions table: {e}")
+        log.error(f"ERROR: Could not query partitions table: {e}")
         raise e
 
 
@@ -105,10 +109,10 @@ def get_loaded_files_from_tracking_table(project_id, dataset_name):
         """
         results = client.query(query)
         loaded_files = {row.file_path for row in results}
-        print(f"Found {len(loaded_files)} already-loaded files in tracking table")
+        log.info(f"Found {len(loaded_files)} already-loaded files in tracking table")
         return loaded_files
     except Exception as e:
-        print(f"ERROR: Could not query Parquet load status tracking table: {e}")
+        log.error(f"Could not query Parquet load status tracking table: {e}")
         raise
 
 
@@ -165,7 +169,7 @@ def main():
     with open(args.input) as f:
         all_files = [line.strip() for line in f if line.strip()]
 
-    print(f"Found {len(all_files)} total Parquet files")
+    log.info(f"Found {len(all_files)} total Parquet files")
 
     # Group by table and filter out loaded files
     table_files = defaultdict(list)
@@ -185,18 +189,18 @@ def main():
             table_files[table_name].append(file_path)
         else:
             unmatched_table_name_count += 1
-            print(f"ERROR: Could not determine table for: {file_path}")
+            log.error(f"Could not determine table for: {file_path}")
 
         if (table_name, sample_id) in information_schema_loaded_tables_sample_ids:
-            print(f"ERROR: No entry in Parquet load status table for {file_path}, but sample_id {sample_id} appears to already has data in table {table_name}.")
+            log.error(f"No entry in Parquet load status table for {file_path}, but sample_id {sample_id} appears to already have data in table {table_name}.")
             already_loaded_data_count += 1
 
     if unmatched_table_name_count > 0 or already_loaded_data_count > 0:
         raise ValueError(f"Error(s) examining Parquet files to load, see messages above for details.")
 
-    print(f"Skipped {skipped_count} already-loaded files")
-    print(f"Could not match {unmatched_table_name_count} files to tables")
-    print(f"Grouped {sum(len(files) for files in table_files.values())} files into {len(table_files)} tables")
+    log.info(f"Skipped {skipped_count} already-loaded files")
+    log.info(f"Could not match {unmatched_table_name_count} files to tables")
+    log.info(f"Grouped {sum(len(files) for files in table_files.values())} files into {len(table_files)} tables")
 
     # Write FOFNs for each table
     table_names = []
@@ -212,7 +216,7 @@ def main():
 
         table_names.append(table_name)
         fofn_paths.append(str(fofn_path))
-        print(f"  {table_name}: {len(files)} files -> {fofn_path}")
+        log.info(f"  {table_name}: {len(files)} files -> {fofn_path}")
 
     # Write summary outputs
     with open(output_dir / "table_names.txt", 'w') as f:
@@ -236,7 +240,7 @@ def main():
     with open(output_dir / "stats.json", 'w') as f:
         json.dump(stats, f, indent=2)
 
-    print(f"\nSummary written to {output_dir / 'stats.json'}")
+    log.info(f"\nSummary written to {output_dir / 'stats.json'}")
     return 0
 
 
