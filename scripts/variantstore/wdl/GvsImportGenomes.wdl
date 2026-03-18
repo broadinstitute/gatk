@@ -479,11 +479,10 @@ task ProcessInputGVCFs {
       `~{temp_table}` AS temp ON
       samples.sample_name = temp.sample_name WHERE
       samples.sample_id NOT IN (
-        SELECT ref.sample_id FROM
+        SELECT DISTINCT ref.sample_id FROM
           `~{project_id}.~{dataset_name}.samples_with_reference_data` ref JOIN
           `~{project_id}.~{dataset_name}.samples_with_variant_data` vet USING (sample_id) JOIN
           `~{project_id}.~{dataset_name}.sample_chromosome_ploidy` ploidy USING(sample_id)
-        WHERE ploidy.chromosome = 20 * 1000 * 1000 * 1000 * 1000
       ) AND
       samples.withdrawn IS NULL
 
@@ -778,11 +777,10 @@ task GetUningestedSampleIds {
       `~{temp_table}` AS temp ON
       samples.sample_name = temp.sample_name WHERE
       samples.sample_id NOT IN (
-        SELECT ref.sample_id FROM
+        SELECT DISTINCT ref.sample_id FROM
           `~{project_id}.~{dataset_name}.samples_with_reference_data` ref JOIN
           `~{project_id}.~{dataset_name}.samples_with_variant_data` vet USING (sample_id) JOIN
           `~{project_id}.~{dataset_name}.sample_chromosome_ploidy` ploidy USING(sample_id)
-        WHERE ploidy.chromosome = 20 * 1000 * 1000 * 1000 * 1000
       ) AND
       samples.withdrawn IS NULL
 
@@ -1029,15 +1027,13 @@ task CreateSampleDataViews {
 
         CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_all_data` AS
         (
-          SELECT ref.sample_id FROM
+          SELECT DISTINCT ref.sample_id FROM
             `~{project_id}.~{dataset_name}.samples_with_reference_data` ref JOIN
             `~{project_id}.~{dataset_name}.samples_with_variant_data` vet USING (sample_id) JOIN
             `~{project_id}.~{dataset_name}.sample_chromosome_ploidy` ploidy USING(sample_id)
       """ || query_header_existence_clause || """
-          WHERE ploidy.chromosome = 20 * 1000 * 1000 * 1000 * 1000
         );
       """;
-
 
       EXECUTE IMMEDIATE create_all_sample_data_view;
       END;

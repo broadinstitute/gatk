@@ -76,7 +76,7 @@ def get_loaded_tables_and_sample_ids_from_information_schema(project_id, dataset
 
             UNION ALL
 
-            SELECT "sample_chromosome_ploidy" AS table_name, ploidy.sample_id AS sample_id
+            SELECT DISTINCT "sample_chromosome_ploidy" AS table_name, ploidy.sample_id AS sample_id
             FROM
                 `{project_id}.{dataset_name}.sample_chromosome_ploidy` ploidy
             LEFT OUTER JOIN
@@ -85,7 +85,6 @@ def get_loaded_tables_and_sample_ids_from_information_schema(project_id, dataset
                 ploidy.sample_id = load_status.sample_id AND
                 load_status.table_name = "sample_chromosome_ploidy"
             WHERE
-                ploidy.chromosome = 20 * 1000 * 1000 * 1000 * 1000 AND
                 load_status.sample_id IS NULL
 
             ORDER BY table_name, sample_id
