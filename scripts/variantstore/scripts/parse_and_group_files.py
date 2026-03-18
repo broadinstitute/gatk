@@ -100,6 +100,7 @@ def get_actually_loaded_tables_and_sample_ids(project_id, dataset_name):
 
 def get_loaded_files_from_parquet_tracking_table(project_id, dataset_name):
     """Query tracking table to get set of already-loaded file paths."""
+    from google.cloud import bigquery
     client = bigquery.Client(project=project_id)
     tracking_table = f"{project_id}.{dataset_name}.parquet_load_status"
 
