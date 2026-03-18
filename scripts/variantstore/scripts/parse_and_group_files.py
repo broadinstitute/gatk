@@ -60,7 +60,7 @@ def get_actually_loaded_tables_and_sample_ids(project_id, dataset_name):
         # is applied for ploidy but without looking at partitions as the ploidy table is unpartitioned.
         query = f"""
 
-            SELECT parti.table_name AS table_name, CAST(partition_id AS INT64) AS sample_id
+            SELECT parti.table_name AS table_name, SAFE_CAST(partition_id AS INT64) AS sample_id
             FROM
                 `{project_id}.{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` parti
             LEFT OUTER JOIN
@@ -68,10 +68,12 @@ def get_actually_loaded_tables_and_sample_ids(project_id, dataset_name):
             ON
                 parti.table_name = load_status.table_name AND
                 partition_id NOT LIKE "__%" AND
-                CAST(partition_id AS INT64) = load_status.sample_id
+                SAFE_CAST(partition_id AS INT64) = load_status.sample_id
             WHERE
                 REGEXP_CONTAINS(parti.table_name, "^ref_ranges_[0-9]+$|^vet_[0-9]+$") AND
                 parti.total_logical_bytes > 0 AND
+                partition_id NOT LIKE "__%" AND
+                SAFE_CAST(partition_id AS INT64) IS NOT NULL AND
                 load_status.table_name IS NULL
 
             UNION ALL
