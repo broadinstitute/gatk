@@ -278,7 +278,11 @@ workflow GvsImportGenomes {
           dataset_name = dataset_name,
           regular_table_prefixes = ["sample_chromosome_ploidy"],
           superpartitioned_table_prefixes = ["vet", "ref_ranges"],
-          go = flatten([select_all([ConfigureParquetLifecycle.done]), select_all(GenerateParquetFilesFromInputGVCFs.done)]),
+          go = flatten([
+            select_all([CreateParquetTrackingTable.done]),
+            select_all([ConfigureParquetLifecycle.done]),
+            select_all(GenerateParquetFilesFromInputGVCFs.done)
+          ]),
           variants_docker = effective_variants_docker,
       }
 
