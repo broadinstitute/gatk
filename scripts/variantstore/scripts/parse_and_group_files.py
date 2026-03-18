@@ -14,7 +14,7 @@ from pathlib import Path
 
 from google.cloud import bigquery
 
-logging.basicConfig(stream=sys.stderr, level=logging.WARNING, format='%(levelname)s - %(message)s')
+logging.basicConfig(stream=sys.stderr, level=logging.INFO, format='%(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
 
@@ -58,7 +58,7 @@ def get_loaded_tables_and_sample_ids_from_information_schema(project_id, dataset
     try:
         # Left outer join vet and ref_ranges partition info to the Parquet load status table to only return rows for
         # which there appears to be a loaded partition but no entry in the Parquet load status table. Similar logic
-        # applies for ploidy but without looking at partitions as the ploidy table is unpartitioned.
+        # is applied for ploidy but without looking at partitions as the ploidy table is unpartitioned.
         query = f"""
 
             SELECT parti.table_name AS table_name, CAST(partition_id AS INT64) AS sample_id
