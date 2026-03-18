@@ -161,7 +161,7 @@ def main():
     # Get already-loaded files per the tracking table.
     tracking_table_loaded_files = get_loaded_files_from_tracking_table(args.project_id, args.dataset)
 
-    # Get already-loaded table + sample_id combinations per INFORMATION_SCHEMA.
+    # Get already-loaded table + sample_id combinations per INFORMATION_SCHEMA or the actual BigQuery data tables.
     information_schema_loaded_tables_sample_ids = get_loaded_tables_and_sample_ids_from_information_schema(args.project_id, args.dataset)
 
     # Read all parquet files
