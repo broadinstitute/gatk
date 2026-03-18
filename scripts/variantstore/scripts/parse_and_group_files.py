@@ -52,7 +52,7 @@ def parse_table_and_sample_id_from_file_path(file_path, superpartitioned_table_p
     return None
 
 
-def get_loaded_tables_and_sample_ids_from_information_schema(project_id, dataset_name):
+def get_actually_loaded_tables_and_sample_ids(project_id, dataset_name):
     client = bigquery.Client(project=project_id)
 
     try:
@@ -96,7 +96,7 @@ def get_loaded_tables_and_sample_ids_from_information_schema(project_id, dataset
         raise e
 
 
-def get_loaded_files_from_tracking_table(project_id, dataset_name):
+def get_loaded_files_from_parquet_tracking_table(project_id, dataset_name):
     """Query tracking table to get set of already-loaded file paths."""
     client = bigquery.Client(project=project_id)
     tracking_table = f"{project_id}.{dataset_name}.parquet_load_status"
@@ -158,11 +158,11 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Get already-loaded files per the tracking table.
-    tracking_table_loaded_files = get_loaded_files_from_tracking_table(args.project_id, args.dataset)
+    # Get already-loaded files per the Parquet tracking table.
+    tracking_table_loaded_files = get_loaded_files_from_parquet_tracking_table(args.project_id, args.dataset)
 
-    # Get already-loaded table + sample_id combinations per INFORMATION_SCHEMA or the actual BigQuery data tables.
-    information_schema_loaded_tables_sample_ids = get_loaded_tables_and_sample_ids_from_information_schema(args.project_id, args.dataset)
+    # Find which table + sample_ids are actually loaded by querying INFORMATION_SCHEMA or the data tables themselves.
+    actually_loaded_tables_and_sample_ids = get_actually_loaded_tables_and_sample_ids(args.project_id, args.dataset)
 
     # Read all parquet files
     with open(args.input) as f:
@@ -190,7 +190,7 @@ def main():
             unmatched_table_name_count += 1
             log.error(f"Could not determine table for: {file_path}")
 
-        if (table_name, sample_id) in information_schema_loaded_tables_sample_ids:
+        if (table_name, sample_id) in actually_loaded_tables_and_sample_ids:
             log.error(f"No entry in Parquet load status table for {file_path}, but sample_id {sample_id} appears to already have data in table {table_name}.")
             already_loaded_data_count += 1
 
