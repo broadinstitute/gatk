@@ -483,7 +483,7 @@ task ProcessInputGVCFs {
           `~{project_id}.~{dataset_name}.samples_with_reference_data` ref JOIN
           `~{project_id}.~{dataset_name}.samples_with_variant_data` vet USING (sample_id) JOIN
           `~{project_id}.~{dataset_name}.sample_chromosome_ploidy` ploidy USING(sample_id)
-        WHERE ploidy.chromosome = 1 * 1000 * 1000 * 1000 * 1000
+        WHERE ploidy.chromosome = 20 * 1000 * 1000 * 1000 * 1000
       ) AND
       samples.withdrawn IS NULL
 
@@ -782,7 +782,7 @@ task GetUningestedSampleIds {
           `~{project_id}.~{dataset_name}.samples_with_reference_data` ref JOIN
           `~{project_id}.~{dataset_name}.samples_with_variant_data` vet USING (sample_id) JOIN
           `~{project_id}.~{dataset_name}.sample_chromosome_ploidy` ploidy USING(sample_id)
-        WHERE ploidy.chromosome = 1 * 1000 * 1000 * 1000 * 1000
+        WHERE ploidy.chromosome = 20 * 1000 * 1000 * 1000 * 1000
       ) AND
       samples.withdrawn IS NULL
 
@@ -1034,7 +1034,7 @@ task CreateSampleDataViews {
             `~{project_id}.~{dataset_name}.samples_with_variant_data` vet USING (sample_id) JOIN
             `~{project_id}.~{dataset_name}.sample_chromosome_ploidy` ploidy USING(sample_id)
       """ || query_header_existence_clause || """
-          WHERE ploidy.chromosome = 1 * 1000 * 1000 * 1000 * 1000
+          WHERE ploidy.chromosome = 20 * 1000 * 1000 * 1000 * 1000
         );
       """;
 

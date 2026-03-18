@@ -85,7 +85,7 @@ def get_loaded_tables_and_sample_ids_from_information_schema(project_id, dataset
                 ploidy.sample_id = load_status.sample_id AND
                 load_status.table_name = "sample_chromosome_ploidy"
             WHERE
-                ploidy.chromosome = 1 * 1000 * 1000 * 1000 * 1000 AND
+                ploidy.chromosome = 20 * 1000 * 1000 * 1000 * 1000 AND
                 load_status.sample_id IS NULL
 
             ORDER BY table_name, sample_id
