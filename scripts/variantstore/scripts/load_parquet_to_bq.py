@@ -11,13 +11,6 @@ import sys
 import time
 from pathlib import Path
 
-try:
-    from google.cloud import bigquery
-    from google.api_core import exceptions
-except ImportError:
-    bigquery = None
-    exceptions = None
-
 
 def load_table_from_parquet_files(
     project_id,
@@ -45,6 +38,9 @@ def load_table_from_parquet_files(
     Returns:
         Dictionary with load statistics
     """
+    from google.cloud import bigquery
+    from google.api_core import exceptions
+
     client = bigquery.Client(project=project_id)
     
     # Extract table name from FOFN filename if not provided
@@ -212,6 +208,8 @@ def insert_tracking_records(client, tracking_table_id, records):
     Batches records to avoid exceeding BigQuery request limits.
     Uses retry logic for quota errors.
     """
+    from google.cloud import bigquery
+
     chunk_size = 1000  # Keep well below 16MB limit
     
     for i in range(0, len(records), chunk_size):
@@ -305,6 +303,8 @@ def _submit_load_job_with_retry(client, batch, table_id, job_config, job_id, loc
     Raises:
         Exception: If all retries are exhausted or a non-retryable error occurs
     """
+    from google.api_core import exceptions
+
     retry_delays = [30, 60, 120]  # Exponential backoff: 30s, 60s, 120s
     
     for attempt in range(max_retries + 1):
@@ -360,6 +360,8 @@ def _wait_for_job_with_retry(load_job, max_retries=3):
     Raises:
         Exception: If all retries are exhausted or a non-retryable error occurs
     """
+    from google.api_core import exceptions
+
     retry_delays = [30, 60, 120]  # Exponential backoff
     
     for attempt in range(max_retries + 1):
@@ -407,6 +409,8 @@ def _execute_query_with_retry(client, query, job_config=None, max_retries=3):
     Raises:
         Exception: If all retries are exhausted or a non-retryable error occurs
     """
+    from google.api_core import exceptions
+
     retry_delays = [30, 60, 120]  # Exponential backoff
     
     for attempt in range(max_retries + 1):
