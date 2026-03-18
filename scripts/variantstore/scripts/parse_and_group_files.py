@@ -12,9 +12,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-from google.cloud import bigquery
 
-logging.basicConfig(stream=sys.stderr, level=logging.INFO, format='%(levelname)s - %(message)s')
 log = logging.getLogger(__name__)
 
 
@@ -49,10 +47,11 @@ def parse_table_and_sample_id_from_file_path(file_path, superpartitioned_table_p
             sample_id = int(match.group(2))
             return table, sample_id
 
-    return None
+    return None, None
 
 
 def get_actually_loaded_tables_and_sample_ids(project_id, dataset_name):
+    from google.cloud import bigquery
     client = bigquery.Client(project=project_id)
 
     try:
@@ -68,6 +67,7 @@ def get_actually_loaded_tables_and_sample_ids(project_id, dataset_name):
                 `{project_id}.{dataset_name}.parquet_load_status` load_status
             ON
                 parti.table_name = load_status.table_name AND
+                partition_id NOT LIKE "__%" AND
                 CAST(partition_id AS INT64) = load_status.sample_id
             WHERE
                 REGEXP_CONTAINS(parti.table_name, "^ref_ranges_[0-9]+$|^vet_[0-9]+$") AND
@@ -93,7 +93,7 @@ def get_actually_loaded_tables_and_sample_ids(project_id, dataset_name):
         return {(table_name, sample_id) for (table_name, sample_id) in results}
     except Exception as e:
         log.error(f"ERROR: Could not query partitions table: {e}")
-        raise e
+        raise
 
 
 def get_loaded_files_from_parquet_tracking_table(project_id, dataset_name):
@@ -189,6 +189,7 @@ def main():
         else:
             unmatched_table_name_count += 1
             log.error(f"Could not determine table for: {file_path}")
+            continue
 
         if (table_name, sample_id) in actually_loaded_tables_and_sample_ids:
             log.error(f"No entry in Parquet load status table for {file_path}, but sample_id {sample_id} appears to already have data in table {table_name}.")
@@ -244,4 +245,5 @@ def main():
 
 
 if __name__ == "__main__":
+    logging.basicConfig(stream=sys.stderr, level=logging.INFO, format='%(levelname)s - %(message)s')
     sys.exit(main())

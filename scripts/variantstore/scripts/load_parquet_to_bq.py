@@ -11,8 +11,12 @@ import sys
 import time
 from pathlib import Path
 
-from google.cloud import bigquery
-from google.api_core import exceptions
+try:
+    from google.cloud import bigquery
+    from google.api_core import exceptions
+except ImportError:
+    bigquery = None
+    exceptions = None
 
 
 def load_table_from_parquet_files(

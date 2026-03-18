@@ -54,12 +54,12 @@ class TestParseSuperpartitionedTableFromPath(unittest.TestCase):
     def test_parse_invalid_path_returns_none(self):
         """Test that invalid paths return None."""
         path = "gs://bucket/other/042/file.parquet"
-        self.assertIsNone(parse_table_and_sample_id_from_file_path(path, ["vet", "ref_ranges"]))
+        self.assertEqual(parse_table_and_sample_id_from_file_path(path, ["vet", "ref_ranges"]), (None, None))
     
     def test_parse_path_without_number_returns_none(self):
         """Test that paths without numbers return None."""
         path = "gs://bucket/vet/abc/file.parquet"
-        self.assertIsNone(parse_table_and_sample_id_from_file_path(path, ["vet", "ref_ranges"]))
+        self.assertEqual(parse_table_and_sample_id_from_file_path(path, ["vet", "ref_ranges"]), (None, None))
 
 class TestParseRegularTableFromPath(unittest.TestCase):
     def test_parse_ploidy_path_basic(self):
