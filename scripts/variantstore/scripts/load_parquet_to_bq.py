@@ -93,6 +93,7 @@ def load_table_from_parquet_files(
     total_rows = 0
     successful_batches = 0
     failed_batches = 0
+    successful_files_count = 0
     
     # Load files in batches
     for i in range(0, len(files), batch_size):
@@ -147,6 +148,7 @@ def load_table_from_parquet_files(
             print(f"  ✓ Loaded {rows_loaded:,} rows from {len(batch)} files")
             total_rows += rows_loaded
             successful_batches += 1
+            successful_files_count += len(batch)
             
             # Remove from pending jobs
             pending_jobs.pop(job_id, None)
@@ -168,7 +170,7 @@ def load_table_from_parquet_files(
     print(f"{'='*60}")
     
     return {
-        "files_loaded": len(successful_loads),
+        "files_loaded": successful_files_count,
         "rows_loaded": total_rows,
         "batches_processed": successful_batches,
         "batches_failed": failed_batches,
@@ -356,6 +358,7 @@ def _execute_query_with_retry(client, query, job_config=None, max_retries=3):
             raise
     
     raise Exception("Unexpected error in query retry logic")
+
 
 
 def main():
