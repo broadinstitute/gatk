@@ -26,7 +26,7 @@
 │  └─────────────────────────────────────────────────────────────────────────────┘   │
 │                                                                                     │
 │  Idempotent Task Design:                                                            │
-│  • GetUningestedSampleIds: Auto-cleanup of temp tables ✓                          │
+│  • DiscoverParquetFiles: Queries BigQuery directly for already-loaded pairs ✓      │
 │  • LoadParquetFilesToBQ: Deterministic job IDs for resume ✓                       │
 │                                                                                     │
 └─────────────────────────────────────────────────────────────────────────────────────┘
@@ -88,27 +88,24 @@
                                         │
                                         ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
-│                          LAYER 4: PERSISTENT STATE TRACKING                        │
+│                        LAYER 4: PERSISTENT STATE (BIGQUERY DATA)                   │
 ├─────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                     │
-│  BigQuery Tracking Table (parquet_load_status):                                    │
+│  BigQuery as Source of Truth:                                                      │
 │  ┌─────────────────────────────────────────────────────────────────────────────┐   │
-│  │  CREATE TABLE parquet_load_status (                                        │   │
-│  │    file_path STRING PRIMARY KEY,    ◄── Prevents duplicates               │   │
-│  │    table_name STRING,                                                       │   │
-│  │    load_timestamp TIMESTAMP,                                                │   │
-│  │    load_job_id STRING,                                                      │   │
-│  │    rows_loaded INT64                                                        │   │
-│  │  )                                                                          │   │
+│  │  SELECT table_name, SAFE_CAST(partition_id AS INT64) AS sample_id          │   │
+│  │  FROM INFORMATION_SCHEMA.PARTITIONS                                        │   │
+│  │  WHERE REGEXP_CONTAINS(table_name, "^vet_[0-9]+$|^ref_ranges_[0-9]+$")    │   │
+│  │    AND total_logical_bytes > 0                                              │   │
+│  │                                                                             │   │
+│  │  UNION ALL                                                                  │   │
+│  │                                                                             │   │
+│  │  SELECT DISTINCT "sample_chromosome_ploidy", sample_id                     │   │
+│  │  FROM sample_chromosome_ploidy                                             │   │
 │  └─────────────────────────────────────────────────────────────────────────────┘   │
 │                                                                                     │
-│  MERGE Logic for Idempotency:                                                      │
-│  ┌─────────────────────────────────────────────────────────────────────────────┐   │
-│  │  MERGE parquet_load_status T                                               │   │
-│  │  USING new_records S                                                        │   │
-│  │  ON T.file_path = S.file_path                                              │   │
-│  │  WHEN NOT MATCHED THEN INSERT (...)  ◄── Only insert new files           │   │
-│  └─────────────────────────────────────────────────────────────────────────────┘   │
+│  Already-loaded (table_name, sample_id) pairs are skipped on workflow restart.     │
+│  No separate tracking table is written to or consulted.                            │
 │                                                                                     │
 └─────────────────────────────────────────────────────────────────────────────────────┘
 
@@ -135,10 +132,10 @@
 │                                  RECOVERY FLOW                                     │
 ├─────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                     │
-│  Workflow Restart → Check Tracking Table → Skip Already Loaded Files               │
+│  Workflow Restart → Query BigQuery Partitions → Skip Already Loaded Pairs          │
 │         │                    │                         │                          │
 │         ▼                    ▼                         ▼                          │
-│  Generate FOFNs → Filter Out Loaded → Only Load Missing → Update Tracking         │
+│  Generate FOFNs → Filter Out Loaded → Only Load Missing → Verify via BQ           │
 │                                                                                     │
 │  Result: 100% Idempotent - Safe to retry any number of times ✓                    │
 │                                                                                     │
@@ -153,7 +150,7 @@ This diagram illustrates the comprehensive fault tolerance mechanisms implemente
 - **WDL Configuration**: Up to 5 preemptible VM attempts plus 3 additional retries
 - **Idempotent Design**: Tasks can be safely rerun without side effects
 
-### Layer 2: BigQuery Job Level  
+### Layer 2: BigQuery Job Level
 - **Deterministic Job IDs**: SHA1-based IDs allow job recovery across VM restarts
 - **Exponential Backoff**: Automatic retry for quota and transient errors (30s → 60s → 120s)
 
@@ -161,23 +158,15 @@ This diagram illustrates the comprehensive fault tolerance mechanisms implemente
 - **Pending Jobs File**: Tracks in-flight jobs on local disk for within-VM recovery
 - **Graceful Degradation**: When file is lost (VM preemption), falls back to job ID mechanism
 
-### Layer 4: Persistent State Tracking
-- **BigQuery Tracking Table**: Permanent record of loaded files with MERGE-based idempotency
-- **Cross-Run Recovery**: Filters out already-loaded files on workflow restart
+### Layer 4: Persistent State (BigQuery Data)
+- **BigQuery as Source of Truth**: `INFORMATION_SCHEMA.PARTITIONS` and the `sample_chromosome_ploidy` table itself provide an authoritative view of what has been loaded
+- **Cross-Run Recovery**: Already-loaded `(table_name, sample_id)` pairs are filtered out on workflow restart — no separate tracking table required
 
 ## Key Benefits
 
 1. **Complete Idempotency**: Safe to restart workflow any number of times
-2. **Granular Recovery**: Can recover from failures at file, batch, or workflow level  
-3. **Quota Resilience**: Automatic handling of BigQuery rate limits and quotas
+2. **Granular Recovery**: Can recover from failures at file, batch, or workflow level
+3. **Quota Resilience**: Automatic handling of BigQuery rate limits and quotas; elimination of the tracking table removes a significant source of MERGE-based quota pressure
 4. **Cost Efficiency**: Uses preemptible VMs while maintaining reliability
 5. **Progress Preservation**: Never loses work due to transient failures
-
-## Failure Handling
-
-The system gracefully handles three primary failure modes:
-- **VM Preemption**: Deterministic job IDs enable seamless recovery on new VMs
-- **Quota Exceeded**: Exponential backoff prevents cascade failures while respecting limits
-- **Partial Batch Failure**: Individual batch failures don't stop overall progress
-
-This multi-layered approach ensures the pipeline can handle the scale and complexity of loading hundreds of thousands of parquet files reliably in a cloud environment.
+6. **Authoritative State**: Idempotency is based on what BigQuery actually contains, not what a secondary table records

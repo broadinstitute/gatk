@@ -61,49 +61,33 @@ The solution consists of three main WDL tasks:
 2. **LoadParquetFilesToBQ**: Load files for a single table with tracking
 3. **VerifyAllLoaded**: Confirm all files were successfully loaded
 
-### Tracking Mechanism Options
+### Idempotency Mechanism
 
-#### Option A: BigQuery Tracking Table (Recommended)
+Idempotency is determined by querying BigQuery directly — no separate tracking table is created or maintained.
 
-Create a metadata table to track load status:
+**For superpartitioned tables** (`vet_%`, `ref_ranges_%`), `INFORMATION_SCHEMA.PARTITIONS` is queried for non-empty partitions whose `partition_id` parses as a valid integer `sample_id`:
 
 ```sql
-CREATE TABLE IF NOT EXISTS `{dataset}.parquet_load_status` (
-  file_path STRING NOT NULL,
-  table_name STRING NOT NULL,
-  load_timestamp TIMESTAMP NOT NULL,
-  load_job_id STRING NOT NULL,
-  file_size_bytes INT64,
-  rows_loaded INT64,
-  PRIMARY KEY (file_path) NOT ENFORCED
-);
+SELECT table_name, SAFE_CAST(partition_id AS INT64) AS sample_id
+FROM `{project}.{dataset}.INFORMATION_SCHEMA.PARTITIONS`
+WHERE
+    REGEXP_CONTAINS(table_name, "^vet_[0-9]+$|^ref_ranges_[0-9]+$")
+    AND total_logical_bytes > 0
+    AND partition_id NOT LIKE "__%"
+    AND SAFE_CAST(partition_id AS INT64) IS NOT NULL
 ```
 
-**Advantages**:
-- Centralized tracking in BigQuery alongside data
-- Atomic operations via BigQuery DML
-- Easy to query status and generate reports
-- Survives task preemptions
-- No external dependencies
+**For regular tables** (`sample_chromosome_ploidy`), the table itself is queried for distinct `sample_id` values:
 
-**Disadvantages**:
-- Requires additional BigQuery operations
-- Small additional cost for tracking table
+```sql
+SELECT DISTINCT "sample_chromosome_ploidy" AS table_name, sample_id
+FROM `{project}.{dataset}.sample_chromosome_ploidy`
+```
 
-#### Option B: GCS Marker Files
-
-Create `.loaded` marker files alongside each Parquet file after successful load.
-
-**Advantages**:
-- Simple file-based approach
-- No additional BigQuery tables needed
-
-**Disadvantages**:
-- Race conditions possible with concurrent loads
-- Harder to query overall status
-- Marker files scattered across GCS hierarchy
-
-**Recommendation**: Use Option A (BigQuery tracking table) for better atomicity and queryability.
+Any `(table_name, sample_id)` pair already present in BigQuery is skipped without attempting a reload. This is more reliable than a tracking table because:
+- It reflects the actual committed state of BigQuery data (not a secondary record of intent)
+- It guards against the case where a tracking table claims data is loaded that actually isn't
+- It eliminates high-frequency MERGE DML writes that were causing quota pressure at scale
 
 ### Detailed Task Design
 
@@ -118,36 +102,35 @@ Create `.loaded` marker files alongside each Parquet file after successful load.
 - `table_prefixes`: Array of prefixes to scan (e.g., ["vet", "ref_ranges"])
 
 **Process**:
-1. Use `gsutil ls -r` or `gcloud storage ls --recursive` to list all `.parquet` files
-2. Parse file paths to extract table numbers
+1. Use `gcloud storage ls --recursive` to list all `.parquet` files
+2. Parse file paths to extract table numbers and sample IDs
 3. Group files by table (e.g., `vet_000`, `vet_001`, etc.)
-4. Query tracking table to identify which files have already been loaded
-5. Create file-of-file-names (FOFN) for each table containing only unloaded files
+4. Query BigQuery (`INFORMATION_SCHEMA.PARTITIONS` and `sample_chromosome_ploidy`) to identify which `(table_name, sample_id)` pairs are already loaded
+5. Create file-of-file-names (FOFN) for each table containing only files whose pair is not yet loaded
 
 **Outputs**:
-- Array of table names (e.g., `["vet_000", "vet_001", ..., "ref_000", ...]`)
-- Array of FOFNs, one per table, containing GCS paths of unloaded files
+- Array of table names (e.g., `["vet_000", "vet_001", ..., "ref_ranges_000", ...]`)
+- Array of FOFNs, one per table, containing GCS paths of files to load
 - Summary statistics (total files, already loaded, remaining)
 
 **Implementation Notes**:
 ```bash
 # List all objects once, then filter for parquet paths
 gcloud storage ls --recursive gs://${OUTPUT_GCS_DIR}/ > all_objects.txt
-grep '\\.parquet$' all_objects.txt > all_files.txt
+grep '\.parquet$' all_objects.txt > all_files.txt
 
-# Parse and group by table
+# Parse and group by table; already-loaded (table_name, sample_id) pairs are
+# detected via INFORMATION_SCHEMA.PARTITIONS and sample_chromosome_ploidy queries
 python3 parse_and_group_files.py \
   --input all_files.txt \
   --output-dir grouped_files/ \
   --project-id ${PROJECT_ID} \
-  --dataset ${DATASET}
-
-# Python script queries:
-# SELECT file_path FROM `{dataset}.parquet_load_status`
-# Then filters out already-loaded files from each group
+  --dataset ${DATASET} \
+  --superpartitioned-table-prefixes vet ref_ranges \
+  --regular-table-prefixes sample_chromosome_ploidy
 ```
 
-**Volatility**: Mark as `volatile: true` since we always want fresh GCS state.
+**Volatility**: Mark as `volatile: true` since we always want fresh GCS and BigQuery state.
 
 ---
 
@@ -192,7 +175,6 @@ def load_table_from_parquet_files(
 ):
   client = bigquery.Client(project=project_id)
   table_id = f"{project_id}.{dataset_name}.{table_name}"
-  tracking_table_id = f"{project_id}.{dataset_name}.parquet_load_status"
   schema = client.schema_from_json(schema_path)
 
   # Fail fast if table was not pre-created
@@ -356,28 +338,26 @@ def _store_pending_jobs(pending_jobs_path, pending_jobs):
 
 **Process**:
 
-```sql
--- Stage the latest GCS inventory into a temporary table, then compare
-CREATE OR REPLACE TABLE `{dataset}.__parquet_verification_staging`
-OPTIONS(expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)) AS
-SELECT file_path
-FROM UNNEST(@gcs_file_list) AS file_path;
+Parse each GCS file path to extract its `(table_name, sample_id)` pair, then query BigQuery to find which pairs are already loaded. Files whose pair is not found in BigQuery are reported as missing.
 
-WITH gcs_files AS (
-  SELECT file_path FROM `{dataset}.__parquet_verification_staging`
-),
-loaded_files AS (
-  SELECT file_path FROM `{dataset}.parquet_load_status`
-)
-SELECT 
-  COUNT(*) as total_files,
-  COUNT(loaded_files.file_path) as loaded_files,
-  COUNT(*) - COUNT(loaded_files.file_path) as missing_files
-FROM gcs_files
-LEFT JOIN loaded_files USING (file_path);
+```sql
+-- For superpartitioned tables (vet/ref_ranges): check INFORMATION_SCHEMA.PARTITIONS
+SELECT table_name, SAFE_CAST(partition_id AS INT64) AS sample_id
+FROM `{project}.{dataset}.INFORMATION_SCHEMA.PARTITIONS`
+WHERE
+    REGEXP_CONTAINS(table_name, "^vet_[0-9]+$|^ref_ranges_[0-9]+$")
+    AND total_logical_bytes > 0
+    AND partition_id NOT LIKE "__%"
+    AND SAFE_CAST(partition_id AS INT64) IS NOT NULL
+
+UNION ALL
+
+-- For regular tables (sample_chromosome_ploidy): query the table directly
+SELECT DISTINCT "sample_chromosome_ploidy" AS table_name, sample_id
+FROM `{project}.{dataset}.sample_chromosome_ploidy`;
 ```
 
-> **Implementation detail**: Rather than passing hundreds of thousands of paths via a query parameter, write the list to Cloud Storage and load it into the staging table (or use `client.load_table_from_uri`) before running the comparison query.
+GCS files whose `(table_name, sample_id)` pair is absent from the above result set are reported as missing.
 
 **Outputs**:
 - `all_loaded`: Boolean (true if missing_files == 0)
@@ -616,8 +596,8 @@ call DiscoverParquetFiles {
 
 ### Unit Tests
 
-1. **Test File Grouping Logic**: Verify correct table name extraction from paths
-2. **Test Tracking Table Queries**: Ensure duplicate prevention works
+1. **Test File Grouping Logic**: Verify correct table name and sample ID extraction from paths
+2. **Test BigQuery Query Construction**: Ensure already-loaded detection queries are correct
 3. **Test Batch Creation**: Verify files are split into appropriate batch sizes
 
 ### Integration Tests
@@ -630,27 +610,24 @@ call DiscoverParquetFiles {
 ### Validation Queries
 
 ```sql
--- Check for duplicate file entries (should be 0)
-SELECT file_path, COUNT(*) as count
-FROM `{dataset}.parquet_load_status`
-GROUP BY file_path
-HAVING COUNT(*) > 1;
-
--- Check row counts match expectations
-SELECT table_name, SUM(rows_loaded) as total_rows
-FROM `{dataset}.parquet_load_status`
+-- Overall progress per table (via partition metadata)
+SELECT
+  table_name,
+  COUNT(*) as partitions_loaded,
+  SUM(total_logical_bytes) as total_bytes
+FROM `{dataset}.INFORMATION_SCHEMA.PARTITIONS`
+WHERE REGEXP_CONTAINS(table_name, "^vet_[0-9]+$|^ref_ranges_[0-9]+$")
+  AND total_logical_bytes > 0
+  AND partition_id NOT LIKE "__%"
 GROUP BY table_name
 ORDER BY table_name;
 
--- Find files not yet loaded
-WITH gcs_files AS (
-  SELECT file_path FROM UNNEST(@all_gcs_files) AS file_path
-)
-SELECT gcs_files.file_path
-FROM gcs_files
-LEFT JOIN `{dataset}.parquet_load_status` AS loaded
-  ON gcs_files.file_path = loaded.file_path
-WHERE loaded.file_path IS NULL;
+-- Ploidy samples loaded
+SELECT COUNT(DISTINCT sample_id) as samples_with_ploidy
+FROM `{dataset}.sample_chromosome_ploidy`;
+
+-- Find (table_name, sample_id) pairs present in GCS inventory but not yet loaded
+-- (Run parse_and_group_files.py or verify_all_loaded.py for automated detection)
 ```
 
 ---
@@ -710,22 +687,23 @@ WHERE loaded.file_path IS NULL;
 ### Monitoring Queries
 
 ```sql
--- Overall load status
-SELECT 
+-- Overall load status: partitions loaded per table
+SELECT
   table_name,
-  COUNT(*) as files_loaded,
-  SUM(rows_loaded) as total_rows,
-  MIN(load_timestamp) as first_load,
-  MAX(load_timestamp) as last_load
-FROM `{dataset}.parquet_load_status`
+  COUNT(*) AS partitions_loaded,
+  SUM(total_logical_bytes) AS total_bytes,
+  MIN(last_modified_time) AS first_modified,
+  MAX(last_modified_time) AS last_modified
+FROM `{project}.{dataset}.INFORMATION_SCHEMA.PARTITIONS`
+WHERE REGEXP_CONTAINS(table_name, "^vet_[0-9]+$|^ref_ranges_[0-9]+$")
+  AND total_logical_bytes > 0
+  AND partition_id NOT LIKE "__%"
 GROUP BY table_name
 ORDER BY table_name;
 
--- Recent loads
-SELECT *
-FROM `{dataset}.parquet_load_status`
-WHERE load_timestamp > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
-ORDER BY load_timestamp DESC;
+-- Ploidy samples loaded
+SELECT COUNT(DISTINCT sample_id) AS samples_with_ploidy
+FROM `{project}.{dataset}.sample_chromosome_ploidy`;
 ```
 
 ---

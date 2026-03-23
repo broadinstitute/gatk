@@ -2,19 +2,19 @@
 Unit tests for parquet loading scripts.
 
 Tests the core functionality of:
-- parse_and_group_files.py: Parsing GCS paths to table names
+- parse_and_group_files.py: Parsing GCS paths and building BigQuery queries
 - load_parquet_to_bq.py: Deterministic job ID generation
-- verify_all_loaded.py: Path normalization
 """
 
 import os
 import sys
 import unittest
+from unittest.mock import MagicMock, patch
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from parse_and_group_files import parse_table_and_sample_id_from_file_path
+from parse_and_group_files import parse_table_and_sample_id_from_file_path, get_already_loaded_tables_and_sample_ids
 from load_parquet_to_bq import _make_job_id
 
 
@@ -159,6 +159,86 @@ class TestPathNormalization(unittest.TestCase):
         path1 = "gs://bucket/File.parquet"
         path2 = "gs://bucket/file.parquet"
         self.assertNotEqual(path1, path2)
+
+
+class TestGetAlreadyLoadedTablesAndSampleIds(unittest.TestCase):
+    """Test that get_already_loaded_tables_and_sample_ids builds correct BigQuery queries."""
+
+    @patch("parse_and_group_files.bigquery")
+    def test_returns_set_of_tuples(self, mock_bq_module):
+        mock_client = MagicMock()
+        mock_bq_module.Client.return_value = mock_client
+        mock_row1 = MagicMock()
+        mock_row1.table_name = "vet_001"
+        mock_row1.sample_id = 42
+        mock_row2 = MagicMock()
+        mock_row2.table_name = "sample_chromosome_ploidy"
+        mock_row2.sample_id = 42
+        mock_client.query.return_value = [mock_row1, mock_row2]
+
+        result = get_already_loaded_tables_and_sample_ids("my-project", "my_dataset")
+
+        self.assertIsInstance(result, set)
+        self.assertIn(("vet_001", 42), result)
+        self.assertIn(("sample_chromosome_ploidy", 42), result)
+        self.assertEqual(len(result), 2)
+
+    @patch("parse_and_group_files.bigquery")
+    def test_query_contains_superpartitioned_regex(self, mock_bq_module):
+        mock_client = MagicMock()
+        mock_bq_module.Client.return_value = mock_client
+        mock_client.query.return_value = []
+
+        get_already_loaded_tables_and_sample_ids(
+            "proj", "ds",
+            superpartitioned_table_prefixes=["vet", "ref_ranges"],
+            regular_table_prefixes=[]
+        )
+
+        query_used = mock_client.query.call_args[0][0]
+        self.assertIn("INFORMATION_SCHEMA.PARTITIONS", query_used)
+        self.assertIn("^vet_[0-9]+$", query_used)
+        self.assertIn("^ref_ranges_[0-9]+$", query_used)
+        self.assertIn("total_logical_bytes > 0", query_used)
+
+    @patch("parse_and_group_files.bigquery")
+    def test_query_contains_regular_table(self, mock_bq_module):
+        mock_client = MagicMock()
+        mock_bq_module.Client.return_value = mock_client
+        mock_client.query.return_value = []
+
+        get_already_loaded_tables_and_sample_ids(
+            "proj", "ds",
+            superpartitioned_table_prefixes=[],
+            regular_table_prefixes=["sample_chromosome_ploidy"]
+        )
+
+        query_used = mock_client.query.call_args[0][0]
+        self.assertIn("sample_chromosome_ploidy", query_used)
+        self.assertNotIn("INFORMATION_SCHEMA", query_used)
+
+    @patch("parse_and_group_files.bigquery")
+    def test_empty_prefixes_returns_empty_set(self, mock_bq_module):
+        mock_client = MagicMock()
+        mock_bq_module.Client.return_value = mock_client
+
+        result = get_already_loaded_tables_and_sample_ids(
+            "proj", "ds",
+            superpartitioned_table_prefixes=[],
+            regular_table_prefixes=[]
+        )
+
+        self.assertEqual(result, set())
+        mock_client.query.assert_not_called()
+
+    @patch("parse_and_group_files.bigquery")
+    def test_raises_on_bigquery_error(self, mock_bq_module):
+        mock_client = MagicMock()
+        mock_bq_module.Client.return_value = mock_client
+        mock_client.query.side_effect = Exception("BQ error")
+
+        with self.assertRaises(Exception):
+            get_already_loaded_tables_and_sample_ids("proj", "ds")
 
 
 if __name__ == "__main__":

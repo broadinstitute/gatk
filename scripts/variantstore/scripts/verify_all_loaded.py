@@ -1,179 +1,143 @@
 #!/usr/bin/env python3
 """
 Verify that all Parquet files in GCS have been loaded to BigQuery.
-Compares GCS inventory against the tracking table.
+
+Idempotency is determined by inspecting BigQuery directly:
+- For vet_% and ref_ranges_% tables: checks INFORMATION_SCHEMA.PARTITIONS for non-empty partitions.
+- For sample_chromosome_ploidy: checks for the sample_id in the table itself.
+
+This approach does not require or consult a parquet_load_status tracking table.
 """
 
 import argparse
 import json
+import logging
+import os
 import sys
 
-from google.cloud import bigquery
+from parse_and_group_files import (
+    parse_table_and_sample_id_from_file_path,
+    get_already_loaded_tables_and_sample_ids,
+)
+
+log = logging.getLogger(__name__)
 
 
-def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir):
+def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
+                      superpartitioned_table_prefixes=None, regular_table_prefixes=None):
     """
-    Compare GCS files against tracking table to find missing loads.
-    
+    Compare GCS-derived (table_name, sample_id) pairs against what is actually
+    present in BigQuery to find loads that are missing.
+
     Args:
         project_id: BigQuery project ID
         dataset_name: BigQuery dataset name
         gcs_files_list: Path to file listing all GCS Parquet URIs
         output_dir: Directory to write results
-    
+        superpartitioned_table_prefixes: Prefixes for superpartitioned tables (default: ["vet", "ref_ranges"])
+        regular_table_prefixes: Prefixes for regular tables (default: ["sample_chromosome_ploidy"])
+
     Returns:
         Dictionary with verification results
     """
-    client = bigquery.Client(project=project_id)
-    tracking_table = f"{project_id}.{dataset_name}.parquet_load_status"
-    staging_table = f"{project_id}.{dataset_name}.__parquet_verification_staging"
-    
+    if superpartitioned_table_prefixes is None:
+        superpartitioned_table_prefixes = ["vet", "ref_ranges"]
+    if regular_table_prefixes is None:
+        regular_table_prefixes = ["sample_chromosome_ploidy"]
+
+    os.makedirs(output_dir, exist_ok=True)
+
     # Read GCS file list
     with open(gcs_files_list) as f:
         gcs_files = [line.strip() for line in f if line.strip()]
-    
+
     print(f"Found {len(gcs_files)} files in GCS")
-    
-    # Create staging table with GCS file list
-    # For large lists, we stage in BigQuery rather than using query parameters
-    print(f"Creating staging table {staging_table}...")
-    
-    schema = [bigquery.SchemaField("file_path", "STRING")]
-    
-    # Create table with 1-hour expiration
-    table = bigquery.Table(staging_table, schema=schema)
-    table.expires = None  # Will set via OPTIONS in query
-    
-    # Use LOAD to populate from file or inline data
-    # For simplicity, we'll use a CREATE TABLE AS SELECT with UNNEST
-    rows_to_insert = [{"file_path": path} for path in gcs_files]
-    
-    # Split into chunks to avoid request size limits
-    chunk_size = 10000
-    
-    # Create table with first chunk
-    create_query = f"""
-    CREATE OR REPLACE TABLE `{staging_table}`
-    OPTIONS(
-      expiration_timestamp = TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
-    ) AS
-    SELECT file_path
-    FROM UNNEST(@file_paths) AS file_path
-    """
-    
-    first_chunk = gcs_files[:chunk_size]
-    job_config = bigquery.QueryJobConfig(
-        query_parameters=[
-            bigquery.ArrayQueryParameter("file_paths", "STRING", first_chunk)
-        ]
-    )
-    
-    create_job = client.query(create_query, job_config=job_config)
-    create_job.result()
-    
-    print(f"  Created with {len(first_chunk)} rows")
-    
-    # Insert remaining chunks
-    for i in range(chunk_size, len(gcs_files), chunk_size):
-        chunk = gcs_files[i : i + chunk_size]
-        
-        insert_query = f"""
-        INSERT INTO `{staging_table}` (file_path)
-        SELECT file_path
-        FROM UNNEST(@file_paths) AS file_path
-        """
-        
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ArrayQueryParameter("file_paths", "STRING", chunk)
-            ]
+
+    # Parse each GCS file path to determine its (table_name, sample_id).
+    # Files whose path cannot be parsed are counted as unmatched and reported.
+    gcs_pairs_to_files = {}   # (table_name, sample_id) -> list of file paths
+    unmatched_files = []
+
+    for file_path in gcs_files:
+        table_name, sample_id = parse_table_and_sample_id_from_file_path(
+            file_path, superpartitioned_table_prefixes, regular_table_prefixes
         )
-        
-        insert_job = client.query(insert_query, job_config=job_config)
-        insert_job.result()
-        
-        print(f"  Inserted {len(chunk)} rows (total: {min(i + chunk_size, len(gcs_files))})")
-    
-    # Compare against tracking table
-    print(f"\nComparing against tracking table...")
-    
-    comparison_query = f"""
-    WITH gcs_files AS (
-      SELECT file_path FROM `{staging_table}`
-    ),
-    loaded_files AS (
-      SELECT file_path FROM `{tracking_table}`
+        if table_name is None:
+            unmatched_files.append(file_path)
+            continue
+        key = (table_name, sample_id)
+        gcs_pairs_to_files.setdefault(key, []).append(file_path)
+
+    if unmatched_files:
+        print(f"WARNING: Could not parse {len(unmatched_files)} file path(s); they will be excluded from verification:")
+        for p in unmatched_files[:20]:
+            print(f"  {p}")
+        if len(unmatched_files) > 20:
+            print(f"  ... and {len(unmatched_files) - 20} more")
+
+    total_files = len(gcs_files)
+    all_gcs_pairs = set(gcs_pairs_to_files.keys())
+    print(f"Parsed {len(all_gcs_pairs)} unique (table_name, sample_id) pairs from GCS file list")
+
+    # Query BigQuery for all already-loaded (table_name, sample_id) pairs.
+    print(f"\nQuerying BigQuery for loaded data...")
+    loaded_pairs = get_already_loaded_tables_and_sample_ids(
+        project_id, dataset_name,
+        superpartitioned_table_prefixes=superpartitioned_table_prefixes,
+        regular_table_prefixes=regular_table_prefixes,
     )
-    SELECT 
-      COUNT(*) as total_files,
-      COUNT(loaded_files.file_path) as loaded_files,
-      COUNT(*) - COUNT(loaded_files.file_path) as missing_files
-    FROM gcs_files
-    LEFT JOIN loaded_files USING (file_path)
-    """
-    
-    results = client.query(comparison_query)
-    row = list(results)[0]
-    
-    total_files = row.total_files
-    loaded_files = row.loaded_files
-    missing_files = row.missing_files
-    
+
+    # Determine which GCS (table_name, sample_id) pairs are not yet in BigQuery.
+    missing_pairs = all_gcs_pairs - loaded_pairs
+
+    # Count files as loaded/missing based on their pair's presence in BigQuery.
+    loaded_files_count = sum(
+        len(files) for pair, files in gcs_pairs_to_files.items() if pair not in missing_pairs
+    )
+    missing_files_count = total_files - loaded_files_count - len(unmatched_files)
+
     print(f"\nResults:")
-    print(f"  Total files in GCS: {total_files}")
-    print(f"  Files loaded: {loaded_files}")
-    print(f"  Files missing: {missing_files}")
-    
-    all_loaded = (missing_files == 0)
-    
-    # Get list of missing files if any
-    missing_files_list = None
-    if not all_loaded:
-        print(f"\nQuerying for missing file paths...")
-        
-        missing_query = f"""
-        WITH gcs_files AS (
-          SELECT file_path FROM `{staging_table}`
-        ),
-        loaded_files AS (
-          SELECT file_path FROM `{tracking_table}`
+    print(f"  Total files in GCS:       {total_files}")
+    print(f"  Unmatched (unparseable):  {len(unmatched_files)}")
+    print(f"  Files with loaded pairs:  {loaded_files_count}")
+    print(f"  Files with missing pairs: {missing_files_count}")
+    print(f"  Missing (table, sample_id) pairs: {len(missing_pairs)}")
+
+    all_loaded = (len(missing_pairs) == 0 and len(unmatched_files) == 0)
+
+    # Write list of missing file paths if there are any
+    missing_files_list_path = None
+    if missing_pairs:
+        missing_files_list_path = f"{output_dir}/missing_files.txt"
+        missing_file_paths = sorted(
+            path
+            for pair in sorted(missing_pairs)
+            for path in gcs_pairs_to_files.get(pair, [])
         )
-        SELECT gcs_files.file_path
-        FROM gcs_files
-        LEFT JOIN loaded_files USING (file_path)
-        WHERE loaded_files.file_path IS NULL
-        ORDER BY gcs_files.file_path
-        """
-        
-        missing_results = client.query(missing_query)
-        missing_paths = [row.file_path for row in missing_results]
-        
-        missing_files_list = f"{output_dir}/missing_files.txt"
-        with open(missing_files_list, 'w') as f:
-            for path in missing_paths:
+        with open(missing_files_list_path, 'w') as f:
+            for path in missing_file_paths:
                 f.write(f"{path}\n")
-        
-        print(f"  Wrote {len(missing_paths)} missing file paths to {missing_files_list}")
-    
-    # Clean up staging table
-    print(f"\nCleaning up staging table...")
-    client.delete_table(staging_table, not_found_ok=True)
-    
-    # Write results
+        print(f"\nWrote {len(missing_file_paths)} missing file path(s) to {missing_files_list_path}")
+        print(f"  Missing (table_name, sample_id) pairs:")
+        for pair in sorted(missing_pairs)[:20]:
+            print(f"    {pair}")
+        if len(missing_pairs) > 20:
+            print(f"    ... and {len(missing_pairs) - 20} more")
+
     results_dict = {
         "all_loaded": all_loaded,
         "total_files": total_files,
-        "loaded_files": loaded_files,
-        "missing_files": missing_files,
-        "missing_files_list": missing_files_list,
+        "loaded_files": loaded_files_count,
+        "missing_files": missing_files_count,
+        "missing_files_list": missing_files_list_path,
+        "unmatched_files": len(unmatched_files),
     }
-    
+
     results_file = f"{output_dir}/verification_results.json"
     with open(results_file, 'w') as f:
         json.dump(results_dict, f, indent=2)
-    
+
     print(f"\nResults written to {results_file}")
-    
     return results_dict
 
 
@@ -193,31 +157,45 @@ def main():
         required=True,
         help="Directory to write verification results"
     )
-    
+    parser.add_argument(
+        "--superpartitioned-table-prefixes",
+        nargs="+",
+        default=["vet", "ref_ranges"],
+        help="Table prefixes for superpartitioned tables (default: vet ref_ranges)"
+    )
+    parser.add_argument(
+        "--regular-table-prefixes",
+        nargs="+",
+        default=["sample_chromosome_ploidy"],
+        help="Table prefixes for regular (non-superpartitioned) tables (default: sample_chromosome_ploidy)"
+    )
+
     args = parser.parse_args()
-    
+
     results = verify_all_loaded(
         project_id=args.project_id,
         dataset_name=args.dataset_name,
         gcs_files_list=args.gcs_files_list,
         output_dir=args.output_dir,
+        superpartitioned_table_prefixes=args.superpartitioned_table_prefixes,
+        regular_table_prefixes=args.regular_table_prefixes,
     )
-    
-    # Print summary
+
     print("\n" + "="*60)
     if results["all_loaded"]:
         print("✓ SUCCESS: All files have been loaded!")
     else:
-        print(f"✗ INCOMPLETE: {results['missing_files']} files not yet loaded")
-        print(f"  See: {results['missing_files_list']}")
+        print(f"✗ INCOMPLETE: {results['missing_files']} file(s) not yet loaded")
+        if results.get("missing_files_list"):
+            print(f"  See: {results['missing_files_list']}")
     print("="*60)
-    
-    # Exit with error if not all loaded
+
     if not results["all_loaded"]:
         sys.exit(1)
-    
+
     return 0
 
 
 if __name__ == "__main__":
+    logging.basicConfig(stream=sys.stderr, level=logging.INFO, format='%(levelname)s - %(message)s')
     sys.exit(main())

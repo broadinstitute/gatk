@@ -5,23 +5,29 @@ Robust, fault-tolerant system for loading hundreds of thousands of Parquet files
 ## Overview
 
 This implementation loads Parquet files into BigQuery with:
-- **Idempotency**: Safe to run multiple times
+- **Idempotency**: Safe to run multiple times — already-loaded data is detected by inspecting BigQuery directly
 - **Fault Tolerance**: Survives VM preemptions and failures
 - **Deterministic Job IDs**: Can resume interrupted BigQuery load jobs
-- **Tracking**: Records which files have been loaded in a BigQuery table
-- **Verification**: Confirms all files were successfully loaded
+- **Verification**: Confirms all files were successfully loaded by querying BigQuery partition data
 
 ## Architecture
 
 ### Components
 
-1. **`create_tracking_table.py`**: Creates the BigQuery tracking table
-2. **`parse_and_group_files.py`**: Discovers Parquet files in GCS, groups by target table, filters already-loaded files
-3. **`load_parquet_to_bq.py`**: Loads Parquet files with deterministic job IDs and preemption recovery
-4. **`verify_all_loaded.py`**: Verifies all files were loaded successfully
-5. **`LoadParquetsToBigQuery.wdl`**: Cromwell workflow orchestrating all tasks
+1. **`parse_and_group_files.py`**: Discovers Parquet files in GCS, groups by target table, filters already-loaded files by querying `INFORMATION_SCHEMA.PARTITIONS` and the `sample_chromosome_ploidy` table directly
+2. **`load_parquet_to_bq.py`**: Loads Parquet files with deterministic job IDs and preemption recovery
+3. **`verify_all_loaded.py`**: Verifies all files were loaded successfully by comparing GCS-derived `(table_name, sample_id)` pairs against BigQuery partition data
 
 **Note**: All Python scripts are located in `scripts/variantstore/scripts/` and are packaged into the variants Docker image at `/app/`.
+
+### Idempotency via BigQuery Partition Inspection
+
+Idempotency is determined by querying BigQuery directly rather than maintaining a separate tracking table:
+
+- **Superpartitioned tables** (`vet_%`, `ref_ranges_%`): `INFORMATION_SCHEMA.PARTITIONS` is queried for non-empty partitions whose partition ID parses as a valid `sample_id`.
+- **Regular tables** (`sample_chromosome_ploidy`): The table itself is queried for distinct `sample_id` values.
+
+If a `(table_name, sample_id)` pair is already represented in BigQuery, all Parquet files for that pair are skipped without attempting a reload. This approach is more reliable than a tracking table because it reflects the actual committed state of BigQuery.
 
 ### GCS Directory Structure
 
@@ -106,15 +112,7 @@ pip install google-cloud-bigquery google-cloud-storage
 
 ## Usage
 
-### 1. Create Tracking Table
-
-```bash
-python3 scripts/variantstore/parquet_loading/create_tracking_table.py \
-  --project-id my-project \
-  --dataset-name my_dataset
-```
-
-### 2. Run Standalone Scripts (Local Testing)
+### 1. Run Standalone Scripts (Local Testing)
 
 **Note**: For production use, the scripts should be run from the Docker container. These examples show local execution for testing.
 
@@ -125,13 +123,14 @@ python3 scripts/variantstore/parquet_loading/create_tracking_table.py \
 gcloud storage ls --recursive gs://my-bucket/output_dir/ > all_objects.txt
 grep '\.parquet$' all_objects.txt > all_files.txt
 
-# Group by table
+# Group by table (already-loaded (table_name, sample_id) pairs are skipped automatically)
 python3 scripts/variantstore/scripts/parse_and_group_files.py \
   --input all_files.txt \
   --output-dir grouped_files \
   --project-id my-project \
   --dataset my_dataset \
-  --table-prefixes vet ref_ranges
+  --superpartitioned-table-prefixes vet ref_ranges \
+  --regular-table-prefixes sample_chromosome_ploidy
 ```
 
 #### Load Files for a Table
@@ -209,45 +208,30 @@ When a VM is preempted during loading:
 3. **On restart**: Call `client.get_job(job_id)` to check status
 4. **Resume or skip**: If job completed, record success; if failed/missing, resubmit
 
-### Tracking Table
+### Idempotency on Workflow Restart
 
-The `parquet_load_status` table records:
-- `file_path` (PRIMARY KEY)
-- `table_name`
-- `load_timestamp`
-- `load_job_id`
-- `file_size_bytes`
-- `rows_loaded`
-
-Files are only inserted after successful load, preventing duplicate loads.
+On workflow restart, `parse_and_group_files.py` queries BigQuery (`INFORMATION_SCHEMA.PARTITIONS` for `vet_%`/`ref_ranges_%` tables and `sample_chromosome_ploidy` directly) to determine which `(table_name, sample_id)` pairs are already loaded. Files belonging to already-loaded pairs are skipped. No separate tracking table is consulted or required.
 
 ## Monitoring
 
 ### Check Load Status
 
 ```sql
--- Overall progress
-SELECT 
+-- Overall progress per table (via partition metadata)
+SELECT
   table_name,
-  COUNT(*) as files_loaded,
-  SUM(rows_loaded) as total_rows,
-  MIN(load_timestamp) as first_load,
-  MAX(load_timestamp) as last_load
-FROM `my-project.my_dataset.parquet_load_status`
+  COUNT(*) as partitions_loaded,
+  SUM(total_logical_bytes) as total_bytes
+FROM `my-project.my_dataset.INFORMATION_SCHEMA.PARTITIONS`
+WHERE REGEXP_CONTAINS(table_name, "^vet_[0-9]+$|^ref_ranges_[0-9]+$")
+  AND total_logical_bytes > 0
+  AND partition_id NOT LIKE "__%"
 GROUP BY table_name
 ORDER BY table_name;
 
--- Recent loads
-SELECT *
-FROM `my-project.my_dataset.parquet_load_status`
-WHERE load_timestamp > TIMESTAMP_SUB(CURRENT_TIMESTAMP(), INTERVAL 1 HOUR)
-ORDER BY load_timestamp DESC;
-
--- Check for duplicates (should be 0)
-SELECT file_path, COUNT(*) as count
-FROM `my-project.my_dataset.parquet_load_status`
-GROUP BY file_path
-HAVING COUNT(*) > 1;
+-- Ploidy samples loaded
+SELECT COUNT(DISTINCT sample_id) as samples_with_ploidy
+FROM `my-project.my_dataset.sample_chromosome_ploidy`;
 ```
 
 ## Troubleshooting
@@ -268,7 +252,7 @@ HAVING COUNT(*) > 1;
 
 - Re-run the workflow (idempotent)
 - Check `missing_files.txt` for paths
-- Investigate load failures in tracking table
+- Investigate load failures by querying `INFORMATION_SCHEMA.PARTITIONS`
 
 ### Quota exceeded errors
 
@@ -302,12 +286,3 @@ See `docs/parquet_to_bigquery_loading_design.md` for detailed architecture, edge
 - BigQuery concurrent load jobs: ~100 per project/region (soft limit)
 - Maximum 10,000 URIs per load job
 - Tables and schemas must be pre-created
-- Tracking table must exist before loading
-
-## Future Enhancements
-
-- Pub/Sub triggers for incremental loading
-- Schema validation before loading
-- Automatic retry with exponential backoff
-- BigQuery table partitioning support
-- Cost tracking and reporting

@@ -262,14 +262,6 @@ workflow GvsImportGenomes {
         }
       }
 
-      call CreateParquetTrackingTable {
-        input:
-          project_id = project_id,
-          dataset_name = dataset_name,
-          go = select_first([ConfigureParquetLifecycle.done, true]),
-          variants_docker = effective_variants_docker,
-      }
-
       # Discover and load Parquet files into BigQuery after all data has been created.
       call DiscoverParquetFiles {
         input:
@@ -279,7 +271,6 @@ workflow GvsImportGenomes {
           regular_table_prefixes = ["sample_chromosome_ploidy"],
           superpartitioned_table_prefixes = ["vet", "ref_ranges"],
           go = flatten([
-            select_all([CreateParquetTrackingTable.done]),
             select_all([ConfigureParquetLifecycle.done]),
             select_all(GenerateParquetFilesFromInputGVCFs.done)
           ]),
@@ -289,7 +280,6 @@ workflow GvsImportGenomes {
       scatter (fofn in DiscoverParquetFiles.file_fofns) {
         call LoadParquetFilesToBQ {
           input:
-            go = CreateParquetTrackingTable.done,
             project_id = project_id,
             dataset_name = dataset_name,
             fofn_file = fofn,
@@ -1168,36 +1158,6 @@ EOF
   }
 }
 
-task CreateParquetTrackingTable {
-  input {
-    Boolean go
-    String project_id
-    String dataset_name
-    String variants_docker
-  }
-
-  command <<<
-    PS4='\D{+%F %T} \w $ '
-    set -o errexit -o nounset -o xtrace -o pipefail
-
-    python3 /app/create_tracking_table.py \
-      --project-id ~{project_id} \
-      --dataset-name ~{dataset_name}
-  >>>
-
-  runtime {
-    docker: variants_docker
-    memory: "2 GB"
-    disks: "local-disk 10 HDD"
-    preemptible: 3
-    cpu: 1
-  }
-
-  output {
-    Boolean done = true
-  }
-}
-
 task DiscoverParquetFiles {
   input {
     String output_gcs_dir
@@ -1258,7 +1218,6 @@ task DiscoverParquetFiles {
 
 task LoadParquetFilesToBQ {
   input {
-    Boolean go
     String project_id
     String dataset_name
     File fofn_file
