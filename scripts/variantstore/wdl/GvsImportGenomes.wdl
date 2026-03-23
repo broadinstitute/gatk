@@ -18,6 +18,9 @@ workflow GvsImportGenomes {
 
     Boolean skip_loading_vqsr_fields = false
     Boolean use_compressed_references = false
+    # Turn Parquet lifecycle configuration off by default as pet service accounts don't seem to automatically get the
+    # required permissions on the workspace bucket for this to work.
+    Boolean configure_parquet_lifecycle = false
 
     # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
     String drop_state = "NONE"
@@ -250,18 +253,20 @@ workflow GvsImportGenomes {
       String defined_parquet_output_dir = select_first([parquet_output_gcs_dir])
 
       # Set up lifecycle rules for parquet directories before loading
-      call ConfigureParquetLifecycle {
-        input:
-          output_gcs_dir = defined_parquet_output_dir,
-          billing_project_id = billing_project_id,
-          variants_docker = effective_variants_docker,
+      if (configure_parquet_lifecycle) {
+        call ConfigureParquetLifecycle {
+          input:
+            output_gcs_dir = defined_parquet_output_dir,
+            billing_project_id = billing_project_id,
+            variants_docker = effective_variants_docker,
+        }
       }
 
       call CreateParquetTrackingTable {
         input:
           project_id = project_id,
           dataset_name = dataset_name,
-          go = ConfigureParquetLifecycle.done,
+          go = select_first([ConfigureParquetLifecycle.done, true]),
           variants_docker = effective_variants_docker,
       }
 
@@ -273,7 +278,11 @@ workflow GvsImportGenomes {
           dataset_name = dataset_name,
           regular_table_prefixes = ["sample_chromosome_ploidy"],
           superpartitioned_table_prefixes = ["vet", "ref_ranges"],
-          go = flatten([[ConfigureParquetLifecycle.done], select_all(GenerateParquetFilesFromInputGVCFs.done)]),
+          go = flatten([
+            select_all([CreateParquetTrackingTable.done]),
+            select_all([ConfigureParquetLifecycle.done]),
+            select_all(GenerateParquetFilesFromInputGVCFs.done)
+          ]),
           variants_docker = effective_variants_docker,
       }
 
@@ -474,9 +483,10 @@ task ProcessInputGVCFs {
       `~{temp_table}` AS temp ON
       samples.sample_name = temp.sample_name WHERE
       samples.sample_id NOT IN (
-        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
-        UNION DISTINCT
-        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_variant_data`
+        SELECT DISTINCT ref.sample_id FROM
+          `~{project_id}.~{dataset_name}.samples_with_reference_data` ref JOIN
+          `~{project_id}.~{dataset_name}.samples_with_variant_data` vet USING (sample_id) JOIN
+          `~{project_id}.~{dataset_name}.sample_chromosome_ploidy` ploidy USING(sample_id)
       ) AND
       samples.withdrawn IS NULL
 
@@ -771,9 +781,10 @@ task GetUningestedSampleIds {
       `~{temp_table}` AS temp ON
       samples.sample_name = temp.sample_name WHERE
       samples.sample_id NOT IN (
-        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
-        UNION DISTINCT
-        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_variant_data`
+        SELECT DISTINCT ref.sample_id FROM
+          `~{project_id}.~{dataset_name}.samples_with_reference_data` ref JOIN
+          `~{project_id}.~{dataset_name}.samples_with_variant_data` vet USING (sample_id) JOIN
+          `~{project_id}.~{dataset_name}.sample_chromosome_ploidy` ploidy USING(sample_id)
       ) AND
       samples.withdrawn IS NULL
 
@@ -1009,8 +1020,7 @@ task CreateSampleDataViews {
 
         SET query_header_existence_clause = """
 
-        UNION DISTINCT
-        SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_header_data`
+        JOIN `~{project_id}.~{dataset_name}.samples_with_header_data` header USING(sample_id)
 
         """;
       ELSE
@@ -1021,11 +1031,13 @@ task CreateSampleDataViews {
 
         CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_all_data` AS
         (
-          SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_variant_data`
-          UNION DISTINCT
-          SELECT sample_id FROM `~{project_id}.~{dataset_name}.samples_with_reference_data`
-
-      """ || query_header_existence_clause || ");";
+          SELECT DISTINCT ref.sample_id FROM
+            `~{project_id}.~{dataset_name}.samples_with_reference_data` ref JOIN
+            `~{project_id}.~{dataset_name}.samples_with_variant_data` vet USING (sample_id) JOIN
+            `~{project_id}.~{dataset_name}.sample_chromosome_ploidy` ploidy USING(sample_id)
+      """ || query_header_existence_clause || """
+        );
+      """;
 
       EXECUTE IMMEDIATE create_all_sample_data_view;
       END;
