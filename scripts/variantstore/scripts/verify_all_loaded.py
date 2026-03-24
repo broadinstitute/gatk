@@ -51,7 +51,7 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
     with open(gcs_files_list) as f:
         gcs_files = [line.strip() for line in f if line.strip()]
 
-    print(f"Found {len(gcs_files)} files in GCS")
+    log.info(f"Found {len(gcs_files)} files in GCS")
 
     # Parse each GCS file path to determine its (table_name, sample_id).
     # Files whose path cannot be parsed are counted as unmatched and reported.
@@ -69,18 +69,18 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
         gcs_pairs_to_files.setdefault(key, []).append(file_path)
 
     if unmatched_files:
-        print(f"WARNING: Could not parse {len(unmatched_files)} file path(s); they will be excluded from verification:")
+        log.warning(f"Could not parse {len(unmatched_files)} file path(s); they will be excluded from verification:")
         for p in unmatched_files[:20]:
-            print(f"  {p}")
+            log.warning(f"  {p}")
         if len(unmatched_files) > 20:
-            print(f"  ... and {len(unmatched_files) - 20} more")
+            log.warning(f"  ... and {len(unmatched_files) - 20} more")
 
     total_files = len(gcs_files)
     all_gcs_pairs = set(gcs_pairs_to_files.keys())
-    print(f"Parsed {len(all_gcs_pairs)} unique (table_name, sample_id) pairs from GCS file list")
+    log.info(f"Parsed {len(all_gcs_pairs)} unique (table_name, sample_id) pairs from GCS file list")
 
     # Query BigQuery for all already-loaded (table_name, sample_id) pairs.
-    print(f"\nQuerying BigQuery for loaded data...")
+    log.info("Querying BigQuery for loaded data...")
     loaded_pairs = get_already_loaded_tables_and_sample_ids(
         project_id, dataset_name,
         superpartitioned_table_prefixes=superpartitioned_table_prefixes,
@@ -96,12 +96,12 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
     )
     missing_files_count = total_files - loaded_files_count - len(unmatched_files)
 
-    print(f"\nResults:")
-    print(f"  Total files in GCS:       {total_files}")
-    print(f"  Unmatched (unparseable):  {len(unmatched_files)}")
-    print(f"  Files with loaded pairs:  {loaded_files_count}")
-    print(f"  Files with missing pairs: {missing_files_count}")
-    print(f"  Missing (table, sample_id) pairs: {len(missing_pairs)}")
+    log.info("Results:")
+    log.info(f"  Total files in GCS:       {total_files}")
+    log.info(f"  Unmatched (unparseable):  {len(unmatched_files)}")
+    log.info(f"  Files with loaded pairs:  {loaded_files_count}")
+    log.info(f"  Files with missing pairs: {missing_files_count}")
+    log.info(f"  Missing (table, sample_id) pairs: {len(missing_pairs)}")
 
     all_loaded = (len(missing_pairs) == 0 and len(unmatched_files) == 0)
 
@@ -117,12 +117,12 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
         with open(missing_files_list_path, 'w') as f:
             for path in missing_file_paths:
                 f.write(f"{path}\n")
-        print(f"\nWrote {len(missing_file_paths)} missing file path(s) to {missing_files_list_path}")
-        print(f"  Missing (table_name, sample_id) pairs:")
+        log.error(f"Wrote {len(missing_file_paths)} missing file path(s) to {missing_files_list_path}")
+        log.error(f"Missing (table_name, sample_id) pairs:")
         for pair in sorted(missing_pairs)[:20]:
-            print(f"    {pair}")
+            log.error(f"  {pair}")
         if len(missing_pairs) > 20:
-            print(f"    ... and {len(missing_pairs) - 20} more")
+            log.error(f"  ... and {len(missing_pairs) - 20} more")
 
     results_dict = {
         "all_loaded": all_loaded,
@@ -137,7 +137,7 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
     with open(results_file, 'w') as f:
         json.dump(results_dict, f, indent=2)
 
-    print(f"\nResults written to {results_file}")
+    log.info(f"Results written to {results_file}")
     return results_dict
 
 
@@ -181,14 +181,12 @@ def main():
         regular_table_prefixes=args.regular_table_prefixes,
     )
 
-    print("\n" + "="*60)
     if results["all_loaded"]:
-        print("✓ SUCCESS: All files have been loaded!")
+        log.info("✓ SUCCESS: All files have been loaded!")
     else:
-        print(f"✗ INCOMPLETE: {results['missing_files']} file(s) not yet loaded")
+        log.error(f"✗ INCOMPLETE: {results['missing_files']} file(s) not yet loaded")
         if results.get("missing_files_list"):
-            print(f"  See: {results['missing_files_list']}")
-    print("="*60)
+            log.error(f"  See: {results['missing_files_list']}")
 
     if not results["all_loaded"]:
         sys.exit(1)
