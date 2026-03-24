@@ -72,8 +72,6 @@ def get_already_loaded_tables_and_sample_ids(project_id, dataset_name,
     if regular_table_prefixes is None:
         regular_table_prefixes = ["sample_chromosome_ploidy"]
 
-    client = bigquery.Client(project=project_id)
-
     sub_queries = []
 
     if superpartitioned_table_prefixes:
