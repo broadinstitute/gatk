@@ -14,8 +14,11 @@ from pathlib import Path
 
 try:
     from google.cloud import bigquery
-except ImportError:
-    bigquery = None  # type: ignore  # will fail at runtime if BigQuery calls are made without the package installed
+except ImportError as exc:
+    raise ImportError(
+        "google-cloud-bigquery is required to run this script. "
+        "Install it with 'pip install google-cloud-bigquery'."
+    ) from exc
 
 
 log = logging.getLogger(__name__)
