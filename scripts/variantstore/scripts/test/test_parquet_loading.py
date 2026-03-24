@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from parse_and_group_files import parse_table_and_sample_id_from_file_path, get_already_loaded_tables_and_sample_ids
+from parse_and_group_files import parse_table_and_sample_id_from_file_path, get_already_loaded_tables_and_sample_ids, _validate_table_prefixes
 from load_parquet_to_bq import _make_job_id
 
 
@@ -159,6 +159,52 @@ class TestPathNormalization(unittest.TestCase):
         path1 = "gs://bucket/File.parquet"
         path2 = "gs://bucket/file.parquet"
         self.assertNotEqual(path1, path2)
+
+
+class TestValidateTablePrefixes(unittest.TestCase):
+    """Test prefix validation enforced by _validate_table_prefixes."""
+
+    def test_valid_prefixes_do_not_raise(self):
+        _validate_table_prefixes(["vet", "ref_ranges"], ["sample_chromosome_ploidy"])
+
+    def test_empty_lists_do_not_raise(self):
+        _validate_table_prefixes([], [])
+
+    def test_single_char_prefix_is_invalid(self):
+        # Regex requires at least 2 characters (letter + one or more alnum/underscore)
+        with self.assertRaises(ValueError):
+            _validate_table_prefixes(["v"], [])
+
+    def test_prefix_starting_with_digit_is_invalid(self):
+        with self.assertRaises(ValueError):
+            _validate_table_prefixes(["1vet"], [])
+
+    def test_prefix_with_hyphen_is_invalid(self):
+        with self.assertRaises(ValueError):
+            _validate_table_prefixes(["ref-ranges"], [])
+
+    def test_prefix_with_space_is_invalid(self):
+        with self.assertRaises(ValueError):
+            _validate_table_prefixes([], ["bad prefix"])
+
+    def test_prefix_with_backtick_is_invalid(self):
+        # Backtick is especially dangerous as prefixes appear inside BigQuery backtick-quoted identifiers
+        with self.assertRaises(ValueError):
+            _validate_table_prefixes(["`vet`"], [])
+
+    def test_error_message_lists_all_invalid_prefixes(self):
+        with self.assertRaises(ValueError) as ctx:
+            _validate_table_prefixes(["bad-one"], ["bad two"])
+        msg = str(ctx.exception)
+        self.assertIn("bad-one", msg)
+        self.assertIn("bad two", msg)
+
+    def test_parse_path_raises_on_invalid_prefix(self):
+        with self.assertRaises(ValueError):
+            parse_table_and_sample_id_from_file_path(
+                "gs://bucket/vet/001/vet_001_1_file.parquet",
+                superpartitioned_table_prefixes=["vet; DROP TABLE foo--"],
+            )
 
 
 class TestGetAlreadyLoadedTablesAndSampleIds(unittest.TestCase):

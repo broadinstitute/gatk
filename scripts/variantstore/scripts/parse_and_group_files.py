@@ -21,6 +21,27 @@ except ImportError:
 log = logging.getLogger(__name__)
 
 
+_PREFIX_RE = re.compile(r'^[a-zA-Z][A-Za-z0-9_]+$')
+
+
+def _validate_table_prefixes(superpartitioned_table_prefixes, regular_table_prefixes):
+    """
+    Raise ValueError if any prefix does not match '^[a-zA-Z][A-Za-z0-9_]+$'.
+
+    Prefixes are embedded in SQL queries and regex patterns, so invalid values
+    could produce malformed queries or silently incorrect behaviour.
+    """
+    invalid = [
+        p for p in (superpartitioned_table_prefixes + regular_table_prefixes)
+        if not _PREFIX_RE.match(p)
+    ]
+    if invalid:
+        raise ValueError(
+            f"Table prefix(es) contain invalid characters (must match "
+            f"'^[a-zA-Z][A-Za-z0-9_]+$'): {invalid}"
+        )
+
+
 def parse_table_and_sample_id_from_file_path(file_path, superpartitioned_table_prefixes=None, regular_table_prefixes=None):
     """
     Extract table name and sample_id from superpartitioned or regular (non-superpartitioned) GCS paths.
@@ -34,6 +55,9 @@ def parse_table_and_sample_id_from_file_path(file_path, superpartitioned_table_p
         regular_table_prefixes = ["sample_chromosome_ploidy"]
     if superpartitioned_table_prefixes is None:
         superpartitioned_table_prefixes = ["vet", "ref_ranges"]
+
+    _validate_table_prefixes(superpartitioned_table_prefixes, regular_table_prefixes)
+
     for prefix in superpartitioned_table_prefixes:
         # Parse prefix + superpartition, sample id out of filename.
         pattern = f'/({prefix}_[0-9]+)_([0-9]+)_[^/]+$'
@@ -71,6 +95,8 @@ def get_already_loaded_tables_and_sample_ids(project_id, dataset_name,
         superpartitioned_table_prefixes = ["vet", "ref_ranges"]
     if regular_table_prefixes is None:
         regular_table_prefixes = ["sample_chromosome_ploidy"]
+
+    _validate_table_prefixes(superpartitioned_table_prefixes, regular_table_prefixes)
 
     sub_queries = []
 
