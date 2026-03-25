@@ -20,12 +20,11 @@ import java.nio.file.StandardCopyOption;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 
 public class TrainSVGenotypingTest extends GatkToolIntegrationTest {
 
-    // If true, update the expected outputs in tests that assert an exact or approximate match vs. prior output,
-    // instead of actually running the tests.
     public static final boolean UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS = false;
 
     public static final String TOOL_TEST_DIR = toolsTestDir + "walkers/sv/TrainSVGenotyping/";
@@ -34,14 +33,10 @@ public class TrainSVGenotypingTest extends GatkToolIntegrationTest {
 
     public static final double FLOAT_TOLERANCE = 1e-4;
 
-    // Float FORMAT fields that may have small numerical jitter across platforms
     public static final List<String> FORMAT_ATTRIBUTES_WITH_JITTER = Arrays.asList(
             GATKSVVCFConstants.DEPTH_MEDIAN_COPY_RATIO
     );
 
-    /**
-     * Make sure that someone didn't leave the UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS toggle turned on.
-     */
     @Test
     public void assertThatExpectedOutputUpdateToggleIsDisabled() {
         Assert.assertFalse(UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS,
@@ -50,7 +45,6 @@ public class TrainSVGenotypingTest extends GatkToolIntegrationTest {
 
     @Test
     public void testTrainSVGenotyping() throws IOException {
-        // Input files
         final File vcfFile = new File(TOOL_TEST_DIR, "train_sv_genotyping_test.vcf.gz");
         final File peFile = new File(LARGE_FILE_TEST_DIR, "train_sv_genotyping_test.pe.txt.gz");
         final File srFile = new File(LARGE_FILE_TEST_DIR, "train_sv_genotyping_test.sr.txt.gz");
@@ -59,11 +53,9 @@ public class TrainSVGenotypingTest extends GatkToolIntegrationTest {
         final File depthExclude = new File(TOOL_TEST_DIR, "train_sv_genotyping_test.depth_exclude.bed.gz");
         final File pesrExclude = new File(TOOL_TEST_DIR, "train_sv_genotyping_test.pesr_exclude.bed.gz");
 
-        // Reuse ploidy table and median coverage from AggregateSVEvidence (same 1KG sample set)
         final File ploidyTable = new File(AGGREGATE_SV_TEST_DIR, "1kg_ref_panel_v1.ploidy_table.tsv");
         final File coverageFile = new File(AGGREGATE_SV_TEST_DIR, "aggregate_sv_test.medianCov.tsv");
 
-        // Output locations
         final String outputName = "train_sv_test";
         final Path outputDir;
         final String outputVcfPath;
@@ -92,7 +84,6 @@ public class TrainSVGenotypingTest extends GatkToolIntegrationTest {
 
         runCommandLine(args, TrainSVGenotyping.class.getSimpleName());
 
-        // Verify output parameter table files were created
         final File rdParamsFile = outputDir.resolve(outputName + ".rd_geno_params.tsv").toFile();
         final File peParamsFile = outputDir.resolve(outputName + ".pe_geno_params.tsv").toFile();
         final File srParamsFile = outputDir.resolve(outputName + ".sr_geno_params.tsv").toFile();
@@ -101,14 +92,12 @@ public class TrainSVGenotypingTest extends GatkToolIntegrationTest {
         Assert.assertTrue(srParamsFile.exists(), "SR genotype parameters file should exist");
 
         if (UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS) {
-            // Copy param tables to expected location
             Files.copy(rdParamsFile.toPath(), Path.of(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.rd_geno_params.tsv"), StandardCopyOption.REPLACE_EXISTING);
             Files.copy(peParamsFile.toPath(), Path.of(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.pe_geno_params.tsv"), StandardCopyOption.REPLACE_EXISTING);
             Files.copy(srParamsFile.toPath(), Path.of(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.sr_geno_params.tsv"), StandardCopyOption.REPLACE_EXISTING);
             return;
         }
 
-        // Compare VCF output
         final File expectedVcfFile = new File(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.vcf.gz");
         final Pair<VCFHeader, List<VariantContext>> expected = VariantContextTestUtils.readEntireVCFIntoMemory(expectedVcfFile.getPath());
         final Pair<VCFHeader, List<VariantContext>> output = VariantContextTestUtils.readEntireVCFIntoMemory(outputVcfPath);
@@ -123,7 +112,6 @@ public class TrainSVGenotypingTest extends GatkToolIntegrationTest {
             VariantContextTestUtils.assertVariantContextsAreEqual(actualVariant, expectedVariant,
                     Collections.emptyList(), FORMAT_ATTRIBUTES_WITH_JITTER);
 
-            // Check float FORMAT fields with tolerance
             for (final Genotype expectedGenotype : expectedVariant.getGenotypes()) {
                 final Genotype actualGenotype = actualVariant.getGenotype(expectedGenotype.getSampleName());
                 for (final String attribute : FORMAT_ATTRIBUTES_WITH_JITTER) {
@@ -148,10 +136,61 @@ public class TrainSVGenotypingTest extends GatkToolIntegrationTest {
             }
         }
 
-        // Compare parameter table files
         assertTsvFilesEqual(rdParamsFile, new File(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.rd_geno_params.tsv"));
         assertTsvFilesEqual(peParamsFile, new File(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.pe_geno_params.tsv"));
         assertTsvFilesEqual(srParamsFile, new File(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.sr_geno_params.tsv"));
+    }
+
+    @Test
+    public void testTrainSVGenotypingAcceptsDownsamplingArgument() throws IOException {
+        final File vcfFile = new File(TOOL_TEST_DIR, "train_sv_genotyping_test.vcf.gz");
+        final File peFile = new File(LARGE_FILE_TEST_DIR, "train_sv_genotyping_test.pe.txt.gz");
+        final File srFile = new File(LARGE_FILE_TEST_DIR, "train_sv_genotyping_test.sr.txt.gz");
+        final File rdFile = new File(LARGE_FILE_TEST_DIR, "train_sv_genotyping_test.rd.txt.gz");
+        final File trainingIntervals = new File(TOOL_TEST_DIR, "train_sv_genotyping_test.training_intervals.bed");
+        final File depthExclude = new File(TOOL_TEST_DIR, "train_sv_genotyping_test.depth_exclude.bed.gz");
+        final File ploidyTable = new File(AGGREGATE_SV_TEST_DIR, "1kg_ref_panel_v1.ploidy_table.tsv");
+        final File coverageFile = new File(AGGREGATE_SV_TEST_DIR, "aggregate_sv_test.medianCov.tsv");
+
+        final String outputName = "train_sv_test_downsampling_arg";
+        final Path outputDir = createTempDir("trainSVGenotypingDownsamplingArg").toPath();
+        final String outputVcfPath = createTempFile("train_sv_genotyping_downsampling", ".vcf.gz").getAbsolutePath();
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF(vcfFile)
+                .addOutput(outputVcfPath)
+                .addReference(hg38Reference)
+                .add(TrainSVGenotyping.DEPTH_EVIDENCE_FILE_PATH_LONG_NAME, rdFile)
+                .add(AggregateSVEvidence.DISCORDANT_PAIRS_LONG_NAME, peFile)
+                .add(AggregateSVEvidence.SPLIT_READ_LONG_NAME, srFile)
+                .add(TrainSVGenotyping.MEDIAN_COUNTS_FILE_PATH_LONG_NAME, coverageFile)
+                .add(SVClusterWalker.PLOIDY_TABLE_LONG_NAME, ploidyTable)
+                .add(TrainSVGenotyping.TRAINING_INTERVALS_LONG_NAME, trainingIntervals)
+                .add(TrainSVGenotyping.DEPTH_EXCLUSION_INTERVALS_LONG_NAME, depthExclude)
+                .add(TrainSVGenotyping.MIN_PESER_SIZE_LONG_NAME, 0)
+                .add(TrainSVGenotyping.TABLES_DIR_LONG_NAME, outputDir.toString())
+                .add(TrainSVGenotyping.TABLES_NAME_LONG_NAME, outputName)
+                .add(TrainSVGenotyping.MAX_TRAINING_RECORDS_LONG_NAME, 50);
+
+        runCommandLine(args, TrainSVGenotyping.class.getSimpleName());
+
+        Assert.assertTrue(outputDir.resolve(outputName + ".rd_geno_params.tsv").toFile().exists(), "RD genotype parameters file should exist");
+        Assert.assertTrue(outputDir.resolve(outputName + ".pe_geno_params.tsv").toFile().exists(), "PE genotype parameters file should exist");
+        Assert.assertTrue(outputDir.resolve(outputName + ".sr_geno_params.tsv").toFile().exists(), "SR genotype parameters file should exist");
+        Assert.assertTrue(new File(outputVcfPath).exists(), "Output VCF should exist when downsampling arguments are provided");
+    }
+
+    @Test
+    public void testSelectEveryNthEligibleRecords() {
+        final LinkedHashSet<String> eligibleIds = new LinkedHashSet<>();
+        for (int i = 0; i < 12; i++) {
+            eligibleIds.add("var" + i);
+        }
+
+        final LinkedHashSet<String> selected = TrainSVGenotyping.selectEveryNthEligibleRecords(eligibleIds, 5);
+
+        Assert.assertEquals(selected, new LinkedHashSet<>(Arrays.asList("var0", "var3", "var6", "var9")),
+                "Downsampling should deterministically keep every nth eligible record in iteration order");
     }
 
     private static void assertTsvFilesEqual(final File actual, final File expected) throws IOException {
@@ -165,7 +204,6 @@ public class TrainSVGenotypingTest extends GatkToolIntegrationTest {
             Assert.assertEquals(actualTokens.length, expectedTokens.length,
                     "Line " + (i + 1) + " should have the same number of columns");
             for (int j = 0; j < expectedTokens.length; j++) {
-                // Try numeric comparison with tolerance, fall back to exact string match
                 try {
                     final double expectedVal = Double.parseDouble(expectedTokens[j]);
                     final double actualVal = Double.parseDouble(actualTokens[j]);

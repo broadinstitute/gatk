@@ -271,13 +271,13 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         )
         public int splitReadQueryLookahead = FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES;
 
-            @Argument(
-                fullName = MAX_TRAINING_RECORDS_LONG_NAME,
-                doc = "Maximum number of eligible PE/SR training records to use before deterministic every-nth downsampling is applied. Set to 0 to disable the cap.",
-                minValue = 0,
-                optional = true
-            )
-            public int maxTrainingRecords = 100_000;
+        @Argument(
+            fullName = MAX_TRAINING_RECORDS_LONG_NAME,
+            doc = "Maximum number of eligible PE/SR training records to use before deterministic every-nth downsampling is applied. Set to 0 to disable the cap.",
+            minValue = 0,
+            optional = true
+        )
+        public int maxTrainingRecords = 100_000;
 
     @Argument(
             fullName = AggregateDepthEvidence.MAX_QUALITY_LONG_NAME,
@@ -498,6 +498,17 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
             return eligibleIds;
         }
 
+        final LinkedHashSet<String> selectedIds = selectEveryNthEligibleRecords(eligibleIds, maxTrainingRecords);
+        final int stride = (int) Math.ceil(eligibleIds.size() / (double) maxTrainingRecords);
+        emitTrainingSubsetOnly = true;
+        logger.info("Downsampled " + label + " training records from " + eligibleIds.size() + " to " + selectedIds.size() + " using stride " + stride);
+        return selectedIds;
+    }
+
+    @VisibleForTesting
+    static LinkedHashSet<String> selectEveryNthEligibleRecords(final LinkedHashSet<String> eligibleIds, final int maxTrainingRecords) {
+        Utils.nonNull(eligibleIds);
+        Utils.validateArg(maxTrainingRecords > 0, "maxTrainingRecords must be greater than zero when downsampling");
         final int stride = (int) Math.ceil(eligibleIds.size() / (double) maxTrainingRecords);
         final LinkedHashSet<String> selectedIds = new LinkedHashSet<>();
         int index = 0;
@@ -507,8 +518,6 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
             }
             index++;
         }
-        emitTrainingSubsetOnly = true;
-        logger.info("Downsampled " + label + " training records from " + eligibleIds.size() + " to " + selectedIds.size() + " using stride " + stride);
         return selectedIds;
     }
 
