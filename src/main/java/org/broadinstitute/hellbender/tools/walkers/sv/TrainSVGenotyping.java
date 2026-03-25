@@ -261,7 +261,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
             minValue = 0,
             optional = true
         )
-        public int discordantPairQueryLookahead = FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES;
+        public int discordantPairQueryLookahead = 0;
 
         @Argument(
             fullName = SPLIT_READ_QUERY_LOOKAHEAD_LONG_NAME,
@@ -269,7 +269,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
             minValue = 0,
             optional = true
         )
-        public int splitReadQueryLookahead = FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES;
+        public int splitReadQueryLookahead = 0;
 
         @Argument(
             fullName = MAX_TRAINING_RECORDS_LONG_NAME,
@@ -798,8 +798,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     }
 
     private void applyDiscordantPairThirdPass(final SVCallRecord record) {
-        if (discordantPairCollectionEnabled()
-                && (!emitTrainingSubsetOnly || retainDiscordantPairTrainingRecord(record))) {
+        if (discordantPairCollectionEnabled()) {
             final List<DiscordantPairEvidence> discordantPairEvidence = discordantPairCollector.collectEvidence(record);
             final DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult genotypeResult = discordantPairGenotyper.genotype(record, discordantPairEvidence, discordantPairParameters, masterSampleList);
             if (discordantPairGenotypeResults.containsKey(record.getContigA())) {
@@ -843,8 +842,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     }
 
     private void applySplitReadThirdPass(final SVCallRecord record) {
-        if (splitReadCollectionEnabled()
-                && (!emitTrainingSubsetOnly || retainSplitReadTrainingRecord(record))) {
+        if (splitReadCollectionEnabled()) {
             final List<SplitReadEvidence> startSplitReads = splitReadStartCollector.collectEvidence(record);
             final List<SplitReadEvidence> endSplitReads = splitReadEndCollector.collectEvidence(record);
             final DepthEvidenceGenotyper.DepthGenotypeResult depthGenotype = depthGenotypeResults.get(record.getId());
