@@ -395,6 +395,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         logger.info("Starting pass 1 - discordant pair evidence collection");
         for (final SVCallRecord record : cachedRecords) {
             applyDiscordantPairFirstPass(record);
+            progressMeter.update(getProgressInterval(record));
         }
         logger.info("Finished pass 1");
         afterNthPass(1);
@@ -405,6 +406,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         logger.info("Starting pass 2 - discordant pair parameter estimation");
         for (final SVCallRecord record : cachedRecords) {
             applyDiscordantPairSecondPass(record);
+            progressMeter.update(getProgressInterval(record));
         }
         logger.info("Finished pass 2");
         afterNthPass(2);
@@ -417,6 +419,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         for (final SVCallRecord record : cachedRecords) {
             applyDiscordantPairThirdPass(record);
             applySplitReadFirstPass(record);
+            progressMeter.update(getProgressInterval(record));
         }
         logger.info("Finished pass 3");
         afterNthPass(3);
@@ -431,6 +434,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         logger.info("Starting pass 4 - split read parameter estimation");
         for (final SVCallRecord record : cachedRecords) {
             applySplitReadSecondPass(record);
+            progressMeter.update(getProgressInterval(record));
         }
         logger.info("Finished pass 4");
         afterNthPass(5);
@@ -440,6 +444,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         logger.info("Starting pass 5 - split read genotyping");
         for (final SVCallRecord record : cachedRecords) {
             applySplitReadThirdPass(record);
+            progressMeter.update(getProgressInterval(record));
         }
         logger.info("Finished pass 5");
         afterNthPass(6);
@@ -449,6 +454,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         logger.info("Starting pass 6 - writing genotypes");
         for (final SVCallRecord record : cachedRecords) {
             writeGenotypes(record);
+            progressMeter.update(getProgressInterval(record));
         }
         logger.info("Finished writing genotypes");
 
@@ -503,6 +509,10 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         emitTrainingSubsetOnly = true;
         logger.info("Downsampled " + label + " training records from " + eligibleIds.size() + " to " + selectedIds.size() + " using stride " + stride);
         return selectedIds;
+    }
+
+    private SimpleInterval getProgressInterval(final SVCallRecord record) {
+        return new SimpleInterval(record.getContigA(), record.getPositionA(), record.getPositionA());
     }
 
     @VisibleForTesting
