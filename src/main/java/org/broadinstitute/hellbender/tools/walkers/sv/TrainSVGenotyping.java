@@ -78,7 +78,8 @@ import org.broadinstitute.hellbender.engine.filters.CountingVariantFilter;
  *
  * <ul>
  *     <li>
- *         SV VCF
+ *         SV VCF (all records by default; if PE/SR training downsampling is activated because the number of
+ *         eligible training records exceeds the configured cap, the VCF will contain only the retained training subset)
  *     </li>
  *     <li>
  *         Genotyping cutoff tables (RD, PE, SR)
@@ -124,6 +125,9 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     public static final String MIN_PE_QUALITY_LONG_NAME = "pe-quality";
     public static final String MIN_PESER_SIZE_LONG_NAME = "min-pesr-size";
     public static final String MIN_SR_QUALITY_LONG_NAME = "sr-quality";
+    public static final String DISCORDANT_PAIR_QUERY_LOOKAHEAD_LONG_NAME = "pe-query-lookahead";
+    public static final String SPLIT_READ_QUERY_LOOKAHEAD_LONG_NAME = "sr-query-lookahead";
+    public static final String MAX_TRAINING_RECORDS_LONG_NAME = "max-training-records";
 
     @Argument(
             fullName = DEPTH_EVIDENCE_FILE_PATH_LONG_NAME,
@@ -251,6 +255,30 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     )
     public double minSplitReadQuality = 30;
 
+        @Argument(
+            fullName = DISCORDANT_PAIR_QUERY_LOOKAHEAD_LONG_NAME,
+            doc = "Number of bases to prefetch after PE evidence query cache misses",
+            minValue = 0,
+            optional = true
+        )
+        public int discordantPairQueryLookahead = FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES;
+
+        @Argument(
+            fullName = SPLIT_READ_QUERY_LOOKAHEAD_LONG_NAME,
+            doc = "Number of bases to prefetch after SR evidence query cache misses",
+            minValue = 0,
+            optional = true
+        )
+        public int splitReadQueryLookahead = FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES;
+
+            @Argument(
+                fullName = MAX_TRAINING_RECORDS_LONG_NAME,
+                doc = "Maximum number of eligible PE/SR training records to use before deterministic every-nth downsampling is applied. Set to 0 to disable the cap.",
+                minValue = 0,
+                optional = true
+            )
+            public int maxTrainingRecords = 100_000;
+
     @Argument(
             fullName = AggregateDepthEvidence.MAX_QUALITY_LONG_NAME,
             doc = "Max quality score",
@@ -317,9 +345,10 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
 
     private OverlapDetector<SimpleInterval> depthExclusionIntervals;
     private SVStratificationEngine pesrExclusionEngine;
+    private Set<String> selectedDiscordantPairTrainingRecordIds = Collections.emptySet();
+    private Set<String> selectedSplitReadTrainingRecordIds = Collections.emptySet();
+    private boolean emitTrainingSubsetOnly = false;
 
-    private static final int DISCORDANT_PAIR_QUERY_LOOKAHEAD = 10_000;
-    private static final int SPLIT_READ_QUERY_LOOKAHEAD = 10_000;
     private static final String PESR_EXCLUSION_STRATIFICATION = "pesrex";
 
     protected int numberOfPasses() {
@@ -359,6 +388,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
                 });
         logger.info("Finished pass 0 (" + cachedRecords.size() + " variants cached)");
         afterNthPass(0);
+        initializeDiscordantPairTrainingSelection(cachedRecords);
         progressMeter.reset();
 
         // Pass 1: PE evidence collection (training sites only)
@@ -368,6 +398,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         }
         logger.info("Finished pass 1");
         afterNthPass(1);
+        initializeSplitReadTrainingSelection(cachedRecords);
         progressMeter.reset();
 
         // Pass 2: PE parameter estimation
@@ -425,12 +456,80 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         logger.info(readFilter.getSummaryLine());
     }
 
+    private void initializeDiscordantPairTrainingSelection(final List<SVCallRecord> cachedRecords) {
+        if (!discordantPairCollectionEnabled()) {
+            selectedDiscordantPairTrainingRecordIds = Collections.emptySet();
+            return;
+        }
+
+        final LinkedHashSet<String> eligibleIds = new LinkedHashSet<>();
+        for (final SVCallRecord record : cachedRecords) {
+            final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = depthGenotypeResults.get(record.getId());
+            if (depthResult != null && discordantPairGenotyper.trainableRecord(record, depthResult, pesrExclusionEngine)) {
+                eligibleIds.add(record.getId());
+            }
+        }
+        selectedDiscordantPairTrainingRecordIds = downsampleEligibleRecords(eligibleIds, "PE");
+    }
+
+    private void initializeSplitReadTrainingSelection(final List<SVCallRecord> cachedRecords) {
+        if (!splitReadCollectionEnabled()) {
+            selectedSplitReadTrainingRecordIds = Collections.emptySet();
+            return;
+        }
+
+        final LinkedHashSet<String> eligibleIds = new LinkedHashSet<>();
+        for (final SVCallRecord record : cachedRecords) {
+            if (selectedDiscordantPairTrainingRecordIds.contains(record.getId())
+                    && splitReadGenotyper.trainableRecord(record, discordantPairGenotyper, pesrExclusionEngine)) {
+                eligibleIds.add(record.getId());
+            }
+        }
+        selectedSplitReadTrainingRecordIds = downsampleEligibleRecords(eligibleIds, "SR");
+    }
+
+    private Set<String> downsampleEligibleRecords(final LinkedHashSet<String> eligibleIds, final String label) {
+        if (eligibleIds.isEmpty()) {
+            logger.info("No eligible " + label + " training records found");
+            return Collections.emptySet();
+        }
+        if (maxTrainingRecords == 0 || eligibleIds.size() <= maxTrainingRecords) {
+            logger.info("Using all " + eligibleIds.size() + " eligible " + label + " training records");
+            return eligibleIds;
+        }
+
+        final int stride = (int) Math.ceil(eligibleIds.size() / (double) maxTrainingRecords);
+        final LinkedHashSet<String> selectedIds = new LinkedHashSet<>();
+        int index = 0;
+        for (final String recordId : eligibleIds) {
+            if (index % stride == 0) {
+                selectedIds.add(recordId);
+            }
+            index++;
+        }
+        emitTrainingSubsetOnly = true;
+        logger.info("Downsampled " + label + " training records from " + eligibleIds.size() + " to " + selectedIds.size() + " using stride " + stride);
+        return selectedIds;
+    }
+
+    private boolean retainDiscordantPairTrainingRecord(final SVCallRecord record) {
+        return !discordantPairCollectionEnabled() || selectedDiscordantPairTrainingRecordIds.contains(record.getId());
+    }
+
+    private boolean retainSplitReadTrainingRecord(final SVCallRecord record) {
+        return !splitReadCollectionEnabled() || selectedSplitReadTrainingRecordIds.contains(record.getId());
+    }
+
+    private boolean shouldWriteRecord(final SVCallRecord record) {
+        return !emitTrainingSubsetOnly || !discordantPairCollectionEnabled() || selectedDiscordantPairTrainingRecordIds.contains(record.getId());
+    }
+
     private void initializeDiscordantPairCollection() {
         if (discordantPairCollectionEnabled()) {
             discordantPairSource = new FeatureDataSource<>(
                     discordantPairsFile.toString(),
                     "discordantPairsFile",
-                    DISCORDANT_PAIR_QUERY_LOOKAHEAD,
+                    discordantPairQueryLookahead,
                     DiscordantPairEvidence.class,
                     cloudPrefetchBuffer,
                     cloudIndexPrefetchBuffer);
@@ -443,14 +542,14 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
             splitReadStartSource = new FeatureDataSource<>(
                     splitReadsFile.toString(),
                     "splitReadsStartFile",
-                    SPLIT_READ_QUERY_LOOKAHEAD,
+                    splitReadQueryLookahead,
                     SplitReadEvidence.class,
                     cloudPrefetchBuffer,
                     cloudIndexPrefetchBuffer);
             splitReadEndSource = new FeatureDataSource<>(
                     splitReadsFile.toString(),
                     "splitReadsEndFile",
-                    SPLIT_READ_QUERY_LOOKAHEAD,
+                    splitReadQueryLookahead,
                     SplitReadEvidence.class,
                     cloudPrefetchBuffer,
                     cloudIndexPrefetchBuffer);
@@ -568,6 +667,9 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     }
 
     public void writeGenotypes(final SVCallRecord record) {
+        if (!shouldWriteRecord(record)) {
+            return;
+        }
         final ArrayList<Genotype> newGenotypeList = new ArrayList<>(masterSampleList.size());
         // TODO: need to decide on whether to support genotyped VCF input and make consistent with GenotypeSVs
         final GenotypesContext genotypes = SVCallRecordUtils.populateGenotypesForMissingSamplesWithAlleles(record, new HashSet<>(masterSampleList), false, ploidyTable, outputHeader);
@@ -657,7 +759,8 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
 
     private void applyDiscordantPairFirstPass(final SVCallRecord record) {
         if (discordantPairCollectionEnabled()
-                && depthGenotypeResults.containsKey(record.getId())) {
+                && depthGenotypeResults.containsKey(record.getId())
+                && retainDiscordantPairTrainingRecord(record)) {
             final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = depthGenotypeResults.get(record.getId());
             if (discordantPairGenotyper.trainableRecord(record, depthResult, pesrExclusionEngine)) {
                 final List<DiscordantPairEvidence> discordantPairEvidence = discordantPairCollector.collectEvidence(record);
@@ -668,14 +771,16 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
 
     private void applyDiscordantPairSecondPass(final SVCallRecord record) {
         if (discordantPairCollectionEnabled()
-                && depthGenotypeResults.containsKey(record.getId())) {
+                && depthGenotypeResults.containsKey(record.getId())
+                && retainDiscordantPairTrainingRecord(record)) {
             final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = depthGenotypeResults.get(record.getId());
             discordantPairGenotyper.addSecondPass(record, depthResult, masterSampleList);
         }
     }
 
     private void applyDiscordantPairThirdPass(final SVCallRecord record) {
-        if (discordantPairCollectionEnabled()) {
+        if (discordantPairCollectionEnabled()
+                && (!emitTrainingSubsetOnly || retainDiscordantPairTrainingRecord(record))) {
             final List<DiscordantPairEvidence> discordantPairEvidence = discordantPairCollector.collectEvidence(record);
             final DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult genotypeResult = discordantPairGenotyper.genotype(record, discordantPairEvidence, discordantPairParameters, masterSampleList);
             if (discordantPairGenotypeResults.containsKey(record.getContigA())) {
@@ -698,7 +803,8 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     private void applySplitReadFirstPass(final SVCallRecord record) {
         if (splitReadCollectionEnabled()
                 && depthGenotypeResults.containsKey(record.getId())
-                && discordantPairGenotypeResults.containsKey(record.getId())) {
+                && discordantPairGenotypeResults.containsKey(record.getId())
+                && retainSplitReadTrainingRecord(record)) {
             final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = depthGenotypeResults.get(record.getId());
             if (splitReadGenotyper.trainableRecord(record, discordantPairGenotyper, pesrExclusionEngine)) {
                 final List<SplitReadEvidence> startSplitReads = splitReadStartCollector.collectEvidence(record);
@@ -710,14 +816,16 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
 
     private void applySplitReadSecondPass(final SVCallRecord record) {
         if (splitReadCollectionEnabled()
-                && depthGenotypeResults.containsKey(record.getId())) {
+                && depthGenotypeResults.containsKey(record.getId())
+                && retainSplitReadTrainingRecord(record)) {
             final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = depthGenotypeResults.get(record.getId());
             splitReadGenotyper.addSecondPass(record, depthResult, masterSampleList);
         }
     }
 
     private void applySplitReadThirdPass(final SVCallRecord record) {
-        if (splitReadCollectionEnabled()) {
+        if (splitReadCollectionEnabled()
+                && (!emitTrainingSubsetOnly || retainSplitReadTrainingRecord(record))) {
             final List<SplitReadEvidence> startSplitReads = splitReadStartCollector.collectEvidence(record);
             final List<SplitReadEvidence> endSplitReads = splitReadEndCollector.collectEvidence(record);
             final DepthEvidenceGenotyper.DepthGenotypeResult depthGenotype = depthGenotypeResults.get(record.getId());
