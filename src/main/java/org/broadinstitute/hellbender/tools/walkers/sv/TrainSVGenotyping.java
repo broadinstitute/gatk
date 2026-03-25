@@ -37,6 +37,10 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.stream.StreamSupport;
+
+import org.broadinstitute.hellbender.engine.filters.CountingReadFilter;
+import org.broadinstitute.hellbender.engine.filters.CountingVariantFilter;
 
 /**
  * <p>Trains SV genotyping models.</p>
@@ -303,7 +307,8 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     private DiscordantPairEvidenceGenotyper discordantPairGenotyper;
     private DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeParameters discordantPairParameters;
 
-    private FeatureDataSource<SplitReadEvidence> splitReadSource;
+    private FeatureDataSource<SplitReadEvidence> splitReadStartSource;
+    private FeatureDataSource<SplitReadEvidence> splitReadEndSource;
     private SplitReadEvidenceAggregator splitReadStartCollector;
     private SplitReadEvidenceAggregator splitReadEndCollector;
     private SplitReadEvidenceGenotyper splitReadGenotyper;
@@ -313,12 +318,111 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     private OverlapDetector<SimpleInterval> depthExclusionIntervals;
     private SVStratificationEngine pesrExclusionEngine;
 
-    private static final int DISCORDANT_PAIR_QUERY_LOOKAHEAD = 0;
-    private static final int SPLIT_READ_QUERY_LOOKAHEAD = 0;
+    private static final int DISCORDANT_PAIR_QUERY_LOOKAHEAD = 10_000;
+    private static final int SPLIT_READ_QUERY_LOOKAHEAD = 10_000;
     private static final String PESR_EXCLUSION_STRATIFICATION = "pesrex";
 
     protected int numberOfPasses() {
+        // Note: the actual traversal is managed by the overridden traverse() below,
+        // which caches records and merges some passes. This value is retained for
+        // compatibility with the parent contract but is not used to control traversal.
         return 8;
+    }
+
+    /**
+     * Overrides the default multi-pass traversal to:
+     * 1. Read the VCF only once (pass 0) and cache SVCallRecords in memory,
+     *    then iterate the cached list for all subsequent passes. This eliminates
+     *    7 redundant VCF decompressions and SVCallRecord re-creations.
+     * 2. Merge old passes 3 (PE genotyping) and 4 (SR first pass) into a single
+     *    traversal, since SR first pass can consume PE genotype results as they
+     *    are produced within the same record iteration.
+     */
+    @Override
+    public void traverse() {
+        final CountingVariantFilter countingVariantFilter = makeVariantFilter();
+        final CountingReadFilter readFilter = makeReadFilter();
+
+        // Pass 0: Full VCF read — depth genotyping, PE overlap registration, and record caching
+        logger.info("Starting pass 0 - depth genotyping (caching all records)");
+        final List<SVCallRecord> cachedRecords = new ArrayList<>();
+        StreamSupport.stream(getSpliteratorForDrivingVariants(), false)
+                .filter(countingVariantFilter)
+                .forEach(variant -> {
+                    final SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
+                    cachedRecords.add(record);
+                    applyReadDepth(record);
+                    if (discordantPairCollectionEnabled()) {
+                        discordantPairGenotyper.registerVariantForOverlapCheck(record);
+                    }
+                    progressMeter.update(new SimpleInterval(variant));
+                });
+        logger.info("Finished pass 0 (" + cachedRecords.size() + " variants cached)");
+        afterNthPass(0);
+        progressMeter.reset();
+
+        // Pass 1: PE evidence collection (training sites only)
+        logger.info("Starting pass 1 - discordant pair evidence collection");
+        for (final SVCallRecord record : cachedRecords) {
+            applyDiscordantPairFirstPass(record);
+        }
+        logger.info("Finished pass 1");
+        afterNthPass(1);
+        progressMeter.reset();
+
+        // Pass 2: PE parameter estimation
+        logger.info("Starting pass 2 - discordant pair parameter estimation");
+        for (final SVCallRecord record : cachedRecords) {
+            applyDiscordantPairSecondPass(record);
+        }
+        logger.info("Finished pass 2");
+        afterNthPass(2);
+        progressMeter.reset();
+
+        // Merged pass 3+4: PE genotyping + SR evidence collection in a single traversal.
+        // This is safe because SR first pass only checks discordantPairGenotypeResults for
+        // the current record, which is populated by applyDiscordantPairThirdPass just above.
+        logger.info("Starting pass 3 - discordant pair genotyping + split read evidence collection (merged)");
+        for (final SVCallRecord record : cachedRecords) {
+            applyDiscordantPairThirdPass(record);
+            applySplitReadFirstPass(record);
+        }
+        logger.info("Finished pass 3");
+        afterNthPass(3);
+        afterNthPass(4);
+        // PE training data is no longer needed after SR first pass finalization
+        if (discordantPairCollectionEnabled()) {
+            discordantPairGenotyper.clearTrainingData();
+        }
+        progressMeter.reset();
+
+        // Pass 5 (old pass 5): SR parameter estimation
+        logger.info("Starting pass 4 - split read parameter estimation");
+        for (final SVCallRecord record : cachedRecords) {
+            applySplitReadSecondPass(record);
+        }
+        logger.info("Finished pass 4");
+        afterNthPass(5);
+        progressMeter.reset();
+
+        // Pass 6 (old pass 6): SR genotyping
+        logger.info("Starting pass 5 - split read genotyping");
+        for (final SVCallRecord record : cachedRecords) {
+            applySplitReadThirdPass(record);
+        }
+        logger.info("Finished pass 5");
+        afterNthPass(6);
+        progressMeter.reset();
+
+        // Pass 7 (old pass 7): Write final genotypes
+        logger.info("Starting pass 6 - writing genotypes");
+        for (final SVCallRecord record : cachedRecords) {
+            writeGenotypes(record);
+        }
+        logger.info("Finished writing genotypes");
+
+        logger.info(countingVariantFilter.getSummaryLine());
+        logger.info(readFilter.getSummaryLine());
     }
 
     private void initializeDiscordantPairCollection() {
@@ -336,15 +440,22 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
 
     private void initializeSplitReadCollection() {
         if (splitReadCollectionEnabled()) {
-            splitReadSource = new FeatureDataSource<>(
+            splitReadStartSource = new FeatureDataSource<>(
                     splitReadsFile.toString(),
-                    "splitReadsFile",
+                    "splitReadsStartFile",
                     SPLIT_READ_QUERY_LOOKAHEAD,
                     SplitReadEvidence.class,
                     cloudPrefetchBuffer,
                     cloudIndexPrefetchBuffer);
-            splitReadStartCollector = new SplitReadEvidenceAggregator(splitReadSource, dictionary, 0, true);
-            splitReadEndCollector = new SplitReadEvidenceAggregator(splitReadSource, dictionary, 0, false);
+            splitReadEndSource = new FeatureDataSource<>(
+                    splitReadsFile.toString(),
+                    "splitReadsEndFile",
+                    SPLIT_READ_QUERY_LOOKAHEAD,
+                    SplitReadEvidence.class,
+                    cloudPrefetchBuffer,
+                    cloudIndexPrefetchBuffer);
+            splitReadStartCollector = new SplitReadEvidenceAggregator(splitReadStartSource, dictionary, 0, true);
+            splitReadEndCollector = new SplitReadEvidenceAggregator(splitReadEndSource, dictionary, 0, false);
         }
     }
 

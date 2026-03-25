@@ -201,7 +201,19 @@ public class DiscordantPairEvidenceGenotyper {
         final double hetMedian = MEDIAN.evaluate(hetCounts.stream().mapToDouble(Double::valueOf).toArray());
         final double sdHet = 1.645 * MEDIAN.evaluate(hetCounts.stream().mapToDouble(d -> Math.abs(d - hetMedian)).toArray());
         secondPassMade = true;
+        // Free training accumulation lists that are no longer needed
+        hetCounts.clear();
+        homCounts.clear();
         return new DiscordantPairGenotypeParameters(trainingMinCount, homMedian, sdHet);
+    }
+
+    /**
+     * Clears the first-pass training data (per-variant normalized counts and depth genotypes).
+     * Call this after all consumers of {@link #isTrainingRecord} have finished (i.e. after SR
+     * first pass finalization) to free significant heap memory.
+     */
+    public void clearTrainingData() {
+        firstPassCounts.clear();
     }
 
     public DiscordantPairGenotypeResult genotype(final SVCallRecord record, final List<DiscordantPairEvidence> evidence,

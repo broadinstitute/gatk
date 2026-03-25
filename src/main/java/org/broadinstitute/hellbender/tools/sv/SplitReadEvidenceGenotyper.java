@@ -162,16 +162,46 @@ public class SplitReadEvidenceGenotyper {
     private record RecoverResult(String variant, String sample, int count, double frac) {}
     public record CutoffResult(double fracSingle, double fracBoth, int countPass, int countFail, int freqMin, int freqMax) {}
 
-    private static int countCutoff(final List<RecoverResult> list, final double frac, final double freqMin, final double freqMax) {
-        return (int) list.stream().filter(r -> r.frac >= frac && r.count > freqMin && r.count <= freqMax ).count();
+    /**
+     * For a sorted array of frac values (ascending), count the number of elements >= threshold
+     * using binary search. Returns the count of elements in the suffix starting from the
+     * leftmost element >= threshold.
+     */
+    private static int countAboveThreshold(final double[] sortedFracs, final double threshold) {
+        if (sortedFracs.length == 0) {
+            return 0;
+        }
+        // Binary search for leftmost index where sortedFracs[idx] >= threshold
+        int lo = 0;
+        int hi = sortedFracs.length;
+        while (lo < hi) {
+            final int mid = (lo + hi) >>> 1;
+            if (sortedFracs[mid] < threshold) {
+                lo = mid + 1;
+            } else {
+                hi = mid;
+            }
+        }
+        return sortedFracs.length - lo;
     }
 
-    private CutoffResult countAtCutoff(final double fracSingle, final double fracBoth, final int freqMin, final int freqMax) {
-        final int recoverSinglePassCount = countCutoff(recoverSinglePass, fracSingle, freqMin, freqMax);
-        final int recoverSingleFailCount = countCutoff(recoverSingleFail, fracSingle, freqMin, freqMax);
-        final int recoverBothPassCount = countCutoff(recoverBothPass, fracBoth, freqMin, freqMax);
-        final int recoverBothFailCount = countCutoff(recoverBothFail, fracBoth, freqMin, freqMax);
-        return new CutoffResult(fracSingle, fracBoth, recoverSinglePassCount + recoverBothPassCount, recoverSingleFailCount + recoverBothFailCount, freqMin, freqMax);
+    /**
+     * Pre-filter a recovery list by count range, sort the resulting frac values,
+     * then compute the count of elements with frac >= cutoff for each cutoff value
+     * using binary search. This replaces N linear scans with one sort + N binary searches.
+     */
+    private static int[] precomputeCountsForCutoffs(final List<RecoverResult> list, final double[] cutoffs,
+                                                     final int freqMin, final int freqMax) {
+        final double[] filteredFracs = list.stream()
+                .filter(r -> r.count > freqMin && r.count <= freqMax)
+                .mapToDouble(RecoverResult::frac)
+                .sorted()
+                .toArray();
+        final int[] counts = new int[cutoffs.length];
+        for (int i = 0; i < cutoffs.length; i++) {
+            counts[i] = countAboveThreshold(filteredFracs, cutoffs[i]);
+        }
+        return counts;
     }
 
     public SplitReadGenotypeFrequencyCutoffs finalizeThirdPass() {
@@ -180,14 +210,32 @@ public class SplitReadEvidenceGenotyper {
         final CutoffResult commonResult = cutoffOptimization(cutoffs, commonMin, commonMax);
         final CutoffResult rareResult = cutoffOptimization(cutoffs, rareMin, rareMax);
         thirdPassMade = true;
+        // Free recovery lists that are no longer needed
+        recoverSinglePass.clear();
+        recoverSingleFail.clear();
+        recoverBothPass.clear();
+        recoverBothFail.clear();
         return new SplitReadGenotypeFrequencyCutoffs(rareResult, commonResult);
     }
 
+    /**
+     * Optimized cutoff search: pre-sort each recovery list's frac values (filtered by count range)
+     * once, then use binary search for each cutoff threshold. This reduces the complexity from
+     * O(121 * M) to O(M * log(M) + 44 * log(M)) where M is the recovery list size.
+     */
     private CutoffResult cutoffOptimization(final double[] cutoffs, final int freqMin, final int freqMax) {
-        final List<CutoffResult> combine = new ArrayList<>();
-        for (final Double fracSingle : cutoffs) {
-            for (final Double fracBoth : cutoffs) {
-                combine.add(countAtCutoff(fracSingle, fracBoth, freqMin, freqMax));
+        // Precompute counts for each cutoff value via sort + binary search
+        final int[] singlePassCounts = precomputeCountsForCutoffs(recoverSinglePass, cutoffs, freqMin, freqMax);
+        final int[] singleFailCounts = precomputeCountsForCutoffs(recoverSingleFail, cutoffs, freqMin, freqMax);
+        final int[] bothPassCounts = precomputeCountsForCutoffs(recoverBothPass, cutoffs, freqMin, freqMax);
+        final int[] bothFailCounts = precomputeCountsForCutoffs(recoverBothFail, cutoffs, freqMin, freqMax);
+
+        final List<CutoffResult> combine = new ArrayList<>(cutoffs.length * cutoffs.length);
+        for (int s = 0; s < cutoffs.length; s++) {
+            for (int b = 0; b < cutoffs.length; b++) {
+                final int passCount = singlePassCounts[s] + bothPassCounts[b];
+                final int failCount = singleFailCounts[s] + bothFailCounts[b];
+                combine.add(new CutoffResult(cutoffs[s], cutoffs[b], passCount, failCount, freqMin, freqMax));
             }
         }
         final double baseline = computeBaseline(combine);
@@ -248,6 +296,10 @@ public class SplitReadEvidenceGenotyper {
         final double hetMedian = MEDIAN.evaluate(hetCounts.stream().mapToDouble(Double::valueOf).toArray());
         final double sdHet = 1.645 * MEDIAN.evaluate(hetCounts.stream().mapToDouble(d -> Math.abs(d - hetMedian)).toArray());
         secondPassMade = true;
+        // Free training accumulation data that is no longer needed
+        firstPassCounts.clear();
+        hetCounts.clear();
+        homCounts.clear();
         return new SplitReadGenotypeParameters(trainingCountCutoff, homMedian, sdHet);
     }
     public SplitReadGenotypeResult genotype(final SVCallRecord record,
