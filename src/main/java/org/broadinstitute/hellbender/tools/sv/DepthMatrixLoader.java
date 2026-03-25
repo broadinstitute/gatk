@@ -76,7 +76,7 @@ public class DepthMatrixLoader {
         if (exclusionIntervals != null) {
             intervalExcludedMatrix = applyExclusionIntervals(interval, trimmedMatrix, exclusionIntervals);
         } else {
-            intervalExcludedMatrix = rawMatrix;
+            intervalExcludedMatrix = trimmedMatrix;
         }
 
         // Apply compression and normalization
