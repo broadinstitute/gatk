@@ -14,11 +14,8 @@ from pathlib import Path
 
 try:
     from google.cloud import bigquery
-except ImportError as exc:
-    raise ImportError(
-        "google-cloud-bigquery is required to run this script. "
-        "Install it with 'pip install google-cloud-bigquery'."
-    ) from exc
+except ImportError:
+    bigquery = None  # type: ignore  # will fail at runtime if BigQuery calls are made without the package installed
 
 
 log = logging.getLogger(__name__)
@@ -113,15 +110,15 @@ def get_already_loaded_tables_and_sample_ids(project_id, dataset_name,
             SELECT parti.table_name AS table_name, SAFE_CAST(partition_id AS INT64) AS sample_id
             FROM `{project_id}.{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` parti
             WHERE
-                REGEXP_CONTAINS(parti.table_name, "{superpartitioned_regex}") AND
+                REGEXP_CONTAINS(parti.table_name, '{superpartitioned_regex}') AND
                 parti.total_logical_bytes > 0 AND
-                partition_id NOT LIKE "__%" AND
+                partition_id NOT LIKE '__%' AND
                 SAFE_CAST(partition_id AS INT64) IS NOT NULL
         """)
 
     for prefix in regular_table_prefixes:
         sub_queries.append(f"""
-            SELECT DISTINCT "{prefix}" AS table_name, t.sample_id AS sample_id
+            SELECT DISTINCT '{prefix}' AS table_name, t.sample_id AS sample_id
             FROM `{project_id}.{dataset_name}.{prefix}` t
         """)
 

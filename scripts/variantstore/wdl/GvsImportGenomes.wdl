@@ -919,7 +919,7 @@ task CreateSampleDataViews {
       SET sample_load_status_table_exists = (
         SELECT COUNT(1) FROM
         `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
-        WHERE table_name = "sample_load_status"
+        WHERE table_name = 'sample_load_status'
       );
 
       BEGIN
@@ -927,9 +927,9 @@ task CreateSampleDataViews {
       DECLARE create_variant_data_view STRING;
 
       IF sample_load_status_table_exists > 0 THEN
-        SET variants_load_status_clause = format(sample_load_status_template, "VARIANTS_LOADED");
+        SET variants_load_status_clause = format(sample_load_status_template, 'VARIANTS_LOADED');
       ELSE
-        SET variants_load_status_clause = "";
+        SET variants_load_status_clause = '';
       END IF;
 
       SET create_variant_data_view = """
@@ -939,7 +939,7 @@ task CreateSampleDataViews {
           SELECT CAST(partition_id AS INT64) AS sample_id
           FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
           WHERE
-          partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
+          partition_id NOT LIKE '__%' AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, '^vet_[0-9]+$')
 
       """ || variants_load_status_clause || ");";
 
@@ -953,9 +953,9 @@ task CreateSampleDataViews {
       DECLARE create_reference_data_view STRING;
 
       IF sample_load_status_table_exists > 0 THEN
-        SET references_load_status_clause = format(sample_load_status_template, "REFERENCES_LOADED");
+        SET references_load_status_clause = format(sample_load_status_template, 'REFERENCES_LOADED');
       ELSE
-        SET references_load_status_clause = "";
+        SET references_load_status_clause = '';
       END IF;
 
       SET create_reference_data_view = """
@@ -965,7 +965,7 @@ task CreateSampleDataViews {
         SELECT CAST(partition_id AS INT64) AS sample_id
         FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
         WHERE
-        partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^ref_ranges_[0-9]+$")
+        partition_id NOT LIKE '__%' AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, '^ref_ranges_[0-9]+$')
 
       """ || references_load_status_clause || ");";
 
@@ -986,14 +986,14 @@ task CreateSampleDataViews {
       SET header_table_exists = (
         SELECT COUNT(1) FROM
         `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
-        WHERE table_name = "vcf_header_lines_scratch"
+        WHERE table_name = 'vcf_header_lines_scratch'
       );
 
       IF header_table_exists > 0 THEN
         IF sample_load_status_table_exists > 0 THEN
-          SET headers_load_status_clause = format(sample_load_status_template, "HEADERS_LOADED");
+          SET headers_load_status_clause = format(sample_load_status_template, 'HEADERS_LOADED');
         ELSE
-          SET headers_load_status_clause = "";
+          SET headers_load_status_clause = '';
         END IF;
 
         SET create_header_data_view = """
@@ -1014,7 +1014,7 @@ task CreateSampleDataViews {
 
         """;
       ELSE
-        SET query_header_existence_clause = "";
+        SET query_header_existence_clause = '';
       END IF;
 
       SET create_all_sample_data_view = """
