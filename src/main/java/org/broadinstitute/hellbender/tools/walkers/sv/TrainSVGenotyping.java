@@ -584,25 +584,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         return splitReadsFile != null;
     }
 
-    int n = 0;
-    int nWithDepthGenotypeResult = 0;
-    int nWithDiscordantPairGenotypeResult = 0;
-    int nTrainable = 0;
-    int nWithSRSupport = 0;
     private void applySplitReadFirstPass(final SVCallRecord record) {
-        n++;
-        if (depthGenotypeResults.containsKey(record.getId())) {
-            nWithDepthGenotypeResult++;
-        }
-        if (discordantPairGenotypeResults.containsKey(record.getId())) {
-            nWithDiscordantPairGenotypeResult++;
-        }
-        if (splitReadGenotyper.trainableRecord(record, discordantPairGenotyper, pesrExclusionEngine)) {
-            nTrainable++;
-        }
-        if (record.getEvidence().contains(GATKSVVCFConstants.EvidenceTypes.SR)) {
-            nWithSRSupport++;
-        }
         if (splitReadCollectionEnabled()
                 && depthGenotypeResults.containsKey(record.getId())
                 && discordantPairGenotypeResults.containsKey(record.getId())) {
