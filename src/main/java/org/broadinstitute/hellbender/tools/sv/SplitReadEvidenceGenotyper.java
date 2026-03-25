@@ -500,9 +500,9 @@ public class SplitReadEvidenceGenotyper {
     }
 
     public boolean trainableRecord(final SVCallRecord record,
-                                   final DiscordantPairEvidenceGenotyper discordantPairGenotyper,
+                                   final boolean discordantPairEligible,
                                    final SVStratificationEngine exclusionEngine) {
-        if (!discordantPairGenotyper.isTrainingRecord(record)) {
+        if (!discordantPairEligible) {
             return false;
         }
         if (minSize != null && (record.getLength() == null || record.getLength() < minSize)) {
@@ -515,6 +515,12 @@ public class SplitReadEvidenceGenotyper {
             return false;
         }
         return true;
+    }
+
+    public boolean trainableRecord(final SVCallRecord record,
+                                   final DiscordantPairEvidenceGenotyper discordantPairGenotyper,
+                                   final SVStratificationEngine exclusionEngine) {
+        return trainableRecord(record, discordantPairGenotyper.isTrainingRecord(record), exclusionEngine);
     }
 
     private static final class FirstPassResult {
