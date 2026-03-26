@@ -58,7 +58,7 @@ ${OUTPUT_GCS_DIR}/
 The solution consists of three main WDL tasks:
 
 1. **DiscoverParquetFiles**: Inventory all Parquet files and group by target table
-2. **LoadParquetFilesToBQ**: Load files for a single table with tracking
+2. **LoadParquetFilesToBQ**: Load files for a single table using BigQuery partition inspection for idempotency
 3. **VerifyAllLoaded**: Confirm all files were successfully loaded
 
 ### Idempotency Mechanism
