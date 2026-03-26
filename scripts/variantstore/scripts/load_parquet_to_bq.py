@@ -80,7 +80,13 @@ def load_table_from_parquet_files(
     
     if not files:
         print("No files to load")
-        return {"files_loaded": 0, "rows_loaded": 0, "batches_processed": 0}
+        return {
+            "files_loaded": 0,
+            "rows_loaded": 0,
+            "batches_processed": 0,
+            "batches_failed": 0,
+            "completion_status": "SUCCESS",
+        }
     
     print(f"Processing {len(files)} files in batches of {batch_size}")
 
