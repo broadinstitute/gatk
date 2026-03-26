@@ -7,6 +7,7 @@ Uses deterministic job IDs and job state persistence to handle preemptions.
 import argparse
 import hashlib
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -82,7 +83,7 @@ def load_table_from_parquet_files(
         return {"files_loaded": 0, "rows_loaded": 0, "batches_processed": 0}
     
     print(f"Processing {len(files)} files in batches of {batch_size}")
-    
+
     # Configure load job
     job_config = bigquery.LoadJobConfig(
         source_format=bigquery.SourceFormat.PARQUET,
@@ -101,7 +102,8 @@ def load_table_from_parquet_files(
         batch_num = i // batch_size + 1
         
         print(f"\nBatch {batch_num}/{(len(files) + batch_size - 1) // batch_size}: {len(batch)} files")
-        
+
+        job_id = None  # ensure it is always defined for the except handler
         try:
             job_id = _make_job_id(table_name, batch)
             
@@ -135,9 +137,13 @@ def load_table_from_parquet_files(
             
             # Check for errors
             if load_job.errors:
+                error_msg = "; ".join(
+                    e.get("message", str(e)) for e in load_job.errors
+                )
                 print(f"  ERROR: Job completed with errors:")
                 for error in load_job.errors:
                     print(f"    {error}")
+                _log_batch_result(batch, table_name, load_job.job_id, error=error_msg)
                 pending_jobs.pop(job_id, None)
                 _store_pending_jobs(pending_jobs_path, pending_jobs)
                 failed_batches += 1
@@ -149,13 +155,15 @@ def load_table_from_parquet_files(
             total_rows += rows_loaded
             successful_batches += 1
             successful_files_count += len(batch)
-            
+            _log_batch_result(batch, table_name, load_job.job_id)
+
             # Remove from pending jobs
             pending_jobs.pop(job_id, None)
             _store_pending_jobs(pending_jobs_path, pending_jobs)
             
         except Exception as exc:
             print(f"  ERROR: Exception loading batch: {exc}")
+            _log_batch_result(batch, table_name, job_id, error=str(exc))
             failed_batches += 1
             # Continue with next batch rather than failing entire task
             continue
@@ -202,6 +210,43 @@ def _store_pending_jobs(pending_jobs_path, pending_jobs):
     path = Path(pending_jobs_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(pending_jobs, indent=2))
+
+
+def _extract_sample_id_from_file_path(file_path, table_name):
+    """
+    Extract the sample_id integer from a GCS Parquet file path given the resolved table name.
+
+    For superpartitioned tables the filename encodes both the superpartition and the sample_id:
+        gs://bucket/vet/vet_001_42_input_vcf_0_SAMPLE.parquet  -> "42"   (table_name="vet_001")
+
+    For regular tables the filename encodes only the sample_id:
+        gs://bucket/sample_chromosome_ploidy/sample_chromosome_ploidy_42_SAMPLE.parquet -> "42"
+
+    Returns the sample_id as a string, or None if the pattern is not found.
+    """
+    pattern = rf'/{re.escape(table_name)}_([0-9]+)(?:[_.]|$)'
+    match = re.search(pattern, file_path)
+    return match.group(1) if match else None
+
+
+def _log_batch_result(files, table_name, job_id, error=None):
+    """
+    Print a structured log block for a completed (successful or failed) batch.
+
+    Format:
+        BATCH WRITE {SUCCEEDED|FAILED} for job <job_id>, table <table_name>.
+        [ERROR: <error message>]          <- only present when the batch failed
+        <sample_id>\t<file_path>          <- one line per file
+    """
+    status = "FAILED" if error is not None else "SUCCEEDED"
+    job_id_str = str(job_id) if job_id is not None else ""
+    print(f"BATCH WRITE {status} for job {job_id_str}, table {table_name}.")
+    if error is not None:
+        print(f"ERROR: {error}")
+    for file_path in files:
+        sample_id = _extract_sample_id_from_file_path(file_path, table_name)
+        sample_id_str = sample_id if sample_id is not None else ""
+        print(f"{sample_id_str}\t{file_path}")
 
 
 def _submit_load_job_with_retry(client, batch, table_id, job_config, job_id, location, max_retries=3):
