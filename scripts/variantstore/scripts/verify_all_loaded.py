@@ -184,9 +184,27 @@ def main():
     if results["all_loaded"]:
         log.info("✓ SUCCESS: All files have been loaded!")
     else:
-        log.error(f"✗ INCOMPLETE: {results['missing_files']} file(s) not yet loaded")
+        missing_count = results.get("missing_files", 0) or 0
+        unmatched_count = results.get("unmatched_files", 0) or 0
+
+        reasons = []
+        if missing_count:
+            reasons.append(f"{missing_count} file(s) not yet loaded")
+        if unmatched_count:
+            reasons.append(
+                f"{unmatched_count} file(s) could not be parsed or matched to a table/sample_id"
+            )
+
+        if reasons:
+            log.error("✗ INCOMPLETE: " + "; ".join(reasons))
+        else:
+            # Fallback in case all_loaded is False but no counts are available.
+            log.error("✗ INCOMPLETE: Verification failed for unknown reasons")
+
         if results.get("missing_files_list"):
-            log.error(f"  See: {results['missing_files_list']}")
+            log.error(f"  See missing files list: {results['missing_files_list']}")
+        if results.get("unmatched_files_list"):
+            log.error(f"  See unmatched files list: {results['unmatched_files_list']}")
 
     if not results["all_loaded"]:
         sys.exit(1)
