@@ -26,21 +26,23 @@ public class VetTsvWriter extends SimpleXSVWriter implements VetWriter {
     }
 
     private List<String> getHeaders() {
-        return Arrays.stream(VetFieldEnum.values()).map(String::valueOf).collect(Collectors.toList());
+        final List<String> headers = Arrays.stream(VetFieldEnum.values()).map(String::valueOf).collect(Collectors.toList());
+        headers.add("vrs_allele_ids");
+        return headers;
     }
 
     @Override
-    public void write(long location, VariantContext variant, long sampleId) throws IOException {
+    public void write(long location, VariantContext variant, long sampleId, List<String> vrsAlleleIds) throws IOException {
         final List<String> row = createRow(
                 location,
                 variant,
-                String.valueOf(sampleId)
+                String.valueOf(sampleId),
+                vrsAlleleIds
         );
         this.getNewLineBuilder().setRow(row).write();
     }
 
-
-    public List<String> createRow(final long location, final VariantContext variant, final String sampleId) {
+    public List<String> createRow(final long location, final VariantContext variant, final String sampleId, final List<String> vrsAlleleIds) {
         List<String> row = new ArrayList<>();
         for ( final VetFieldEnum fieldEnum : VetFieldEnum.values() ) {
             if (fieldEnum.equals(VetFieldEnum.location)) {
@@ -51,6 +53,8 @@ public class VetTsvWriter extends SimpleXSVWriter implements VetWriter {
                 row.add(fieldEnum.getColumnValue(variant, forceLoadingFromNonAlleleSpecific));
             }
         }
+        // vrs_allele_ids: pipe-separated list of IDs (e.g. "ga4gh:VA.abc|ga4gh:VA.def")
+        row.add(vrsAlleleIds == null || vrsAlleleIds.isEmpty() ? "" : String.join("|", vrsAlleleIds));
         return row;
     }
 }

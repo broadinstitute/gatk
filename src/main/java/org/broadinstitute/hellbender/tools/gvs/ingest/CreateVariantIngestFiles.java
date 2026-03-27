@@ -84,6 +84,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             optional = true)
     public boolean enableVet = true;
 
+    @Argument(fullName = "enable-vrs-ids",
+            shortName = "vrs",
+            doc = "compute and write VRS allele IDs into the vrs_allele_ids column of VET output. " +
+                  "Requires a reference (--reference). Disable to measure baseline performance.",
+            optional = true)
+    public boolean enableVrsIds = true;
+
     @Argument(
             fullName = "enable-vcf-headers",
             doc = "write VCF header lines",
@@ -196,6 +203,11 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             	optional binary call_PID (UTF8);
             	optional int64 call_PS;
             	optional binary call_PL (UTF8);
+            	optional group vrs_allele_ids (LIST) {
+            		repeated group list {
+            			optional binary element (UTF8);
+            		}
+            	}
             }
             """);
 
@@ -388,7 +400,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         if (enableVet && vetRowsExist == Boolean.FALSE) {
             logger.info("Writing vet data for sample id = {}, name = {}", sampleId, sampleName);
-            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, variantRowSchema);
+            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, variantRowSchema, enableVrsIds);
         }
         if (enableVCFHeaders && vcfHeaderRowsExist == Boolean.FALSE) {
             logger.info("Writing vcf header data for sample id = {}, name = {}", sampleId, sampleName);
@@ -438,7 +450,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             // write to VET if NOT reference block and NOT a no call
             if (!variant.isReferenceBlock() && !isNoCall(variant)) {
                 if (vetCreator != null) {
-                    vetCreator.apply(variant);
+                    vetCreator.apply(variant, referenceContext);
                 }
             }
         } catch (IOException ioe) {

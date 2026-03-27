@@ -91,7 +91,8 @@ public class VetCreatorUnitTest {
                     DATASET_NAME,
                     true,
                     false,
-                    PARQUET_SCHEMA
+                    PARQUET_SCHEMA,
+                    false  // enableVrsIds
             );
 
             // If we get here, the test failed - no exception was thrown
