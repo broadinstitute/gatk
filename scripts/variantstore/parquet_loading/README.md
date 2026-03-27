@@ -142,7 +142,6 @@ python3 scripts/variantstore/scripts/load_parquet_to_bq.py \
   --table-name vet_001 \
   --files-fofn grouped_files/vet_001.fofn \
   --schema-path schemas/vet_001_schema.json \
-  --pending-jobs-path pending_jobs_vet_001.json \
   --batch-size 1000 \
   --output-stats stats_vet_001.json
 ```
@@ -204,9 +203,8 @@ The workflow loads different tables in parallel. Control concurrency with `max_p
 When a VM is preempted during loading:
 
 1. **Job IDs are deterministic**: Hash of table name + batch contents
-2. **State persisted**: `pending_jobs.json` tracks submitted jobs
-3. **On restart**: Call `client.get_job(job_id)` to check status
-4. **Resume or skip**: If job completed, record success; if failed/missing, resubmit
+2. **On restart**: The same job IDs are regenerated; BigQuery returns a Conflict for any already-submitted job
+3. **Resume or skip**: The script fetches the existing job and waits for it rather than resubmitting — no local state file needed
 
 ### Idempotency on Workflow Restart
 

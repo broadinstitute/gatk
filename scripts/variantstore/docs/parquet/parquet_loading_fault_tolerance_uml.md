@@ -37,7 +37,6 @@ flowchart TB
     subgraph RetryLogic["Retry Mechanisms"]
         Det[Deterministic Job IDs<br/>SHA1 hash of batch]
         Quota[Quota Retry<br/>Exponential backoff]
-        Local[Local State<br/>pending_jobs.json]
         BQState[BigQuery Partition Data<br/>authoritative loaded state]
     end
     
@@ -149,13 +148,12 @@ sequenceDiagram
     activate L1
     
     L1->>L1: Generate deterministic job_id<br/>load_vet_001_abc123def
-    L1->>L1: Write pending_jobs.json
     L1->>BQ: submit_load_job(job_id="load_vet_001_abc123def")
     activate BQ
     Note right of BQ: Job submitted<br/>and starts processing
     
     Note over V1,L1: VM Preemption!
-    V1--xV1: VM destroyed<br/>Local disk lost<br/>pending_jobs.json gone
+    V1--xV1: VM destroyed<br/>Local disk lost
     deactivate L1
     deactivate V1
     
@@ -166,7 +164,6 @@ sequenceDiagram
     activate L2
     
     L2->>L2: Generate same job_id<br/>load_vet_001_abc123def<br/>(deterministic)
-    L2->>L2: No pending_jobs.json<br/>(fresh disk)
     
     L2->>BQ: submit_load_job(job_id="load_vet_001_abc123def")
     BQ-->>L2: Conflict Exception<br/>"Job already exists"
@@ -227,8 +224,7 @@ flowchart TD
     CheckErrors -->|Yes| MarkFailed
     CheckErrors -->|No| BatchSuccess[Batch loaded successfully]
     
-    BatchSuccess --> UpdatePending[Update pending_jobs.json]
-    UpdatePending --> NextBatch[Continue to next batch]
+    BatchSuccess --> NextBatch[Continue to next batch]
     MarkFailed --> NextBatch
     
     NextBatch --> End([End])

@@ -60,35 +60,7 @@
                                         │
                                         ▼
 ┌─────────────────────────────────────────────────────────────────────────────────────┐
-│                            LAYER 3: LOCAL STATE TRACKING                            │
-├─────────────────────────────────────────────────────────────────────────────────────┤
-│                                                                                     │
-│  Pending Jobs File (pending_jobs.json):                                             │
-│  ┌──────────────────────────────────────────────────────────────────────────────┐   │
-│  │  {                                                                           │   │
-│  │    "load_vet_001_abc123": {                                                  │   │
-│  │      "files": ["gs://bucket/file1.parquet", ...],                            │   │
-│  │      "location": "us-central1",                                              │   │
-│  │      "table_name": "vet_001"                                                 │   │
-│  │    }                                                                         │   │
-│  │  }                                                                           │   │
-│  └──────────────────────────────────────────────────────────────────────────────┘   │
-│                                                                                     │
-│  State Lifecycle:                                                                   │
-│  Submit Job → Write to File → Job Completes → Remove from File                      │
-│       │              │              │              │                                │
-│       │              ▼              │              ▼                                │
-│  On VM Restart:  File Exists?   Job Still     File Cleanup                          │
-│       │              │         Running?           │                                 │
-│       ▼              ▼              ▼              ▼                                │
-│  Fresh Disk     [File Lost]    Check BigQuery   Continue                            │
-│  No File    →   [Use Job IDs]  →   Status    →   Processing                         │
-│                                                                                     │
-└─────────────────────────────────────────────────────────────────────────────────────┘
-                                        │
-                                        ▼
-┌─────────────────────────────────────────────────────────────────────────────────────┐
-│                        LAYER 4: PERSISTENT STATE (BIGQUERY DATA)                    │
+│                        LAYER 3: PERSISTENT STATE (BIGQUERY DATA)                    │
 ├─────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                     │
 │  BigQuery as Source of Truth:                                                       │
@@ -120,7 +92,7 @@
 │           ▼                        ▼                        ▼                       │
 │  • New VM starts            • Wait 30s-120s         • Mark batch failed             │
 │  • Fresh disk               • Retry same job        • Continue next batch           │
-│  • No pending_jobs.json     • Exponential backoff   • Don't fail entire task        │
+│  • Same job IDs generated   • Exponential backoff   • Don't fail entire task        │
 │  • Same job IDs generated   • Up to 3 attempts      • Partial success possible      │
 │  • BigQuery: "Job exists"   • Then fail batch       • Report in final stats         │
 │  • Fetch existing job       • Continue pipeline     • Retry via workflow rerun      │
@@ -154,12 +126,7 @@ This diagram illustrates the comprehensive fault tolerance mechanisms implemente
 - **Deterministic Job IDs**: SHA1-based IDs allow job recovery across VM restarts
 - **Exponential Backoff**: Automatic retry for quota and transient errors (30s → 60s → 120s)
 
-### Layer 3: Local State Tracking
-- **Pending Jobs File**: Tracks in-flight jobs on local disk for within-VM recovery
-- **Graceful Degradation**: When file is lost (VM preemption), falls back to job ID mechanism
-
-### Layer 4: Persistent State (BigQuery Data)
-- **BigQuery as Source of Truth**: `INFORMATION_SCHEMA.PARTITIONS` and the `sample_chromosome_ploidy` table itself provide an authoritative view of what has been loaded
+### Layer 3: Persistent State (BigQuery Data)
 - **Cross-Run Recovery**: Already-loaded `(table_name, sample_id)` pairs are filtered out on workflow restart — no separate tracking table required
 
 ## Key Benefits

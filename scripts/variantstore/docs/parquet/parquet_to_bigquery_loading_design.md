@@ -144,14 +144,13 @@ python3 parse_and_group_files.py \
 - `table_name`: Target table (e.g., `vet_000`)
 - `files_to_load`: File containing GCS paths to load (FOFN)
 - `schema_path`: Path to the canonical table schema JSON (already provisioned during table creation)
-- `pending_jobs_path`: Path to a JSON file used to persist in-flight BigQuery load jobs (stored on the Cromwell VM or in GCS)
 - `billing_project_id`: Optional billing override
 
 **Notes**:
 - With 4,000 files per table at ~191 MB (vet) or ~160 MB (ref ranges), the worst-case payload per table is ~764 GB, well within BigQuery's 15 TB per-load limit.
 - We still permit optional batching to keep retries fast and to respect project-level load quotas.
 - Tables and schemas must already exist; the task should fail fast if `table_id` is missing rather than attempting to create it.
-- Every batch is launched with a deterministic BigQuery `job_id` derived from the table name and batch contents. The `pending_jobs_path` tracks submitted jobs so that, after a preemption, the task can call `client.get_job(job_id)` to determine whether the work finished before resubmitting.
+- Every batch is launched with a deterministic BigQuery `job_id` derived from the table name and batch contents. When a new VM retries after a preemption, it regenerates the same job IDs and BigQuery returns a Conflict exception for any already-submitted job; the script then fetches and waits on the existing job rather than resubmitting. No local state file is required.
 
 **Process**:
 
@@ -170,7 +169,6 @@ def load_table_from_parquet_files(
   table_name,
   files_fofn,
   schema_path,
-  pending_jobs_path,
   location=None,
 ):
   client = bigquery.Client(project=project_id)
@@ -180,8 +178,6 @@ def load_table_from_parquet_files(
   # Fail fast if table was not pre-created
   table = client.get_table(table_id)
   location = location or table.location
-
-  pending_jobs = _load_pending_jobs(pending_jobs_path)
 
   # Read files to load
   with open(files_fofn) as f:
@@ -211,11 +207,10 @@ def load_table_from_parquet_files(
     try:
       job_id = _make_job_id(table_name, batch)
 
-      if job_id in pending_jobs:
-        # Job was previously submitted; refresh its status
-        load_job = client.get_job(job_id=job_id, location=location)
-        print(f"Resuming existing load job {job_id} in state {load_job.state}")
-      else:
+      # Submit job; BigQuery returns Conflict if the same job_id was already
+      # submitted (e.g. by a previous VM before preemption), in which case we
+      # simply fetch and wait on the existing job.
+      try:
         load_job = client.load_table_from_uri(
           batch,
           table_id,
@@ -223,15 +218,17 @@ def load_table_from_parquet_files(
           job_id=job_id,
           location=location,
         )
-        pending_jobs[job_id] = {"files": batch, "location": location}
-        _store_pending_jobs(pending_jobs_path, pending_jobs)
+      except Exception as conflict:
+        if "already exists" in str(conflict).lower() or "conflict" in str(conflict).lower():
+          load_job = client.get_job(job_id=job_id, location=location)
+          print(f"Resuming existing load job {job_id} in state {load_job.state}")
+        else:
+          raise
 
       load_job.result()  # Wait for completion
 
       if load_job.errors:
         print(f"Job {job_id} completed with errors: {load_job.errors}")
-        pending_jobs.pop(job_id, None)
-        _store_pending_jobs(pending_jobs_path, pending_jobs)
         continue
 
       print(f"Loaded {load_job.output_rows} rows from {len(batch)} files")
@@ -249,9 +246,6 @@ def load_table_from_parquet_files(
             "rows_loaded": rows_per_file,
           }
         )
-
-      pending_jobs.pop(job_id, None)
-      _store_pending_jobs(pending_jobs_path, pending_jobs)
 
     except Exception as exc:  # pragma: no cover - design sample code
       print(f"Error loading batch: {exc}")
@@ -291,17 +285,6 @@ def insert_tracking_records(client, tracking_table_id, records):
 def _make_job_id(table_name, batch):
   digest = hashlib.sha1("\n".join(sorted(batch)).encode("utf-8")).hexdigest()[:16]
   return f"load_{table_name}_{digest}"
-
-
-def _load_pending_jobs(pending_jobs_path):
-  path = Path(pending_jobs_path)
-  if path.exists():
-    return json.loads(path.read_text())
-  return {}
-
-
-def _store_pending_jobs(pending_jobs_path, pending_jobs):
-  Path(pending_jobs_path).write_text(json.dumps(pending_jobs))
 ```
 
 > **Batching note**: Keep each `records` payload comfortably below BigQuery's 16 MB request limit (e.g., chunks of ≤1,000 records). For very large batches, write tracking records to a temporary table and issue a single `MERGE` from that table instead of UNNESTing parameters.
@@ -317,7 +300,7 @@ def _store_pending_jobs(pending_jobs_path, pending_jobs):
 - If a batch fails, log it but continue with remaining batches
 - Return partial success status if some batches fail
 - Failed files remain untracked and will be retried in next run
-- Deterministic job IDs and the persisted `pending_jobs_path` allow resumed tasks to query `client.get_job()` before deciding whether to retry or skip a batch, eliminating duplicate writes after preemptions
+- Deterministic job IDs allow resumed tasks to detect already-submitted jobs via BigQuery's Conflict response and call `client.get_job()` rather than resubmitting, eliminating duplicate writes after preemptions
 
 **Parallelization**: This task is scattered across all tables.
 

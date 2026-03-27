@@ -1234,7 +1234,6 @@ task LoadParquetFilesToBQ {
       --project-id ~{project_id} \
       --dataset-name ~{dataset_name} \
       --files-fofn ~{fofn_file} \
-      --pending-jobs-path pending_jobs.json \
       --batch-size ~{batch_size} \
       --output-stats stats.json
   >>>
