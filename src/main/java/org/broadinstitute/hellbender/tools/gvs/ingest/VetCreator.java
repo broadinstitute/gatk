@@ -99,13 +99,24 @@ public class VetCreator {
                 altAllele.getBaseString(),
                 referenceContext
             );
-            final String alleleId = VrsIdComputer.computeAlleleId(
-                refgetAccession,
-                normalized.start,
-                normalized.end,
-                normalized.state.sequence
-            );
-            ids.add(alleleId);
+            if (normalized.state.type == NormalizedAllele.SequenceState.StateType.REFERENCE_LENGTH_EXPRESSION) {
+                final String alleleId = VrsIdComputer.computeAlleleIdForReferenceLengthExpression(
+                    refgetAccession,
+                    normalized.start,
+                    normalized.end,
+                    normalized.state.length,
+                    normalized.state.repeatSubunitLength
+                );
+                ids.add(alleleId);
+            } else {
+                final String alleleId = VrsIdComputer.computeAlleleId(
+                    refgetAccession,
+                    normalized.start,
+                    normalized.end,
+                    normalized.state.sequence
+                );
+                ids.add(alleleId);
+            }
         }
         return ids;
     }

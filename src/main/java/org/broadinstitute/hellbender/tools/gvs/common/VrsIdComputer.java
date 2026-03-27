@@ -36,6 +36,32 @@ public class VrsIdComputer {
     }
 
     /**
+     * Compute the VRS Allele identifier for a deletion or tandem-repeat allele whose
+     * normalized state is {@code ReferenceLengthExpression}.
+     *
+     * <p>The canonical JSON for the state (RFC 8785, keys sorted) is:
+     * <pre>
+     * {"length":&lt;N&gt;,"repeatSubunitLength":&lt;M&gt;,"type":"ReferenceLengthExpression"}
+     * </pre>
+     * where {@code length} is the total number of bases in the alt allele and
+     * {@code repeatSubunitLength} is the length of the repeat unit (equal to {@code length}
+     * for simple deletions).
+     *
+     * @param refgetAccession     GA4GH RefGet accession
+     * @param start               0-based interbase start coordinate
+     * @param end                 0-based interbase end coordinate
+     * @param length              total alt allele length (from ReferenceLengthExpression)
+     * @param repeatSubunitLength repeat unit length (from ReferenceLengthExpression)
+     * @return                    VRS Allele ID
+     */
+    public static String computeAlleleIdForReferenceLengthExpression(
+            String refgetAccession, long start, long end, int length, int repeatSubunitLength) {
+        String locationDigest = computeLocationDigest(refgetAccession, start, end);
+        String alleleDigest = computeAlleleDigestForReferenceLength(locationDigest, length, repeatSubunitLength);
+        return "ga4gh:VA." + alleleDigest;
+    }
+
+    /**
      * Compute the VRS SequenceLocation identifier.
      *
      * @param refgetAccession GA4GH RefGet accession
@@ -75,6 +101,23 @@ public class VrsIdComputer {
 
         // Allele inherent fields: location, state, type (sorted)
         // location is Ga4ghIdentifiableObject → replaced by bare digest string
+        String alleleJson = "{"
+                + "\"location\":" + jsonString(locationDigest) + ","
+                + "\"state\":" + stateJson + ","
+                + "\"type\":\"Allele\""
+                + "}";
+
+        return sha512t24u(alleleJson.getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static String computeAlleleDigestForReferenceLength(
+            String locationDigest, int length, int repeatSubunitLength) {
+        // ReferenceLengthExpression inherent fields: length, repeatSubunitLength, type (sorted)
+        String stateJson = "{\"length\":" + length
+                         + ",\"repeatSubunitLength\":" + repeatSubunitLength
+                         + ",\"type\":\"ReferenceLengthExpression\"}";
+
+        // Allele inherent fields: location, state, type (sorted)
         String alleleJson = "{"
                 + "\"location\":" + jsonString(locationDigest) + ","
                 + "\"state\":" + stateJson + ","

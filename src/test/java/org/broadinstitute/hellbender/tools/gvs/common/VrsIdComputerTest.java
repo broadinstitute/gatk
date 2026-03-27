@@ -175,4 +175,64 @@ public class VrsIdComputerTest {
         // Even with same alt, different locations produce different Allele IDs
         assertEquals(allele1.equals(allele2), false);
     }
+
+    // ── ReferenceLengthExpression tests ───────────────────────────────────────
+
+    @Test
+    public void testReferenceLengthAlleleIdFormat() {
+        // Verify output format: ga4gh:VA.{32-char digest}
+        String id = VrsIdComputer.computeAlleleIdForReferenceLengthExpression(REFGET_SQ, 20, 25, 5, 5);
+        assertEquals(id.substring(0, 9), "ga4gh:VA.");
+        assertEquals(id.length(), 41);
+    }
+
+    @Test
+    public void testReferenceLengthAlleleIdDeterministic() {
+        // Same inputs must produce the same ID every time
+        String id1 = VrsIdComputer.computeAlleleIdForReferenceLengthExpression(REFGET_SQ, 20, 25, 5, 5);
+        String id2 = VrsIdComputer.computeAlleleIdForReferenceLengthExpression(REFGET_SQ, 20, 25, 5, 5);
+        assertEquals(id1, id2);
+    }
+
+    @Test
+    public void testReferenceLengthDiffersFromLiteralForSameLocation() {
+        // A deletion represented as ReferenceLengthExpression must NOT equal the same
+        // location with a LiteralSequenceExpression (different state type → different ID)
+        String refLengthId = VrsIdComputer.computeAlleleIdForReferenceLengthExpression(REFGET_SQ, 20, 25, 5, 5);
+        String literalId   = VrsIdComputer.computeAlleleId(REFGET_SQ, 20, 25, "ATCGA");
+        assertEquals(refLengthId.equals(literalId), false);
+    }
+
+    @Test
+    public void testReferenceLengthVariesByLength() {
+        // Deletions of different sizes must produce different IDs
+        String id5 = VrsIdComputer.computeAlleleIdForReferenceLengthExpression(REFGET_SQ, 20, 25, 5, 5);
+        String id3 = VrsIdComputer.computeAlleleIdForReferenceLengthExpression(REFGET_SQ, 20, 23, 3, 3);
+        assertEquals(id5.equals(id3), false);
+    }
+
+    @Test
+    public void testReferenceLengthVariesByRepeatSubunitLength() {
+        // Same total length but different repeat unit length (deletion vs tandem repeat)
+        // length=6, repeatSubunitLength=6 (simple deletion) vs repeatSubunitLength=2 (repeat unit)
+        String simpleDel  = VrsIdComputer.computeAlleleIdForReferenceLengthExpression(REFGET_SQ, 20, 26, 6, 6);
+        String repeatDel  = VrsIdComputer.computeAlleleIdForReferenceLengthExpression(REFGET_SQ, 20, 26, 6, 2);
+        assertEquals(simpleDel.equals(repeatDel), false);
+    }
+
+    @Test
+    public void testReferenceLengthVariesByLocation() {
+        // Same deletion size at different positions
+        String id1 = VrsIdComputer.computeAlleleIdForReferenceLengthExpression(REFGET_SQ, 20, 25, 5, 5);
+        String id2 = VrsIdComputer.computeAlleleIdForReferenceLengthExpression(REFGET_SQ, 30, 35, 5, 5);
+        assertEquals(id1.equals(id2), false);
+    }
+
+    @Test
+    public void testReferenceLengthVariesByRefgetAccession() {
+        // Same deletion, different chromosome → different ID
+        String id1 = VrsIdComputer.computeAlleleIdForReferenceLengthExpression(REFGET_SQ, 20, 25, 5, 5);
+        String id2 = VrsIdComputer.computeAlleleIdForReferenceLengthExpression("SQ.DifferentAccession", 20, 25, 5, 5);
+        assertEquals(id1.equals(id2), false);
+    }
 }
