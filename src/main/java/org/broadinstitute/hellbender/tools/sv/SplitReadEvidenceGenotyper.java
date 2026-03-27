@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.sv;
 import autovalue.shaded.com.google.common.collect.Sets;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
+import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.aggregation.EvidenceStatUtils;
@@ -292,9 +293,10 @@ public class SplitReadEvidenceGenotyper {
         Utils.validate(!homCounts.isEmpty(), "No split read counts after second pass");
         Utils.validate(!hetCounts.isEmpty(), "No split read counts after second pass");
         Utils.validate(!secondPassMade, "Second pass has already been made");
-        final double homMedian = MEDIAN.evaluate(homCounts.stream().mapToDouble(Double::valueOf).toArray());
-        final double hetMedian = MEDIAN.evaluate(hetCounts.stream().mapToDouble(Double::valueOf).toArray());
-        final double sdHet = 1.645 * MEDIAN.evaluate(hetCounts.stream().mapToDouble(d -> Math.abs(d - hetMedian)).toArray());
+        final double[] homArr = homCounts.stream().mapToDouble(Double::valueOf).toArray();
+        final double[] hetArr = hetCounts.stream().mapToDouble(Double::valueOf).toArray();
+        final double homMedian = MEDIAN.evaluate(homArr);
+        final double sdHet = 1.645 * new StandardDeviation().evaluate(hetArr);
         secondPassMade = true;
         // Free training accumulation data that is no longer needed
         firstPassCounts.clear();
