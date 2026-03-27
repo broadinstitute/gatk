@@ -111,7 +111,7 @@ def load_table_from_parquet_files(
 
         job_id = None  # ensure it is always defined for the except handler
         try:
-            job_id = _make_job_id(table_name, batch)
+            job_id = _make_job_id(project_id, dataset_name, table_name, batch)
             
             if job_id in pending_jobs:
                 # Job was previously submitted; check its status
@@ -193,9 +193,11 @@ def load_table_from_parquet_files(
 
 
 
-def _make_job_id(table_name, batch):
-    """Create deterministic job ID from table name and batch contents."""
-    digest = hashlib.sha1("\n".join(sorted(batch)).encode("utf-8")).hexdigest()[:16]
+def _make_job_id(project_id, dataset_name, table_name, batch):
+    """Create deterministic job ID from project, dataset, table name and batch contents."""
+    digest = hashlib.sha1(
+        "\n".join([project_id, dataset_name] + sorted(batch)).encode("utf-8")
+    ).hexdigest()[:16]
     return f"load_{table_name}_{digest}"
 
 

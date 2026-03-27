@@ -74,54 +74,54 @@ class TestParseRegularTableFromPath(unittest.TestCase):
 
 class TestMakeJobId(unittest.TestCase):
     """Test deterministic job ID generation."""
-    
+
     def test_job_id_is_deterministic(self):
         """Test that same inputs produce same job ID."""
         table_name = "vet_042"
         batch = ["gs://bucket/file1.parquet", "gs://bucket/file2.parquet"]
-        
-        job_id_1 = _make_job_id(table_name, batch)
-        job_id_2 = _make_job_id(table_name, batch)
-        
+
+        job_id_1 = _make_job_id("my-project", "my_dataset", table_name, batch)
+        job_id_2 = _make_job_id("my-project", "my_dataset", table_name, batch)
+
         self.assertEqual(job_id_1, job_id_2)
-    
+
     def test_job_id_different_for_different_batches(self):
         """Test that different batch contents produce different job IDs."""
         table_name = "vet_042"
-        
-        job_id_batch_1 = _make_job_id(table_name, ["gs://bucket/file1.parquet"])
-        job_id_batch_2 = _make_job_id(table_name, ["gs://bucket/file2.parquet"])
-        
+
+        job_id_batch_1 = _make_job_id("my-project", "my_dataset", table_name, ["gs://bucket/file1.parquet"])
+        job_id_batch_2 = _make_job_id("my-project", "my_dataset", table_name, ["gs://bucket/file2.parquet"])
+
         self.assertNotEqual(job_id_batch_1, job_id_batch_2)
-    
+
     def test_job_id_different_for_different_files(self):
         """Test that different file lists produce different job IDs."""
         table_name = "vet_042"
-        
-        job_id_1 = _make_job_id(table_name, ["gs://bucket/file1.parquet"])
-        job_id_2 = _make_job_id(table_name, ["gs://bucket/file2.parquet"])
-        
+
+        job_id_1 = _make_job_id("my-project", "my_dataset", table_name, ["gs://bucket/file1.parquet"])
+        job_id_2 = _make_job_id("my-project", "my_dataset", table_name, ["gs://bucket/file2.parquet"])
+
         self.assertNotEqual(job_id_1, job_id_2)
-    
+
     def test_job_id_different_for_different_tables(self):
         """Test that different table names produce different job IDs."""
         batch = ["gs://bucket/file1.parquet"]
-        
-        job_id_vet = _make_job_id("vet_042", batch)
-        job_id_ref = _make_job_id("ref_042", batch)
-        
+
+        job_id_vet = _make_job_id("my-project", "my_dataset", "vet_042", batch)
+        job_id_ref = _make_job_id("my-project", "my_dataset", "ref_042", batch)
+
         self.assertNotEqual(job_id_vet, job_id_ref)
-    
+
     def test_job_id_format(self):
         """Test that job ID has expected format."""
         table_name = "vet_042"
         batch = ["gs://bucket/file1.parquet"]
-        
-        job_id = _make_job_id(table_name, batch)
-        
+
+        job_id = _make_job_id("my-project", "my_dataset", table_name, batch)
+
         # Should start with "load_<table_name>_"
         self.assertTrue(job_id.startswith(f"load_{table_name}_"))
-        
+
         # Should end with a hash (16 hex characters for truncated SHA1)
         # Format is: load_vet_042_<16-char-hash>
         # So we need to remove the "load_vet_042_" prefix
@@ -130,15 +130,15 @@ class TestMakeJobId(unittest.TestCase):
         hash_part = job_id[len(prefix):]
         self.assertEqual(len(hash_part), 16)
         self.assertTrue(all(c in "0123456789abcdef" for c in hash_part))
-    
+
     def test_job_id_order_independence(self):
         """Test that batch file order affects job ID (sorted internally)."""
         table_name = "vet_042"
-        
+
         # The function sorts files internally, so order shouldn't matter
-        job_id_1 = _make_job_id(table_name, ["file2.parquet", "file1.parquet"])
-        job_id_2 = _make_job_id(table_name, ["file1.parquet", "file2.parquet"])
-        
+        job_id_1 = _make_job_id("my-project", "my_dataset", table_name, ["file2.parquet", "file1.parquet"])
+        job_id_2 = _make_job_id("my-project", "my_dataset", table_name, ["file1.parquet", "file2.parquet"])
+
         # Job IDs should be the same because files are sorted inside _make_job_id
         self.assertEqual(job_id_1, job_id_2)
 
