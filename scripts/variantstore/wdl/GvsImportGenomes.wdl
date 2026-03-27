@@ -262,14 +262,6 @@ workflow GvsImportGenomes {
         }
       }
 
-      call CreateParquetTrackingTable {
-        input:
-          project_id = project_id,
-          dataset_name = dataset_name,
-          go = select_first([ConfigureParquetLifecycle.done, true]),
-          variants_docker = effective_variants_docker,
-      }
-
       # Discover and load Parquet files into BigQuery after all data has been created.
       call DiscoverParquetFiles {
         input:
@@ -279,7 +271,6 @@ workflow GvsImportGenomes {
           regular_table_prefixes = ["sample_chromosome_ploidy"],
           superpartitioned_table_prefixes = ["vet", "ref_ranges"],
           go = flatten([
-            select_all([CreateParquetTrackingTable.done]),
             select_all([ConfigureParquetLifecycle.done]),
             select_all(GenerateParquetFilesFromInputGVCFs.done)
           ]),
@@ -289,7 +280,6 @@ workflow GvsImportGenomes {
       scatter (fofn in DiscoverParquetFiles.file_fofns) {
         call LoadParquetFilesToBQ {
           input:
-            go = CreateParquetTrackingTable.done,
             project_id = project_id,
             dataset_name = dataset_name,
             fofn_file = fofn,
@@ -929,7 +919,7 @@ task CreateSampleDataViews {
       SET sample_load_status_table_exists = (
         SELECT COUNT(1) FROM
         `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
-        WHERE table_name = "sample_load_status"
+        WHERE table_name = 'sample_load_status'
       );
 
       BEGIN
@@ -937,9 +927,9 @@ task CreateSampleDataViews {
       DECLARE create_variant_data_view STRING;
 
       IF sample_load_status_table_exists > 0 THEN
-        SET variants_load_status_clause = format(sample_load_status_template, "VARIANTS_LOADED");
+        SET variants_load_status_clause = format(sample_load_status_template, 'VARIANTS_LOADED');
       ELSE
-        SET variants_load_status_clause = "";
+        SET variants_load_status_clause = '';
       END IF;
 
       SET create_variant_data_view = """
@@ -949,7 +939,7 @@ task CreateSampleDataViews {
           SELECT CAST(partition_id AS INT64) AS sample_id
           FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
           WHERE
-          partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^vet_[0-9]+$")
+          partition_id NOT LIKE '__%' AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, '^vet_[0-9]+$')
 
       """ || variants_load_status_clause || ");";
 
@@ -963,9 +953,9 @@ task CreateSampleDataViews {
       DECLARE create_reference_data_view STRING;
 
       IF sample_load_status_table_exists > 0 THEN
-        SET references_load_status_clause = format(sample_load_status_template, "REFERENCES_LOADED");
+        SET references_load_status_clause = format(sample_load_status_template, 'REFERENCES_LOADED');
       ELSE
-        SET references_load_status_clause = "";
+        SET references_load_status_clause = '';
       END IF;
 
       SET create_reference_data_view = """
@@ -975,7 +965,7 @@ task CreateSampleDataViews {
         SELECT CAST(partition_id AS INT64) AS sample_id
         FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
         WHERE
-        partition_id NOT LIKE "__%" AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, "^ref_ranges_[0-9]+$")
+        partition_id NOT LIKE '__%' AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, '^ref_ranges_[0-9]+$')
 
       """ || references_load_status_clause || ");";
 
@@ -996,14 +986,14 @@ task CreateSampleDataViews {
       SET header_table_exists = (
         SELECT COUNT(1) FROM
         `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
-        WHERE table_name = "vcf_header_lines_scratch"
+        WHERE table_name = 'vcf_header_lines_scratch'
       );
 
       IF header_table_exists > 0 THEN
         IF sample_load_status_table_exists > 0 THEN
-          SET headers_load_status_clause = format(sample_load_status_template, "HEADERS_LOADED");
+          SET headers_load_status_clause = format(sample_load_status_template, 'HEADERS_LOADED');
         ELSE
-          SET headers_load_status_clause = "";
+          SET headers_load_status_clause = '';
         END IF;
 
         SET create_header_data_view = """
@@ -1024,7 +1014,7 @@ task CreateSampleDataViews {
 
         """;
       ELSE
-        SET query_header_existence_clause = "";
+        SET query_header_existence_clause = '';
       END IF;
 
       SET create_all_sample_data_view = """
@@ -1168,36 +1158,6 @@ EOF
   }
 }
 
-task CreateParquetTrackingTable {
-  input {
-    Boolean go
-    String project_id
-    String dataset_name
-    String variants_docker
-  }
-
-  command <<<
-    PS4='\D{+%F %T} \w $ '
-    set -o errexit -o nounset -o xtrace -o pipefail
-
-    python3 /app/create_tracking_table.py \
-      --project-id ~{project_id} \
-      --dataset-name ~{dataset_name}
-  >>>
-
-  runtime {
-    docker: variants_docker
-    memory: "2 GB"
-    disks: "local-disk 10 HDD"
-    preemptible: 3
-    cpu: 1
-  }
-
-  output {
-    Boolean done = true
-  }
-}
-
 task DiscoverParquetFiles {
   input {
     String output_gcs_dir
@@ -1258,7 +1218,6 @@ task DiscoverParquetFiles {
 
 task LoadParquetFilesToBQ {
   input {
-    Boolean go
     String project_id
     String dataset_name
     File fofn_file

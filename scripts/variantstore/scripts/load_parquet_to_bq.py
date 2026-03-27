@@ -7,6 +7,7 @@ Uses deterministic job IDs and job state persistence to handle preemptions.
 import argparse
 import hashlib
 import json
+import re
 import sys
 import time
 from pathlib import Path
@@ -51,8 +52,7 @@ def load_table_from_parquet_files(
         print(f"Extracted table name from FOFN: {table_name}")
     
     table_id = f"{project_id}.{dataset_name}.{table_name}"
-    tracking_table_id = f"{project_id}.{dataset_name}.parquet_load_status"
-    
+
     # Load schema if provided, otherwise use autodetection
     schema = None
     if schema_path:
@@ -80,10 +80,16 @@ def load_table_from_parquet_files(
     
     if not files:
         print("No files to load")
-        return {"files_loaded": 0, "rows_loaded": 0, "batches_processed": 0}
+        return {
+            "files_loaded": 0,
+            "rows_loaded": 0,
+            "batches_processed": 0,
+            "batches_failed": 0,
+            "completion_status": "SUCCESS",
+        }
     
     print(f"Processing {len(files)} files in batches of {batch_size}")
-    
+
     # Configure load job
     job_config = bigquery.LoadJobConfig(
         source_format=bigquery.SourceFormat.PARQUET,
@@ -94,7 +100,7 @@ def load_table_from_parquet_files(
     total_rows = 0
     successful_batches = 0
     failed_batches = 0
-    successful_loads = []
+    successful_files_count = 0
     
     # Load files in batches
     for i in range(0, len(files), batch_size):
@@ -102,9 +108,10 @@ def load_table_from_parquet_files(
         batch_num = i // batch_size + 1
         
         print(f"\nBatch {batch_num}/{(len(files) + batch_size - 1) // batch_size}: {len(batch)} files")
-        
+
+        job_id = None  # ensure it is always defined for the except handler
         try:
-            job_id = _make_job_id(table_name, batch)
+            job_id = _make_job_id(project_id, dataset_name, table_name, batch)
             
             if job_id in pending_jobs:
                 # Job was previously submitted; check its status
@@ -136,9 +143,13 @@ def load_table_from_parquet_files(
             
             # Check for errors
             if load_job.errors:
+                error_msg = "; ".join(
+                    e.get("message", str(e)) for e in load_job.errors
+                )
                 print(f"  ERROR: Job completed with errors:")
                 for error in load_job.errors:
                     print(f"    {error}")
+                _log_batch_result(batch, table_name, load_job.job_id, error=error_msg)
                 pending_jobs.pop(job_id, None)
                 _store_pending_jobs(pending_jobs_path, pending_jobs)
                 failed_batches += 1
@@ -149,40 +160,19 @@ def load_table_from_parquet_files(
             print(f"  ✓ Loaded {rows_loaded:,} rows from {len(batch)} files")
             total_rows += rows_loaded
             successful_batches += 1
-            
-            # Record successful loads in tracking table
-            # For single-file batches, we know exact row count; for multi-file, set to None
-            rows_per_file = rows_loaded if len(batch) == 1 else None
-            for file_path in batch:
-                sample_id = extract_sample_id_from_path(file_path, table_name)
-                if sample_id is None:
-                    raise ValueError(
-                        f"Failed to extract sample_id from file path: {file_path}. "
-                        f"Expected pattern '{table_name}_<sample_id>_' not found in filename."
-                    )
-                successful_loads.append({
-                    "file_path": file_path,
-                    "table_name": table_name,
-                    "sample_id": sample_id,
-                    "file_size_bytes": None,  # Could populate via storage API
-                    "load_job_id": load_job.job_id,
-                    "rows_loaded": rows_per_file,
-                })
-            
+            successful_files_count += len(batch)
+            _log_batch_result(batch, table_name, load_job.job_id)
+
             # Remove from pending jobs
             pending_jobs.pop(job_id, None)
             _store_pending_jobs(pending_jobs_path, pending_jobs)
             
         except Exception as exc:
             print(f"  ERROR: Exception loading batch: {exc}")
+            _log_batch_result(batch, table_name, job_id, error=str(exc))
             failed_batches += 1
             # Continue with next batch rather than failing entire task
             continue
-    
-    # Insert tracking records
-    if successful_loads:
-        print(f"\nRecording {len(successful_loads)} files in tracking table...")
-        insert_tracking_records(client, tracking_table_id, successful_loads)
     
     # Summary
     print(f"\n{'='*60}")
@@ -194,7 +184,7 @@ def load_table_from_parquet_files(
     print(f"{'='*60}")
     
     return {
-        "files_loaded": len(successful_loads),
+        "files_loaded": successful_files_count,
         "rows_loaded": total_rows,
         "batches_processed": successful_batches,
         "batches_failed": failed_batches,
@@ -202,66 +192,12 @@ def load_table_from_parquet_files(
     }
 
 
-def insert_tracking_records(client, tracking_table_id, records):
-    """
-    Insert load tracking records, skipping duplicates.
-    Batches records to avoid exceeding BigQuery request limits.
-    Uses retry logic for quota errors.
-    """
-    from google.cloud import bigquery
 
-    chunk_size = 1000  # Keep well below 16MB limit
-    
-    for i in range(0, len(records), chunk_size):
-        chunk = records[i : i + chunk_size]
-        
-        merge_query = f"""
-        MERGE `{tracking_table_id}` T
-        USING UNNEST(@records) S
-        ON T.file_path = S.file_path
-        WHEN NOT MATCHED THEN
-          INSERT (file_path, table_name, sample_id, file_size_bytes, load_timestamp, load_job_id, rows_loaded)
-          VALUES (S.file_path, S.table_name, S.sample_id, S.file_size_bytes, CURRENT_TIMESTAMP(), S.load_job_id, S.rows_loaded)
-        """
-        
-        # Define the struct type for the array parameter
-        struct_fields = [
-            bigquery.ScalarQueryParameter("file_path", "STRING", None),
-            bigquery.ScalarQueryParameter("table_name", "STRING", None),
-            bigquery.ScalarQueryParameter("sample_id", "INT64", None),
-            bigquery.ScalarQueryParameter("file_size_bytes", "INT64", None),
-            bigquery.ScalarQueryParameter("load_job_id", "STRING", None),
-            bigquery.ScalarQueryParameter("rows_loaded", "INT64", None),
-        ]
-        
-        # Convert records to StructQueryParameter objects
-        record_params = []
-        for r in chunk:
-            record_params.append(
-                bigquery.StructQueryParameter(
-                    None,  # No name needed for array elements
-                    bigquery.ScalarQueryParameter("file_path", "STRING", r["file_path"]),
-                    bigquery.ScalarQueryParameter("table_name", "STRING", r["table_name"]),
-                    bigquery.ScalarQueryParameter("sample_id", "INT64", r["sample_id"]),
-                    bigquery.ScalarQueryParameter("file_size_bytes", "INT64", r["file_size_bytes"]),
-                    bigquery.ScalarQueryParameter("load_job_id", "STRING", r["load_job_id"]),
-                    bigquery.ScalarQueryParameter("rows_loaded", "INT64", r["rows_loaded"]),
-                )
-            )
-        
-        job_config = bigquery.QueryJobConfig(
-            query_parameters=[
-                bigquery.ArrayQueryParameter("records", "STRUCT", record_params)
-            ]
-        )
-        
-        # Execute query with retry logic for quota errors
-        _execute_query_with_retry(client, merge_query, job_config)
-
-
-def _make_job_id(table_name, batch):
-    """Create deterministic job ID from table name and batch contents."""
-    digest = hashlib.sha1("\n".join(sorted(batch)).encode("utf-8")).hexdigest()[:16]
+def _make_job_id(project_id, dataset_name, table_name, batch):
+    """Create deterministic job ID from project, dataset, table name and batch contents."""
+    digest = hashlib.sha1(
+        "\n".join([project_id, dataset_name] + sorted(batch)).encode("utf-8")
+    ).hexdigest()[:16]
     return f"load_{table_name}_{digest}"
 
 
@@ -282,6 +218,43 @@ def _store_pending_jobs(pending_jobs_path, pending_jobs):
     path = Path(pending_jobs_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(pending_jobs, indent=2))
+
+
+def _extract_sample_id_from_file_path(file_path, table_name):
+    """
+    Extract the sample_id integer from a GCS Parquet file path given the resolved table name.
+
+    For superpartitioned tables the filename encodes both the superpartition and the sample_id:
+        gs://bucket/vet/vet_001_42_input_vcf_0_SAMPLE.parquet  -> "42"   (table_name="vet_001")
+
+    For regular tables the filename encodes only the sample_id:
+        gs://bucket/sample_chromosome_ploidy/sample_chromosome_ploidy_42_SAMPLE.parquet -> "42"
+
+    Returns the sample_id as a string, or None if the pattern is not found.
+    """
+    pattern = rf'/{re.escape(table_name)}_([0-9]+)(?:[_.]|$)'
+    match = re.search(pattern, file_path)
+    return match.group(1) if match else None
+
+
+def _log_batch_result(files, table_name, job_id, error=None):
+    """
+    Print a structured log block for a completed (successful or failed) batch.
+
+    Format:
+        BATCH WRITE {SUCCEEDED|FAILED} for job <job_id>, table <table_name>.
+        [ERROR: <error message>]          <- only present when the batch failed
+        <sample_id>\t<file_path>          <- one line per file
+    """
+    status = "FAILED" if error is not None else "SUCCEEDED"
+    job_id_str = str(job_id) if job_id is not None else ""
+    print(f"BATCH WRITE {status} for job {job_id_str}, table {table_name}.")
+    if error is not None:
+        print(f"ERROR: {error}")
+    for file_path in files:
+        sample_id = _extract_sample_id_from_file_path(file_path, table_name)
+        sample_id_str = sample_id if sample_id is not None else ""
+        print(f"{sample_id_str}\t{file_path}")
 
 
 def _submit_load_job_with_retry(client, batch, table_id, job_config, job_id, location, max_retries=3):
@@ -439,39 +412,6 @@ def _execute_query_with_retry(client, query, job_config=None, max_retries=3):
     
     raise Exception("Unexpected error in query retry logic")
 
-def extract_sample_id_from_path(file_path, table_name):
-    """
-    Extract sample_id from file path.
-
-    Example:
-        file_path: "gs://.../ref_ranges_001_1_input_vcf_0_ERS4367795.vcf.gz.parquet"
-        table_name: "ref_ranges_001"
-        Returns: 1
-
-    The pattern is: {table_name}_{sample_id}_
-    """
-    try:
-        # Get just the filename from the path
-        filename = file_path.split('/')[-1]
-
-        # Find the pattern: table_name followed by underscore and sample_id
-        pattern = f"{table_name}_"
-        if pattern in filename:
-            # Find where the pattern starts
-            start_idx = filename.index(pattern) + len(pattern)
-
-            # Extract the part after the pattern
-            remainder = filename[start_idx:]
-
-            # The sample_id is everything up to the next underscore
-            if '_' in remainder:
-                sample_id_str = remainder.split('_')[0]
-                return int(sample_id_str)
-
-        # If pattern not found, return None
-        return None
-    except (ValueError, IndexError):
-        return None
 
 
 def main():

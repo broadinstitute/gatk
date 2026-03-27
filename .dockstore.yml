@@ -220,14 +220,14 @@ workflows:
          - ah_var_store
        tags:
          - /.*/
-   - name: ParquetIngest1804DoNotLoadAlreadyLoadedThings
+   - name: ParquetIngest1829AuRevoirParquetLoadStatus
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
      filters:
        branches:
          - master
          - ah_var_store
-         - vs_1804_do_not_load_already_loaded_things
+         - vs_1829_au_revoir_parquet_load_status
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
@@ -350,7 +350,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1804_do_not_load_already_loaded_things
+             - vs_1829_au_revoir_parquet_load_status
          tags:
              - /.*/
    - name: GvsIngestTieout

@@ -12,8 +12,34 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
+try:
+    from google.cloud import bigquery
+except ImportError:
+    bigquery = None  # type: ignore  # will fail at runtime if BigQuery calls are made without the package installed
+
 
 log = logging.getLogger(__name__)
+
+
+_PREFIX_RE = re.compile(r'^[a-zA-Z][A-Za-z0-9_]+$')
+
+
+def _validate_table_prefixes(superpartitioned_table_prefixes, regular_table_prefixes):
+    """
+    Raise ValueError if any prefix does not match '^[a-zA-Z][A-Za-z0-9_]+$'.
+
+    Prefixes are embedded in SQL queries and regex patterns, so invalid values
+    could produce malformed queries or silently incorrect behaviour.
+    """
+    invalid = [
+        p for p in (superpartitioned_table_prefixes + regular_table_prefixes)
+        if not _PREFIX_RE.match(p)
+    ]
+    if invalid:
+        raise ValueError(
+            f"Table prefix(es) contain invalid characters (must match "
+            f"'^[a-zA-Z][A-Za-z0-9_]+$'): {invalid}"
+        )
 
 
 def parse_table_and_sample_id_from_file_path(file_path, superpartitioned_table_prefixes=None, regular_table_prefixes=None):
@@ -29,6 +55,9 @@ def parse_table_and_sample_id_from_file_path(file_path, superpartitioned_table_p
         regular_table_prefixes = ["sample_chromosome_ploidy"]
     if superpartitioned_table_prefixes is None:
         superpartitioned_table_prefixes = ["vet", "ref_ranges"]
+
+    _validate_table_prefixes(superpartitioned_table_prefixes, regular_table_prefixes)
+
     for prefix in superpartitioned_table_prefixes:
         # Parse prefix + superpartition, sample id out of filename.
         pattern = f'/({prefix}_[0-9]+)_([0-9]+)_[^/]+$'
@@ -50,71 +79,62 @@ def parse_table_and_sample_id_from_file_path(file_path, superpartitioned_table_p
     return None, None
 
 
-def get_actually_loaded_tables_and_sample_ids(project_id, dataset_name):
-    from google.cloud import bigquery
-    client = bigquery.Client(project=project_id)
+def get_already_loaded_tables_and_sample_ids(project_id, dataset_name,
+                                              superpartitioned_table_prefixes=None,
+                                              regular_table_prefixes=None):
+    """
+    Query BigQuery directly to find which (table_name, sample_id) pairs are already loaded.
 
-    try:
-        # Left outer join vet and ref_ranges partition info to the Parquet load status table to only return rows for
-        # which there appears to be a loaded partition but no entry in the Parquet load status table. Similar logic
-        # is applied for ploidy but without looking at partitions as the ploidy table is unpartitioned.
-        query = f"""
+    For superpartitioned tables (vet_%, ref_ranges_%) this inspects
+    INFORMATION_SCHEMA.PARTITIONS for non-empty partitions.
+    For regular tables (sample_chromosome_ploidy) this queries the table itself.
 
+    Returns a set of (table_name, sample_id) tuples.
+    """
+    if superpartitioned_table_prefixes is None:
+        superpartitioned_table_prefixes = ["vet", "ref_ranges"]
+    if regular_table_prefixes is None:
+        regular_table_prefixes = ["sample_chromosome_ploidy"]
+
+    _validate_table_prefixes(superpartitioned_table_prefixes, regular_table_prefixes)
+
+    sub_queries = []
+
+    if superpartitioned_table_prefixes:
+        # Build a regex that matches any of the superpartitioned table names, e.g.
+        # "^vet_[0-9]+$|^ref_ranges_[0-9]+$"
+        superpartitioned_regex = "|".join(
+            f"^{prefix}_[0-9]+$" for prefix in superpartitioned_table_prefixes
+        )
+        sub_queries.append(f"""
             SELECT parti.table_name AS table_name, SAFE_CAST(partition_id AS INT64) AS sample_id
-            FROM
-                `{project_id}.{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` parti
-            LEFT OUTER JOIN
-                `{project_id}.{dataset_name}.parquet_load_status` load_status
-            ON
-                parti.table_name = load_status.table_name AND
-                partition_id NOT LIKE "__%" AND
-                SAFE_CAST(partition_id AS INT64) = load_status.sample_id
+            FROM `{project_id}.{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` parti
             WHERE
-                REGEXP_CONTAINS(parti.table_name, "^ref_ranges_[0-9]+$|^vet_[0-9]+$") AND
+                REGEXP_CONTAINS(parti.table_name, '{superpartitioned_regex}') AND
                 parti.total_logical_bytes > 0 AND
-                partition_id NOT LIKE "__%" AND
-                SAFE_CAST(partition_id AS INT64) IS NOT NULL AND
-                load_status.table_name IS NULL
+                partition_id NOT LIKE '__%' AND
+                SAFE_CAST(partition_id AS INT64) IS NOT NULL
+        """)
 
-            UNION ALL
+    for prefix in regular_table_prefixes:
+        sub_queries.append(f"""
+            SELECT DISTINCT '{prefix}' AS table_name, t.sample_id AS sample_id
+            FROM `{project_id}.{dataset_name}.{prefix}` t
+        """)
 
-            SELECT DISTINCT "sample_chromosome_ploidy" AS table_name, ploidy.sample_id AS sample_id
-            FROM
-                `{project_id}.{dataset_name}.sample_chromosome_ploidy` ploidy
-            LEFT OUTER JOIN
-                `{project_id}.{dataset_name}.parquet_load_status` load_status
-            ON
-                ploidy.sample_id = load_status.sample_id AND
-                load_status.table_name = "sample_chromosome_ploidy"
-            WHERE
-                load_status.sample_id IS NULL
+    if not sub_queries:
+        return set()
 
-            ORDER BY table_name, sample_id
-        """
-        results = client.query(query)
-        return {(table_name, sample_id) for (table_name, sample_id) in results}
-    except Exception as e:
-        log.error(f"ERROR: Could not query partitions table: {e}")
-        raise
-
-
-def get_loaded_files_from_parquet_tracking_table(project_id, dataset_name):
-    """Query tracking table to get set of already-loaded file paths."""
-    from google.cloud import bigquery
-    client = bigquery.Client(project=project_id)
-    tracking_table = f"{project_id}.{dataset_name}.parquet_load_status"
+    query = " UNION ALL ".join(sub_queries) + " ORDER BY table_name, sample_id"
 
     try:
-        query = f"""
-            SELECT file_path
-            FROM `{tracking_table}`
-        """
+        client = bigquery.Client(project=project_id)
         results = client.query(query)
-        loaded_files = {row.file_path for row in results}
-        log.info(f"Found {len(loaded_files)} already-loaded files in tracking table")
-        return loaded_files
+        loaded = {(row.table_name, row.sample_id) for row in results}
+        log.info(f"Found {len(loaded)} already-loaded (table_name, sample_id) pairs in BigQuery")
+        return loaded
     except Exception as e:
-        log.error(f"Could not query Parquet load status tracking table: {e}")
+        log.error(f"ERROR: Could not query BigQuery for loaded data: {e}")
         raise
 
 
@@ -161,11 +181,13 @@ def main():
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    # Get already-loaded files per the Parquet tracking table.
-    tracking_table_loaded_files = get_loaded_files_from_parquet_tracking_table(args.project_id, args.dataset)
-
-    # Find which table + sample_ids are actually loaded by querying INFORMATION_SCHEMA or the data tables themselves.
-    actually_loaded_tables_and_sample_ids = get_actually_loaded_tables_and_sample_ids(args.project_id, args.dataset)
+    # Determine which (table_name, sample_id) pairs are already loaded in BigQuery.
+    # This is the authoritative source of truth — no parquet_load_status table needed.
+    already_loaded = get_already_loaded_tables_and_sample_ids(
+        args.project_id, args.dataset,
+        superpartitioned_table_prefixes=args.superpartitioned_table_prefixes,
+        regular_table_prefixes=args.regular_table_prefixes,
+    )
 
     # Read all parquet files
     with open(args.input) as f:
@@ -173,35 +195,32 @@ def main():
 
     log.info(f"Found {len(all_files)} total Parquet files")
 
-    # Group by table and filter out loaded files
+    # Group by table and filter out files whose (table_name, sample_id) is already loaded
     table_files = defaultdict(list)
     skipped_count = 0
     unmatched_table_name_count = 0
-    already_loaded_data_count = 0
 
     for file_path in all_files:
-        # Skip if already loaded
-        if file_path in tracking_table_loaded_files:
-            skipped_count += 1
-            continue
-
         # Extract table name and sample id
-        table_name, sample_id = parse_table_and_sample_id_from_file_path(file_path, args.superpartitioned_table_prefixes, args.regular_table_prefixes)
-        if table_name:
-            table_files[table_name].append(file_path)
-        else:
+        table_name, sample_id = parse_table_and_sample_id_from_file_path(
+            file_path, args.superpartitioned_table_prefixes, args.regular_table_prefixes
+        )
+        if table_name is None:
             unmatched_table_name_count += 1
             log.error(f"Could not determine table for: {file_path}")
             continue
 
-        if (table_name, sample_id) in actually_loaded_tables_and_sample_ids:
-            log.error(f"No entry in Parquet load status table for {file_path}, but sample_id {sample_id} appears to already have data in table {table_name}.")
-            already_loaded_data_count += 1
+        # Skip if data for this (table_name, sample_id) is already present in BigQuery
+        if (table_name, sample_id) in already_loaded:
+            skipped_count += 1
+            continue
 
-    if unmatched_table_name_count > 0 or already_loaded_data_count > 0:
+        table_files[table_name].append(file_path)
+
+    if unmatched_table_name_count > 0:
         raise ValueError(f"Error(s) examining Parquet files to load, see messages above for details.")
 
-    log.info(f"Skipped {skipped_count} already-loaded files")
+    log.info(f"Skipped {skipped_count} files for already-loaded (table_name, sample_id) pairs")
     log.info(f"Could not match {unmatched_table_name_count} files to tables")
     log.info(f"Grouped {sum(len(files) for files in table_files.values())} files into {len(table_files)} tables")
 
