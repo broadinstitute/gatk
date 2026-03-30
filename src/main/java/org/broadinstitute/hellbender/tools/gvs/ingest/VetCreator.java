@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.NormalizedAllele;
 import org.broadinstitute.hellbender.tools.gvs.common.RefGetAccessionProvider;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
+import org.broadinstitute.hellbender.tools.gvs.common.VrsAlleleRecord;
 import org.broadinstitute.hellbender.tools.gvs.common.VrsIdComputer;
 import org.broadinstitute.hellbender.tools.gvs.common.VrsNormalizer;
 import org.broadinstitute.hellbender.tools.gvs.ingest.bq.VetBQWriter;
@@ -26,6 +27,7 @@ import java.util.List;
 
 public class VetCreator {
     private VetWriter vetWriter = null;
+    private VrsAlleleCreator vrsAlleleCreator = null;
     private final Long sampleId;
     private final boolean enableVrsIds;
     private final VrsNormalizer vrsNormalizer = new VrsNormalizer();
@@ -38,9 +40,10 @@ public class VetCreator {
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
     }
 
-    public VetCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields, final MessageType parquetSchema, final boolean enableVrsIds) {
+    public VetCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields, final MessageType parquetSchema, final boolean enableVrsIds, final VrsAlleleCreator vrsAlleleCreator) {
         this.sampleId = sampleId;
         this.enableVrsIds = enableVrsIds;
+        this.vrsAlleleCreator = vrsAlleleCreator;
 
         try {
             switch (outputType) {
@@ -70,55 +73,59 @@ public class VetCreator {
         final int start = variant.getStart();
         final long location = SchemaUtils.encodeLocation(variant.getContig(), start);
 
+        final List<VrsAlleleRecord> vrsRecords = computeVrsAlleleRecords(variant, referenceContext);
+        final List<String> vrsAlleleIds = vrsRecords.stream()
+                .map(r -> r.vrsAlleleId)
+                .collect(java.util.stream.Collectors.toList());
+
         if (vetWriter != null) {
-            vetWriter.write(location, variant, sampleId, computeVrsAlleleIds(variant, referenceContext));
+            vetWriter.write(location, variant, sampleId, vrsAlleleIds);
+        }
+        if (vrsAlleleCreator != null) {
+            vrsAlleleCreator.apply(vrsRecords);
         }
     }
 
     /**
-     * Normalize each non-ref alternate allele and compute its VRS ID.
-     * Returns an empty list when VRS normalization is unavailable (no reference source)
-     * or when the contig is not a recognized GRCh38 chromosome.
+     * Normalize each non-ref alternate allele and compute its full VRS record.
+     * Returns an empty list when VRS IDs are disabled, reference is unavailable,
+     * or the contig is not a recognized chromosome.
      */
-    private List<String> computeVrsAlleleIds(final VariantContext variant, final org.broadinstitute.hellbender.engine.ReferenceContext referenceContext) {
+    private List<VrsAlleleRecord> computeVrsAlleleRecords(final VariantContext variant, final org.broadinstitute.hellbender.engine.ReferenceContext referenceContext) {
         if (!enableVrsIds || referenceContext == null || !referenceContext.hasBackingDataSource()
                 || !RefGetAccessionProvider.isKnownContig(variant.getContig())) {
             return Collections.emptyList();
         }
         final String refgetAccession = RefGetAccessionProvider.getAccession(variant.getContig());
-        final List<String> ids = new ArrayList<>();
+        final List<VrsAlleleRecord> records = new ArrayList<>();
         for (final Allele altAllele : variant.getAlternateAlleles()) {
             if (altAllele.isNonRefAllele()) {
                 continue; // skip <NON_REF> and <*>
             }
+            final long vrsStart = (long) variant.getStart() - 1;
+            final long vrsEnd   = vrsStart + variant.getReference().length();
             final NormalizedAllele normalized = vrsNormalizer.normalize(
-                variant.getContig(),
-                // VRS uses 0-based interbase; VCF getStart() is 1-based
-                (long) variant.getStart() - 1,
-                (long) variant.getStart() - 1 + variant.getReference().length(),
-                altAllele.getBaseString(),
-                referenceContext
+                variant.getContig(), vrsStart, vrsEnd, altAllele.getBaseString(), referenceContext
             );
+            final String locationId = VrsIdComputer.computeLocationId(
+                refgetAccession, normalized.start, normalized.end);
+            final VrsAlleleRecord record;
             if (normalized.state.type == NormalizedAllele.SequenceState.StateType.REFERENCE_LENGTH_EXPRESSION) {
                 final String alleleId = VrsIdComputer.computeAlleleIdForReferenceLengthExpression(
-                    refgetAccession,
-                    normalized.start,
-                    normalized.end,
-                    normalized.state.length,
-                    normalized.state.repeatSubunitLength
-                );
-                ids.add(alleleId);
+                    refgetAccession, normalized.start, normalized.end,
+                    normalized.state.length, normalized.state.repeatSubunitLength);
+                record = new VrsAlleleRecord(alleleId, locationId, refgetAccession,
+                    normalized.start, normalized.end,
+                    normalized.state.length, normalized.state.repeatSubunitLength);
             } else {
                 final String alleleId = VrsIdComputer.computeAlleleId(
-                    refgetAccession,
-                    normalized.start,
-                    normalized.end,
-                    normalized.state.sequence
-                );
-                ids.add(alleleId);
+                    refgetAccession, normalized.start, normalized.end, normalized.state.sequence);
+                record = new VrsAlleleRecord(alleleId, locationId, refgetAccession,
+                    normalized.start, normalized.end, normalized.state.sequence);
             }
+            records.add(record);
         }
-        return ids;
+        return records;
     }
 
 
@@ -132,11 +139,15 @@ public class VetCreator {
         if (vetWriter != null) {
             vetWriter.commitData();
         }
+        if (vrsAlleleCreator != null) {
+            vrsAlleleCreator.commitData();
+        }
     }
 
     public void closeTool() {
         try {
             if (vetWriter != null) vetWriter.close();
+            if (vrsAlleleCreator != null) vrsAlleleCreator.closeTool();
         } catch (final Exception e) {
             throw new IllegalArgumentException(e);
         }

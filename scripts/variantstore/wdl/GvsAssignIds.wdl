@@ -17,6 +17,7 @@ workflow GvsAssignIds {
 
     Boolean load_vet_and_ref_ranges
     Boolean load_vcf_headers
+    Boolean enable_vrs_ids = false
 
     Boolean use_compressed_references = false
     String? cloud_sdk_docker
@@ -26,6 +27,7 @@ workflow GvsAssignIds {
   String sample_info_schema_json = '[{"name": "sample_name","type": "STRING","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "NULLABLE"},{"name":"is_loaded","type":"BOOLEAN","mode":"NULLABLE"},{"name":"is_control","type":"BOOLEAN","mode":"REQUIRED"},{"name":"withdrawn","type":"TIMESTAMP","mode":"NULLABLE"}]'
   String vcf_header_lines_scratch_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"vcf_header_lines","type":"STRING","mode":"NULLABLE"},{"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"},{"name":"is_expected_unique","type":"BOOLEAN","mode":"REQUIRED"}]'
   String vcf_header_lines_schema_json = '[{"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}, {"name":"vcf_header_lines","type":"STRING","mode":"REQUIRED"},{"name":"is_expected_unique","type":"BOOLEAN","mode":"REQUIRED"}]'
+  String vrs_allele_schema_json = '[{"name": "vrs_allele_id", "type": "STRING", "mode": "REQUIRED"},{"name": "vrs_location_id", "type": "STRING", "mode": "REQUIRED"},{"name": "refget_accession", "type": "STRING", "mode": "REQUIRED"},{"name": "ref_genome_coord_start", "type": "INTEGER", "mode": "REQUIRED"},{"name": "ref_genome_coord_end", "type": "INTEGER", "mode": "REQUIRED"},{"name": "state_type", "type": "STRING", "mode": "REQUIRED"},{"name": "state_sequence", "type": "STRING", "mode": "NULLABLE"},{"name": "state_length", "type": "INTEGER", "mode": "NULLABLE"},{"name": "state_repeat_subunit_length", "type": "INTEGER", "mode": "NULLABLE"}]'
   String sample_vcf_header_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"}, {"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}]'
   String sample_load_status_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
   String sample_chromosome_ploidy_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "chromosome","type": "INTEGER","mode": "REQUIRED"},{"name": "ploidy","type": "INTEGER","mode": "REQUIRED"}]'
@@ -123,6 +125,19 @@ workflow GvsAssignIds {
         max_table_id = 1,
         superpartitioned = "false",
         partitioned = "false",
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+  }
+
+  if (enable_vrs_ids) {
+    call GvsCreateTables.CreateSingleTable as CreateVrsAlleleTable {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        go = ValidateSamples.done,
+        table_name = "vrs_allele",
+        schema_json = vrs_allele_schema_json,
+        clustering_fields = "vrs_allele_id",
         cloud_sdk_docker = effective_cloud_sdk_docker,
     }
   }

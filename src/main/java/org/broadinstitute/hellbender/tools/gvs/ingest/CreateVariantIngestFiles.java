@@ -45,6 +45,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private RefRangesCreator refRangesCreator;
     private VetCreator vetCreator;
+    private VrsAlleleCreator vrsAlleleCreator;
     private VcfHeaderLineScratchCreator vcfHeaderLineScratchCreator;
     private SamplePloidyCreator samplePloidyCreator;
     private LoadStatus loadStatus;
@@ -86,10 +87,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Argument(fullName = "enable-vrs-ids",
             shortName = "vrs",
-            doc = "compute and write VRS allele IDs into the vrs_allele_ids column of VET output. " +
-                  "Requires a reference (--reference). Disable to measure baseline performance.",
+            doc = "compute and write VRS allele IDs into the vrs_allele_ids column of VET output, " +
+                  "and produce a vrs_allele output file. Requires a reference (--reference).",
             optional = true)
-    public boolean enableVrsIds = true;
+    public boolean enableVrsIds = false;
 
     @Argument(
             fullName = "enable-vcf-headers",
@@ -208,6 +209,21 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             			optional binary element (UTF8);
             		}
             	}
+            }
+            """);
+
+    public final MessageType vrsAlleleRowSchema = MessageTypeParser
+            .parseMessageType("""
+            message VrsAlleleRow {
+                required binary vrs_allele_id (UTF8);
+                required binary vrs_location_id (UTF8);
+                required binary refget_accession (UTF8);
+                required int64 ref_genome_coord_start;
+                required int64 ref_genome_coord_end;
+                required binary state_type (UTF8);
+                optional binary state_sequence (UTF8);
+                optional int64 state_length;
+                optional int64 state_repeat_subunit_length;
             }
             """);
 
@@ -400,7 +416,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         if (enableVet && vetRowsExist == Boolean.FALSE) {
             logger.info("Writing vet data for sample id = {}, name = {}", sampleId, sampleName);
-            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, variantRowSchema, enableVrsIds);
+            if (enableVrsIds) {
+                vrsAlleleCreator = new VrsAlleleCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, vrsAlleleRowSchema);
+            }
+            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, variantRowSchema, enableVrsIds, vrsAlleleCreator);
         }
         if (enableVCFHeaders && vcfHeaderRowsExist == Boolean.FALSE) {
             logger.info("Writing vcf header data for sample id = {}, name = {}", sampleId, sampleName);
@@ -528,6 +547,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
         if (vetCreator != null) {
             vetCreator.closeTool();
+        }
+        if (vrsAlleleCreator != null) {
+            vrsAlleleCreator.closeTool();
         }
         if (samplePloidyCreator != null) {
             samplePloidyCreator.closeTool();

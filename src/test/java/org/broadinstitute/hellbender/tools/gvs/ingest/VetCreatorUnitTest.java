@@ -92,7 +92,8 @@ public class VetCreatorUnitTest {
                     true,
                     false,
                     PARQUET_SCHEMA,
-                    false  // enableVrsIds
+                    false,  // enableVrsIds
+                    null    // vrsAlleleCreator
             );
 
             // If we get here, the test failed - no exception was thrown

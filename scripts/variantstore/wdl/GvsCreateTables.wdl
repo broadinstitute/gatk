@@ -139,3 +139,50 @@ task CreateTables {
     cpu: 1
   }
 }
+
+task CreateSingleTable {
+  input {
+    String project_id
+    String dataset_name
+    Boolean go
+    String table_name
+    String schema_json
+    String clustering_fields
+    String cloud_sdk_docker
+  }
+
+  meta {
+    volatile: true
+  }
+
+  command <<<
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+    TABLE="~{dataset_name}.~{table_name}"
+
+    set +e
+    bq --apilog=false show --project_id=~{project_id} $TABLE > /dev/null 2>&1
+    BQ_SHOW_RC=$?
+    set -e
+
+    if [ $BQ_SHOW_RC -ne 0 ]; then
+      echo '~{schema_json}' > schema.json
+      bq --apilog=false mk --clustering_fields=~{clustering_fields} \
+        --project_id=~{project_id} $TABLE schema.json
+    fi
+  >>>
+
+  output {
+    Boolean done = true
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    preemptible: 3
+    cpu: 1
+  }
+}
