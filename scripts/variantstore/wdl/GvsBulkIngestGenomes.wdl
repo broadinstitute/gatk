@@ -49,6 +49,7 @@ workflow GvsBulkIngestGenomes {
         String? billing_project_id
         Boolean load_vet_and_ref_ranges = true
         Boolean load_vcf_headers = false
+        Boolean enable_vrs_ids = false
         Boolean tighter_gcp_quotas = false
         Boolean is_wgs = true
         # End GvsImportGenomes
@@ -132,6 +133,7 @@ workflow GvsBulkIngestGenomes {
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
             load_vcf_headers = load_vcf_headers,
             load_vet_and_ref_ranges = load_vet_and_ref_ranges,
+            enable_vrs_ids = enable_vrs_ids,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             use_compressed_references = use_compressed_references,
             samples_are_controls = samples_are_controls,
@@ -163,6 +165,7 @@ workflow GvsBulkIngestGenomes {
             use_compressed_references = use_compressed_references,
             load_vet_and_ref_ranges = load_vet_and_ref_ranges,
             load_vcf_headers = load_vcf_headers,
+            enable_vrs_ids = enable_vrs_ids,
             is_rate_limited_beta_customer = tighter_gcp_quotas,
             use_parquet_ingest = use_parquet_ingest,
             parquet_output_gcs_dir = parquet_output_gcs_dir,

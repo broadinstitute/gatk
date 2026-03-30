@@ -38,6 +38,7 @@ workflow GvsImportGenomes {
     # At least one of these "load" inputs must be true
     Boolean load_vet_and_ref_ranges = true
     Boolean load_vcf_headers = false
+    Boolean enable_vrs_ids = false
     String? basic_docker
     String? cloud_sdk_docker
     String? variants_docker
@@ -59,6 +60,9 @@ workflow GvsImportGenomes {
 
   Int max_auto_scatter_width = if is_wgs then 25000 else 100000
   String genome_type = if is_wgs then "WGS" else "exome"
+  Array[String] regular_parquet_table_prefixes = if enable_vrs_ids
+      then ["sample_chromosome_ploidy", "vrs_allele"]
+      else ["sample_chromosome_ploidy"]
 
   # Broad users enjoy higher quotas and can scatter more widely than beta users before BigQuery smacks them
   # We don't expect this to be changed at runtime, so we can keep this as a constant defined in here
@@ -202,6 +206,7 @@ workflow GvsImportGenomes {
           sample_map = GetUningestedSampleIds.sample_map,
           load_vet_and_ref_ranges = load_vet_and_ref_ranges,
           load_vcf_headers = load_vcf_headers,
+          enable_vrs_ids = enable_vrs_ids,
           billing_project_id = billing_project_id,
           use_compressed_references = use_compressed_references,
           parquet_output_gcs_dir = parquet_output_gcs_dir,
@@ -228,6 +233,7 @@ workflow GvsImportGenomes {
           sample_map = GetUningestedSampleIds.sample_map,
           load_vet_and_ref_ranges = load_vet_and_ref_ranges,
           load_vcf_headers = load_vcf_headers,
+            enable_vrs_ids = enable_vrs_ids,
           billing_project_id = billing_project_id,
           use_compressed_references = use_compressed_references,
           use_parquet_ingest = false,
@@ -271,7 +277,7 @@ workflow GvsImportGenomes {
           output_gcs_dir = defined_parquet_output_dir,
           project_id = project_id,
           dataset_name = dataset_name,
-          regular_table_prefixes = ["sample_chromosome_ploidy"],
+          regular_table_prefixes = regular_parquet_table_prefixes,
           superpartitioned_table_prefixes = ["vet", "ref_ranges"],
           go = flatten([[ConfigureParquetLifecycle.done], select_all(GenerateParquetFilesFromInputGVCFs.done)]),
           variants_docker = effective_variants_docker,
@@ -395,6 +401,7 @@ task ProcessInputGVCFs {
     Boolean use_compressed_references = false
     Boolean load_vet_and_ref_ranges
     Boolean load_vcf_headers
+    Boolean enable_vrs_ids
 
     String? parquet_output_gcs_dir
 
@@ -563,6 +570,7 @@ task ProcessInputGVCFs {
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
         --enable-vcf-headers ~{load_vcf_headers} \
+        --enable-vrs-ids ~{enable_vrs_ids} \
         --use-compressed-refs ~{use_compressed_references}
 
       # The Parquet / non-Parquet branches here might also be coalesced.
@@ -584,6 +592,12 @@ task ProcessInputGVCFs {
         gcloud storage ~{"--billing-project " + billing_project_id} cp $vet_parquet_file ${OUTPUT_GCS_DIR}/vet/$table_number/$vet_parquet_file
         gcloud storage ~{"--billing-project " + billing_project_id} cp $ref_parquet_file ${OUTPUT_GCS_DIR}/ref_ranges/$table_number/$ref_parquet_file
         gcloud storage ~{"--billing-project " + billing_project_id} cp $ploidy_parquet_file ${OUTPUT_GCS_DIR}/sample_chromosome_ploidy/$ploidy_parquet_file
+
+        if [[ "~{enable_vrs_ids}" = 'true' ]]
+        then
+          vrs_allele_parquet_file=`ls vrs_allele_*.parquet`
+          gcloud storage ~{"--billing-project " + billing_project_id} cp $vrs_allele_parquet_file ${OUTPUT_GCS_DIR}/vrs_allele/$vrs_allele_parquet_file
+        fi
 
         # cleanup after ourselves
         rm *.parquet
