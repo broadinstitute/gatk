@@ -89,6 +89,9 @@ public final class GATKSVVCFConstants {
     public static final String CPX_EVENT_KEY = "CPX_EVENT";
     public static final String CPX_INTERVALS = "CPX_INTERVALS";
     public static final String CPX_TYPE = "CPX_TYPE";
+    public static final String SINK_CHROM = "SINK_CHROM";
+    public static final String SINK_POS = "SINK_POS";
+    public static final String SINK_END = "SINK_END";
 
     // keep in sync with map below
     public enum ComplexVariantSubtype {

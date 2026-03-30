@@ -2,8 +2,6 @@ package org.broadinstitute.hellbender.tools.sv;
 
 
 import com.google.common.collect.ImmutableSet;
-import org.broadinstitute.barclay.argparser.BetaFeature;
-import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.utils.Utils;

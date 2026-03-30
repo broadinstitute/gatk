@@ -6,7 +6,6 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MultiVariantInputArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKPath;
-import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
 import java.util.Arrays;
 import java.util.List;

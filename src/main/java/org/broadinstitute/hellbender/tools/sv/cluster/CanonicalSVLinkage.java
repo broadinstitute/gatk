@@ -148,7 +148,7 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
      * Helper function to test for clustering between two items given a particular set of parameters.
      * Note that the records have already been subjected to the checks in {@link #areClusterable(SVCallRecord, SVCallRecord)}.
      */
-    private static CanonicalLinkageResult clusterTogetherWithParams(final SVCallRecord a, final SVCallRecord b,
+    protected CanonicalLinkageResult clusterTogetherWithParams(final SVCallRecord a, final SVCallRecord b,
                                                                     final ClusteringParameters params) {
         // Contigs match
         if (!(a.getContigA().equals(b.getContigA()) && a.getContigB().equals(b.getContigB()))) {
@@ -186,7 +186,7 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
      * Performs overlap testing on each pair of complex intervals in two records, requiring each pair to be
      * sufficiently similar by reciprocal overlap, size similarity, and breakend proximity.
      */
-    private static CanonicalLinkageResult testComplexIntervals(final SVCallRecord a, final SVCallRecord b, final double overlapThreshold,
+    protected static CanonicalLinkageResult testComplexIntervals(final SVCallRecord a, final SVCallRecord b, final double overlapThreshold,
                                                                final double sizeSimilarityThreshold, final int window,
                                                                final double sampleOverlapThreshold) {
         final Integer overallBreakpointDistance1 = getFirstBreakpointProximity(a, b);
@@ -237,7 +237,7 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
                 intervalFirstBreakpointDistance, intervalSecondBreakpointDistance);
     }
 
-    private static Double computeReciprocalOverlap(final SVCallRecord a, final SVCallRecord b) {
+    protected static Double computeReciprocalOverlap(final SVCallRecord a, final SVCallRecord b) {
         if (a.isIntrachromosomal() && b.isIntrachromosomal() && a.getContigA().equals(b.getContigA())) {
             final int lengthA = getLength(a, INSERTION_ASSUMED_LENGTH_FOR_OVERLAP);
             final int lengthB = getLength(b, INSERTION_ASSUMED_LENGTH_FOR_OVERLAP);
@@ -249,18 +249,18 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         }
     }
 
-    private static Double computeReciprocalOverlap(final SimpleInterval a, final SimpleInterval b) {
+    protected static Double computeReciprocalOverlap(final SimpleInterval a, final SimpleInterval b) {
         if (!a.overlaps(b)) {
             return 0.;
         }
         return a.intersect(b).size() / (double) Math.max(a.size(), b.size());
     }
 
-    private static boolean testReciprocalOverlap(final Double reciprocalOverlap, final double threshold) {
+    protected static boolean testReciprocalOverlap(final Double reciprocalOverlap, final double threshold) {
         return reciprocalOverlap == null || reciprocalOverlap >= threshold;
     }
 
-    private static Double computeSizeSimilarity(final SVCallRecord a, final SVCallRecord b) {
+    protected static Double computeSizeSimilarity(final SVCallRecord a, final SVCallRecord b) {
         if (a.isIntrachromosomal() && b.isIntrachromosomal()) {
             final int lengthA = getLength(a, INSERTION_ASSUMED_LENGTH_FOR_SIZE_SIMILARITY);
             final int lengthB = getLength(b, INSERTION_ASSUMED_LENGTH_FOR_SIZE_SIMILARITY);
@@ -270,19 +270,19 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         }
     }
 
-    private static double computeSizeSimilarity(final int lengthA, final int lengthB) {
+    protected static double computeSizeSimilarity(final int lengthA, final int lengthB) {
         return Math.min(lengthA, lengthB) / (double) Math.max(lengthA, lengthB);
     }
 
-    private static boolean testSizeSimilarity(final Double sizeSimilarity, final double threshold) {
+    protected static boolean testSizeSimilarity(final Double sizeSimilarity, final double threshold) {
         return sizeSimilarity == null || sizeSimilarity >= threshold;
     }
 
-    private static boolean testBreakendProximity(final Integer distance1, final Integer distance2, final int window) {
+    protected static boolean testBreakendProximity(final Integer distance1, final Integer distance2, final int window) {
         return distance1 != null && distance2 != null && distance1 <= window && distance2 <= window;
     }
 
-    private static Integer getFirstBreakpointProximity(final SVCallRecord a, final SVCallRecord b) {
+    protected static Integer getFirstBreakpointProximity(final SVCallRecord a, final SVCallRecord b) {
         if (a.getContigA().equals(b.getContigA())) {
             return Math.abs(a.getPositionA() - b.getPositionA());
         } else {
@@ -290,7 +290,7 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         }
     }
 
-    private static Integer getFirstBreakpointProximity(final SVCallRecord.ComplexEventInterval a,
+    protected static Integer getFirstBreakpointProximity(final SVCallRecord.ComplexEventInterval a,
                                                        final SVCallRecord.ComplexEventInterval b) {
         if (a.getContig().equals(b.getContig())) {
             return Math.abs(a.getStart() - b.getStart());
@@ -299,7 +299,7 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         }
     }
 
-    private static Integer getSecondBreakpointProximity(final SVCallRecord a, final SVCallRecord b) {
+    protected static Integer getSecondBreakpointProximity(final SVCallRecord a, final SVCallRecord b) {
         if (a.getContigB().equals(b.getContigB())) {
             return Math.abs(a.getPositionB() - b.getPositionB());
         } else {
@@ -307,7 +307,7 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         }
     }
 
-    private static Integer getSecondBreakpointProximity(final SVCallRecord.ComplexEventInterval a,
+    protected static Integer getSecondBreakpointProximity(final SVCallRecord.ComplexEventInterval a,
                                                         final SVCallRecord.ComplexEventInterval b) {
         if (a.getContig().equals(b.getContig())) {
             return Math.abs(a.getEnd() - b.getEnd());

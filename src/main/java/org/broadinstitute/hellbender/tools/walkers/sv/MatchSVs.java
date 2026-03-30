@@ -66,6 +66,13 @@ public final class MatchSVs extends AbstractConcordanceWalker {
             optional=true)
     public int maxRecordsInRam = 1000;
 
+    @Argument(
+            doc = "Match complex variants across different complex subtypes using CPX_INTERVALS and optionally SINK attributes",
+            fullName = "match-complex-across-subtypes",
+            optional = true
+    )
+    public boolean matchComplexAcrossSubtypes = false;
+
     @ArgumentCollection
     protected final SVClusterEngineArgumentsCollection defaultClusteringArgs = new SVClusterEngineArgumentsCollection();
     @ArgumentCollection
@@ -102,9 +109,8 @@ public final class MatchSVs extends AbstractConcordanceWalker {
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_FREQUENCY_KEY));
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_COUNT_KEY));
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.ALLELE_NUMBER_KEY));
-        header.addMetaDataLine(new VCFInfoHeaderLine("TRUTH_NONDIPLOID_CN_FREQ", VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Nondiploid CN frequency of truth variant(s)"));
-        header.addMetaDataLine(new VCFInfoHeaderLine("TRUTH_NONDIPLOID_CN_FREQ_XX", VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Nondiploid CN frequency of truth variant(s) in XX samples"));
-        header.addMetaDataLine(new VCFInfoHeaderLine("TRUTH_NONDIPLOID_CN_FREQ_XY", VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Nondiploid CN frequency of truth variant(s) in XY samples"));
+        header.addMetaDataLine(new VCFInfoHeaderLine("TRUTH_RD_CN_ESTIMATED_AF", VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Estimated AF from RD_CN of truth variant(s)"));
+        header.addMetaDataLine(new VCFInfoHeaderLine("TRUTH_SVTYPE", VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.String, "SVTYPE of truth variant(s)"));
         SVStratify.addStratifyMetadata(header);
         return header;
     }
@@ -145,7 +151,9 @@ public final class MatchSVs extends AbstractConcordanceWalker {
                     final ClusteringParameters pesrParams = ClusteringParameters.createPesrParameters(parameters.reciprocalOverlap(), parameters.sizeSimilarity(), parameters.breakendWindow(), parameters.sampleOverlap());
                     final ClusteringParameters mixedParams = ClusteringParameters.createMixedParameters(parameters.reciprocalOverlap(), parameters.sizeSimilarity(), parameters.breakendWindow(), parameters.sampleOverlap());
                     final ClusteringParameters depthParams = ClusteringParameters.createDepthParameters(parameters.reciprocalOverlap(), parameters.sizeSimilarity(), parameters.breakendWindow(), parameters.sampleOverlap());
-                    final CanonicalSVLinkage<SVCallRecord> linkage = new CanonicalSVLinkage<SVCallRecord>(dictionary, false);
+                    final CanonicalSVLinkage<SVCallRecord> linkage = matchComplexAcrossSubtypes
+                            ? new CrossSubtypeLinkage<SVCallRecord>(dictionary)
+                            : new CanonicalSVLinkage<SVCallRecord>(dictionary, false);
                     linkage.setDepthOnlyParams(depthParams);
                     linkage.setMixedParams(mixedParams);
                     linkage.setEvidenceParams(pesrParams);
@@ -158,7 +166,9 @@ public final class MatchSVs extends AbstractConcordanceWalker {
             }
         }
 
-        final CanonicalSVLinkage<SVCallRecord> defaultLinkage = new CanonicalSVLinkage<SVCallRecord>(dictionary, false);
+        final CanonicalSVLinkage<SVCallRecord> defaultLinkage = matchComplexAcrossSubtypes
+                ? new CrossSubtypeLinkage<SVCallRecord>(dictionary)
+                : new CanonicalSVLinkage<SVCallRecord>(dictionary, false);
         defaultLinkage.setDepthOnlyParams(defaultClusteringArgs.getDepthParameters());
         defaultLinkage.setMixedParams(defaultClusteringArgs.getMixedParameters());
         defaultLinkage.setEvidenceParams(defaultClusteringArgs.getPESRParameters());

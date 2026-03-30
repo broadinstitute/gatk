@@ -13,6 +13,8 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.stat.descriptive.rank.Percentile;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.ComplexVariantSubtype;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.StructuralVariantAnnotationType;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -212,6 +214,11 @@ public class CanonicalSVCollapser {
     }
 
     protected SVCallRecord getRepresentativeRecord(final Collection<SVCallRecord> items, final int newStart, final int newEnd) {
+        // If all records are CPX but have different subtypes, use subtype priority heuristics
+        if (items.stream().allMatch(r -> r.getType() == StructuralVariantAnnotationType.CPX)
+                && !items.stream().allMatch(r -> r.getComplexSubtype() == items.iterator().next().getComplexSubtype())) {
+            return getRepresentativeComplexSubtypeRecord(items);
+        }
         return items.stream().sorted(Comparator.comparing(SVCallRecord::getId))
                 .min(Comparator.comparing(r -> distance(r, newStart, newEnd))).get();
     }
@@ -744,11 +751,85 @@ public class CanonicalSVCollapser {
         }
     }
 
+    private SVCallRecord getRepresentativeComplexSubtypeRecord(final Collection<SVCallRecord> records) {
+        if (records.size() != 2) {
+            throw new IllegalArgumentException("Expected exactly 2 records to compare for representative complex subtype, but found " + records.size());
+        }
+        final SVCallRecord rec1 = records.iterator().next();
+        final SVCallRecord rec2 = records.stream().filter(r -> !r.equals(rec1)).findFirst().get();
+        final ComplexVariantSubtype subtype1 = rec1.getComplexSubtype();
+        final ComplexVariantSubtype subtype2 = rec2.getComplexSubtype();
+
+        // dDUP is preferred over dDUP_iDEL, dupINV, INVdup, INS_iDEL
+        if (subtype1 == ComplexVariantSubtype.dDUP && DDUP_LOWER_PRIORITY.contains(subtype2)) {
+            return rec1;
+        }
+        if (subtype2 == ComplexVariantSubtype.dDUP && DDUP_LOWER_PRIORITY.contains(subtype1)) {
+            return rec2;
+        }
+
+        // dDUP_iDEL is preferred over dupINV, INVdup, dupINVdel, delINVdup, INS_iDEL
+        if (subtype1 == ComplexVariantSubtype.dDUP_iDEL && DDUP_IDEL_LOWER_PRIORITY.contains(subtype2)) {
+            return rec1;
+        }
+        if (subtype2 == ComplexVariantSubtype.dDUP_iDEL && DDUP_IDEL_LOWER_PRIORITY.contains(subtype1)) {
+            return rec2;
+        }
+
+        // dupINV/INVdup is preferred over dupINVdup, dupINVdel, delINVdup
+        if (DUP_INV_FAMILY.contains(subtype1) && DUP_INV_LOWER_PRIORITY.contains(subtype2)) {
+            return rec1;
+        }
+        if (DUP_INV_FAMILY.contains(subtype2) && DUP_INV_LOWER_PRIORITY.contains(subtype1)) {
+            return rec2;
+        }
+
+        // delINV/INVdel is preferred over delINVdup, dupINVdel, delINVdel
+        if (DEL_INV_FAMILY.contains(subtype1) && DEL_INV_LOWER_PRIORITY.contains(subtype2)) {
+            return rec1;
+        }
+        if (DEL_INV_FAMILY.contains(subtype2) && DEL_INV_LOWER_PRIORITY.contains(subtype1)) {
+            return rec2;
+        }
+
+        // Otherwise throw error for unexpected set of complex subtypes
+        throw new IllegalArgumentException("Unexpected set of complex subtypes " + subtype1.name() + " and " + subtype2.name() +
+            " found when collapsing records: " + rec1.getId() + " and " + rec2.getId());
+    }
+
+    private static final Set<ComplexVariantSubtype> DDUP_LOWER_PRIORITY = EnumSet.of(
+            ComplexVariantSubtype.dDUP_iDEL, ComplexVariantSubtype.dupINV,
+            ComplexVariantSubtype.INVdup, ComplexVariantSubtype.INS_iDEL);
+
+    private static final Set<ComplexVariantSubtype> DDUP_IDEL_LOWER_PRIORITY = EnumSet.of(
+            ComplexVariantSubtype.dupINV, ComplexVariantSubtype.INVdup,
+            ComplexVariantSubtype.dupINVdel, ComplexVariantSubtype.delINVdup,
+            ComplexVariantSubtype.INS_iDEL);
+
+    private static final Set<ComplexVariantSubtype> DUP_INV_FAMILY = EnumSet.of(
+            ComplexVariantSubtype.dupINV, ComplexVariantSubtype.INVdup);
+
+    private static final Set<ComplexVariantSubtype> DUP_INV_LOWER_PRIORITY = EnumSet.of(
+            ComplexVariantSubtype.dupINVdup, ComplexVariantSubtype.dupINVdel,
+            ComplexVariantSubtype.delINVdup);
+
+    private static final Set<ComplexVariantSubtype> DEL_INV_FAMILY = EnumSet.of(
+            ComplexVariantSubtype.delINV, ComplexVariantSubtype.INVdel);
+
+    private static final Set<ComplexVariantSubtype> DEL_INV_LOWER_PRIORITY = EnumSet.of(
+            ComplexVariantSubtype.delINVdup, ComplexVariantSubtype.dupINVdel,
+            ComplexVariantSubtype.delINVdel);
+
     private SVCallRecord getRepresentativeIntervalItem(final Collection<SVCallRecord> records,
                                                        final int[] starts,
                                                        final int[] ends) {
         if (records.size() == 1) {
             return records.iterator().next();
+        }
+        if (records.stream().allMatch(rec -> rec.getType() == StructuralVariantAnnotationType.CPX) &&
+            !records.stream().allMatch(rec -> rec.getComplexSubtype() == records.iterator().next().getComplexSubtype())) {
+            // If all records are CPX but have different subtypes, use heuristics
+            return getRepresentativeComplexSubtypeRecord(records);
         }
         // Favor variant with highest quality or best evidence
         final Comparator<SVCallRecord> qualityComparator = Comparator.comparing(r -> r.getLog10PError() == null ? 0 : r.getLog10PError());
