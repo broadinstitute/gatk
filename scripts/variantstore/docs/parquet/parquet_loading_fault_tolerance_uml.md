@@ -24,8 +24,7 @@ flowchart TB
     
     subgraph FaultTolerance["Fault Tolerance Layer"]
         Lifecycle[Configure Lifecycle<br/>14 day cleanup]
-        Track[Create Tracking Table<br/>parquet_load_status]
-        Discover[Discover Parquet Files<br/>Filter already loaded]
+        Discover[Discover Parquet Files<br/>Filter already-loaded pairs<br/>via BigQuery partition query]
     end
     
     subgraph LoadTasks["LoadParquetFilesToBQ Tasks (Parallel)"]
@@ -39,15 +38,15 @@ flowchart TB
         Det[Deterministic Job IDs<br/>SHA1 hash of batch]
         Quota[Quota Retry<br/>Exponential backoff]
         Local[Local State<br/>pending_jobs.json]
-        Persist[Persistent State<br/>BigQuery tracking table]
+        BQState[BigQuery Partition Data<br/>authoritative loaded state]
     end
     
     subgraph BigQuery["BigQuery"]
         Tables[vet_XXX, ref_ranges_XXX<br/>tables]
-        TrackTable[parquet_load_status<br/>table]
+        Partitions[INFORMATION_SCHEMA<br/>.PARTITIONS]
     end
     
-    Verify[Verify All Loaded]
+    Verify[Verify All Loaded<br/>via BigQuery partition query]
     
     WDL --> LoadDataTask
     LoadDataTask --> GCS
@@ -73,9 +72,7 @@ flowchart TD
     
     SetLoaded --> ConfigLife[ConfigureParquetLifecycle:<br/>Set 14-day deletion rule]
     
-    ConfigLife --> CreateTrack[CreateParquetTrackingTable:<br/>Create parquet_load_status]
-    
-    CreateTrack --> Discover[DiscoverParquetFiles:<br/>List & group files]
+    ConfigLife --> Discover[DiscoverParquetFiles:<br/>List & group files,<br/>filter already-loaded pairs]
     
     Discover --> CheckFiles{Files found?}
     
@@ -97,15 +94,10 @@ flowchart TD
     Batch3 -->|Each batch| Submit3[Submit with<br/>deterministic job_id]
     Batch4 -->|Each batch| Submit4[Submit with<br/>deterministic job_id]
     
-    Submit1 --> Track1[Update tracking table]
-    Submit2 --> Track2[Update tracking table]
-    Submit3 --> Track3[Update tracking table]
-    Submit4 --> Track4[Update tracking table]
-    
-    Track1 --> Sync1{All batches<br/>complete?}
-    Track2 --> Sync2{All batches<br/>complete?}
-    Track3 --> Sync3{All batches<br/>complete?}
-    Track4 --> Sync4{All batches<br/>complete?}
+    Submit1 --> Sync1{All batches<br/>complete?}
+    Submit2 --> Sync2{All batches<br/>complete?}
+    Submit3 --> Sync3{All batches<br/>complete?}
+    Submit4 --> Sync4{All batches<br/>complete?}
     
     Sync1 -->|Yes| Done1[Table complete]
     Sync2 -->|Yes| Done2[Table complete]
@@ -122,15 +114,14 @@ flowchart TD
     Done3 --> VerifyDone
     Done4 --> VerifyDone
     
-    VerifyDone[VerifyParquetLoading:<br/>Check all files loaded]
+    VerifyDone[VerifyParquetLoading:<br/>Check all pairs loaded<br/>via BigQuery partition query]
     
-    VerifyDone --> CheckVerify{All files<br/>loaded?}
+    VerifyDone --> CheckVerify{All pairs<br/>loaded?}
     
     CheckVerify -->|Yes| Success([SUCCESS])
-    CheckVerify -->|No| Partial([PARTIAL:<br/>Report missing files])
+    CheckVerify -->|No| Partial([PARTIAL:<br/>Report missing pairs])
     
     style ConfigLife fill:#9cf
-    style CreateTrack fill:#9cf
     style Submit1 fill:#fcf
     style Submit2 fill:#fcf
     style Submit3 fill:#fcf
@@ -188,7 +179,6 @@ sequenceDiagram
     BQ-->>L2: Job completed successfully
     deactivate BQ
     
-    L2->>BQ: INSERT INTO parquet_load_status
     L2->>C: Task completed successfully
     deactivate L2
     deactivate V2
@@ -235,9 +225,9 @@ flowchart TD
     
     JobDone --> CheckErrors{Job has<br/>errors?}
     CheckErrors -->|Yes| MarkFailed
-    CheckErrors -->|No| RecordSuccess[Record success in<br/>tracking table]
+    CheckErrors -->|No| BatchSuccess[Batch loaded successfully]
     
-    RecordSuccess --> UpdatePending[Update pending_jobs.json]
+    BatchSuccess --> UpdatePending[Update pending_jobs.json]
     UpdatePending --> NextBatch[Continue to next batch]
     MarkFailed --> NextBatch
     
@@ -247,7 +237,7 @@ flowchart TD
     style CheckWaitRetry fill:#ff9
     style Wait fill:#9f9
     style WaitRetry fill:#9f9
-    style RecordSuccess fill:#9f9
+    style BatchSuccess fill:#9f9
 ```
 
 
@@ -285,8 +275,7 @@ stateDiagram-v2
     DONE --> SUCCESS: no_job_errors
     DONE --> FAILED: job_has_errors
     
-    SUCCESS --> TRACKED: insert_tracking_record()
-    TRACKED --> [*]
+    SUCCESS --> [*]
     FAILED --> [*]
     
     note right of QUOTA_RETRY
@@ -294,9 +283,10 @@ stateDiagram-v2
         30s → 60s → 120s
     end note
     
-    note right of TRACKED
-        File recorded in
-        parquet_load_status table
+    note right of SUCCESS
+        Idempotency on next run:
+        pair skipped via
+        INFORMATION_SCHEMA query
     end note
 ```
 

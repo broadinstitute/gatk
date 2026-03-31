@@ -221,6 +221,16 @@ workflows:
          - VS-1808
        tags:
          - /.*/
+   - name: ParquetIngest1829AuRevoirParquetLoadStatus
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1829_au_revoir_parquet_load_status
+       tags:
+         - /.*/
    - name: GvsPrepareRangesCallset
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
@@ -341,7 +351,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1834_merge_it_already
+             - vs_1829_au_revoir_parquet_load_status
          tags:
              - /.*/
    - name: GvsIngestTieout
