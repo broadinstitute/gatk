@@ -493,6 +493,7 @@ class TestLoadTableFromParquetFiles(unittest.TestCase):
         f.write("\n".join(paths) + ("\n" if paths else ""))
         f.flush()
         f.close()
+        self.addCleanup(os.unlink, f.name)
         return f.name
 
     def _make_mock_job(self, rows=10, errors=None, job_id="load_vet_001_abc123"):
