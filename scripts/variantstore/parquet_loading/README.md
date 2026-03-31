@@ -2,7 +2,7 @@
 
 ## Overview
 
-GVS ingest previously loaded data into BigQuery row-by-row via the BigQuery Storage Write API, inside the `LoadData` task.  This approach was replaced with a two-phase design:
+GVS previously ingested data into BigQuery row-by-row via the BigQuery Storage Write API, inside the `LoadData` task.  This approach was replaced with a two-phase design:
 
 1. **`LoadData`** writes variant and reference data to local Parquet files and copies them to a temporary GCS path.
 2. A downstream set of WDL tasks (described below) loads those Parquet files into BigQuery in bulk, using BigQuery's free GCS-to-BQ load jobs rather than the metered Write API.
@@ -26,7 +26,7 @@ All scripts are packaged into the variants Docker image at `/app/`.
 | Script | Description |
 |---|---|
 | `parse_and_group_files.py` | Discovers Parquet files under a GCS prefix, maps each file to its target BigQuery table and `sample_id`, queries `INFORMATION_SCHEMA.PARTITIONS` (and `sample_chromosome_ploidy` directly) to identify already-loaded pairs, and writes per-table FOFNs for the remaining files. |
-| `load_parquet_to_bq.py` | Loads one FOFN into BigQuery. Generates a deterministic SHA-1 job ID per batch so that a retry VM after preemption re-uses the in-flight BigQuery job rather than re-submitting it. Retries quota and transient errors with exponential backoff (30 s → 60 s → 120 s, up to 3 attempts). |
+| `load_parquet_to_bq.py` | Loads one FOFN into BigQuery. Generates a deterministic SHA-1 job ID per batch so that a retry VM after preemption re-uses the in-flight BigQuery job rather than re-submitting it. Retries quota and transient errors with exponential backoff (30 s → 60 s → 120 s, up to 3 retries). |
 | `verify_all_loaded.py` | Confirms that every `(table_name, sample_id)` pair derived from the original GCS file list is present in BigQuery; reports any missing pairs and exits non-zero if any are found. |
 
 ## Key Design Points
