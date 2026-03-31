@@ -33,6 +33,9 @@ workflow GvsImportGenomes {
     Int beta_customer_max_scatter = 200
 
     String reference_name = "hg38"
+    File? reference_fasta
+    File? reference_fasta_index
+    File? reference_dict
     File? interval_list
 
     Int? load_data_scatter_width
@@ -112,6 +115,9 @@ workflow GvsImportGenomes {
       basic_docker = effective_basic_docker,
   }
 
+  File effective_reference_fasta = select_first([reference_fasta, GetReference.reference.reference_fasta])
+  File effective_reference_fasta_index = select_first([reference_fasta_index, GetReference.reference.reference_fasta_index])
+  File effective_reference_dict = select_first([reference_dict, GetReference.reference.reference_dict])
   File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
 
   if (!load_vcf_headers && !load_vet_and_ref_ranges) {
@@ -200,6 +206,9 @@ workflow GvsImportGenomes {
           drop_state_includes_greater_than = false,
           input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
           input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
+          reference_fasta = effective_reference_fasta,
+          reference_fasta_index = effective_reference_fasta_index,
+          reference_dict = effective_reference_dict,
           interval_list = effective_interval_list,
           gatk_docker = effective_gatk_docker,
           gatk_override = load_data_gatk_override,
@@ -227,6 +236,9 @@ workflow GvsImportGenomes {
           drop_state_includes_greater_than = false,
           input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
           input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
+          reference_fasta = effective_reference_fasta,
+          reference_fasta_index = effective_reference_fasta_index,
+          reference_dict = effective_reference_dict,
           interval_list = effective_interval_list,
           gatk_docker = effective_gatk_docker,
           gatk_override = load_data_gatk_override,
@@ -389,6 +401,9 @@ task ProcessInputGVCFs {
 
     Array[File] input_vcf_indexes
     Array[File] input_vcfs
+    File reference_fasta
+    File reference_fasta_index
+    File reference_dict
     File interval_list
     File sample_map
     Array[String] sample_names
@@ -556,6 +571,7 @@ task ProcessInputGVCFs {
 
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
         -V ${updated_input_vcf} \
+        -R ~{reference_fasta} \
         -L ~{interval_list} \
         ~{"--ref-block-gq-to-ignore " + drop_state} \
         --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \

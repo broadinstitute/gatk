@@ -38,6 +38,9 @@ workflow GvsBulkIngestGenomes {
 
         # Begin GvsImportGenomes
         String reference_name = "hg38"
+        File? reference_fasta
+        File? reference_fasta_index
+        File? reference_dict
         File? interval_list
 
         # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
@@ -151,6 +154,9 @@ workflow GvsBulkIngestGenomes {
             input_vcfs = SplitBulkImportFofn.vcf_file_name_fofn,
             input_vcf_indexes = SplitBulkImportFofn.vcf_index_file_name_fofn,
             reference_name = reference_name,
+            reference_fasta = reference_fasta,
+            reference_fasta_index = reference_fasta_index,
+            reference_dict = reference_dict,
             interval_list = interval_list,
             load_data_scatter_width = load_data_scatter_width,
             load_data_maxretries_override = load_data_maxretries_override,
