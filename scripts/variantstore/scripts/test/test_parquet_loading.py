@@ -264,6 +264,22 @@ class TestGetAlreadyLoadedTablesAndSampleIds(unittest.TestCase):
         self.assertNotIn("INFORMATION_SCHEMA", query_used)
 
     @patch("parse_and_group_files.bigquery")
+    def test_query_skips_regular_table_without_sample_id(self, mock_bq_module):
+        mock_client = MagicMock()
+        mock_bq_module.Client.return_value = mock_client
+        mock_client.query.return_value = []
+
+        get_already_loaded_tables_and_sample_ids(
+            "proj", "ds",
+            superpartitioned_table_prefixes=[],
+            regular_table_prefixes=["sample_chromosome_ploidy", "vrs_allele"]
+        )
+
+        query_used = mock_client.query.call_args[0][0]
+        self.assertIn("sample_chromosome_ploidy", query_used)
+        self.assertNotIn("vrs_allele", query_used)
+
+    @patch("parse_and_group_files.bigquery")
     def test_empty_prefixes_returns_empty_set(self, mock_bq_module):
         mock_client = MagicMock()
         mock_bq_module.Client.return_value = mock_client

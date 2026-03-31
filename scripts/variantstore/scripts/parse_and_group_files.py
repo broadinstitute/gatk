@@ -22,6 +22,7 @@ log = logging.getLogger(__name__)
 
 
 _PREFIX_RE = re.compile(r'^[a-zA-Z][A-Za-z0-9_]+$')
+_REGULAR_TABLE_PREFIXES_WITHOUT_SAMPLE_ID = {"vrs_allele"}
 
 
 def _validate_table_prefixes(superpartitioned_table_prefixes, regular_table_prefixes):
@@ -116,7 +117,22 @@ def get_already_loaded_tables_and_sample_ids(project_id, dataset_name,
                 SAFE_CAST(partition_id AS INT64) IS NOT NULL
         """)
 
-    for prefix in regular_table_prefixes:
+    queryable_regular_table_prefixes = [
+        prefix for prefix in regular_table_prefixes
+        if prefix not in _REGULAR_TABLE_PREFIXES_WITHOUT_SAMPLE_ID
+    ]
+
+    skipped_regular_prefixes = [
+        prefix for prefix in regular_table_prefixes
+        if prefix in _REGULAR_TABLE_PREFIXES_WITHOUT_SAMPLE_ID
+    ]
+    if skipped_regular_prefixes:
+        log.warning(
+            "Skipping loaded-state query for regular table prefix(es) without sample_id column: %s",
+            ", ".join(skipped_regular_prefixes),
+        )
+
+    for prefix in queryable_regular_table_prefixes:
         sub_queries.append(f"""
             SELECT DISTINCT '{prefix}' AS table_name, t.sample_id AS sample_id
             FROM `{project_id}.{dataset_name}.{prefix}` t
