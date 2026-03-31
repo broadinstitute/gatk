@@ -8,14 +8,69 @@ Tests the core functionality of:
 
 import os
 import sys
+import tempfile
+import types
 import unittest
 from unittest.mock import MagicMock, patch
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
+# ---------------------------------------------------------------------------
+# Fake google.api_core / google.cloud.bigquery stubs
+#
+# google-cloud-bigquery is not installed in the local test environment; we
+# inject lightweight fakes into sys.modules so that the lazy-imported google
+# calls inside load_parquet_to_bq resolve to these objects rather than
+# failing with ModuleNotFoundError.
+# ---------------------------------------------------------------------------
+
+class _FakeTooManyRequests(Exception):
+    """Fake google.api_core.exceptions.TooManyRequests."""
+
+class _FakeServiceUnavailable(Exception):
+    """Fake google.api_core.exceptions.ServiceUnavailable."""
+
+class _FakeInternalServerError(Exception):
+    """Fake google.api_core.exceptions.InternalServerError."""
+
+class _FakeNotFound(Exception):
+    """Fake google.api_core.exceptions.NotFound."""
+
+class _FakeConflict(Exception):
+    """Fake google.api_core.exceptions.Conflict."""
+
+_fake_exceptions = types.SimpleNamespace(
+    TooManyRequests=_FakeTooManyRequests,
+    ServiceUnavailable=_FakeServiceUnavailable,
+    InternalServerError=_FakeInternalServerError,
+    NotFound=_FakeNotFound,
+    Conflict=_FakeConflict,
+)
+
+_fake_bigquery_module = MagicMock(name="bigquery_module")
+
+_fake_api_core = types.ModuleType("google.api_core")
+_fake_api_core.exceptions = _fake_exceptions  # type: ignore[attr-defined]
+
+_fake_cloud = types.ModuleType("google.cloud")
+_fake_cloud.bigquery = _fake_bigquery_module  # type: ignore[attr-defined]
+
+_GOOGLE_STUBS = {
+    "google": types.ModuleType("google"),
+    "google.api_core": _fake_api_core,
+    "google.api_core.exceptions": _fake_exceptions,
+    "google.cloud": _fake_cloud,
+    "google.cloud.bigquery": _fake_bigquery_module,
+}
+
 from parse_and_group_files import parse_table_and_sample_id_from_file_path, get_already_loaded_tables_and_sample_ids, _validate_table_prefixes
-from load_parquet_to_bq import _make_job_id
+from load_parquet_to_bq import (
+    _make_job_id,
+    _submit_load_job_with_retry,
+    _wait_for_job_with_retry,
+    load_table_from_parquet_files,
+)
 
 
 class TestParseSuperpartitionedTableFromPath(unittest.TestCase):
@@ -207,8 +262,326 @@ class TestValidateTablePrefixes(unittest.TestCase):
             )
 
 
-class TestGetAlreadyLoadedTablesAndSampleIds(unittest.TestCase):
-    """Test that get_already_loaded_tables_and_sample_ids builds correct BigQuery queries."""
+# ===========================================================================
+# Tests for the loading functions in load_parquet_to_bq.py
+#
+# All three classes use @patch.dict(sys.modules, _GOOGLE_STUBS) so that the
+# lazy "from google.cloud import bigquery" and "from google.api_core import
+# exceptions" calls inside the real functions resolve to our fakes.
+# ===========================================================================
+
+@patch.dict(sys.modules, _GOOGLE_STUBS)
+class TestSubmitLoadJobWithRetry(unittest.TestCase):
+    """Tests for _submit_load_job_with_retry."""
+
+    def setUp(self):
+        self.client = MagicMock()
+        self.batch = ["gs://bucket/file1.parquet", "gs://bucket/file2.parquet"]
+        self.table_id = "proj.ds.vet_001"
+        self.job_config = MagicMock()
+        self.job_id = "load_vet_001_abc123def456789a"
+        self.location = "us-central1"
+
+    def test_first_attempt_succeeds(self):
+        """Normal path: job is submitted and returned immediately."""
+        mock_job = MagicMock()
+        self.client.load_table_from_uri.return_value = mock_job
+
+        result = _submit_load_job_with_retry(
+            self.client, self.batch, self.table_id,
+            self.job_config, self.job_id, self.location,
+        )
+
+        self.assertIs(result, mock_job)
+        self.client.load_table_from_uri.assert_called_once_with(
+            self.batch, self.table_id,
+            job_config=self.job_config, job_id=self.job_id, location=self.location,
+        )
+        self.client.get_job.assert_not_called()
+
+    def test_conflict_resumes_existing_job(self):
+        """
+        Key resume test: when a VM is preempted and a new VM retries, BigQuery
+        returns Conflict because the job was already submitted.  The function must
+        fetch the existing job via get_job() rather than re-submitting, so that
+        no data is written twice.
+        """
+        existing_job = MagicMock()
+        self.client.load_table_from_uri.side_effect = _FakeConflict("Job already exists")
+        self.client.get_job.return_value = existing_job
+
+        result = _submit_load_job_with_retry(
+            self.client, self.batch, self.table_id,
+            self.job_config, self.job_id, self.location,
+        )
+
+        self.assertIs(result, existing_job)
+        self.client.load_table_from_uri.assert_called_once()
+        self.client.get_job.assert_called_once_with(job_id=self.job_id, location=self.location)
+
+    @patch("time.sleep")
+    def test_quota_error_retried_then_succeeds(self, mock_sleep):
+        """TooManyRequests on the first attempt is retried and the second succeeds."""
+        mock_job = MagicMock()
+        self.client.load_table_from_uri.side_effect = [
+            _FakeTooManyRequests("quota exceeded"),
+            mock_job,
+        ]
+
+        result = _submit_load_job_with_retry(
+            self.client, self.batch, self.table_id,
+            self.job_config, self.job_id, self.location,
+        )
+
+        self.assertIs(result, mock_job)
+        self.assertEqual(self.client.load_table_from_uri.call_count, 2)
+        mock_sleep.assert_called_once_with(30)  # first backoff delay
+
+    @patch("time.sleep")
+    def test_quota_error_exhausted_raises(self, mock_sleep):
+        """All retry attempts fail with TooManyRequests; the exception propagates."""
+        self.client.load_table_from_uri.side_effect = _FakeTooManyRequests("quota")
+
+        with self.assertRaises(_FakeTooManyRequests):
+            _submit_load_job_with_retry(
+                self.client, self.batch, self.table_id,
+                self.job_config, self.job_id, self.location,
+                max_retries=3,
+            )
+
+        self.assertEqual(self.client.load_table_from_uri.call_count, 4)  # 1 + 3 retries
+        self.assertEqual(mock_sleep.call_count, 3)
+
+    def test_non_retryable_error_raises_immediately(self):
+        """A non-quota error propagates without any retries."""
+        self.client.load_table_from_uri.side_effect = ValueError("bad input")
+
+        with self.assertRaises(ValueError):
+            _submit_load_job_with_retry(
+                self.client, self.batch, self.table_id,
+                self.job_config, self.job_id, self.location,
+            )
+
+        self.client.load_table_from_uri.assert_called_once()
+
+
+@patch.dict(sys.modules, _GOOGLE_STUBS)
+class TestWaitForJobWithRetry(unittest.TestCase):
+    """Tests for _wait_for_job_with_retry."""
+
+    def test_job_completes_immediately(self):
+        """Happy path: result() returns on the first call."""
+        mock_job = MagicMock()
+        mock_job.result.return_value = None
+
+        result = _wait_for_job_with_retry(mock_job)
+
+        self.assertIs(result, mock_job)
+        mock_job.result.assert_called_once()
+        mock_job.reload.assert_not_called()
+
+    @patch("time.sleep")
+    def test_transient_error_then_completes(self, mock_sleep):
+        """ServiceUnavailable while waiting triggers a reload-and-retry."""
+        mock_job = MagicMock()
+        mock_job.result.side_effect = [_FakeServiceUnavailable("transient"), None]
+
+        result = _wait_for_job_with_retry(mock_job)
+
+        self.assertIs(result, mock_job)
+        self.assertEqual(mock_job.result.call_count, 2)
+        mock_job.reload.assert_called_once()
+        mock_sleep.assert_called_once_with(30)
+
+    @patch("time.sleep")
+    def test_transient_error_exhausted_raises(self, mock_sleep):
+        """All wait attempts fail with transient errors; the exception propagates."""
+        mock_job = MagicMock()
+        mock_job.result.side_effect = _FakeServiceUnavailable("transient")
+
+        with self.assertRaises(_FakeServiceUnavailable):
+            _wait_for_job_with_retry(mock_job, max_retries=3)
+
+        self.assertEqual(mock_job.result.call_count, 4)  # 1 + 3 retries
+        self.assertEqual(mock_sleep.call_count, 3)
+
+    def test_non_retryable_error_raises_immediately(self):
+        """A non-transient error propagates without reloading or retrying."""
+        mock_job = MagicMock()
+        mock_job.result.side_effect = RuntimeError("job exploded")
+
+        with self.assertRaises(RuntimeError):
+            _wait_for_job_with_retry(mock_job)
+
+        mock_job.result.assert_called_once()
+        mock_job.reload.assert_not_called()
+
+
+@patch.dict(sys.modules, _GOOGLE_STUBS)
+class TestLoadTableFromParquetFiles(unittest.TestCase):
+    """
+    End-to-end tests for load_table_from_parquet_files with all external
+    calls mocked out.
+    """
+
+    def setUp(self):
+        _fake_bigquery_module.reset_mock()
+        self.mock_client = MagicMock()
+        _fake_bigquery_module.Client.return_value = self.mock_client
+
+        mock_table = MagicMock()
+        mock_table.location = "us-central1"
+        self.mock_client.get_table.return_value = mock_table
+
+        _fake_bigquery_module.LoadJobConfig.return_value = MagicMock()
+        _fake_bigquery_module.SourceFormat.PARQUET = "PARQUET"
+        _fake_bigquery_module.WriteDisposition.WRITE_APPEND = "WRITE_APPEND"
+
+    def _make_fofn(self, paths):
+        """Write paths to a NamedTemporaryFile and return its path."""
+        f = tempfile.NamedTemporaryFile(mode="w", suffix=".fofn", delete=False)
+        f.write("\n".join(paths) + ("\n" if paths else ""))
+        f.flush()
+        f.close()
+        return f.name
+
+    def _make_mock_job(self, rows=10, errors=None, job_id="load_vet_001_abc123"):
+        job = MagicMock()
+        job.output_rows = rows
+        job.errors = errors
+        job.job_id = job_id
+        job.result.return_value = None
+        return job
+
+    def test_happy_path_single_batch(self):
+        """All files load successfully in one batch; stats reflect the loaded rows."""
+        files = [f"gs://bucket/vet/001/vet_001_{i}_file.parquet" for i in range(5)]
+        fofn = self._make_fofn(files)
+        self.mock_client.load_table_from_uri.return_value = self._make_mock_job(rows=100)
+
+        stats = load_table_from_parquet_files(
+            project_id="proj", dataset_name="ds", table_name="vet_001",
+            files_fofn=fofn, schema_path=None,
+        )
+
+        self.assertEqual(stats["completion_status"], "SUCCESS")
+        self.assertEqual(stats["files_loaded"], 5)
+        self.assertEqual(stats["rows_loaded"], 100)
+        self.assertEqual(stats["batches_processed"], 1)
+        self.assertEqual(stats["batches_failed"], 0)
+
+    def test_resume_after_conflict(self):
+        """
+        Key end-to-end resume test: load_table_from_uri raises Conflict (because
+        a previous VM already submitted this job before being preempted).
+        The function must fetch the pre-existing job via get_job() and use its
+        result — no duplicate write occurs.
+        """
+        files = ["gs://bucket/vet/001/vet_001_42_file.parquet"]
+        fofn = self._make_fofn(files)
+        existing_job = self._make_mock_job(rows=50, job_id="load_vet_001_preexisting")
+        self.mock_client.load_table_from_uri.side_effect = _FakeConflict("already exists")
+        self.mock_client.get_job.return_value = existing_job
+
+        stats = load_table_from_parquet_files(
+            project_id="proj", dataset_name="ds", table_name="vet_001",
+            files_fofn=fofn, schema_path=None,
+        )
+
+        # load_table_from_uri was attempted (Conflict raised), then get_job used
+        self.mock_client.load_table_from_uri.assert_called_once()
+        self.mock_client.get_job.assert_called_once()
+        # The run completes successfully using the pre-existing job's output
+        self.assertEqual(stats["completion_status"], "SUCCESS")
+        self.assertEqual(stats["rows_loaded"], 50)
+        self.assertEqual(stats["batches_failed"], 0)
+
+    def test_batch_with_job_errors_is_partial_failure(self):
+        """A job that completes but carries errors is counted as a failed batch."""
+        files = ["gs://bucket/vet/001/vet_001_1_file.parquet"]
+        fofn = self._make_fofn(files)
+        self.mock_client.load_table_from_uri.return_value = self._make_mock_job(
+            rows=0, errors=[{"message": "schema mismatch"}]
+        )
+
+        stats = load_table_from_parquet_files(
+            project_id="proj", dataset_name="ds", table_name="vet_001",
+            files_fofn=fofn, schema_path=None,
+        )
+
+        self.assertEqual(stats["completion_status"], "PARTIAL")
+        self.assertEqual(stats["batches_failed"], 1)
+        self.assertEqual(stats["rows_loaded"], 0)
+
+    def test_exception_in_one_batch_continues_to_next(self):
+        """An exception in a batch is logged but remaining batches proceed."""
+        files = [f"gs://bucket/vet/001/vet_001_{i}_file.parquet" for i in range(3)]
+        fofn = self._make_fofn(files)
+        good_job = self._make_mock_job(rows=30, job_id="job_good")
+        # With batch_size=2: first batch (2 files) raises, second batch (1 file) succeeds
+        self.mock_client.load_table_from_uri.side_effect = [
+            RuntimeError("network blip"),
+            good_job,
+        ]
+
+        stats = load_table_from_parquet_files(
+            project_id="proj", dataset_name="ds", table_name="vet_001",
+            files_fofn=fofn, schema_path=None, batch_size=2,
+        )
+
+        self.assertEqual(stats["completion_status"], "PARTIAL")
+        self.assertEqual(stats["batches_failed"], 1)
+        self.assertEqual(stats["batches_processed"], 1)
+        self.assertEqual(stats["rows_loaded"], 30)
+
+    def test_empty_fofn_returns_immediate_success(self):
+        """An empty FOFN short-circuits to SUCCESS without touching BigQuery."""
+        fofn = self._make_fofn([])
+
+        stats = load_table_from_parquet_files(
+            project_id="proj", dataset_name="ds", table_name="vet_001",
+            files_fofn=fofn, schema_path=None,
+        )
+
+        self.assertEqual(stats["completion_status"], "SUCCESS")
+        self.assertEqual(stats["files_loaded"], 0)
+        self.assertEqual(stats["rows_loaded"], 0)
+        self.mock_client.load_table_from_uri.assert_not_called()
+
+    def test_missing_table_exits_with_code_1(self):
+        """NotFound from get_table() causes an immediate sys.exit(1)."""
+        files = ["gs://bucket/vet/001/vet_001_1_file.parquet"]
+        fofn = self._make_fofn(files)
+        self.mock_client.get_table.side_effect = _FakeNotFound("table not found")
+
+        with self.assertRaises(SystemExit) as cm:
+            load_table_from_parquet_files(
+                project_id="proj", dataset_name="ds", table_name="vet_001",
+                files_fofn=fofn, schema_path=None,
+            )
+
+        self.assertEqual(cm.exception.code, 1)
+
+    def test_multi_batch_all_succeed(self):
+        """Files exceeding batch_size are spread across multiple batches, all succeeding."""
+        files = [f"gs://bucket/vet/001/vet_001_{i}_file.parquet" for i in range(5)]
+        fofn = self._make_fofn(files)
+        self.mock_client.load_table_from_uri.side_effect = [
+            self._make_mock_job(rows=10, job_id=f"job_{i}") for i in range(3)
+        ]
+
+        stats = load_table_from_parquet_files(
+            project_id="proj", dataset_name="ds", table_name="vet_001",
+            files_fofn=fofn, schema_path=None, batch_size=2,
+        )
+
+        self.assertEqual(stats["batches_processed"], 3)  # batches of 2, 2, 1
+        self.assertEqual(stats["rows_loaded"], 30)
+        self.assertEqual(stats["completion_status"], "SUCCESS")
+
+
+if __name__ == "__main__":
+    unittest.main()
 
     @patch("parse_and_group_files.bigquery")
     def test_returns_set_of_tuples(self, mock_bq_module):
