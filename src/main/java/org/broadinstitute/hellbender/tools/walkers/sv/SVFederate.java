@@ -1,12 +1,11 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
-import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.reference.ReferenceSequenceFile;
-import htsjdk.samtools.util.SortingCollection;
-import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.variantcontext.VariantContextBuilder;
-import htsjdk.variant.variantcontext.writer.VariantContextWriter;
-import htsjdk.variant.vcf.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -15,9 +14,14 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.MultiVariantInputArgumentCollection;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
-import org.broadinstitute.hellbender.engine.*;
+import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.engine.MultiVariantWalker;
+import org.broadinstitute.hellbender.engine.ReadsContext;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
+import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants.StructuralVariantAnnotationType;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.tools.sv.SelectSVPairs;
@@ -28,7 +32,18 @@ import org.broadinstitute.hellbender.tools.sv.cluster.SVFederationCollapser;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
-import java.util.*;
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
+import htsjdk.samtools.util.SortingCollection;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFConstants;
+import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLineCount;
+import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
+import htsjdk.variant.vcf.VCFRecordCodec;
 
 
 /**
@@ -257,28 +272,52 @@ public final class SVFederate extends MultiVariantWalker {
         attributes.put(GATKSVVCFConstants.BREAKPOINT_DISTANCE_END_INFO, result.getBreakpointDistance2());
 
         // store cohort AFs and calculate total AF
-        // TODO: handle mCNVs
-        final int thisAN = thisVariant.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0);
-        final int thatAN = thatVariant.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0);
-        final int totalAN = thisAN + thatAN;
-        attributes.put(thisPrefix + "_AN", thisAN);
-        attributes.put(thatPrefix + "_AN", thatAN);
-        attributes.put(VCFConstants.ALLELE_NUMBER_KEY, totalAN);
+        // TODO: handle mCNV CN frequency annotations and carry over per-cohort subgroup AFs
+        final boolean thisIsCnv = thisRecord.getType() == StructuralVariantAnnotationType.CNV;
+        final boolean thatIsCnv = thatRecord.getType() == StructuralVariantAnnotationType.CNV;
 
-        final int thisAC = thisVariant.getAttributeAsInt(VCFConstants.ALLELE_COUNT_KEY, 0);
-        final int thatAC = thatVariant.getAttributeAsInt(VCFConstants.ALLELE_COUNT_KEY, 0);
-        final int totalAC = thisAC + thatAC;
-        attributes.put(thisPrefix + "_AC", thisAC);
-        attributes.put(thatPrefix + "_AC", thatAC);
-        attributes.put(VCFConstants.ALLELE_COUNT_KEY, totalAC);
+        if (thisIsCnv) {
+            attributes.put(thisPrefix + "_AN", VCFConstants.MISSING_VALUE_v4);
+            attributes.put(thisPrefix + "_AC", VCFConstants.MISSING_VALUE_v4);
+            attributes.put(thisPrefix + "_AF", VCFConstants.MISSING_VALUE_v4);
+        } else {
+            attributes.put(thisPrefix + "_AN", thisVariant.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0));
+            attributes.put(thisPrefix + "_AC", thisVariant.getAttributeAsInt(VCFConstants.ALLELE_COUNT_KEY, 0));
+            attributes.put(thisPrefix + "_AF", thisVariant.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, Double.NaN));
+        }
 
-        final double thisAF = thisVariant.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, Double.NaN);
-        final double thatAF = thatVariant.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, Double.NaN);
-        final double totalAF = (double) totalAC / totalAN;
-        attributes.put(thisPrefix + "_AF", thisAF);
-        attributes.put(thatPrefix + "_AF", thatAF);
-        attributes.put(VCFConstants.ALLELE_FREQUENCY_KEY, totalAF);
-        attributes.put("LOG_AF_DIFFERENCE", computeLogAlleleFrequencyDifference(thisAF, thatAF));  // TODO keep? if so move key to constants
+        if (thatIsCnv) {
+            attributes.put(thatPrefix + "_AN", VCFConstants.MISSING_VALUE_v4);
+            attributes.put(thatPrefix + "_AC", VCFConstants.MISSING_VALUE_v4);
+            attributes.put(thatPrefix + "_AF", VCFConstants.MISSING_VALUE_v4);
+        } else {
+            attributes.put(thatPrefix + "_AN", thatVariant.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0));
+            attributes.put(thatPrefix + "_AC", thatVariant.getAttributeAsInt(VCFConstants.ALLELE_COUNT_KEY, 0));
+            attributes.put(thatPrefix + "_AF", thatVariant.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, Double.NaN));
+        }
+
+        if (thisIsCnv || thatIsCnv) {
+            attributes.put(VCFConstants.ALLELE_NUMBER_KEY, VCFConstants.MISSING_VALUE_v4);
+            attributes.put(VCFConstants.ALLELE_COUNT_KEY, VCFConstants.MISSING_VALUE_v4);
+            attributes.put(VCFConstants.ALLELE_FREQUENCY_KEY, VCFConstants.MISSING_VALUE_v4);
+            attributes.put("LOG_AF_DIFFERENCE", VCFConstants.MISSING_VALUE_v4);
+        } else {
+            final int thisAN = thisVariant.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0);
+            final int thatAN = thatVariant.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0);
+            final int totalAN = thisAN + thatAN;
+            attributes.put(VCFConstants.ALLELE_NUMBER_KEY, totalAN);
+
+            final int thisAC = thisVariant.getAttributeAsInt(VCFConstants.ALLELE_COUNT_KEY, 0);
+            final int thatAC = thatVariant.getAttributeAsInt(VCFConstants.ALLELE_COUNT_KEY, 0);
+            final int totalAC = thisAC + thatAC;
+            attributes.put(VCFConstants.ALLELE_COUNT_KEY, totalAC);
+
+            final double thisAF = thisVariant.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, Double.NaN);
+            final double thatAF = thatVariant.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, Double.NaN);
+            final double totalAF = (double) totalAC / totalAN;
+            attributes.put(VCFConstants.ALLELE_FREQUENCY_KEY, totalAF);
+            attributes.put("LOG_AF_DIFFERENCE", computeLogAlleleFrequencyDifference(thisAF, thatAF));
+        }
 
         // store original VIDs
         attributes.put(thisPrefix + "_VID", thisRecord.getId());
