@@ -82,17 +82,38 @@ public class ParquetWriteSupport extends WriteSupport<JSONObject> {
             }
 
             if (fieldType.isPrimitive()) {
-                // Scalar primitive field
-                recordConsumer.startField(fieldName, fieldIndex);
-                switch (fieldType.asPrimitiveType().getPrimitiveTypeName()) {
-                    case INT64  -> recordConsumer.addLong(record.getLong(fieldName));
-                    case FLOAT  -> recordConsumer.addFloat(record.getFloat(fieldName));
-                    case BINARY -> recordConsumer.addBinary(Binary.fromString(record.getString(fieldName)));
-                    default     -> throw new UnsupportedOperationException(
-                            "Unsupported primitive type for column '" + fieldName + "': "
-                            + fieldType.asPrimitiveType().getPrimitiveTypeName());
+                // Primitive field: support scalar and repeated values.
+                if (fieldType.isRepetition(Type.Repetition.REPEATED)) {
+                    JSONArray jsonArray = record.getJSONArray(fieldName);
+                    if (jsonArray.isEmpty()) {
+                        continue;
+                    }
+
+                    recordConsumer.startField(fieldName, fieldIndex);
+                    for (int i = 0; i < jsonArray.length(); i++) {
+                        switch (fieldType.asPrimitiveType().getPrimitiveTypeName()) {
+                            case INT64  -> recordConsumer.addLong(jsonArray.getLong(i));
+                            case FLOAT  -> recordConsumer.addFloat((float) jsonArray.getDouble(i));
+                            case BINARY -> recordConsumer.addBinary(Binary.fromString(jsonArray.getString(i)));
+                            default     -> throw new UnsupportedOperationException(
+                                    "Unsupported primitive type for column '" + fieldName + "': "
+                                    + fieldType.asPrimitiveType().getPrimitiveTypeName());
+                        }
+                    }
+                    recordConsumer.endField(fieldName, fieldIndex);
+                } else {
+                    // Scalar primitive field
+                    recordConsumer.startField(fieldName, fieldIndex);
+                    switch (fieldType.asPrimitiveType().getPrimitiveTypeName()) {
+                        case INT64  -> recordConsumer.addLong(record.getLong(fieldName));
+                        case FLOAT  -> recordConsumer.addFloat(record.getFloat(fieldName));
+                        case BINARY -> recordConsumer.addBinary(Binary.fromString(record.getString(fieldName)));
+                        default     -> throw new UnsupportedOperationException(
+                                "Unsupported primitive type for column '" + fieldName + "': "
+                                + fieldType.asPrimitiveType().getPrimitiveTypeName());
+                    }
+                    recordConsumer.endField(fieldName, fieldIndex);
                 }
-                recordConsumer.endField(fieldName, fieldIndex);
             } else {
                 // Group field — only repeated string lists are supported here.
                 // Standard Parquet 3-level list encoding:

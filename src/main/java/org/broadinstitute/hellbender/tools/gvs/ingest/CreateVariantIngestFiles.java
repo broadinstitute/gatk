@@ -204,11 +204,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             	optional binary call_PID (UTF8);
             	optional int64 call_PS;
             	optional binary call_PL (UTF8);
-            	optional group vrs_allele_ids (LIST) {
-            		repeated group list {
-            			optional binary element (UTF8);
-            		}
-            	}
+                repeated binary vrs_allele_ids (UTF8);
             }
             """);
 
