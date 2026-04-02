@@ -234,6 +234,10 @@ public final class SVFederate extends MultiVariantWalker {
                 "Allele count in " + prefixA));
         header.addMetaDataLine(new VCFInfoHeaderLine(prefixB + "_AC", VCFHeaderLineCount.A, VCFHeaderLineType.Integer,
                 "Allele count in " + prefixB));
+        header.addMetaDataLine(new VCFInfoHeaderLine(prefixA + "_RD_CN_ESTIMATED_AF", 1, VCFHeaderLineType.Float,
+                "Estimated AF from RD_CN in " + prefixA));
+        header.addMetaDataLine(new VCFInfoHeaderLine(prefixB + "_RD_CN_ESTIMATED_AF", 1, VCFHeaderLineType.Float,
+                "Estimated AF from RD_CN in " + prefixB));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.RECIPROCAL_OVERLAP_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Reciprocal overlap between merged variants"));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.SIZE_SIMILARITY_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Size similarity between merged variants"));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.BREAKPOINT_DISTANCE_START_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Distance in bp between start coordinates of merged variants"));
@@ -301,6 +305,8 @@ public final class SVFederate extends MultiVariantWalker {
             attributes.put(VCFConstants.ALLELE_COUNT_KEY, VCFConstants.MISSING_VALUE_v4);
             attributes.put(VCFConstants.ALLELE_FREQUENCY_KEY, VCFConstants.MISSING_VALUE_v4);
             attributes.put("LOG_AF_DIFFERENCE", VCFConstants.MISSING_VALUE_v4);
+            attributes.put(thisPrefix + "_RD_CN_ESTIMATED_AF", thisVariant.getAttributeAsDouble("RD_CN_ESTIMATED_AF", Double.NaN));
+            attributes.put(thatPrefix + "_RD_CN_ESTIMATED_AF", thatVariant.getAttributeAsDouble("RD_CN_ESTIMATED_AF", Double.NaN));
         } else {
             final int thisAN = thisVariant.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0);
             final int thatAN = thatVariant.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0);
