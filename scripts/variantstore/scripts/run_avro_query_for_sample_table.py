@@ -9,9 +9,9 @@ import run_avro_query
 import utils
 
 
-def get_number_of_partitions(dataset_name, project_id):
+def get_number_of_partitions(dataset_name, project_id, sample_table_name="sample_info"):
     query_labels_map = {
-        "id": "construct_sample_info_avro_queries",
+        "id": "construct_sample_table_avro_queries",
         "gvs_tool_name": "gvs_extract_avro_files_for_hail",
         "service": "gvs",
         "team": "variants",
@@ -25,15 +25,15 @@ def get_number_of_partitions(dataset_name, project_id):
     client = bigquery.Client(project=project_id,
                              default_query_job_config=default_config)
 
-    sql = f"SELECT max(sample_id) / 4000 as max_table_num FROM `{project_id}.{dataset_name}.sample_info`"
+    sql = f"SELECT max(sample_id) / 4000 as max_table_num FROM `{project_id}.{dataset_name}.{sample_table_name}`"
 
     query_result = utils.execute_with_retry(client, f"get max partitioned tabled num", sql)
     max_table_num = [row.get('max_table_num') for row in query_result.get('results')]
     return math.ceil(max_table_num[0])
 
 
-def construct_sample_info_avro_queries(call_set_identifier, dataset_name, project_id, avro_prefix, new_sample_cutoff=None):
-    num_of_tables = get_number_of_partitions(dataset_name, project_id)
+def construct_sample_table_avro_queries(call_set_identifier, dataset_name, project_id, avro_prefix, new_sample_cutoff=None, sample_table_name="sample_info"):
+    num_of_tables = get_number_of_partitions(dataset_name, project_id, sample_table_name)
 
     # For Foxtrot, we need to start at the new_sample_cutoff and export everything remaining in that group and then export the sample_info table in 4000 sample chunks to match with the other tables (vet and ref_ranges)
     ## we want to know what table number to start with if we have a new sample cutoff
@@ -56,12 +56,12 @@ def construct_sample_info_avro_queries(call_set_identifier, dataset_name, projec
                 uri='{avro_prefix}/sample_mapping/{file_name}', format='AVRO', compression='SNAPPY', overwrite=true) AS
             SELECT sample_id, sample_name, '40',
             'gs://gcp-public-data--broad-references/hg38/v0/wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list' AS intervals_file
-            FROM `{project_id}.{dataset_name}.sample_info`
-            WHERE {id_where_clause} AND is_control = false
+            FROM `{project_id}.{dataset_name}.{sample_table_name}`
+            WHERE {id_where_clause} AND is_control = false AND withdrawn IS NULL
             ORDER BY sample_id"""
 
         print(f"{sql}\n")
-        run_avro_query.run_avro_query(call_set_identifier, dataset_name, "sample_info", project_id, sql)
+        run_avro_query.run_avro_query(call_set_identifier, dataset_name, sample_table_name, project_id, sql)
 
 
 if __name__ == '__main__':
@@ -72,11 +72,13 @@ if __name__ == '__main__':
     parser.add_argument('--project_id', type=str, help='Google project for the GVS dataset', required=True)
     parser.add_argument('--avro_prefix', type=str, help='prefix for the Avro file path', required=True)
     parser.add_argument('--new_sample_cutoff', type=int, help='cutoff for sample ids-- specifically the last sample from the previous extract that is not to be included in this extract')
+    parser.add_argument('--sample_table_name', type=str, help='name of the sample info table or view to query', default='sample_info')
 
     args = parser.parse_args()
 
-    construct_sample_info_avro_queries(args.call_set_identifier,
+    construct_sample_table_avro_queries(args.call_set_identifier,
             args.dataset_name,
             args.project_id,
             args.avro_prefix,
-            args.new_sample_cutoff)
+            args.new_sample_cutoff,
+            args.sample_table_name)

@@ -4,7 +4,19 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractAvroFilesForHail {
     input {
-        Int? new_sample_cutoff ## this will allow us to extract a subset of the samples -- specifically the new ones!
+        # This will allow us to extract a subset of the samples -- specifically the new ones!
+        Int? new_sample_cutoff
+        # A sample table or view is expected to exist in the dataset that has at least the following columns:
+        # sample_id (int), sample_name (string), and withdrawn (type unspecified but nullable).
+        # `sample_info` fits this bill, but so would a view that joins `sample_info` to other tables as long as it has
+        # those three columns. For example, the following would create a view that contains only samples that have an
+        # allele in the alt_allele table at the same location corresponding to an "accursed" sample with erroneous
+        # reference data at that location:
+        #
+        # CREATE OR REPLACE VIEW `project.dataset.sample_info_vs_1862_accursed_sample` AS
+        # SELECT * from `project.dataset.sample_info` si join `project.dataset.alt_allele` aa ON
+        # si.sample_id = aa.sample_id WHERE aa.location = 4 * 1000 * 1000 * 1000 * 1000 + 190181387
+        String sample_table_or_view_name = "sample_info"
         String? git_branch_or_tag
         String? git_hash
         Boolean go = true
@@ -49,9 +61,10 @@ workflow GvsExtractAvroFilesForHail {
             basic_docker = effective_basic_docker,
     }
 
-    call ExtractFromSampleInfoTable {
+    call ExtractFromSampleTable {
         input:
             new_sample_cutoff = new_sample_cutoff,
+            sample_table_or_view_name = sample_table_or_view_name,
             project_id = project_id,
             dataset_name = dataset_name,
             avro_sibling = OutputPath.out,
@@ -73,6 +86,7 @@ workflow GvsExtractAvroFilesForHail {
     call ExtractFromPloidyTable {
         input:
             new_sample_cutoff = new_sample_cutoff,
+            sample_table_or_view_name = sample_table_or_view_name,
             project_id = project_id,
             dataset_name = dataset_name,
             ploidy_table_name = ploidy_table_name,
@@ -109,6 +123,7 @@ workflow GvsExtractAvroFilesForHail {
         call ExtractFromSuperpartitionedTables {
             input:
                 new_sample_cutoff = new_sample_cutoff,
+                sample_table_or_view_name = sample_table_or_view_name,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 call_set_identifier = call_set_identifier,
@@ -149,16 +164,17 @@ task OutputPath {
     }
 }
 
-# splitting out the extract sample_info Avros into its own task to create partition-based files
+# splitting out the extract sample table Avros into its own task to create partition-based files
 # this might not be the most efficient for callsets under a certain size
-task ExtractFromSampleInfoTable {
+task ExtractFromSampleTable {
     meta {
-        description: "Extracts from the sample_info table, split up by partition"
+        description: "Extracts from the sample table, split up by partition"
         # Not dealing with caching for now as that would introduce a lot of complexity.
         volatile: true
     }
     input {
         Int? new_sample_cutoff
+        String sample_table_or_view_name
         String project_id
         String dataset_name
         String avro_sibling
@@ -178,11 +194,12 @@ task ExtractFromSampleInfoTable {
         avro_prefix="$(dirname ~{avro_sibling})/avro"
         echo $avro_prefix > "avro_prefix.out"
 
-        python3 /app/run_avro_query_for_sample_info.py \
+        python3 /app/run_avro_query_for_sample_table.py \
             --avro_prefix ${avro_prefix} \
             --call_set_identifier ~{call_set_identifier} \
             --dataset_name ~{dataset_name} \
             --project_id=~{project_id} \
+            --sample_table_name ~{sample_table_or_view_name} \
             ~{new_samples_extract_clause}
     >>>
 
@@ -264,6 +281,7 @@ task ExtractFromPloidyTable {
     }
     input {
         Int? new_sample_cutoff
+        String sample_table_or_view_name
         String project_id
         String dataset_name
         String ploidy_table_name
@@ -296,8 +314,10 @@ task ExtractFromPloidyTable {
                     WHEN 24 THEN 'chrY'
                     END) AS location, s.sample_name, p.ploidy
             FROM \`~{project_id}.~{dataset_name}.~{ploidy_table_name}\` p
-            JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON p.sample_id = s.sample_id
+            JOIN \`~{project_id}.~{dataset_name}.~{sample_table_or_view_name}\` s ON p.sample_id = s.sample_id
             WHERE (p.chromosome / 1000000000000 = 23 or p.chromosome / 1000000000000 = 24)
+            AND s.withdrawn IS NULL
+            AND s.is_control = false
             ~{new_samples_extract_clause}
         " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ~{ploidy_table_name} --project_id=~{project_id}
     >>>
@@ -320,6 +340,7 @@ task ExtractFromSuperpartitionedTables {
     }
     input {
         Int? new_sample_cutoff
+        String sample_table_or_view_name
         String project_id
         String dataset_name
         String avro_sibling
@@ -330,7 +351,7 @@ task ExtractFromSuperpartitionedTables {
         String variants_docker
         Boolean use_compressed_references = false
     }
-    String fq_sample_mapping_table = "~{project_id}.~{dataset_name}.sample_info"
+    String fq_sample_mapping_table = "~{project_id}.~{dataset_name}.~{sample_table_or_view_name}"
     String new_samples_extract_clause = if (defined(new_sample_cutoff)) then  "AND s.sample_id > ~{new_sample_cutoff}" else ""
 
     parameter_meta {
@@ -383,7 +404,7 @@ task ExtractFromSuperpartitionedTables {
                 SELECT location, v.sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ,
                 call_PS as PS
                 FROM \`~{project_id}.~{dataset_name}.vet_${str_table_index}\` v
-                INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = v.sample_id
+                INNER JOIN \`~{project_id}.~{dataset_name}.~{sample_table_or_view_name}\` s ON s.sample_id = v.sample_id
                 WHERE withdrawn IS NULL AND
                 is_control = false
                 ~{new_samples_extract_clause}
@@ -396,7 +417,7 @@ task ExtractFromSuperpartitionedTables {
                     uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
                     SELECT location, r.sample_id, length, state
                     FROM \`~{project_id}.~{dataset_name}.ref_ranges_${str_table_index}\` r
-                    INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = r.sample_id
+                    INNER JOIN \`~{project_id}.~{dataset_name}.~{sample_table_or_view_name}\` s ON s.sample_id = r.sample_id
                     WHERE withdrawn IS NULL AND
                     is_control = false
                     ~{new_samples_extract_clause}
@@ -427,7 +448,7 @@ task ExtractFromSuperpartitionedTables {
                     uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
                     SELECT UnpackRefRangeInfo(packed_ref_data).location as location, r.sample_id, UnpackRefRangeInfo(packed_ref_data).len as length, UnpackRefRangeInfo(packed_ref_data).state as state
                     FROM \`~{project_id}.~{dataset_name}.ref_ranges_${str_table_index}\` r
-                    INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = r.sample_id
+                    INNER JOIN \`~{project_id}.~{dataset_name}.~{sample_table_or_view_name}\` s ON s.sample_id = r.sample_id
                     WHERE withdrawn IS NULL AND
                     is_control = false
                     ~{new_samples_extract_clause}
