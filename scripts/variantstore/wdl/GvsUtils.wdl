@@ -438,7 +438,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
     String query_project
     String data_project
     String dataset_name
-    Array[String] table_patterns
+    Array[String] table_prefixes
     String cloud_sdk_docker
   }
   meta {
@@ -461,7 +461,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
 
     # bq query --max_rows check: ok one row
     bq --apilog=false --project_id=~{query_project} query --format=csv --use_legacy_sql=false \
-    'SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM `~{data_project}`.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE table_name like "~{sep=" OR table_name like " table_patterns}"' > results.txt
+    'SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM `~{data_project}`.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE STARTS_WITH(table_name, "~{sep=") OR STARTS_WITH(table_name, " table_prefixes}")' > results.txt
 
     tail -1 results.txt | cut -d, -f1 > max_last_modified_timestamp.txt
   >>>
