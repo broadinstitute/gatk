@@ -44,7 +44,14 @@ public class SampleList {
     }
 
     /**
-     * This overload *does* honor the `sample_info.withdrawn` field and is currently used by:
+     * This overload *does* honor the `sample_info.withdrawn` field, but it is important to consider *which table*
+     * it is examining. For regular GVS extract, it consults the prepare table `__SAMPLES`. Schema-wise this table looks
+     * like the `sample_info` table, with the important distinction that rows in `__SAMPLES` always have a null value
+     * for `withdrawn`. Furthermore, any attempt to withdraw samples after the prepare step will not be reflected in the
+     * `__SAMPLES` table. So for regular GVS extract, this method effectively does not honor the "true" `withdrawn`
+     * field in `sample_info`. See further details in VS-1863.
+     *<br/>
+     * All that having been said, this method is currently used in:
      *
      * <ul>
      *     <li>Filter creation</li>
