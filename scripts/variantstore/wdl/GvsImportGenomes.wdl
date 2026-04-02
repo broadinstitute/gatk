@@ -969,7 +969,7 @@ task CreateSampleDataViews {
           SELECT CAST(partition_id AS INT64) AS sample_id
           FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
           WHERE
-          partition_id NOT LIKE '__%' AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, '^vet_[0-9]+$')
+          NOT STARTS_WITH(partition_id, '__') AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, '^vet_[0-9]+$')
 
       """ || variants_load_status_clause || ");";
 
@@ -995,7 +995,7 @@ task CreateSampleDataViews {
         SELECT CAST(partition_id AS INT64) AS sample_id
         FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS`
         WHERE
-        partition_id NOT LIKE '__%' AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, '^ref_ranges_[0-9]+$')
+        NOT STARTS_WITH(partition_id, '__') AND total_logical_bytes > 0 AND REGEXP_CONTAINS(table_name, '^ref_ranges_[0-9]+$')
 
       """ || references_load_status_clause || ");";
 
