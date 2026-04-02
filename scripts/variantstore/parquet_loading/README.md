@@ -225,7 +225,7 @@ SELECT
 FROM `my-project.my_dataset.INFORMATION_SCHEMA.PARTITIONS`
 WHERE REGEXP_CONTAINS(table_name, "^vet_[0-9]+$|^ref_ranges_[0-9]+$")
   AND total_logical_bytes > 0
-  AND partition_id NOT LIKE "__%"
+  AND NOT STARTS_WITH(partition_id, '__')
 GROUP BY table_name
 ORDER BY table_name;
 
