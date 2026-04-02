@@ -131,7 +131,7 @@ task GetToolVersions {
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-03-27-alpine-7dfb47f478dc"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-04-02-alpine-a27ec175a9c9"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-03-12-gatkbase-093f39140829"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
@@ -438,7 +438,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
     String query_project
     String data_project
     String dataset_name
-    Array[String] table_patterns
+    Array[String] table_prefixes
     String cloud_sdk_docker
   }
   meta {
@@ -461,7 +461,7 @@ task GetBQTablesMaxLastModifiedTimestamp {
 
     # bq query --max_rows check: ok one row
     bq --apilog=false --project_id=~{query_project} query --format=csv --use_legacy_sql=false \
-    'SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM `~{data_project}`.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS WHERE table_name like "~{sep=" OR table_name like " table_patterns}"' > results.txt
+    'SELECT UNIX_MICROS(MAX(last_modified_time)) last_modified_time FROM `~{data_project}.~{dataset_name}.INFORMATION_SCHEMA.PARTITIONS` WHERE STARTS_WITH(table_name, "~{sep=") OR STARTS_WITH(table_name, " table_prefixes}")' > results.txt
 
     tail -1 results.txt | cut -d, -f1 > max_last_modified_timestamp.txt
   >>>

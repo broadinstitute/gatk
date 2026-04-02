@@ -350,7 +350,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1829_au_revoir_parquet_load_status
+             - vs_1864_underscore_is_a_sql_metachar
          tags:
              - /.*/
    - name: GvsIngestTieout
