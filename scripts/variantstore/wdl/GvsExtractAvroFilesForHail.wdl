@@ -6,6 +6,7 @@ workflow GvsExtractAvroFilesForHail {
     input {
         # This will allow us to extract a subset of the samples -- specifically the new ones!
         Int? new_sample_cutoff
+
         # A sample table or view is expected to exist in the dataset that has at least the following columns:
         # sample_id (int), sample_name (string), and withdrawn (type unspecified but nullable).
         # `sample_info` fits this bill, but so would a view that joins `sample_info` to other tables as long as it has
@@ -13,9 +14,15 @@ workflow GvsExtractAvroFilesForHail {
         # allele in the alt_allele table at the same location corresponding to an "accursed" sample with erroneous
         # reference data at that location:
         #
-        # CREATE OR REPLACE VIEW `project.dataset.sample_info_vs_1862_accursed_sample` AS
-        # SELECT * from `project.dataset.sample_info` si join `project.dataset.alt_allele` aa ON
-        # si.sample_id = aa.sample_id WHERE aa.location = 4 * 1000 * 1000 * 1000 * 1000 + 190181387
+        #  CREATE OR REPLACE VIEW `project.dataset.sample_info_vs_1862_accursed_sample`
+        #  AS
+        #  SELECT si.*
+        #  FROM `project.dataset.sample_info` si
+        #  JOIN `project.dataset.alt_allele` aa
+        #    ON
+        #      si.sample_id = aa.sample_id
+        #  WHERE aa.location = 4 * 1000 * 1000 * 1000 * 1000 + 190181397
+        #
         String sample_table_or_view_name = "sample_info"
         String? git_branch_or_tag
         String? git_hash
