@@ -244,7 +244,7 @@ task ExtractFromFilterTables {
 
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/vets_filtering_data/vets_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
+            uri='${avro_prefix}/vets_filtering_data/vets_filtering_data_*.avro', format='AVRO', compression='SNAPPY', overwrite=true) AS
             SELECT location, type as model, ref, alt, calibration_sensitivity, yng_status
             FROM \`~{project_id}.~{dataset_name}.filter_set_info\`
             WHERE filter_set_name = '~{filter_set_name}'
@@ -253,7 +253,7 @@ task ExtractFromFilterTables {
 
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/site_filtering_data/site_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
+            uri='${avro_prefix}/site_filtering_data/site_filtering_data_*.avro', format='AVRO', compression='SNAPPY', overwrite=true) AS
             SELECT location, filters
             FROM \`~{project_id}.~{dataset_name}.filter_set_sites\`
             WHERE filter_set_name = '~{filter_set_name}'
@@ -305,7 +305,7 @@ task ExtractFromPloidyTable {
 
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/ploidy_data/ploidy_data_*.avro', format='AVRO', compression='SNAPPY') AS
+            uri='${avro_prefix}/ploidy_data/ploidy_data_*.avro', format='AVRO', compression='SNAPPY', overwrite=true) AS
             SELECT (
                 CASE (p.chromosome / 1000000000000)
                     WHEN 23 THEN 'chrX'
@@ -372,7 +372,7 @@ task ExtractFromSuperpartitionedTables {
             # so an extra layer of `vet_${str_table_index}` is inserted here.
             python3 /app/run_avro_query.py --sql "
                 EXPORT DATA OPTIONS(
-                uri='${avro_prefix}/vets/vet_${str_table_index}/vet_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
+                uri='${avro_prefix}/vets/vet_${str_table_index}/vet_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY', overwrite=true) AS
                 SELECT location, v.sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ,
                 call_PS as PS
                 FROM \`~{project_id}.~{dataset_name}.vet_${str_table_index}\` v
@@ -385,7 +385,7 @@ task ExtractFromSuperpartitionedTables {
             if [ ~{use_compressed_references} = false ]; then
                 python3 /app/run_avro_query.py --sql "
                     EXPORT DATA OPTIONS(
-                    uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
+                    uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY', overwrite=true) AS
                     SELECT location, r.sample_id, length, state
                     FROM \`~{project_id}.~{dataset_name}.ref_ranges_${str_table_index}\` r
                     INNER JOIN \`~{project_id}.~{dataset_name}.~{sample_table_or_view_name}\` s ON s.sample_id = r.sample_id
@@ -415,7 +415,7 @@ task ExtractFromSuperpartitionedTables {
                           intToState(superpackEntry & 0xF))
                     );
                     EXPORT DATA OPTIONS(
-                    uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
+                    uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY', overwrite=true) AS
                     SELECT UnpackRefRangeInfo(packed_ref_data).location as location, r.sample_id, UnpackRefRangeInfo(packed_ref_data).len as length, UnpackRefRangeInfo(packed_ref_data).state as state
                     FROM \`~{project_id}.~{dataset_name}.ref_ranges_${str_table_index}\` r
                     INNER JOIN \`~{project_id}.~{dataset_name}.~{sample_table_or_view_name}\` s ON s.sample_id = r.sample_id
