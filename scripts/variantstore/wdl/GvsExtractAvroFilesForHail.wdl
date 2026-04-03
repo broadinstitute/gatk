@@ -15,11 +15,12 @@ workflow GvsExtractAvroFilesForHail {
         #  CREATE OR REPLACE VIEW `project.dataset.sample_info_vs_1862_accursed_sample`
         #  AS
         #  SELECT si.*
-        #  FROM `project.dataset.sample_info` si
-        #  JOIN `project.dataset.alt_allele` aa
-        #    ON
-        #      si.sample_id = aa.sample_id
-        #  WHERE aa.location = 4 * 1000 * 1000 * 1000 * 1000 + 190181397
+        #  FROM `project.dataset.sample_info` si WHERE si.sample_id IN (
+        #      -- Note the DISTINCT is important here as otherwise split hetvars in alt_allele will cause duplicate rows
+        #      -- in the view which would then cause downstream errors.
+        #      SELECT distinct aa.sample_id from `project.dataset.alt_allele` aa
+        #      WHERE aa.location = 4 * 1000 * 1000 * 1000 * 1000 + 190181397
+        #  )
         #
         String sample_table_or_view_name = "sample_info"
         String? git_branch_or_tag
