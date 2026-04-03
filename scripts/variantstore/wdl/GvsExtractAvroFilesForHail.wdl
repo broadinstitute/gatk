@@ -363,15 +363,8 @@ task ExtractFromSuperpartitionedTables {
 
         avro_prefix="$(dirname ~{avro_sibling})/avro"
 
-        # Default to a 1-based first superpartition
-        start_table=$((~{shard_index} + 1))
-
         for superpartition in $(seq ~{shard_index + 1} ~{num_shards} ~{num_superpartitions})
         do
-            if (( ${superpartition} < ${start_table} ))
-            then
-                continue
-            fi
 
             str_table_index=$(printf "%03d" $superpartition)
 
