@@ -7,10 +7,10 @@ workflow GvsExtractAvroFilesForHail {
 
         # A sample table or view is expected to exist in the dataset that has at least the following columns:
         # sample_id (int), sample_name (string), and withdrawn (type unspecified but nullable).
-        # `sample_info` fits this bill, but so would a view that joins `sample_info` to other tables as long as it has
-        # those three columns. For example, the following would create a view that contains only samples that have an
-        # allele in the alt_allele table at the same location corresponding to an "accursed" sample with erroneous
-        # reference data at that location:
+        # `sample_info` fits this bill, but so would a view that filters `sample_info` or joins (singularly) to other
+        # tables as long as the result contains those three columns. e.g. the following creates a view that contains
+        # only samples that have an allele in the alt_allele table at the same location corresponding to an "accursed"
+        # sample with erroneous reference data at that location:
         #
         #  CREATE OR REPLACE VIEW `project.dataset.sample_info_vs_1862_accursed_sample`
         #  AS
