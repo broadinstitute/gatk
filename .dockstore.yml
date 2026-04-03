@@ -219,6 +219,7 @@ workflows:
          - master
          - ah_var_store
          - VS-1808
+         - spark_parquet_operations
        tags:
          - /.*/
    - name: ParquetIngest1829AuRevoirParquetLoadStatus
