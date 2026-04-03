@@ -123,7 +123,14 @@ GROUP BY
    - This workflow extracts the data in BigQuery and transforms it into Avro files in a Google bucket, incorporating the VETS filter set data.
    - The extracted Avro files will then be used as an input for `GvsCreateVDS` workflow described below.
    - This workflow needs to be run with the `filter_set_name` from `GvsCreateFilterSet` step.
-   - Set the `new_sample_cutoff` to the maximum sample id for the Echo callset, 414838.
+   - Create a new view based on the `sample_info` table that includes only the samples new to Foxtrot:
+     ```bigquery
+
+     CREATE OR REPLACE VIEW `foxtrot.sample_info_new_to_foxtrot` AS
+        SELECT sample_name, research_id FROM `foxtrot.sample_info`
+        WHERE withdrawn IS NULL AND is_control = FALSE AND sample_id > 414838
+        ```
+   - Specify the name of this view as the `sample_table_or_view_name` input to the workflow.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsCreateVDS` workflow
    - This step creates a VDS based on the Avro files generated from the `GvsExtractAvroFilesForHail` workflow above.
