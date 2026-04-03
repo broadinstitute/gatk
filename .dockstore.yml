@@ -155,6 +155,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1862_fix_the_cursed_sample
        tags:
          - /.*/
    - name: GvsValidateVDS
@@ -164,6 +165,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1862_fix_the_cursed_sample
        tags:
          - /.*/
    - name: GvsMergeAndRescoreVDSes
@@ -368,6 +370,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1862_fix_the_cursed_sample
          tags:
              - /.*/
    - name: GvsCallsetStatistics
