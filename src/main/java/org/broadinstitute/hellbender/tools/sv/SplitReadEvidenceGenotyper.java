@@ -464,10 +464,9 @@ public class SplitReadEvidenceGenotyper {
         final int bothsideNonZeroCount = countBothSideSupport(startCounts, endCounts, 0);
         final int samplesOverOneCount = countSummedSupport(startCounts, endCounts, 1);
         for (int i = 0; i < samples.size(); i++) {
-            // TODO this is a bug I think - should check for non-ref genotype not GQ>0
-            final boolean nonRefDiscordantPair = discordantPairGenotype != null && discordantPairGenotype.genotypeQuals()[i] > 0;
+            final boolean nonRefDiscordantPair = discordantPairGenotype != null && discordantPairGenotype.genotypes()[i] != 0;
             final boolean nonRefDepth = depthGenotype != null && depthGenotype.copyStates()[i] != 2;
-            final boolean pass = depthGenotype != null && nonRefCount > 0 && largeEnough && hasSplitReadEvidence && (nonRefDiscordantPair || nonRefDepth); // TODO should || be && ?
+            final boolean pass = depthGenotype != null && nonRefCount > 0 && largeEnough && hasSplitReadEvidence && (nonRefDiscordantPair || nonRefDepth);
             if (bothsideNonZeroCount > 0 && twoSidedPassCount > 0) {
                 final double backgroundRatio = twoSidedPassCount / (double) bothsideNonZeroCount;
                 // compute ratio with number of fully supported samples
