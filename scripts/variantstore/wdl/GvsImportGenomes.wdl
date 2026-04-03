@@ -280,6 +280,16 @@ workflow GvsImportGenomes {
         }
       }
 
+      if (enable_vrs_ids) {
+        call ConsolidateVrsAlleleParquet {
+          input:
+            output_gcs_dir = defined_parquet_output_dir,
+            billing_project_id = billing_project_id,
+            go = select_all(GenerateParquetFilesFromInputGVCFs.done),
+            variants_docker = effective_variants_docker,
+        }
+      }
+
       # Discover and load Parquet files into BigQuery after all data has been created.
       call DiscoverParquetFiles {
         input:
@@ -290,6 +300,7 @@ workflow GvsImportGenomes {
           superpartitioned_table_prefixes = ["vet", "ref_ranges"],
           go = flatten([
             select_all([ConfigureParquetLifecycle.done]),
+            select_all([ConsolidateVrsAlleleParquet.done]),
             select_all(GenerateParquetFilesFromInputGVCFs.done)
           ]),
           variants_docker = effective_variants_docker,
@@ -1181,6 +1192,86 @@ EOF
     disks: "local-disk 10 HDD"
     preemptible: 3
     cpu: 1
+  }
+
+  output {
+    Boolean done = true
+  }
+}
+
+task ConsolidateVrsAlleleParquet {
+  input {
+    String output_gcs_dir
+    String? billing_project_id
+    Array[Boolean] go
+    String variants_docker
+  }
+
+  meta {
+    volatile: true
+  }
+
+  command <<<
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o xtrace -o pipefail
+
+    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+    VRS_ALLELE_DIR="${OUTPUT_GCS_DIR}/vrs_allele"
+
+    gcloud storage ls ~{"--billing-project " + billing_project_id} "${VRS_ALLELE_DIR}/vrs_allele_*.parquet" > vrs_allele_files.txt || true
+
+    FILE_COUNT=$(wc -l < vrs_allele_files.txt)
+    if [[ "${FILE_COUNT}" -eq 0 ]]
+    then
+      echo "No vrs_allele parquet files found under ${VRS_ALLELE_DIR}; skipping deduplication."
+      exit 0
+    fi
+
+    apk add --no-cache openjdk17-jre-headless py3-pip
+    pip3 install --no-cache-dir pyspark==3.5.1
+
+    mkdir -p vrs_allele_input
+    while IFS= read -r parquet_file
+    do
+      gcloud storage cp ~{"--billing-project " + billing_project_id} "${parquet_file}" vrs_allele_input/
+    done < vrs_allele_files.txt
+
+    cat > dedup_vrs_allele.py <<'PY'
+from pathlib import Path
+
+from pyspark.sql import SparkSession
+
+
+input_path = "vrs_allele_input/*.parquet"
+output_dir = "vrs_allele_dedup_output"
+
+spark = SparkSession.builder.master("local[*]").appName("dedup-vrs-allele").getOrCreate()
+deduped = spark.read.parquet(input_path).dropDuplicates()
+deduped.coalesce(1).write.mode("overwrite").parquet(output_dir)
+spark.stop()
+
+part_files = list(Path(output_dir).glob("part-*.parquet"))
+if not part_files:
+    raise RuntimeError("Spark did not produce a part parquet file")
+
+Path("dedup_part_file.txt").write_text(str(part_files[0]))
+PY
+
+    python3 dedup_vrs_allele.py
+    DEDUPED_PART_FILE=$(cat dedup_part_file.txt)
+
+    gcloud storage rm ~{"--billing-project " + billing_project_id} "${VRS_ALLELE_DIR}/vrs_allele_*.parquet" || true
+
+    CONSOLIDATED_FILE="vrs_allele_0_consolidated.parquet"
+    gcloud storage cp ~{"--billing-project " + billing_project_id} "${DEDUPED_PART_FILE}" "${VRS_ALLELE_DIR}/${CONSOLIDATED_FILE}"
+  >>>
+
+  runtime {
+    docker: variants_docker
+    memory: "8 GB"
+    disks: "local-disk 100 HDD"
+    preemptible: 3
+    cpu: 2
   }
 
   output {
