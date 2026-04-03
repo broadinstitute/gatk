@@ -465,7 +465,10 @@ public class SplitReadEvidenceGenotyper {
         final int bothsideNonZeroCount = countBothSideSupport(startCounts, endCounts, 0);
         final int samplesOverOneCount = countSummedSupport(startCounts, endCounts, 1);
         for (int i = 0; i < samples.size(); i++) {
-            final boolean nonRefDiscordantPair = discordantPairGenotype != null && discordantPairGenotype.genotypes()[i] != 0;
+            // Note: nonRefDiscordantPair checks GQ > 0, which is always true since GQ is clamped to min 1.
+            // This matches v1.1 behavior (SR_genotype.opt_part1.sh checks $NF>0 on pe.geno.withquality.txt.gz,
+            // where PE GQ is also clamped to min 1), making pass/fail effectively per-variant not per-sample.
+            final boolean nonRefDiscordantPair = discordantPairGenotype != null && discordantPairGenotype.genotypeQuals()[i] > 0;
             final boolean nonRefDepth = depthGenotype != null && depthGenotype.copyStates()[i] != 2;
             final boolean pass = depthGenotype != null && nonRefCount > 0 && largeEnough && hasSplitReadEvidence && (nonRefDiscordantPair || nonRefDepth);
             if (bothsideNonZeroCount > 0 && twoSidedPassCount > 0) {
