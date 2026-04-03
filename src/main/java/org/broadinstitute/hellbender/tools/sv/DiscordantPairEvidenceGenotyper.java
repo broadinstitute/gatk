@@ -4,7 +4,6 @@ import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
-import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.aggregation.DiscordantPairEvidenceTester;
@@ -201,7 +200,9 @@ public class DiscordantPairEvidenceGenotyper {
         final double[] homArr = homCounts.stream().mapToDouble(Double::valueOf).toArray();
         final double[] hetArr = hetCounts.stream().mapToDouble(Double::valueOf).toArray();
         final double homMedian = MEDIAN.evaluate(homArr);
-        final double sdHet = 1.645 * new StandardDeviation().evaluate(hetArr);
+        final double hetMedian = MEDIAN.evaluate(hetArr);
+        final double hetMadValue = MEDIAN.evaluate(DoubleStream.of(hetArr).map(d -> Math.abs(d - hetMedian)).toArray());
+        final double sdHet = 1.645 * 1.4826 * hetMadValue;
         secondPassMade = true;
         // Free training accumulation lists that are no longer needed
         hetCounts.clear();
