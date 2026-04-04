@@ -106,15 +106,17 @@ public class TrainSVGenotypingTest extends GatkToolIntegrationTest {
 
         runCommandLine(args, TrainSVGenotyping.class.getSimpleName());
 
-        final File rdParamsFile = outputDir.resolve(outputName + ".rd_geno_params.tsv").toFile();
+        final File rdDepthParamsFile = outputDir.resolve(outputName + ".rd_depth_geno_params.tsv").toFile();
+        final File rdPesrParamsFile = outputDir.resolve(outputName + ".rd_pesr_geno_params.tsv").toFile();
         final File peParamsFile = outputDir.resolve(outputName + ".pe_geno_params.tsv").toFile();
         final File srParamsFile = outputDir.resolve(outputName + ".sr_geno_params.tsv").toFile();
-        Assert.assertTrue(rdParamsFile.exists(), "RD genotype parameters file should exist");
+        Assert.assertTrue(rdDepthParamsFile.exists(), "RD depth genotype parameters file should exist");
+        Assert.assertTrue(rdPesrParamsFile.exists(), "RD PESR genotype parameters file should exist");
         Assert.assertTrue(peParamsFile.exists(), "PE genotype parameters file should exist");
         Assert.assertTrue(srParamsFile.exists(), "SR genotype parameters file should exist");
 
         if (UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS) {
-            Files.copy(rdParamsFile.toPath(), Path.of(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.rd_geno_params.tsv"), StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(rdDepthParamsFile.toPath(), Path.of(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.rd_geno_params.tsv"), StandardCopyOption.REPLACE_EXISTING);
             Files.copy(peParamsFile.toPath(), Path.of(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.pe_geno_params.tsv"), StandardCopyOption.REPLACE_EXISTING);
             Files.copy(srParamsFile.toPath(), Path.of(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.sr_geno_params.tsv"), StandardCopyOption.REPLACE_EXISTING);
             return;
@@ -158,7 +160,8 @@ public class TrainSVGenotypingTest extends GatkToolIntegrationTest {
             }
         }
 
-        assertTsvFilesEqual(rdParamsFile, new File(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.rd_geno_params.tsv"));
+        assertTsvFilesEqual(rdDepthParamsFile, new File(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.rd_geno_params.tsv"));
+        assertTsvFilesEqual(rdPesrParamsFile, new File(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.rd_geno_params.tsv"));
         assertTsvFilesEqual(peParamsFile, new File(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.pe_geno_params.tsv"));
         assertTsvFilesEqual(srParamsFile, new File(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.sr_geno_params.tsv"));
     }
@@ -196,7 +199,8 @@ public class TrainSVGenotypingTest extends GatkToolIntegrationTest {
 
         runCommandLine(args, TrainSVGenotyping.class.getSimpleName());
 
-        Assert.assertTrue(outputDir.resolve(outputName + ".rd_geno_params.tsv").toFile().exists(), "RD genotype parameters file should exist");
+        Assert.assertTrue(outputDir.resolve(outputName + ".rd_depth_geno_params.tsv").toFile().exists(), "RD depth genotype parameters file should exist");
+        Assert.assertTrue(outputDir.resolve(outputName + ".rd_pesr_geno_params.tsv").toFile().exists(), "RD PESR genotype parameters file should exist");
         Assert.assertTrue(outputDir.resolve(outputName + ".pe_geno_params.tsv").toFile().exists(), "PE genotype parameters file should exist");
         Assert.assertTrue(outputDir.resolve(outputName + ".sr_geno_params.tsv").toFile().exists(), "SR genotype parameters file should exist");
         Assert.assertTrue(new File(outputVcfPath).exists(), "Output VCF should exist when downsampling arguments are provided");
@@ -321,7 +325,8 @@ public class TrainSVGenotypingTest extends GatkToolIntegrationTest {
 
         return new TrainSVRunResult(
                 outputVcf,
-                outputDir.resolve(outputName + ".rd_geno_params.tsv").toFile(),
+                outputDir.resolve(outputName + ".rd_depth_geno_params.tsv").toFile(),
+                outputDir.resolve(outputName + ".rd_pesr_geno_params.tsv").toFile(),
                 outputDir.resolve(outputName + ".pe_geno_params.tsv").toFile(),
                 outputDir.resolve(outputName + ".sr_geno_params.tsv").toFile());
     }
@@ -530,5 +535,5 @@ public class TrainSVGenotypingTest extends GatkToolIntegrationTest {
 
     private record SyntheticTrainSVFixture(File vcfFile, File peFile, File srFile, File rdFile) {}
 
-    private record TrainSVRunResult(File outputVcf, File rdParamsFile, File peParamsFile, File srParamsFile) {}
+    private record TrainSVRunResult(File outputVcf, File rdDepthParamsFile, File rdPesrParamsFile, File peParamsFile, File srParamsFile) {}
 }

@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import htsjdk.samtools.SAMSequenceDictionary;
-import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
@@ -25,7 +24,6 @@ import org.broadinstitute.hellbender.tools.sv.aggregation.SplitReadEvidenceAggre
 import org.broadinstitute.hellbender.tools.sv.cluster.CanonicalSVCollapser;
 import org.broadinstitute.hellbender.tools.sv.cluster.PloidyTable;
 import org.broadinstitute.hellbender.tools.sv.cluster.SVClusterWalker;
-import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngine;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.codecs.DepthEvidenceCodec;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
@@ -90,7 +88,8 @@ import java.util.*;
  *      --ploidy-table ploidy_table.tsv \
  *      --pesr-exclusion-intervals pesr_list.bed \
  *      --depth-exclusion-intervals depth_list.bed \
- *      --rd-table samples.rd_geno_params.tsv \
+ *      --rd-depth-table samples.rd_depth_geno_params.tsv \
+ *      --rd-pesr-table samples.rd_pesr_geno_params.tsv \
  *      --pe-table samples.pe_geno_params.tsv \
  *      --sr-table samples.sr_geno_params.tsv
  * </pre>
@@ -106,7 +105,8 @@ import java.util.*;
 )
 public final class GenotypeSVs extends MultiplePassVariantWalker {
 
-    public static final String DEPTH_CUTOFFS_TABLE_LONG_NAME = "rd-table";
+    public static final String DEPTH_CUTOFFS_TABLE_LONG_NAME = "rd-depth-table";
+    public static final String PESR_DEPTH_CUTOFFS_TABLE_LONG_NAME = "rd-pesr-table";
     public static final String DISCORDANT_PAIR_CUTOFFS_TABLE_LONG_NAME = "pe-table";
     public static final String SPLIT_READ_CUTOFFS_TABLE_LONG_NAME = "sr-table";
     public static final String SPLIT_READ_INSERTION_MEDIAN_HOM_LONG_NAME = "sr-median-hom-ins";
@@ -126,9 +126,15 @@ public final class GenotypeSVs extends MultiplePassVariantWalker {
 
     @Argument(
             fullName = DEPTH_CUTOFFS_TABLE_LONG_NAME,
-            doc = "Depth genotyping cutoffs table"
+            doc = "Depth genotyping cutoffs table for depth-only variants"
     )
     public GATKPath depthCutoffsTablePath;
+
+    @Argument(
+            fullName = PESR_DEPTH_CUTOFFS_TABLE_LONG_NAME,
+            doc = "Depth genotyping cutoffs table for PESR variants"
+    )
+    public GATKPath pesrDepthCutoffsTablePath;
 
     @Argument(
             doc = "Intervals to exclude for depth evidence genotyping",
@@ -281,7 +287,8 @@ public final class GenotypeSVs extends MultiplePassVariantWalker {
     private Map<String, Double> sampleMedians;
     private PloidyTable ploidyTable;
     private DepthMatrixLoader loader;
-    private DepthEvidenceGenotyper depthGenotyper;
+    private DepthEvidenceGenotyper depthOnlyGenotyper;
+    private DepthEvidenceGenotyper pesrDepthGenotyper;
     private List<String> masterSampleList;
     private FeatureDataSource<DepthEvidence> depthSource;
 
@@ -297,11 +304,9 @@ public final class GenotypeSVs extends MultiplePassVariantWalker {
     private SplitReadEvidenceGenotyper.SplitReadGenotypeMetrics splitReadParameters;
 
     private OverlapDetector<SimpleInterval> depthExclusionIntervals;
-    private SVStratificationEngine intervalExclusionEngine;
 
     private static final int DISCORDANT_PAIR_QUERY_LOOKAHEAD = 0;
     private static final int SPLIT_READ_QUERY_LOOKAHEAD = 0;
-    private static final String EXCLUSION_STRATIFICATION = "intex";
 
     protected int numberOfPasses() {
         return 1;
@@ -346,24 +351,20 @@ public final class GenotypeSVs extends MultiplePassVariantWalker {
             depthExclusionIntervals = OverlapDetector.create(genomeLocs.stream().map(SimpleInterval::new).toList());
         }
 
-        if (pesrExclusionIntervalsPath != null) {
-            intervalExclusionEngine = new SVStratificationEngine(dictionary);
-            final GenomeLocParser genomeLocParser = new GenomeLocParser(dictionary);
-            final GenomeLocSortedSet genomeLocs = IntervalUtils.loadIntervals(Collections.singletonList(pesrExclusionIntervalsPath.toString()), IntervalSetRule.UNION, IntervalMergingRule.OVERLAPPING_ONLY, 0, genomeLocParser);
-            final List<Locatable> intervals = Collections.unmodifiableList(genomeLocs.toList());
-            intervalExclusionEngine.addTrack(EXCLUSION_STRATIFICATION, intervals);
-            intervalExclusionEngine.addStratification(EXCLUSION_STRATIFICATION, null, null, null, Collections.singleton(EXCLUSION_STRATIFICATION));
-        }
-
         loader = new DepthMatrixLoader(depthSource, numBins, largeVariantSize, largeVariantPoints, largeVariantWindow, depthExclusionIntervals, dictionary);
         writer = createVCFWriter(outputVcf);
         outputHeader = createHeader(getHeaderForVariants());
         writer.writeHeader(outputHeader);
         masterSampleList = outputHeader.getSampleNamesInOrder();
         try (final TableReader<DepthEvidenceGenotyper.CopyStateStats> reader = TableUtils.reader(depthCutoffsTablePath.toPath(), new DepthEvidenceGenotyper.DepthTableParser()::tableParser)) {
-            depthGenotyper = new DepthEvidenceGenotyper(reader.toList(), masterSampleList, maxQual, dictionary);
+            depthOnlyGenotyper = new DepthEvidenceGenotyper(reader.toList(), masterSampleList, maxQual, dictionary);
         } catch (final IOException e) {
-            throw new GATKException("Error while reading depth cutoffs table", e);
+            throw new GATKException("Error while reading depth-only cutoffs table", e);
+        }
+        try (final TableReader<DepthEvidenceGenotyper.CopyStateStats> reader = TableUtils.reader(pesrDepthCutoffsTablePath.toPath(), new DepthEvidenceGenotyper.DepthTableParser()::tableParser)) {
+            pesrDepthGenotyper = new DepthEvidenceGenotyper(reader.toList(), masterSampleList, maxQual, dictionary);
+        } catch (final IOException e) {
+            throw new GATKException("Error while reading PESR depth cutoffs table", e);
         }
         try (final TableReader<DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeParameters> reader = TableUtils.reader(discordantPairCutoffsTablePath.toPath(), new DiscordantPairEvidenceGenotyper.DiscordantPairTableParser()::tableParser)) {
             discordantPairParameters = reader.readRecord();
@@ -737,7 +738,11 @@ public final class GenotypeSVs extends MultiplePassVariantWalker {
             return null;
         }
         final DepthMatrix depthMatrix = loader.load(new SimpleInterval(record.getContigA(), record.getPositionA(), record.getPositionB()), sampleMedians);
-        return depthGenotyper.genotype(depthMatrix);
+        // Use depth cutoffs for depth-only variants or any CNV >= 5kbp, matching v1.1 size-based routing.
+        // This is consistent with combineGenotypes(), which uses depth as the primary genotype for >= 5kbp.
+        final boolean useLargeVariantDepthCutoffs = record.getLength() != null && record.getLength() >= 5000;
+        final DepthEvidenceGenotyper genotyper = (record.isDepthOnly() || useLargeVariantDepthCutoffs) ? depthOnlyGenotyper : pesrDepthGenotyper;
+        return genotyper.genotype(depthMatrix);
     }
 
     private DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult genotypeDiscordantPairs(final SVCallRecord record) {

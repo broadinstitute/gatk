@@ -82,7 +82,7 @@ import org.broadinstitute.hellbender.engine.filters.CountingVariantFilter;
  *         eligible training records exceeds the configured cap, the VCF will contain only the retained training subset)
  *     </li>
  *     <li>
- *         Genotyping cutoff tables (RD, PE, SR)
+ *         Genotyping cutoff tables: separate RD tables for depth-only and PESR variants, plus PE and SR tables
  *     </li>
  * </ul>
  *
@@ -128,6 +128,8 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     public static final String DISCORDANT_PAIR_QUERY_LOOKAHEAD_LONG_NAME = "pe-query-lookahead";
     public static final String SPLIT_READ_QUERY_LOOKAHEAD_LONG_NAME = "sr-query-lookahead";
     public static final String DOWNSAMPLE_STRIDE_LONG_NAME = "downsample-stride";
+    public static final String DEPTH_MIN_SEPARATION_LONG_NAME = "rd-depth-min-separation";
+    public static final String PESR_MIN_SEPARATION_LONG_NAME = "rd-pesr-min-separation";
 
     @Argument(
             fullName = DEPTH_EVIDENCE_FILE_PATH_LONG_NAME,
@@ -281,6 +283,26 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         public int downsampleStride = 1;
 
     @Argument(
+            fullName = DEPTH_MIN_SEPARATION_LONG_NAME,
+            doc = "Minimum RD median-ratio separation between copy states 1 and 2 for depth-only variants. " +
+                    "Enforces that copy-state 1 upper bound <= 1 - sep and copy-state 2 upper bound >= 1 + sep. " +
+                    "Higher values produce more conservative depth-only genotyping.",
+            minValue = 0,
+            optional = true
+    )
+    public double depthMinSeparation = 0.;
+
+    @Argument(
+            fullName = PESR_MIN_SEPARATION_LONG_NAME,
+            doc = "Minimum RD median-ratio separation between copy states 1 and 2 for PESR variants. " +
+                    "Enforces that copy-state 1 upper bound <= 1 - sep and copy-state 2 upper bound >= 1 + sep. " +
+                    "Typically smaller than the depth-only separation since PE/SR evidence compensates.",
+            minValue = 0,
+            optional = true
+    )
+    public double pesrMinSeparation = 0.;
+
+    @Argument(
             fullName = AggregateDepthEvidence.MAX_QUALITY_LONG_NAME,
             doc = "Max quality score",
             minValue = 1
@@ -322,10 +344,11 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     private Map<String, Double> sampleMedians;
     private PloidyTable ploidyTable;
     private DepthMatrixLoader loader;
-    private DepthEvidenceGenotyper depthGenotyper;
+    private DepthEvidenceGenotyper depthGenotyper; // initial genotyper with default cutoffs, used for training
+    private DepthEvidenceGenotyper depthOnlyGenotyper; // trained genotyper for depth-only variants
+    private DepthEvidenceGenotyper pesrDepthGenotyper; // trained genotyper for PESR variants
     private List<String> masterSampleList;
     private FeatureDataSource<DepthEvidence> depthSource;
-    private List<DepthEvidenceGenotyper.CopyStateStats> trainedCopyStateStats;
 
     private Map<String, DepthEvidenceGenotyper.DepthGenotypeResult> depthGenotypeResults;
     private Map<String, DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult> discordantPairGenotypeResults;
@@ -568,13 +591,57 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
             final DepthMatrix depthMatrix = loader.load(new SimpleInterval(genomeLoc), sampleMedians);
             genotypeResults.add(depthGenotyper.genotype(depthMatrix));
         }
-        trainedCopyStateStats = depthGenotyper.train(genotypeResults, numTrainingStates);
-        try (final TableWriter<DepthEvidenceGenotyper.CopyStateStats> tableWriter = TableUtils.writer(getTablePath(".rd_geno_params.tsv").toPath(), DepthEvidenceGenotyper.DepthTableParser.CUTOFFS_COLUMNS, new DepthEvidenceGenotyper.DepthTableParser()::composeCutoffsLine)) {
-            tableWriter.writeAllRecords(trainedCopyStateStats);
-        } catch (IOException e) {
-            throw new GATKException("Error while writing RD cutoffs table", e);
+        final List<DepthEvidenceGenotyper.CopyStateStats> baseCopyStateStats = depthGenotyper.train(genotypeResults, numTrainingStates);
+
+        // Apply minimum separation constraints to produce separate cutoffs for depth-only and PESR variants.
+        // This mirrors the old pipeline (v1.1 TrainRDGenotyping.wdl / UpdateCutoff) which applied different
+        // RD_Median_Separation values from RF cutoffs to the trained boundaries.
+        final List<DepthEvidenceGenotyper.CopyStateStats> depthOnlyStats = applySeparation(baseCopyStateStats, depthMinSeparation);
+        final List<DepthEvidenceGenotyper.CopyStateStats> pesrStats = applySeparation(baseCopyStateStats, pesrMinSeparation);
+
+        writeDepthCutoffs(depthOnlyStats, ".rd_depth_geno_params.tsv");
+        writeDepthCutoffs(pesrStats, ".rd_pesr_geno_params.tsv");
+
+        depthOnlyGenotyper = new DepthEvidenceGenotyper(depthOnlyStats, masterSampleList, maxQual, dictionary);
+        pesrDepthGenotyper = new DepthEvidenceGenotyper(pesrStats, masterSampleList, maxQual, dictionary);
+        logger.info("Training completed (depth-only separation=" + depthMinSeparation + ", PESR separation=" + pesrMinSeparation + ")");
+    }
+
+    /**
+     * Applies minimum-separation constraints to trained copy-state boundaries.
+     * For copy state 1 (single-copy deletion), the upper bound is capped at {@code 1 - minSeparation}.
+     * For copy state 2 (diploid/reference), the upper bound is raised to at least {@code 1 + minSeparation}.
+     * This enforces a minimum gap around the diploid ratio of 1.0, making genotyping more or less
+     * conservative depending on the separation value.
+     */
+    @VisibleForTesting
+    static List<DepthEvidenceGenotyper.CopyStateStats> applySeparation(
+            final List<DepthEvidenceGenotyper.CopyStateStats> stats, final double minSeparation) {
+        if (minSeparation == 0) {
+            return stats;
         }
-        logger.info("Training completed");
+        final List<DepthEvidenceGenotyper.CopyStateStats> adjusted = new ArrayList<>(stats.size());
+        for (final DepthEvidenceGenotyper.CopyStateStats s : stats) {
+            double upperBound = s.upperBound();
+            if (s.copyState() == 1 && upperBound > 1.0 - minSeparation) {
+                upperBound = 1.0 - minSeparation;
+            } else if (s.copyState() == 2 && upperBound < 1.0 + minSeparation) {
+                upperBound = 1.0 + minSeparation;
+            }
+            adjusted.add(new DepthEvidenceGenotyper.CopyStateStats(s.copyState(), s.mean(), s.stdDev(), upperBound));
+        }
+        return adjusted;
+    }
+
+    private void writeDepthCutoffs(final List<DepthEvidenceGenotyper.CopyStateStats> stats, final String suffix) {
+        try (final TableWriter<DepthEvidenceGenotyper.CopyStateStats> tableWriter = TableUtils.writer(
+                getTablePath(suffix).toPath(),
+                DepthEvidenceGenotyper.DepthTableParser.CUTOFFS_COLUMNS,
+                new DepthEvidenceGenotyper.DepthTableParser()::composeCutoffsLine)) {
+            tableWriter.writeAllRecords(stats);
+        } catch (IOException e) {
+            throw new GATKException("Error while writing RD cutoffs table " + suffix, e);
+        }
     }
 
     @VisibleForTesting
@@ -715,7 +782,9 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         }
         final DepthMatrix depthMatrix = loader.load(new SimpleInterval(record.getContigA(), record.getPositionA(), record.getPositionB()), sampleMedians);
 
-        final DepthEvidenceGenotyper.DepthGenotypeResult genotypeResult = depthGenotyper.genotype(depthMatrix);
+        // Use separate trained cutoffs for depth-only vs PESR variants
+        final DepthEvidenceGenotyper genotyper = record.isDepthOnly() ? depthOnlyGenotyper : pesrDepthGenotyper;
+        final DepthEvidenceGenotyper.DepthGenotypeResult genotypeResult = genotyper.genotype(depthMatrix);
         if (depthGenotypeResults.containsKey(record.getId())) {
             throw new UserException.BadInput("Duplicate variant ID: " + record.getId());
         }
