@@ -6,6 +6,7 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import org.apache.commons.math3.distribution.NormalDistribution;
+import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
@@ -203,7 +204,11 @@ public class DepthEvidenceGenotyper {
                     depths[j] = sampleDepths[samples.get(j)];
                 }
                 means[i] = MathUtil.mean(depths);
-                stdDevs[i] = MathUtil.stddev(depths, means[i]);
+                // Use Bessel-corrected (sample) stddev to match v1.1's R sd() behavior.
+                // For n=1, StandardDeviation returns NaN (same as R's sd()), so fall back
+                // to the previous state's stddev, matching v1.1's generate_cutoff.R.
+                final double sd = depths.length > 1 ? new StandardDeviation().evaluate(depths) : Double.NaN;
+                stdDevs[i] = Double.isNaN(sd) ? (i == 0 ? DEFAULT_COPY_STATE_INCREMENT * 0.5 : stdDevs[i - 1]) : sd;
             }
         }
         for (int i = 0; i < numTrainingStates; i++) {
