@@ -363,7 +363,31 @@ task ExtractFromSuperpartitionedTables {
 
         avro_prefix="$(dirname ~{avro_sibling})/avro"
 
-        for superpartition in $(seq ~{shard_index + 1} ~{num_shards} ~{num_superpartitions})
+        # Query the sample table upfront to find only the superpartitions that (a) have at least one
+        # non-withdrawn, non-control sample and (b) are assigned to this shard. A superpartition p
+        # belongs to shard shard_index when (p - 1) % num_shards == shard_index, which is the same
+        # assignment produced by `seq shard_index+1 num_shards num_superpartitions`. Skipping empty
+        # superpartitions avoids running EXPORT DATA queries that would produce no output.
+        readarray -t superpartitions_to_process < <(python3 <<'PYEOF'
+from google.cloud import bigquery
+client = bigquery.Client(project='~{project_id}')
+sql = """
+    SELECT superpartition
+    FROM (
+        SELECT DISTINCT CAST(CEIL(sample_id / 4000.0) AS INT64) AS superpartition
+        FROM `~{project_id}.~{dataset_name}.~{sample_table_or_view_name}`
+        WHERE withdrawn IS NULL AND is_control = false
+    )
+    WHERE MOD(superpartition - 1, ~{num_shards}) = ~{shard_index}
+      AND superpartition <= ~{num_superpartitions}
+    ORDER BY superpartition
+"""
+for row in client.query(sql).result():
+    print(row['superpartition'])
+PYEOF
+        )
+
+        for superpartition in "${superpartitions_to_process[@]}"
         do
 
             str_table_index=$(printf "%03d" $superpartition)
