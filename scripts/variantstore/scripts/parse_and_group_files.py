@@ -112,7 +112,7 @@ def get_already_loaded_tables_and_sample_ids(project_id, dataset_name,
             WHERE
                 REGEXP_CONTAINS(parti.table_name, '{superpartitioned_regex}') AND
                 parti.total_logical_bytes > 0 AND
-                partition_id NOT LIKE '__%' AND
+                NOT STARTS_WITH(partition_id, '__') AND
                 SAFE_CAST(partition_id AS INT64) IS NOT NULL
         """)
 

@@ -73,7 +73,7 @@ FROM `{project}.{dataset}.INFORMATION_SCHEMA.PARTITIONS`
 WHERE
     REGEXP_CONTAINS(table_name, "^vet_[0-9]+$|^ref_ranges_[0-9]+$")
     AND total_logical_bytes > 0
-    AND partition_id NOT LIKE "__%"
+    AND NOT STARTS_WITH(partition_id, '__')
     AND SAFE_CAST(partition_id AS INT64) IS NOT NULL
 ```
 
@@ -347,7 +347,7 @@ FROM `{project}.{dataset}.INFORMATION_SCHEMA.PARTITIONS`
 WHERE
     REGEXP_CONTAINS(table_name, "^vet_[0-9]+$|^ref_ranges_[0-9]+$")
     AND total_logical_bytes > 0
-    AND partition_id NOT LIKE "__%"
+    AND NOT STARTS_WITH(partition_id, '__')
     AND SAFE_CAST(partition_id AS INT64) IS NOT NULL
 
 UNION ALL
@@ -618,7 +618,7 @@ SELECT
 FROM `{dataset}.INFORMATION_SCHEMA.PARTITIONS`
 WHERE REGEXP_CONTAINS(table_name, "^vet_[0-9]+$|^ref_ranges_[0-9]+$")
   AND total_logical_bytes > 0
-  AND partition_id NOT LIKE "__%"
+  AND NOT STARTS_WITH(partition_id, '__')
 GROUP BY table_name
 ORDER BY table_name;
 
@@ -697,7 +697,7 @@ SELECT
 FROM `{project}.{dataset}.INFORMATION_SCHEMA.PARTITIONS`
 WHERE REGEXP_CONTAINS(table_name, "^vet_[0-9]+$|^ref_ranges_[0-9]+$")
   AND total_logical_bytes > 0
-  AND partition_id NOT LIKE "__%"
+  AND NOT STARTS_WITH(partition_id, '__')
 GROUP BY table_name
 ORDER BY table_name;
 
