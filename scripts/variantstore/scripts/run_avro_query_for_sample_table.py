@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-import math
 import argparse
 
 from google.cloud import bigquery
@@ -9,7 +8,10 @@ import run_avro_query
 import utils
 
 
-def get_number_of_partitions(dataset_name, project_id, sample_table_name="sample_info"):
+def get_populated_superpartitions(dataset_name, project_id, sample_table_name="sample_info"):
+    """Return a sorted list of superpartition indices (1-based) that contain at least one
+    non-withdrawn, non-control sample.  Skipping empty superpartitions avoids running
+    EXPORT DATA queries that would produce no output."""
     query_labels_map = {
         "id": "construct_sample_table_avro_queries",
         "gvs_tool_name": "gvs_extract_avro_files_for_hail",
@@ -25,17 +27,23 @@ def get_number_of_partitions(dataset_name, project_id, sample_table_name="sample
     client = bigquery.Client(project=project_id,
                              default_query_job_config=default_config)
 
-    sql = f"SELECT max(sample_id) / 4000 as max_table_num FROM `{project_id}.{dataset_name}.{sample_table_name}`"
+    sql = f"""
+        SELECT superpartition
+        FROM (
+            SELECT DISTINCT CAST(CEIL(sample_id / 4000.0) AS INT64) AS superpartition
+            FROM `{project_id}.{dataset_name}.{sample_table_name}`
+            WHERE withdrawn IS NULL AND is_control = false
+        )
+        ORDER BY superpartition"""
 
-    query_result = utils.execute_with_retry(client, f"get max partitioned tabled num", sql)
-    max_table_num = [row.get('max_table_num') for row in query_result.get('results')]
-    return math.ceil(max_table_num[0])
+    query_result = utils.execute_with_retry(client, "get populated superpartitions", sql)
+    return [row.get('superpartition') for row in query_result.get('results')]
 
 
 def construct_sample_table_avro_queries(call_set_identifier, dataset_name, project_id, avro_prefix, sample_table_name="sample_info"):
-    num_of_tables = get_number_of_partitions(dataset_name, project_id, sample_table_name)
+    populated_superpartitions = get_populated_superpartitions(dataset_name, project_id, sample_table_name)
 
-    for i in range(1, num_of_tables + 1):
+    for i in populated_superpartitions:
         file_name = f"*.{i:03}.avro"
         id_where_clause = f"sample_id >= {((i -1) * 4000) + 1} AND sample_id <= {i * 4000}"
 
