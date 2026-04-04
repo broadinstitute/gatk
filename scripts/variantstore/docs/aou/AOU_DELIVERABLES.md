@@ -127,7 +127,7 @@ GROUP BY
      ```bigquery
 
      CREATE OR REPLACE VIEW `foxtrot.sample_info_new_to_foxtrot` AS
-        SELECT sample_name, research_id FROM `foxtrot.sample_info`
+        SELECT * FROM `foxtrot.sample_info`
         WHERE withdrawn IS NULL AND is_control = FALSE AND sample_id > 414838
         ```
    - Specify the name of this view as the `sample_table_or_view_name` input to the workflow.
