@@ -368,23 +368,24 @@ task ExtractFromSuperpartitionedTables {
         # belongs to shard shard_index when (p - 1) % num_shards == shard_index, which is the same
         # assignment produced by `seq shard_index+1 num_shards num_superpartitions`. Skipping empty
         # superpartitions avoids running EXPORT DATA queries that would produce no output.
-        readarray -t superpartitions_to_process < <(
-            bq --project_id=~{project_id} query --nouse_legacy_sql --format=csv --quiet \
-                'SELECT superpartition
-                FROM (
-                    SELECT DISTINCT CAST(CEIL(sample_id / 4000.0) AS INT64) AS superpartition
-                    FROM `~{project_id}.~{dataset_name}.~{sample_table_or_view_name}`
-                    WHERE withdrawn IS NULL AND is_control = false
-                )
-                WHERE MOD(superpartition - 1, ~{num_shards}) = ~{shard_index}
-                  AND superpartition <= ~{num_superpartitions}
-                ORDER BY superpartition' \
-            | tail -n +2
-        )
+        bq --project_id=~{project_id} query --nouse_legacy_sql --format=csv --quiet --max_rows 10000000 '
+
+        SELECT superpartition
+            FROM (
+                SELECT DISTINCT CAST(CEIL(sample_id / 4000.0) AS INT64) AS superpartition
+                FROM `~{project_id}.~{dataset_name}.~{sample_table_or_view_name}`
+                WHERE withdrawn IS NULL AND is_control = false
+            )
+            WHERE MOD(superpartition - 1, ~{num_shards}) = ~{shard_index}
+              AND superpartition <= ~{num_superpartitions}
+            ORDER BY superpartition
+
+        ' | sed 1d > superpartitions_to_process.txt
+
+        readarray -t superpartitions_to_process < superpartitions_to_process.txt
 
         for superpartition in "${superpartitions_to_process[@]}"
         do
-
             str_table_index=$(printf "%03d" $superpartition)
 
             # These bq exports error out if there are any objects at the sibling level to where output files would be written
