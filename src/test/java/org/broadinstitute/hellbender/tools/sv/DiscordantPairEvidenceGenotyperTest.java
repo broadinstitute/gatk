@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.sv;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.testng.Assert;
@@ -39,6 +40,10 @@ public class DiscordantPairEvidenceGenotyperTest extends GATKBaseTest {
         return new DiscordantPairEvidenceGenotyper(
                 makeCoverageMap(samples, coverage),
                 QUALITY_CUTOFF, MIN_SIZE, TARGET_COVERAGE, MAX_QUAL);
+    }
+
+    private static VariantContext toVariantContext(final SVCallRecord record) {
+        return SVCallRecordUtils.getVariantBuilder(record).make();
     }
 
     private static SVCallRecord makeDELRecord(final String id, final int start, final int end,
@@ -122,8 +127,8 @@ public class DiscordantPairEvidenceGenotyperTest extends GATKBaseTest {
     public void testTrainableRecordDEL() {
         // DEL with PE evidence, correct size, mixed copy states including 1 and 2
         final DiscordantPairEvidenceGenotyper genotyper = makeGenotyper(THREE_SAMPLES, TARGET_COVERAGE);
-        genotyper.registerVariantForOverlapCheck(makeDELRecord("del1", 1000, 5000,
-                Collections.singletonList(GATKSVVCFConstants.EvidenceTypes.PE), Collections.singletonList("pesr")));
+        genotyper.registerVariantForOverlapCheck(toVariantContext(makeDELRecord("del1", 1000, 5000,
+                Collections.singletonList(GATKSVVCFConstants.EvidenceTypes.PE), Collections.singletonList("pesr"))));
         genotyper.aggregateOverlapCheckIntervals();
 
         final SVCallRecord record = makeDELRecord("del1", 1000, 5000,
@@ -137,8 +142,8 @@ public class DiscordantPairEvidenceGenotyperTest extends GATKBaseTest {
     @Test
     public void testTrainableRecordDUP() {
         final DiscordantPairEvidenceGenotyper genotyper = makeGenotyper(THREE_SAMPLES, TARGET_COVERAGE);
-        genotyper.registerVariantForOverlapCheck(makeDUPRecord("dup1", 1000, 5000,
-                Collections.singletonList(GATKSVVCFConstants.EvidenceTypes.PE), Collections.singletonList("pesr")));
+        genotyper.registerVariantForOverlapCheck(toVariantContext(makeDUPRecord("dup1", 1000, 5000,
+                Collections.singletonList(GATKSVVCFConstants.EvidenceTypes.PE), Collections.singletonList("pesr"))));
         genotyper.aggregateOverlapCheckIntervals();
 
         final SVCallRecord record = makeDUPRecord("dup1", 1000, 5000,
@@ -185,7 +190,7 @@ public class DiscordantPairEvidenceGenotyperTest extends GATKBaseTest {
     public void testNonTrainableRecords(final String description, final SVCallRecord record,
                                          final DepthEvidenceGenotyper.DepthGenotypeResult depthResult) {
         final DiscordantPairEvidenceGenotyper genotyper = makeGenotyper(THREE_SAMPLES, TARGET_COVERAGE);
-        genotyper.registerVariantForOverlapCheck(record);
+        genotyper.registerVariantForOverlapCheck(toVariantContext(record));
         genotyper.aggregateOverlapCheckIntervals();
         Assert.assertFalse(genotyper.trainableRecord(record, depthResult, null),
                 "Record should not be trainable: " + description);
@@ -199,8 +204,8 @@ public class DiscordantPairEvidenceGenotyperTest extends GATKBaseTest {
         final List<String> pesrAlg = Collections.singletonList("pesr");
         final SVCallRecord del1 = makeDELRecord("del1", 1000, 5000, peEvidence, pesrAlg);
         final SVCallRecord del2 = makeDELRecord("del2", 3000, 6000, peEvidence, pesrAlg);
-        genotyper.registerVariantForOverlapCheck(del1);
-        genotyper.registerVariantForOverlapCheck(del2);
+        genotyper.registerVariantForOverlapCheck(toVariantContext(del1));
+        genotyper.registerVariantForOverlapCheck(toVariantContext(del2));
         genotyper.aggregateOverlapCheckIntervals();
 
         final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = makeDepthResult(new int[]{1, 2, 2});
@@ -218,7 +223,7 @@ public class DiscordantPairEvidenceGenotyperTest extends GATKBaseTest {
         final List<GATKSVVCFConstants.EvidenceTypes> peEvidence = Collections.singletonList(GATKSVVCFConstants.EvidenceTypes.PE);
         final List<String> pesrAlg = Collections.singletonList("pesr");
         final SVCallRecord smallDel = makeDELRecord("del_tiny", 1000, 1010, peEvidence, pesrAlg);
-        genotyper.registerVariantForOverlapCheck(smallDel);
+        genotyper.registerVariantForOverlapCheck(toVariantContext(smallDel));
         genotyper.aggregateOverlapCheckIntervals();
 
         final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = makeDepthResult(new int[]{1, 2, 2});
@@ -338,8 +343,8 @@ public class DiscordantPairEvidenceGenotyperTest extends GATKBaseTest {
         final DiscordantPairEvidenceGenotyper genotyper = makeGenotyper(THREE_SAMPLES, TARGET_COVERAGE);
         final SVCallRecord del = makeDELRecord("del1", 1000, 5000,
                 Collections.singletonList(GATKSVVCFConstants.EvidenceTypes.PE), Collections.singletonList("pesr"));
-        genotyper.registerVariantForOverlapCheck(del);
-        genotyper.registerVariantForOverlapCheck(del); // duplicate ID should throw
+        genotyper.registerVariantForOverlapCheck(toVariantContext(del));
+        genotyper.registerVariantForOverlapCheck(toVariantContext(del)); // duplicate ID should throw
     }
 
     @Test
@@ -349,7 +354,7 @@ public class DiscordantPairEvidenceGenotyperTest extends GATKBaseTest {
         final SVCallRecord depthDel = makeDELRecord("del_depth", 1000, 5000,
                 Collections.singletonList(GATKSVVCFConstants.EvidenceTypes.RD),
                 Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM));
-        genotyper.registerVariantForOverlapCheck(depthDel);
+        genotyper.registerVariantForOverlapCheck(toVariantContext(depthDel));
         // Should not throw even if we add another with same interval
         genotyper.aggregateOverlapCheckIntervals();
     }
@@ -358,8 +363,8 @@ public class DiscordantPairEvidenceGenotyperTest extends GATKBaseTest {
     public void testRegisterVariantSkipsNonDELDUP() {
         // INS records should not be registered
         final DiscordantPairEvidenceGenotyper genotyper = makeGenotyper(THREE_SAMPLES, TARGET_COVERAGE);
-        genotyper.registerVariantForOverlapCheck(makeINSRecord("ins1", 1000));
-        genotyper.registerVariantForOverlapCheck(makeBNDRecord("bnd1"));
+        genotyper.registerVariantForOverlapCheck(toVariantContext(makeINSRecord("ins1", 1000)));
+        genotyper.registerVariantForOverlapCheck(toVariantContext(makeBNDRecord("bnd1")));
         genotyper.aggregateOverlapCheckIntervals(); // should succeed
     }
 

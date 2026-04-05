@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.sv;
 
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
@@ -91,14 +92,24 @@ public class DiscordantPairEvidenceGenotyper {
         this.variantIntervals = new HashMap<>();
     }
 
-    public void registerVariantForOverlapCheck(final SVCallRecord record) {
-        if ((record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL || record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DUP) && !record.isDepthOnly()) {
-            final SimpleInterval interval = new SimpleInterval(record.getContigA(), record.getPositionA(), record.getPositionB());
-            if (variantIntervals.containsKey(record.getId())) {
-                throw new IllegalArgumentException("Duplicate variant ID: " + record.getId());
-            }
-            variantIntervals.put(record.getId(), interval);
+    public void registerVariantForOverlapCheck(final VariantContext variant) {
+        final String svTypeStr = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
+        if (svTypeStr == null) {
+            return;
         }
+        if (!svTypeStr.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL.name())
+                && !svTypeStr.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP.name())) {
+            return;
+        }
+        final List<String> algorithms = variant.getAttributeAsStringList(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, null);
+        if (algorithms.size() == 1 && GATKSVVCFConstants.DEPTH_ALGORITHM.equals(algorithms.get(0))) {
+            return; // depth-only
+        }
+        final SimpleInterval interval = new SimpleInterval(variant.getContig(), variant.getStart(), variant.getEnd());
+        if (variantIntervals.containsKey(variant.getID())) {
+            throw new IllegalArgumentException("Duplicate variant ID: " + variant.getID());
+        }
+        variantIntervals.put(variant.getID(), interval);
     }
 
     public void aggregateOverlapCheckIntervals() {
