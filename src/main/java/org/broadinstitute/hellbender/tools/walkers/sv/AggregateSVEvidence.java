@@ -114,11 +114,9 @@ public final class AggregateSVEvidence extends VariantWalker {
     public static final String BAF_MIN_SIZE_LONG_NAME = "baf-min-size";
     public static final String BAF_MAX_SIZE_LONG_NAME = "baf-max-size";
     public static final String BAF_KS_SEED_LONG_NAME = "baf-ks-seed";
+    public static final String BAF_GMM_SEED_LONG_NAME = "baf-gmm-seed";
     public static final String BAF_PADDING_FRACTION_LONG_NAME = "baf-padding-fraction";
-    public static final String MIN_SNP_CARRIERS_LONG_NAME = "min-snp-carriers";
     public static final String MIN_BAF_COUNT_LONG_NAME = "min-baf-count";
-    public static final String P_SNP_LONG_NAME = "p-snp";
-    public static final String P_MAX_HOMOZYGOUS_LONG_NAME = "p-max-homozygous";
     public static final String X_CHROMOSOME_LONG_NAME = "x-chromosome-name";
     public static final String Y_CHROMOSOME_LONG_NAME = "y-chromosome-name";
 
@@ -235,6 +233,13 @@ public final class AggregateSVEvidence extends VariantWalker {
     private long bafKsSeed = 93083432L;
 
     @Argument(
+            doc = "Seed for BAF deletion GMM initialization",
+            fullName = BAF_GMM_SEED_LONG_NAME,
+            optional = true
+    )
+    private int bafGmmSeed = 0;
+
+    @Argument(
             doc = "BAF flanking region size as a fraction of variant size",
             fullName = BAF_PADDING_FRACTION_LONG_NAME,
             minValue = 0.01,
@@ -243,40 +248,12 @@ public final class AggregateSVEvidence extends VariantWalker {
     private double bafPaddingFraction = 1.0;
 
     @Argument(
-            doc = "Minimum number of SNP carriers, used for filtering loci during duplication BAF assessment.",
-            fullName = MIN_SNP_CARRIERS_LONG_NAME,
-            minValue = 0,
-            optional = true
-    )
-    private int minSnpCarriers = 5;
-
-    @Argument(
             doc = "Minimum number of BAF values required in carrier and non-carrier groups, used for duplication BAF assessment.",
             fullName = MIN_BAF_COUNT_LONG_NAME,
             minValue = 1,
             optional = true
     )
     private int minBafCount = 2;
-
-    @Argument(
-            doc = "Baseline expected het SNPs per locus, used for filtering deletions in likely regions of homozygosity " +
-                    "during deletion BAF assessment.",
-            fullName = P_SNP_LONG_NAME,
-            minValue = 0.,
-            maxValue = 1.,
-            optional = true
-    )
-    private double pSnp = 0.001;
-
-    @Argument(
-            doc = "Significance threshold for binomial test on het counts, used for filtering deletions in " +
-                    "regions of homozygosity during deletion BAF assessment.",
-            fullName = P_MAX_HOMOZYGOUS_LONG_NAME,
-            minValue = 0.,
-            maxValue = 1.,
-            optional = true
-    )
-    private double pMaxHomozygous = 0.05;
 
     @Argument(
             doc = "X chromosome name",
@@ -385,8 +362,8 @@ public final class AggregateSVEvidence extends VariantWalker {
     private void initializeBAFCollection() {
         initializeBAFEvidenceDataSource();
         bafCollector = new BafEvidenceAggregator(bafSource, dictionary, bafPaddingFraction);
-        bafHetRatioTester = new BafHetRatioTester(pSnp, pMaxHomozygous);
-        bafKolmogorovSmirnovTester = new BafKolmogorovSmirnovTester(minSnpCarriers, minBafCount, bafKsSeed);
+        bafHetRatioTester = new BafHetRatioTester(bafGmmSeed);
+        bafKolmogorovSmirnovTester = new BafKolmogorovSmirnovTester(minBafCount, bafKsSeed);
     }
 
     private void initializeDiscordantPairDataSource() {
@@ -531,7 +508,7 @@ public final class AggregateSVEvidence extends VariantWalker {
                 // BAF
                 final List<BafEvidence> bafEvidence = bafCollector.collectEvidence(record).stream().filter(baf -> allSamples.contains(baf.getSample())).collect(Collectors.toList());
                 if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL) {
-                    final Double result = bafHetRatioTester.test(record, bafEvidence, allSamples, carrierSamples, (int) bafPaddingFraction * record.getLength());
+                    final BafHetRatioTester.BafDelResult result = bafHetRatioTester.test(record, bafEvidence, allSamples, carrierSamples, record.getLength());
                     record = bafHetRatioTester.applyToRecord(record, result);
                 } else if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DUP) {
                     final BafKolmogorovSmirnovTester.KSTestResult result = bafKolmogorovSmirnovTester.test(record, bafEvidence, carrierSamples);
@@ -574,9 +551,10 @@ public final class AggregateSVEvidence extends VariantWalker {
             header.addMetaDataLine(line);
         }
         if (bafCollectionEnabled()) {
-            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.BAF_HET_RATIO_ATTRIBUTE, 1, VCFHeaderLineType.Float, "Log ratio of non-carrier to carrier het count"));
+            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.BAF_HET_RATIO_ATTRIBUTE, 1, VCFHeaderLineType.Float, "BAF deletion het SNP ratio (mean of 10^(-log-ratio) for carriers)"));
+            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.BAF_DEL_LOGLIK_ATTRIBUTE, 1, VCFHeaderLineType.Float, "BAF deletion GMM log-likelihood (negated, higher = more anomalous)"));
             header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.BAF_KS_STAT_ATTRIBUTE, 1, VCFHeaderLineType.Float, "BAF Kolmogorov-Smirnov test statistic"));
-            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.BAF_KS_Q_ATTRIBUTE, 1, VCFHeaderLineType.Float, "BAF Kolmogorov-Smirnov test phred-scaled p-value"));
+            header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.BAF_KS_Q_ATTRIBUTE, 1, VCFHeaderLineType.Float, "BAF Kolmogorov-Smirnov test quality (-log10 p-value)"));
         }
         if (discordantPairCollectionEnabled()) {
             header.addMetaDataLine(new VCFFormatHeaderLine(GATKSVVCFConstants.DISCORDANT_PAIR_COUNT_ATTRIBUTE, 1, VCFHeaderLineType.Integer, "Discordant pair count"));

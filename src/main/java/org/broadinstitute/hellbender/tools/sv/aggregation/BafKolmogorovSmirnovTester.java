@@ -11,12 +11,15 @@ import java.util.*;
 
 /**
  * Calculates metrics for detecting copy number variants from B-allele (BAF) evidence. Het SNP calls are aggregated over
- * the variant interval and counts in carrier samples are compared to those in controls using a Kolmogorov-Smirnov test.
+ * the variant interval and BAFs in carrier samples are compared to those in controls using a Kolmogorov-Smirnov test.
+ *
+ * <p>This matches the v1.1 svtk KS2sample implementation: no per-locus frequency filtering is applied.</p>
  */
 
 public class BafKolmogorovSmirnovTester {
 
-    private final int minSnpCarriers;
+    private static final double MAX_QUAL = 999;
+
     private final int minBafCount;
     private final KolmogorovSmirnovTest kolmogorovSmirnovTest;
 
@@ -24,14 +27,11 @@ public class BafKolmogorovSmirnovTester {
     private final static long KS_APPROX_MIN_LENGTH_PRODUCT = 10000L;
 
     /**
-     * @param minSnpCarriers    min BAFs needed at any locus (to exclude rare sites)
      * @param minBafCount       min BAFs needed in both cases and controls
      * @param seed              PRNG seed for KS test approximation
      */
-    public BafKolmogorovSmirnovTester(final int minSnpCarriers, final int minBafCount, final long seed) {
-        Utils.validateArg(minSnpCarriers > 0, "minSnpCarriers must be positive");
+    public BafKolmogorovSmirnovTester(final int minBafCount, final long seed) {
         Utils.validateArg(minBafCount > 0, "minBafCount must be positive");
-        this.minSnpCarriers = minSnpCarriers;
         this.minBafCount = minBafCount;
         this.kolmogorovSmirnovTest = new KolmogorovSmirnovTest(seed);
     }
@@ -57,7 +57,7 @@ public class BafKolmogorovSmirnovTester {
     }
 
     /**
-     * Adds KS stat and p-value to record attributes. Returns a shallow copy of the new record.
+     * Adds KS stat and -log10(p-value) to record attributes. Returns a shallow copy of the new record.
      */
     public SVCallRecord applyToRecord(final SVCallRecord record, final KSTestResult result) {
         Utils.nonNull(record);
@@ -65,7 +65,7 @@ public class BafKolmogorovSmirnovTester {
             return record;
         }
         final Map<String, Object> attributes = new HashMap<>(record.getAttributes());
-        final Double q = EvidenceStatUtils.probToQual(result.getP(), (byte) 99);
+        final double q = Math.min(-Math.log10(result.getP()), MAX_QUAL);
         attributes.put(GATKSVVCFConstants.BAF_KS_STAT_ATTRIBUTE, result.getStat());
         attributes.put(GATKSVVCFConstants.BAF_KS_Q_ATTRIBUTE, q);
         return SVCallRecordUtils.copyCallWithNewAttributes(record, attributes);
@@ -73,30 +73,12 @@ public class BafKolmogorovSmirnovTester {
 
 
     private KSTestResult calculate(final List<BafEvidence> evidence, final Set<String> carrierSamples) {
-        final List<BafEvidence> frequencyFilteredEvidence = new ArrayList<>();
-        final Iterator<BafEvidence> iter = evidence.iterator();
-        final List<BafEvidence> buffer = new ArrayList<>();
-        int pos = -1;
-        while (iter.hasNext()) {
-            final BafEvidence baf = iter.next();
-            if (baf.getStart() != pos) {
-                if (buffer.size() >= minSnpCarriers) {
-                    frequencyFilteredEvidence.addAll(buffer);
-                }
-                buffer.clear();
-                pos = baf.getStart();
-            }
-            buffer.add(baf);
-        }
-        if (buffer.size() >= minSnpCarriers) {
-            frequencyFilteredEvidence.addAll(buffer);
-        }
-
-        double[] carrierBaf = frequencyFilteredEvidence.stream().filter(baf -> carrierSamples.contains(baf.getSample())).mapToDouble(BafEvidence::getValue).toArray();
+        // No per-locus frequency filtering (matching v1.1)
+        double[] carrierBaf = evidence.stream().filter(baf -> carrierSamples.contains(baf.getSample())).mapToDouble(BafEvidence::getValue).toArray();
         if (carrierBaf.length < minBafCount) {
             return null;
         }
-        double[] nullBaf = frequencyFilteredEvidence.stream().filter(baf -> !carrierSamples.contains(baf.getSample())).mapToDouble(BafEvidence::getValue).toArray();
+        double[] nullBaf = evidence.stream().filter(baf -> !carrierSamples.contains(baf.getSample())).mapToDouble(BafEvidence::getValue).toArray();
         if (nullBaf.length < minBafCount) {
             return null;
         }

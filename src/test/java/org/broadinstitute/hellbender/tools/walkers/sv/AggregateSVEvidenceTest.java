@@ -44,6 +44,7 @@ public class AggregateSVEvidenceTest extends GatkToolIntegrationTest {
             GATKSVVCFConstants.PESR_QUALITY_ATTRIBUTE,
             GATKSVVCFConstants.PESR_CARRIER_SIGNAL_ATTRIBUTE,
             GATKSVVCFConstants.BAF_HET_RATIO_ATTRIBUTE,
+            GATKSVVCFConstants.BAF_DEL_LOGLIK_ATTRIBUTE,
             GATKSVVCFConstants.BAF_KS_STAT_ATTRIBUTE,
             GATKSVVCFConstants.BAF_KS_Q_ATTRIBUTE
     );

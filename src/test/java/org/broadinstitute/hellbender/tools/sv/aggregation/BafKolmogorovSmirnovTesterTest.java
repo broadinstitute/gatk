@@ -40,7 +40,6 @@ public class BafKolmogorovSmirnovTesterTest {
 
     @Test
     public void test() {
-        final int minSnpCarriers = 5;
         final int minBafCount = 1;
         final long seed = 42;
         final SVCallRecord record = SVTestUtils.newDepthCallRecordWithIntervalAndType("chr21", 10000, 20000, GATKSVVCFConstants.StructuralVariantAnnotationType.DUP);
@@ -49,7 +48,7 @@ public class BafKolmogorovSmirnovTesterTest {
         final int numCarriers = 10;
         final List<BafEvidence> evidence = generateTestEvidence(numCarriers, 30);
         final Set<String> carrierSamples = generatTestCarriers(numCarriers);
-        final BafKolmogorovSmirnovTester tester = new BafKolmogorovSmirnovTester(minSnpCarriers, minBafCount, seed);
+        final BafKolmogorovSmirnovTester tester = new BafKolmogorovSmirnovTester(minBafCount, seed);
         final BafKolmogorovSmirnovTester.KSTestResult result = tester.test(record, evidence, carrierSamples);
         SVTestUtils.assertFloatWithinTolerance(result.getStat(), 0.2, 1e-4);
         SVTestUtils.assertFloatWithinTolerance(result.getP(), 0.09290160749765941, 1e-4);
@@ -71,7 +70,7 @@ public class BafKolmogorovSmirnovTesterTest {
 
     @Test
     public void testApplyToRecord() {
-        final BafKolmogorovSmirnovTester tester = new BafKolmogorovSmirnovTester(1, 2, 42L);
+        final BafKolmogorovSmirnovTester tester = new BafKolmogorovSmirnovTester(2, 42L);
         final SVCallRecord record = SVTestUtils.newDepthCallRecordWithIntervalAndType("chr21", 10000, 20000, GATKSVVCFConstants.StructuralVariantAnnotationType.DUP);
         // Null test
         final SVCallRecord resultNulll = tester.applyToRecord(record, null);
@@ -86,7 +85,10 @@ public class BafKolmogorovSmirnovTesterTest {
         SVTestUtils.assertEqualsExceptExcludedAttributes(result, expected, Lists.newArrayList(GATKSVVCFConstants.BAF_KS_STAT_ATTRIBUTE, GATKSVVCFConstants.BAF_KS_Q_ATTRIBUTE));
         Assert.assertTrue(result.getAttributes().containsKey(GATKSVVCFConstants.BAF_KS_Q_ATTRIBUTE));
         Assert.assertTrue(result.getAttributes().containsKey(GATKSVVCFConstants.BAF_KS_STAT_ATTRIBUTE));
-        SVTestUtils.assertFloatWithinTolerance((Double) result.getAttributes().get(GATKSVVCFConstants.BAF_KS_Q_ATTRIBUTE), 18.860566476931634, 1e-6);
+        SVTestUtils.assertFloatWithinTolerance((Double) result.getAttributes().get(GATKSVVCFConstants.BAF_KS_Q_ATTRIBUTE), 1.8860566476931634, 1e-6);
         SVTestUtils.assertFloatWithinTolerance((Double) result.getAttributes().get(GATKSVVCFConstants.BAF_KS_STAT_ATTRIBUTE), 1.5, 1e-6);
+
+        final SVCallRecord capped = tester.applyToRecord(record, new BafKolmogorovSmirnovTester.KSTestResult(0.5, 0.0));
+        SVTestUtils.assertFloatWithinTolerance((Double) capped.getAttributes().get(GATKSVVCFConstants.BAF_KS_Q_ATTRIBUTE), 999.0, 1e-6);
     }
 }
