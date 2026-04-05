@@ -31,7 +31,7 @@ public class AggregateDepthEvidenceTest extends GatkToolIntegrationTest {
     public static final int LARGE_VARIANT_POINTS = 500;
     public static final int LARGE_VARIANT_WINDOW = 2000;
     public static final int NUM_BINS = 10;
-    public static final int MAX_QUAL = 99;
+    public static final int MAX_QUAL = 999;
     public static final double POWER_THRESHOLD = 0.8;
 
     public static final List<String> attributesWithJitter = Arrays.asList(
