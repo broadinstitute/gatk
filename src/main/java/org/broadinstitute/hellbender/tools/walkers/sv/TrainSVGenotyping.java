@@ -403,15 +403,20 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
                 .filter(countingVariantFilter)
                 .forEach(variant -> {
                     progressMeter.update(new SimpleInterval(variant));
+                    // Register ALL variants for overlap checking before applying the
+                    // stride gate. The overlap detector must reflect the full VCF so
+                    // that trainableRecord() produces consistent results regardless
+                    // of the downsample stride. This uses the raw VariantContext to
+                    // avoid the cost of constructing an SVCallRecord for skipped variants.
+                    if (discordantPairCollectionEnabled()) {
+                        discordantPairGenotyper.registerVariantForOverlapCheck(variant);
+                    }
                     if (downsampleStride > 1 && variantIndex[0]++ % downsampleStride != 0) {
                         return;
                     }
                     final SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
                     cachedRecords.add(record);
                     applyReadDepth(record);
-                    if (discordantPairCollectionEnabled()) {
-                        discordantPairGenotyper.registerVariantForOverlapCheck(record);
-                    }
                 });
         logger.info("Finished pass 0 (" + cachedRecords.size() + " variants cached)");
         afterNthPass(0);
@@ -676,7 +681,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         if (n == 0) {
             applyReadDepth(record);
             if (discordantPairCollectionEnabled()) {
-                discordantPairGenotyper.registerVariantForOverlapCheck(record);
+                discordantPairGenotyper.registerVariantForOverlapCheck(variant);
             }
         } else if (n == 1) {
             applyDiscordantPairFirstPass(record);
