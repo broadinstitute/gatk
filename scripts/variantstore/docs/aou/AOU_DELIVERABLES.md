@@ -128,7 +128,7 @@ GROUP BY
 
      CREATE OR REPLACE VIEW `aou-genomics-curation-prod.foxtrot.sample_info_new_to_foxtrot` AS
         SELECT * FROM `aou-genomics-curation-prod.foxtrot.sample_info`
-        WHERE withdrawn IS NULL AND is_control = FALSE AND sample_id > 414838
+        WHERE sample_id > 414838
         ```
    - Specify the name of this view as the `sample_table_or_view_name` input to the workflow.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.

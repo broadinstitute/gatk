@@ -49,7 +49,17 @@ and then import the CSV into a Hail MatrixTable:
 Building on the steps above:
 
 ```python
+
+# 1. Filter the samples
 >>> filtered_vds = hl.vds.filter_samples(baseline_vds, samples_to_remove_table, keep=False, remove_dead_alleles=True)
+
+# 2. Filter out rows that no longer have any alternate alleles. This can be important for cases like VS-1862 when one
+# sample introduced a bad value for the reference data at a site, and while we purged all samples at that site and their
+# alleles, there are was still vestigial "monomorphic reference" data within the VDS variant data.
+>>> filtered_vds = hl.vds.VariantDataset(
+        filtered_vds.reference_data,
+        filtered_vds.variant_data.filter_rows(hl.agg.any(filtered_vds.variant_data.LGT.is_non_ref()))
+    )
 ```
 
 ## Correcting GT to account for removed samples
