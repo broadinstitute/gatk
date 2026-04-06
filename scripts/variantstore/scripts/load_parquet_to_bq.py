@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Load Parquet files from GCS to BigQuery with fault tolerance and idempotency.
-Uses deterministic job IDs and job state persistence to handle preemptions.
+Uses deterministic job IDs to handle preemptions; no local state file is needed.
 """
 
 import argparse
@@ -19,7 +19,6 @@ def load_table_from_parquet_files(
     table_name,
     files_fofn,
     schema_path,
-    pending_jobs_path,
     location=None,
     batch_size=10000,
 ):
@@ -32,7 +31,6 @@ def load_table_from_parquet_files(
         table_name: Target table name (e.g., 'vet_001'). If None, extracted from files_fofn filename.
         files_fofn: Path to file containing GCS URIs to load
         schema_path: Path to JSON schema file (optional, can be None for schema autodetection)
-        pending_jobs_path: Path to persist in-flight job state
         location: BigQuery location (auto-detected if None)
         batch_size: Number of files per load job
     
@@ -70,9 +68,6 @@ def load_table_from_parquet_files(
     except exceptions.NotFound:
         print(f"ERROR: Table {table_id} does not exist. Tables must be pre-created.")
         sys.exit(1)
-    
-    # Load pending jobs state
-    pending_jobs = _load_pending_jobs(pending_jobs_path)
     
     # Read files to load
     with open(files_fofn) as f:
@@ -113,30 +108,11 @@ def load_table_from_parquet_files(
         try:
             job_id = _make_job_id(project_id, dataset_name, table_name, batch)
             
-            if job_id in pending_jobs:
-                # Job was previously submitted; check its status
-                print(f"  Checking status of existing job {job_id}")
-                try:
-                    load_job = client.get_job(job_id=job_id, location=location)
-                    print(f"  Resumed job in state: {load_job.state}")
-                except exceptions.NotFound:
-                    # Job never started or was cleaned up - resubmit with retry
-                    print(f"  Job not found, will resubmit")
-                    load_job = _submit_load_job_with_retry(
-                        client, batch, table_id, job_config, job_id, location
-                    )
-            else:
-                # New job - submit it with retry logic
-                print(f"  Submitting new job {job_id}")
-                load_job = _submit_load_job_with_retry(
-                    client, batch, table_id, job_config, job_id, location
-                )
-                pending_jobs[job_id] = {
-                    "files": batch,
-                    "location": location,
-                    "table_name": table_name,
-                }
-                _store_pending_jobs(pending_jobs_path, pending_jobs)
+            # Submit job (handles already-existing jobs via Conflict exception)
+            print(f"  Submitting job {job_id}")
+            load_job = _submit_load_job_with_retry(
+                client, batch, table_id, job_config, job_id, location
+            )
             
             # Wait for completion with retry logic
             load_job = _wait_for_job_with_retry(load_job)
@@ -150,8 +126,6 @@ def load_table_from_parquet_files(
                 for error in load_job.errors:
                     print(f"    {error}")
                 _log_batch_result(batch, table_name, load_job.job_id, error=error_msg)
-                pending_jobs.pop(job_id, None)
-                _store_pending_jobs(pending_jobs_path, pending_jobs)
                 failed_batches += 1
                 continue
             
@@ -162,10 +136,6 @@ def load_table_from_parquet_files(
             successful_batches += 1
             successful_files_count += len(batch)
             _log_batch_result(batch, table_name, load_job.job_id)
-
-            # Remove from pending jobs
-            pending_jobs.pop(job_id, None)
-            _store_pending_jobs(pending_jobs_path, pending_jobs)
             
         except Exception as exc:
             print(f"  ERROR: Exception loading batch: {exc}")
@@ -201,23 +171,6 @@ def _make_job_id(project_id, dataset_name, table_name, batch):
     return f"load_{table_name}_{digest}"
 
 
-def _load_pending_jobs(pending_jobs_path):
-    """Load pending jobs state from disk."""
-    path = Path(pending_jobs_path)
-    if path.exists():
-        try:
-            return json.loads(path.read_text())
-        except Exception as e:
-            print(f"Warning: Could not load pending jobs: {e}")
-            return {}
-    return {}
-
-
-def _store_pending_jobs(pending_jobs_path, pending_jobs):
-    """Store pending jobs state to disk."""
-    path = Path(pending_jobs_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(pending_jobs, indent=2))
 
 
 def _extract_sample_id_from_file_path(file_path, table_name):
@@ -423,11 +376,6 @@ def main():
     parser.add_argument("--table-name", help="Target table name (if not provided, extracted from FOFN filename)")
     parser.add_argument("--files-fofn", required=True, help="File listing Parquet URIs to load")
     parser.add_argument("--schema-path", help="Path to JSON schema file (optional, autodetect if not provided)")
-    parser.add_argument(
-        "--pending-jobs-path",
-        required=True,
-        help="Path to persist pending job state"
-    )
     parser.add_argument("--location", help="BigQuery location (auto-detected if not specified)")
     parser.add_argument(
         "--batch-size",
@@ -445,7 +393,6 @@ def main():
         table_name=args.table_name,
         files_fofn=args.files_fofn,
         schema_path=args.schema_path,
-        pending_jobs_path=args.pending_jobs_path,
         location=args.location,
         batch_size=args.batch_size,
     )

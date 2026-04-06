@@ -220,14 +220,14 @@ workflows:
          - ah_var_store
        tags:
          - /.*/
-   - name: ParquetIngest1829AuRevoirParquetLoadStatus
+   - name: ParquetIngest1839EndingPendingJobs
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
      filters:
        branches:
          - master
          - ah_var_store
-         - vs_1829_au_revoir_parquet_load_status
+         - vs_1839_ending_pending_jobs
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
@@ -350,7 +350,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1864_underscore_is_a_sql_metachar
+             - vs_1839_ending_pending_jobs
          tags:
              - /.*/
    - name: GvsIngestTieout
