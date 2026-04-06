@@ -253,7 +253,7 @@ public final class AggregateSVEvidence extends VariantWalker {
             minValue = 1,
             optional = true
     )
-    private int minBafCount = 2;
+    private int minBafCount = 1;
 
     @Argument(
             doc = "X chromosome name",

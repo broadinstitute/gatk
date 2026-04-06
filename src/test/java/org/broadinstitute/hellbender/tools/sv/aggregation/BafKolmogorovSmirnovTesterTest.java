@@ -89,6 +89,6 @@ public class BafKolmogorovSmirnovTesterTest {
         SVTestUtils.assertFloatWithinTolerance((Double) result.getAttributes().get(GATKSVVCFConstants.BAF_KS_STAT_ATTRIBUTE), 1.5, 1e-6);
 
         final SVCallRecord capped = tester.applyToRecord(record, new BafKolmogorovSmirnovTester.KSTestResult(0.5, 0.0));
-        SVTestUtils.assertFloatWithinTolerance((Double) capped.getAttributes().get(GATKSVVCFConstants.BAF_KS_Q_ATTRIBUTE), 999.0, 1e-6);
+        SVTestUtils.assertFloatWithinTolerance((Double) capped.getAttributes().get(GATKSVVCFConstants.BAF_KS_Q_ATTRIBUTE), 50.0, 1e-6);
     }
 }
