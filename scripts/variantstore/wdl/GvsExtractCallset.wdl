@@ -82,7 +82,7 @@ workflow GvsExtractCallset {
   String fq_ploidy_mapping_table = "~{fq_gvs_dataset}.~{ploidy_table_name}"
 
   String fq_samples_to_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__SAMPLES"
-  Array[String] tables_patterns_for_datetime_check = ["~{full_extract_prefix}__%"]
+  Array[String] table_prefixes_for_datetime_check = ["~{full_extract_prefix}__"]
 
   Boolean emit_pls = false
   Boolean emit_ads = true
@@ -204,7 +204,7 @@ workflow GvsExtractCallset {
       query_project = query_project,
       data_project = project_id,
       dataset_name = dataset_name,
-      table_patterns = tables_patterns_for_datetime_check,
+      table_prefixes = table_prefixes_for_datetime_check,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
