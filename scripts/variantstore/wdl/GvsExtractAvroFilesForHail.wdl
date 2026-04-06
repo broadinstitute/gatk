@@ -347,7 +347,6 @@ task ExtractFromSuperpartitionedTables {
         String variants_docker
         Boolean use_compressed_references = false
     }
-    String fq_sample_mapping_table = "~{project_id}.~{dataset_name}.~{sample_table_or_view_name}"
 
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
