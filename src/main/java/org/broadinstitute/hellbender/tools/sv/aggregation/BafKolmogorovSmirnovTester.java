@@ -18,7 +18,9 @@ import java.util.*;
 
 public class BafKolmogorovSmirnovTester {
 
-    private static final double MAX_QUAL = 999;
+    // Cap at 50 to approximate scipy.stats.ks_2samp effective precision (~10^-300 -> -log10 ~300)
+    // and avoid distorting the BAF1 RF feature space with extreme outliers
+    private static final double MAX_QUAL = 50;
 
     private final int minBafCount;
     private final KolmogorovSmirnovTest kolmogorovSmirnovTest;
