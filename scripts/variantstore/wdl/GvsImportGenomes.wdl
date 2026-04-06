@@ -70,6 +70,9 @@ workflow GvsImportGenomes {
       then ["sample_chromosome_ploidy", "vrs_allele"]
       else ["sample_chromosome_ploidy"]
 
+  # Schema for vrs_allele table - must exactly match BigQuery schema to prevent schema drift during consolidation
+  String vrs_allele_schema_json = '[{"name": "vrs_allele_id", "type": "STRING", "mode": "REQUIRED"},{"name": "vrs_location_id", "type": "STRING", "mode": "REQUIRED"},{"name": "refget_accession", "type": "STRING", "mode": "REQUIRED"},{"name": "ref_genome_coord_start", "type": "INTEGER", "mode": "REQUIRED"},{"name": "ref_genome_coord_end", "type": "INTEGER", "mode": "REQUIRED"},{"name": "state_type", "type": "STRING", "mode": "REQUIRED"},{"name": "state_sequence", "type": "STRING", "mode": "NULLABLE"},{"name": "state_length", "type": "INTEGER", "mode": "NULLABLE"},{"name": "state_repeat_subunit_length", "type": "INTEGER", "mode": "NULLABLE"}]'
+
   # Broad users enjoy higher quotas and can scatter more widely than beta users before BigQuery smacks them
   # We don't expect this to be changed at runtime, so we can keep this as a constant defined in here
   Int broad_user_max_scatter = 1000
@@ -287,6 +290,7 @@ workflow GvsImportGenomes {
             billing_project_id = billing_project_id,
             go = select_all(GenerateParquetFilesFromInputGVCFs.done),
             variants_docker = effective_variants_docker,
+            vrs_allele_schema_json = vrs_allele_schema_json,
         }
       }
 
@@ -1205,6 +1209,7 @@ task ConsolidateVrsAlleleParquet {
     String? billing_project_id
     Array[Boolean] go
     String variants_docker
+    String vrs_allele_schema_json
   }
 
   meta {
@@ -1228,7 +1233,7 @@ task ConsolidateVrsAlleleParquet {
     fi
 
     apk add --no-cache openjdk17-jre-headless py3-pip
-    pip3 install --no-cache-dir pyspark==3.5.1
+    pip3 install --no-cache-dir pyspark==3.5.1 pyarrow==15.0.0
 
     mkdir -p vrs_allele_input
     while IFS= read -r parquet_file
@@ -1236,18 +1241,112 @@ task ConsolidateVrsAlleleParquet {
       gcloud storage cp ~{"--billing-project " + billing_project_id} "${parquet_file}" vrs_allele_input/
     done < vrs_allele_files.txt
 
+    # Write schema JSON to file for PySpark to read
+    cat > schema.json <<'SCHEMA'
+~{vrs_allele_schema_json}
+SCHEMA
+
     cat > dedup_vrs_allele.py <<'PY'
+import json
 from pathlib import Path
 
 from pyspark.sql import SparkSession
+from pyspark.sql.types import StructType, StructField, StringType, IntegerType
+from pyspark.sql.functions import col
 
 
 input_path = "vrs_allele_input/*.parquet"
 output_dir = "vrs_allele_dedup_output"
+schema_file = "schema.json"
 
-spark = SparkSession.builder.master("local[*]").appName("dedup-vrs-allele").getOrCreate()
-deduped = spark.read.parquet(input_path).dropDuplicates()
-deduped.coalesce(1).write.mode("overwrite").parquet(output_dir)
+def build_spark_schema(bq_schema_json):
+    """Convert BigQuery schema JSON to PySpark StructType with exact REQUIRED/NULLABLE constraints."""
+    bq_schema = json.loads(bq_schema_json)
+    fields = []
+    
+    for field in bq_schema:
+        field_name = field["name"]
+        field_type_str = field["type"]
+        field_mode = field.get("mode", "NULLABLE")
+        
+        # Convert BigQuery type to PySpark type
+        if field_type_str == "STRING":
+            spark_type = StringType()
+        elif field_type_str == "INTEGER":
+            spark_type = IntegerType()
+        elif field_type_str == "BOOLEAN":
+            from pyspark.sql.types import BooleanType
+            spark_type = BooleanType()
+        elif field_type_str == "FLOAT":
+            from pyspark.sql.types import FloatType
+            spark_type = FloatType()
+        elif field_type_str == "DOUBLE":
+            from pyspark.sql.types import DoubleType
+            spark_type = DoubleType()
+        elif field_type_str == "TIMESTAMP":
+            from pyspark.sql.types import TimestampType
+            spark_type = TimestampType()
+        else:
+            # Default to StringType for unknown types
+            spark_type = StringType()
+        
+        # Set nullable based on mode: REQUIRED=False, NULLABLE=True
+        is_nullable = (field_mode != "REQUIRED")
+        
+        fields.append(StructField(field_name, spark_type, nullable=is_nullable))
+    
+    return StructType(fields)
+
+
+# Read and parse schema
+with open(schema_file) as f:
+    bq_schema_json = f.read().strip()
+
+spark_schema = build_spark_schema(bq_schema_json)
+
+# Initialize Spark with optimized settings for large parquet files
+spark = (SparkSession.builder
+    .master("local[*]")
+    .appName("dedup-vrs-allele")
+    .config("spark.sql.parquet.mergeSchema", "false")
+    .getOrCreate())
+
+# Read with explicit schema to enforce REQUIRED/NULLABLE constraints
+print(f"Reading parquet files from {input_path} with enforced schema...")
+df = spark.read.schema(spark_schema).parquet(input_path)
+
+# Validate that no required fields are null before dedup
+required_fields = [f.name for f in spark_schema.fields if not f.nullable]
+print(f"Validating REQUIRED fields: {required_fields}")
+for req_field in required_fields:
+    null_count = df.filter(col(req_field).isNull()).count()
+    if null_count > 0:
+        print(f"WARNING: Found {null_count} rows with null value in REQUIRED field '{req_field}'")
+
+# Apply deduplication while preserving schema
+print("Deduplicating records...")
+deduped = df.dropDuplicates()
+
+# Write with explicit schema to ensure REQUIRED/NULLABLE mode is preserved
+print(f"Writing deduplicated parquet to {output_dir} with enforced schema...")
+deduped.coalesce(1).write.schema(spark_schema).mode("overwrite").parquet(output_dir)
+
+# Validate output schema matches input schema
+print("Validating output schema integrity...")
+output_df = spark.read.parquet(output_dir)
+output_schema = output_df.schema
+
+for i, field in enumerate(spark_schema.fields):
+    out_field = output_schema.fields[i]
+    if field.name != out_field.name:
+        raise RuntimeError(f"Field name mismatch: expected {field.name}, got {out_field.name}")
+    if field.nullable != out_field.nullable:
+        raise RuntimeError(f"Nullable mode mismatch for field {field.name}: expected {field.nullable}, got {out_field.nullable}")
+    if str(field.dataType) != str(out_field.dataType):
+        raise RuntimeError(f"Data type mismatch for field {field.name}: expected {field.dataType}, got {out_field.dataType}")
+
+print("✓ Schema validation passed - output matches input exactly")
+
 spark.stop()
 
 part_files = list(Path(output_dir).glob("part-*.parquet"))
