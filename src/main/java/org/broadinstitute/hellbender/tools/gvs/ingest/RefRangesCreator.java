@@ -13,7 +13,6 @@ import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.tools.gvs.ingest.avro.RefRangesAvroWriter;
 import org.broadinstitute.hellbender.tools.gvs.ingest.bq.RefRangesBQWriter;
 import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.RefRangesParquetFileWriter;
-import org.broadinstitute.hellbender.tools.gvs.ingest.tsv.RefRangesTsvWriter;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
@@ -66,9 +65,6 @@ public final class RefRangesCreator {
                             throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
                         }
                         refRangesWriter = new RefRangesBQWriter(projectId, datasetName,REF_RANGES_FILETYPE_PREFIX + tableNumber);
-                        break;
-                    case TSV:
-                        refRangesWriter = new RefRangesTsvWriter(refOutputFile.getCanonicalPath());
                         break;
                     case AVRO: // when do we use this/!?!
                         refRangesWriter = new RefRangesAvroWriter(refOutputFile.getCanonicalPath());

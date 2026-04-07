@@ -6,11 +6,9 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
-import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.tools.gvs.ingest.bq.VetBQWriter;
 import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.VetParquetFileWriter;
-import org.broadinstitute.hellbender.tools.gvs.ingest.tsv.VetTsvWriter;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 
 import java.io.File;
@@ -38,11 +36,6 @@ public class VetCreator {
                         throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
                     }
                     vetWriter = new VetBQWriter(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, skipLoadingVqsrFields, forceLoadingFromNonAlleleSpecific);
-                    break;
-                case TSV:
-                    // If the vet directory inside it doesn't exist yet -- create it
-                    final File vetOutputFile = new File(outputDirectory, VET_FILETYPE_PREFIX + tableNumber + PREFIX_SEPARATOR + sampleIdentifierForOutputFileName + IngestConstants.FILETYPE);
-                    vetWriter = new VetTsvWriter(vetOutputFile, skipLoadingVqsrFields, forceLoadingFromNonAlleleSpecific);
                     break;
                 case PARQUET:
                     String filename = getOutputFileName(tableNumber, sampleId, sampleIdentifierForOutputFileName, outputType);

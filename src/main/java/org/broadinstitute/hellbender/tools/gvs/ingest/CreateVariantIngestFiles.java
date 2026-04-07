@@ -116,9 +116,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Argument(fullName = "output-type",
             shortName = "ot",
-            doc = "[Experimental] Output file format: TSV, ORC, PARQUET or BQ [default=TSV].",
+            doc = "Output file format: PARQUET or BQ [default=PARQUET].",
             optional = true)
-    public CommonCode.OutputType outputType = CommonCode.OutputType.TSV;
+    public CommonCode.OutputType outputType = CommonCode.OutputType.PARQUET;
 
     @Argument(
             fullName = "ref-version",
