@@ -368,19 +368,23 @@ task ExtractFromSuperpartitionedTables {
         # belongs to shard shard_index when (p - 1) % num_shards == shard_index, which is the same
         # assignment produced by `seq shard_index+1 num_shards num_superpartitions`. Skipping empty
         # superpartitions avoids running EXPORT DATA queries that would produce no output.
-        bq --project_id=~{project_id} query --nouse_legacy_sql --format=csv --quiet --max_rows 10000000 '
-
-        SELECT superpartition
-            FROM (
-                SELECT DISTINCT CAST(CEIL(sample_id / 4000.0) AS INT64) AS superpartition
-                FROM `~{project_id}.~{dataset_name}.~{sample_table_or_view_name}`
-                WHERE withdrawn IS NULL AND is_control = false
-            )
-            WHERE MOD(superpartition - 1, ~{num_shards}) = ~{shard_index}
-              AND superpartition <= ~{num_superpartitions}
-            ORDER BY superpartition
-
-        ' | sed 1d > superpartitions_to_process.txt
+        python3 /app/run_avro_query.py \
+            --sql '
+                SELECT superpartition
+                FROM (
+                    SELECT DISTINCT CAST(CEIL(sample_id / 4000.0) AS INT64) AS superpartition
+                    FROM `~{project_id}.~{dataset_name}.~{sample_table_or_view_name}`
+                    WHERE withdrawn IS NULL AND is_control = false
+                )
+                WHERE MOD(superpartition - 1, ~{num_shards}) = ~{shard_index}
+                  AND superpartition <= ~{num_superpartitions}
+                ORDER BY superpartition
+            ' \
+            --call_set_identifier ~{call_set_identifier} \
+            --dataset_name ~{dataset_name} \
+            --table_name ~{sample_table_or_view_name} \
+            --project_id ~{project_id} \
+            --output_file superpartitions_to_process.txt
 
         readarray -t superpartitions_to_process < superpartitions_to_process.txt
 

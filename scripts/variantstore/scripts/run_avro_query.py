@@ -1,11 +1,12 @@
 import argparse
+import csv
 
 from google.cloud import bigquery
 from google.cloud.bigquery.job import QueryJobConfig
 import utils
 
 
-def run_avro_query(call_set_identifier, dataset_name, table_name, project_id, sql):
+def run_avro_query(call_set_identifier, dataset_name, table_name, project_id, sql, output_file=None):
     # add labels for DSP Cloud Cost Control Labeling and Reporting
     query_labels_map = {'service': 'gvs', 'team': 'variants', 'managedby': 'gvs_extract_avro_files_for_hail'}
 
@@ -16,6 +17,11 @@ def run_avro_query(call_set_identifier, dataset_name, table_name, project_id, sq
     utils.write_job_stats([{'job': query_return['job'], 'label': query_return['label']}], client,
                           f"{project_id}.{dataset_name}", call_set_identifier, 'GvsExtractAvroFilesForHail',
                           'GenerateAvroFiles', table_name, True)
+    if output_file is not None:
+        with open(output_file, 'w', newline='') as f:
+            writer = csv.writer(f, delimiter='\t')
+            for row in query_return.get('results', []):
+                writer.writerow(list(row.values()))
 
 
 if __name__ == '__main__':
@@ -26,6 +32,7 @@ if __name__ == '__main__':
     parser.add_argument('--table_name',type=str, help='BigQuery table name', required=True)
     parser.add_argument('--project_id', type=str, help='Google project for the GVS dataset', required=True)
     parser.add_argument('--sql', type=str, help='SQL to run to extract Avro data', required=True)
+    parser.add_argument('--output_file', type=str, help='If specified, write query results as TSV (no header) to this file', default=None)
 
     args = parser.parse_args()
 
@@ -33,4 +40,5 @@ if __name__ == '__main__':
                         args.dataset_name,
                         args.table_name,
                         args.project_id,
-                        args.sql)
+                        args.sql,
+                        args.output_file)
