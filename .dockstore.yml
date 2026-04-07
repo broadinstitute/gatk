@@ -175,6 +175,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1862_fix_the_cursed_sample
        tags:
          - /.*/
    - name: GvsTieOutVDS
