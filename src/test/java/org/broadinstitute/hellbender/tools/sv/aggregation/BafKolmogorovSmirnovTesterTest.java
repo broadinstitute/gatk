@@ -68,6 +68,68 @@ public class BafKolmogorovSmirnovTesterTest {
         Assert.assertNull(tester.test(record, Collections.emptyList(), carrierSamples));
     }
 
+    /**
+     * Tests that the singleton KS fallback matches scipy.stats.ks_2samp for cases where one array has length 1.
+     * Reference values from: scipy.stats.ks_2samp(carrier, null)
+     */
+    @Test
+    public void testSingletonKs() {
+        // Case 1: 1 carrier vs 5 null -> scipy: stat=0.8, pval=0.666667
+        double[] result1 = BafKolmogorovSmirnovTester.singletonKsTest(
+                new double[]{0.45}, new double[]{0.30, 0.35, 0.40, 0.42, 0.50});
+        SVTestUtils.assertFloatWithinTolerance(result1[0], 0.8, 1e-10);
+        SVTestUtils.assertFloatWithinTolerance(result1[1], 2.0 / 3.0, 1e-10);
+
+        // Case 2: 1 carrier vs 1 null (different) -> scipy: stat=1.0, pval=1.0
+        double[] result2 = BafKolmogorovSmirnovTester.singletonKsTest(
+                new double[]{0.45}, new double[]{0.30});
+        SVTestUtils.assertFloatWithinTolerance(result2[0], 1.0, 1e-10);
+        SVTestUtils.assertFloatWithinTolerance(result2[1], 1.0, 1e-10);
+
+        // Case 3: 5 carrier vs 1 null (symmetric) -> scipy: stat=0.8, pval=0.666667
+        double[] result3 = BafKolmogorovSmirnovTester.singletonKsTest(
+                new double[]{0.30, 0.35, 0.40, 0.42, 0.50}, new double[]{0.45});
+        SVTestUtils.assertFloatWithinTolerance(result3[0], 0.8, 1e-10);
+        SVTestUtils.assertFloatWithinTolerance(result3[1], 2.0 / 3.0, 1e-10);
+
+        // Case 4: identical singletons -> scipy: stat=0.0, pval=1.0
+        double[] result4 = BafKolmogorovSmirnovTester.singletonKsTest(
+                new double[]{0.45}, new double[]{0.45});
+        SVTestUtils.assertFloatWithinTolerance(result4[0], 0.0, 1e-10);
+        SVTestUtils.assertFloatWithinTolerance(result4[1], 1.0, 1e-10);
+
+        // Case 5: 1 carrier vs 2 null -> scipy: stat=0.5, pval=1.0
+        double[] result5 = BafKolmogorovSmirnovTester.singletonKsTest(
+                new double[]{0.45}, new double[]{0.30, 0.50});
+        SVTestUtils.assertFloatWithinTolerance(result5[0], 0.5, 1e-10);
+        SVTestUtils.assertFloatWithinTolerance(result5[1], 1.0, 1e-10);
+    }
+
+    /**
+     * Integration test: singleton carrier evidence should produce a non-null result (no longer blocked by the n>=2 guard).
+     */
+    @Test
+    public void testSingletonCarrierEvidence() {
+        final int minBafCount = 1;
+        final long seed = 42;
+        final SVCallRecord record = SVTestUtils.newDepthCallRecordWithIntervalAndType(
+                "chr21", 10000, 20000, GATKSVVCFConstants.StructuralVariantAnnotationType.DUP);
+
+        // 1 carrier sample with 1 BAF observation, 5 background samples each with 1 BAF observation
+        final List<BafEvidence> evidence = new ArrayList<>();
+        evidence.add(new BafEvidence(CARRIER_PREFIX + "0", TEST_CONTIG, 15000, 0.45));
+        for (int j = 0; j < 5; j++) {
+            evidence.add(new BafEvidence(SAMPLE_PREFIX + j, TEST_CONTIG, 15000, 0.30 + j * 0.05));
+        }
+        final Set<String> carrierSamples = generatTestCarriers(1);
+
+        final BafKolmogorovSmirnovTester tester = new BafKolmogorovSmirnovTester(minBafCount, seed);
+        final BafKolmogorovSmirnovTester.KSTestResult result = tester.test(record, evidence, carrierSamples);
+        Assert.assertNotNull(result, "Singleton carrier should produce a non-null KS result");
+        Assert.assertTrue(result.getStat() > 0, "KS stat should be positive");
+        Assert.assertTrue(result.getP() > 0 && result.getP() <= 1, "p-value should be in (0, 1]");
+    }
+
     @Test
     public void testApplyToRecord() {
         final BafKolmogorovSmirnovTester tester = new BafKolmogorovSmirnovTester(2, 42L);

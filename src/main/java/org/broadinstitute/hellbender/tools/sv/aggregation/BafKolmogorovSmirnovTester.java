@@ -84,10 +84,100 @@ public class BafKolmogorovSmirnovTester {
         if (nullBaf.length < minBafCount) {
             return null;
         }
-        final double stat = kolmogorovSmirnovTest.kolmogorovSmirnovStatistic(carrierBaf, nullBaf);
-        final double p = calculateP(stat, carrierBaf.length, nullBaf.length);
+        final double stat;
+        final double p;
+        if (carrierBaf.length >= 2 && nullBaf.length >= 2) {
+            // Standard hipparchus two-sample KS test
+            stat = kolmogorovSmirnovTest.kolmogorovSmirnovStatistic(carrierBaf, nullBaf);
+            p = calculateP(stat, carrierBaf.length, nullBaf.length);
+        } else {
+            // At least one sample has exactly 1 element; hipparchus requires n >= 2,
+            // so compute the KS statistic and exact p-value manually to match scipy ks_2samp.
+            final double[] result = singletonKsTest(carrierBaf, nullBaf);
+            stat = result[0];
+            p = result[1];
+        }
 
         return new KSTestResult(stat, p);
+    }
+
+    /**
+     * Computes the two-sample KS statistic and exact p-value when at least one sample has size 1.
+     * Matches scipy.stats.ks_2samp behavior: the statistic is the standard two-sample KS stat
+     * (well-defined for any n >= 1), and the exact p-value is computed by enumerating all (n+m choose 1)
+     * possible single-element assignments from the combined sample.
+     *
+     * @param sample1 first sample (length >= 1)
+     * @param sample2 second sample (length >= 1)
+     * @return double[]{statistic, pValue}
+     */
+    static double[] singletonKsTest(final double[] sample1, final double[] sample2) {
+        // Normalize so the singleton is always singletonArr, the other is otherArr
+        // KS test is symmetric so this doesn't affect results
+        final double[] singletonArr;
+        final double[] otherArr;
+        if (sample1.length <= sample2.length) {
+            singletonArr = sample1;
+            otherArr = sample2;
+        } else {
+            singletonArr = sample2;
+            otherArr = sample1;
+        }
+        Utils.validate(singletonArr.length == 1,
+                "singletonKsTest requires at least one sample of size 1, got " + singletonArr.length);
+
+        final double x = singletonArr[0];
+        final int m = otherArr.length;
+
+        // KS statistic: max|F_singleton(t) - F_other(t)|
+        // F_singleton is a step function: 0 for t < x, 1 for t >= x
+        // The max difference occurs either just below x (dMinus) or at x (dPlus)
+        int countLess = 0;
+        int countLessOrEqual = 0;
+        for (final double v : otherArr) {
+            if (v < x) {
+                countLess++;
+            }
+            if (v <= x) {
+                countLessOrEqual++;
+            }
+        }
+        final double dMinus = (double) countLess / m;
+        final double dPlus = 1.0 - (double) countLessOrEqual / m;
+        final double stat = Math.max(dMinus, dPlus);
+
+        // Exact p-value: enumerate all (m+1) possible assignments of which element is the singleton
+        // from the combined sample. Count the fraction that produces a stat >= observed.
+        final double[] combined = new double[m + 1];
+        System.arraycopy(otherArr, 0, combined, 0, m);
+        combined[m] = x;
+        Arrays.sort(combined);
+
+        int countGe = 0;
+        for (int pick = 0; pick <= m; pick++) {
+            int kLess = 0;
+            int kLessOrEqual = 0;
+            for (int j = 0; j <= m; j++) {
+                if (j == pick) {
+                    continue;
+                }
+                if (combined[j] < combined[pick]) {
+                    kLess++;
+                }
+                if (combined[j] <= combined[pick]) {
+                    kLessOrEqual++;
+                }
+            }
+            final double pickDMinus = (double) kLess / m;
+            final double pickDPlus = 1.0 - (double) kLessOrEqual / m;
+            final double pickStat = Math.max(pickDMinus, pickDPlus);
+            if (pickStat >= stat - 1e-10) {
+                countGe++;
+            }
+        }
+
+        final double pValue = (double) countGe / (m + 1);
+        return new double[]{stat, pValue};
     }
 
     public double calculateP(final double stat, final int n, final int m) {
