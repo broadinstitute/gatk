@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
+import org.broadinstitute.hellbender.tools.gvs.common.IngestUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -21,6 +23,18 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
     final String input_vcf_file = "NA12878.haplotypeCalls.reblocked.chr20.100k.manual_nocall.vcf.gz";
     final String interval_list_file = "wgs_calling_regions.hg38.chr20.100k.interval_list";
     final String sample_map_file = "test_sample_map.tsv";
+
+    // Sample ID as recorded in test_sample_map.tsv
+    private static final long SAMPLE_ID = 2L;
+    // Superpartition (table number) derived the same way the production code does
+    private static final String TABLE_NUMBER =
+            String.format("%03d", IngestUtils.getTableNumber(SAMPLE_ID, IngestConstants.partitionPerTable));
+
+    // Expected Parquet filename prefixes, matching the naming logic in VetCreator / RefRangesCreator /
+    // SamplePloidyCreator (note: ploidy filenames omit the table number)
+    private static final String VET_PARQUET_PREFIX         = "vet_"                      + TABLE_NUMBER + "_" + SAMPLE_ID + "_";
+    private static final String REF_RANGES_PARQUET_PREFIX  = "ref_ranges_"               + TABLE_NUMBER + "_" + SAMPLE_ID + "_";
+    private static final String PLOIDY_PARQUET_PREFIX      = "sample_chromosome_ploidy_"               + SAMPLE_ID + "_";
 
     // TSV column order for VET, matching VetFieldEnum.values() and the existing golden TSV header
     private static final List<String> VET_TSV_COLUMNS =
@@ -74,12 +88,12 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         ;
         runCommandLine(args);
 
-        // Find the generated Parquet files by their filename prefix
-        final File vetParquetFile = findParquetFileByPrefix(outputDir, "vet_");
-        final File refRangesParquetFile = findParquetFileByPrefix(outputDir, "ref_ranges_");
+        // Find the generated Parquet files by their exact filename prefix (superpartition + sample id)
+        final File vetParquetFile = findParquetFileByPrefix(outputDir, VET_PARQUET_PREFIX);
+        final File refRangesParquetFile = findParquetFileByPrefix(outputDir, REF_RANGES_PARQUET_PREFIX);
 
         // PARQUET mode also emits a sample_chromosome_ploidy file; verify it was created
-        Assert.assertNotNull(findParquetFileByPrefix(outputDir, "sample_chromosome_ploidy_"),
+        Assert.assertNotNull(findParquetFileByPrefix(outputDir, PLOIDY_PARQUET_PREFIX),
                 "Expected a sample_chromosome_ploidy Parquet file to be created");
 
         // Convert each Parquet file to TSV so we can compare against the existing golden TSV files
