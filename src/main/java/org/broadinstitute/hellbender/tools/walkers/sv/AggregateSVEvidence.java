@@ -185,7 +185,7 @@ public final class AggregateSVEvidence extends VariantWalker {
             minValue = 0,
             optional = true
     )
-    private int outerWindow = 500;
+    private int outerWindow = 1000;
 
     @Argument(
             doc = "Split read window size (bp)",
