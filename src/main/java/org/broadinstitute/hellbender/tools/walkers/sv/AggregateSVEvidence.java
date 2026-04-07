@@ -446,14 +446,19 @@ public final class AggregateSVEvidence extends VariantWalker {
      * Determines which variants to run PE testing on
      */
     private boolean useDiscordantPairEvidence(final SVCallRecord call) {
-        return !call.isDepthOnly() && call.getType() != GATKSVVCFConstants.StructuralVariantAnnotationType.INS;
+        return !call.isDepthOnly()
+                && call.getType() != GATKSVVCFConstants.StructuralVariantAnnotationType.INS
+                && call.getStrandA() != null
+                && call.getStrandB() != null;
     }
 
     /**
      * Determines which variants to run SR testing on
      */
     private boolean useSplitReadEvidence(final SVCallRecord call) {
-        return !call.isDepthOnly();
+        return !call.isDepthOnly()
+                && call.getStrandA() != null
+                && call.getStrandB() != null;
     }
 
     /**

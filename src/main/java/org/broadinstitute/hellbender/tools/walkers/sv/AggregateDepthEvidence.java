@@ -159,7 +159,7 @@ public final class AggregateDepthEvidence extends VariantWalker {
             doc = "Max quality score",
             minValue = 1
     )
-    public int maxQual = 999;
+    public int maxQual = 20;
 
     @Argument(
             fullName = POWER_THRESHOLD_LONG_NAME,
