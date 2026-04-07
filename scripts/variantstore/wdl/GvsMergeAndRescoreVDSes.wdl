@@ -192,7 +192,7 @@ task MergeAndRescoreVDS {
         account_name=$(gcloud config list account --format "value(core.account)")
 
         apt-get update
-        apt install --assume-yes python3.11-venv
+        apt-get install --assume-yes python3.11-venv
         python3 -m venv ./localvenv
         . ./localvenv/bin/activate
 

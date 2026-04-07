@@ -19,7 +19,7 @@ def run_avro_query(call_set_identifier, dataset_name, table_name, project_id, sq
                           'GenerateAvroFiles', table_name, True)
     if output_file is not None:
         with open(output_file, 'w', newline='') as f:
-            writer = csv.writer(f, delimiter='\t')
+            writer = csv.writer(f, delimiter='\t', lineterminator='\n')
             for row in query_return.get('results', []):
                 writer.writerow(list(row.values()))
 
