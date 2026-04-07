@@ -19,17 +19,17 @@ import java.util.List;
  * Test utility for converting Parquet files to TSV format so that Parquet output can be
  * compared against TSV golden files.
  *
- * <p>The conversion faithfully replicates the output of the GVS TSV writers:
+ * <p>Conversion rules:
  * <ul>
- *   <li>Columns are written in the caller-specified order (allowing the ref_ranges
- *       column order to match the TSV writer's {@code location, sample_id, length, state}
- *       order even though the Parquet schema stores them differently).</li>
+ *   <li>Columns are written in the caller-specified order, which may differ from the
+ *       field order in the Parquet schema (e.g. ref_ranges golden files use
+ *       {@code location, sample_id, length, state} while the schema orders them
+ *       {@code sample_id, location, length, state}).</li>
  *   <li>INT64 Parquet values are converted to their decimal string representation.</li>
  *   <li>BINARY/UTF8 Parquet values are passed through as-is.</li>
- *   <li>Optional Parquet fields that are absent from a record are written as empty
- *       strings, matching the behaviour of {@code SimpleXSVWriter} / {@code CSVWriter}.</li>
- *   <li>Lines are terminated with {@code \n} (not {@code System.lineSeparator()}) to
- *       match the {@code CSVWriter} default and keep golden-file comparisons platform-independent.</li>
+ *   <li>Optional Parquet fields that are absent from a record are written as empty strings.</li>
+ *   <li>Lines are terminated with {@code \n} (not {@code System.lineSeparator()}) to keep
+ *       golden-file comparisons platform-independent.</li>
  * </ul>
  */
 public class ParquetToTsvConverter {
@@ -65,7 +65,7 @@ public class ParquetToTsvConverter {
                     final int fieldIndex = schema.getFieldIndex(col);
 
                     if (record.getFieldRepetitionCount(fieldIndex) == 0) {
-                        // Absent optional field → empty string, matching TSV writer behaviour
+                        // Absent optional field → empty string
                         row.add("");
                     } else {
                         final PrimitiveType.PrimitiveTypeName typeName =
