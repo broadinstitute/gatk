@@ -130,7 +130,7 @@ GROUP BY
         SELECT * FROM `aou-genomics-curation-prod.foxtrot.sample_info`
         WHERE sample_id > 414838
         ```
-   - Specify the name of this view as the `sample_table_or_view_name` input to the workflow.
+   - Specify the *unqualified* (no project or dataset) name of this view as the `sample_table_or_view_name` input to the workflow.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsCreateVDS` workflow
    - This step creates a VDS based on the Avro files generated from the `GvsExtractAvroFilesForHail` workflow above.
