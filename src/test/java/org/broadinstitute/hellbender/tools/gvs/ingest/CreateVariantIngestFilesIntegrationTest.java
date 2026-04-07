@@ -44,11 +44,21 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
     private static final List<String> REF_RANGES_TSV_COLUMNS =
             List.of("location", "sample_id", "length", "state");
 
+    // TSV column order for sample_chromosome_ploidy, matching the Parquet schema field order
+    private static final List<String> PLOIDY_TSV_COLUMNS =
+            List.of("sample_id", "chromosome", "ploidy");
+
+    // All three test cases use the same input sample on the same chromosome, so the ploidy
+    // output is identical regardless of which GQ bands are filtered.
+    private static final String EXPECTED_PLOIDY_TSV =
+            "expected.sample_chromosome_ploidy_NA12878.tsv";
+
     @Test
     public void testCreateDefaultVariantIngestFiles() throws Exception {
         testCreateVariantIngestFiles(
                 getToolTestDataDir() + "expected.ref_ranges_001_NA12878.tsv",
                 getToolTestDataDir() + "expected.vet_001_NA12878.tsv",
+                getToolTestDataDir() + EXPECTED_PLOIDY_TSV,
                 new String[]{});
     }
 
@@ -57,6 +67,7 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         testCreateVariantIngestFiles(
                 getToolTestDataDir() + "expected.ignore_gq0.ref_ranges_001_NA12878.tsv",
                 getToolTestDataDir() + "expected.vet_001_NA12878.tsv",
+                getToolTestDataDir() + EXPECTED_PLOIDY_TSV,
                 new String[]{"--ref-block-gq-to-ignore ZERO"});
     }
 
@@ -65,11 +76,13 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         testCreateVariantIngestFiles(
                 getToolTestDataDir() + "expected.ignore_gq40_and_above.ref_ranges_001_NA12878.tsv",
                 getToolTestDataDir() + "expected.vet_001_NA12878.tsv",
+                getToolTestDataDir() + EXPECTED_PLOIDY_TSV,
                 new String[]{"--ref-block-gq-to-ignore FORTY", "--ignore-above-gq-threshold true"});
     }
 
     public void testCreateVariantIngestFiles(final String expectedRefRangesTsv,
                                              final String expectedVetTsv,
+                                             final String expectedPloidyTsv,
                                              final String[] additionalArgs) throws Exception {
 
         final File outputDir = createTempDir("output_dir");
@@ -91,21 +104,20 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         // Find the generated Parquet files by their exact filename prefix (superpartition + sample id)
         final File vetParquetFile = findParquetFileByPrefix(outputDir, VET_PARQUET_PREFIX);
         final File refRangesParquetFile = findParquetFileByPrefix(outputDir, REF_RANGES_PARQUET_PREFIX);
-
-        // PARQUET mode also emits a sample_chromosome_ploidy file; verify it was created
-        Assert.assertNotNull(findParquetFileByPrefix(outputDir, PLOIDY_PARQUET_PREFIX),
-                "Expected a sample_chromosome_ploidy Parquet file to be created");
+        final File ploidyParquetFile = findParquetFileByPrefix(outputDir, PLOIDY_PARQUET_PREFIX);
 
         // Convert each Parquet file to TSV so we can compare against the existing golden TSV files
         final File convertedVetTsv = new File(convertedDir, "vet.tsv");
         final File convertedRefRangesTsv = new File(convertedDir, "ref_ranges.tsv");
+        final File convertedPloidyTsv = new File(convertedDir, "sample_chromosome_ploidy.tsv");
         ParquetToTsvConverter.convert(vetParquetFile, VET_TSV_COLUMNS, convertedVetTsv);
         ParquetToTsvConverter.convert(refRangesParquetFile, REF_RANGES_TSV_COLUMNS, convertedRefRangesTsv);
+        ParquetToTsvConverter.convert(ploidyParquetFile, PLOIDY_TSV_COLUMNS, convertedPloidyTsv);
 
         // Compare converted TSV contents against the golden TSV files.
-        // List order: ref_ranges first, then vet — matching the golden-file list order.
-        final List<File> convertedFiles = Arrays.asList(convertedRefRangesTsv, convertedVetTsv);
-        final List<String> expectedOutputFiles = Arrays.asList(expectedRefRangesTsv, expectedVetTsv);
+        // List order: ref_ranges, then vet, then ploidy.
+        final List<File> convertedFiles = Arrays.asList(convertedRefRangesTsv, convertedVetTsv, convertedPloidyTsv);
+        final List<String> expectedOutputFiles = Arrays.asList(expectedRefRangesTsv, expectedVetTsv, expectedPloidyTsv);
         IntegrationTestSpec.assertMatchingFiles(convertedFiles, expectedOutputFiles, false, STRICT);
     }
 
