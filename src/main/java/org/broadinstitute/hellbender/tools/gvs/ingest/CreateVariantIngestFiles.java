@@ -273,7 +273,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
 
         // Use the input GVCF filename (not the sample name) as the identifier in output filenames.
-        String inputVcfFileName = getInputFileName();
+        String inputVcfFileName = new File(getInputFileName()).getName();
 
         // Mod the sample directories
         int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
