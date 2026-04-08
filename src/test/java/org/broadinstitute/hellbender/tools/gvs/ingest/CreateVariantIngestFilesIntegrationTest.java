@@ -10,7 +10,10 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static htsjdk.samtools.ValidationStringency.STRICT;
@@ -113,6 +116,18 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         Assert.assertTrue(vetParquetFile.exists(),       "Expected VET Parquet file not found: "        + VET_PARQUET_FILENAME);
         Assert.assertTrue(refRangesParquetFile.exists(), "Expected ref_ranges Parquet file not found: " + REF_RANGES_PARQUET_FILENAME);
         Assert.assertTrue(ploidyParquetFile.exists(),    "Expected ploidy Parquet file not found: "     + PLOIDY_PARQUET_FILENAME);
+
+        // Assert that the output directory contains exactly the three expected Parquet files and nothing else,
+        // to catch regressions that accidentally emit extra outputs (e.g. duplicate partitions, stray files).
+        // CRC sidecar files (.<name>.crc) are an expected Hadoop local-filesystem artifact and are excluded.
+        final Set<String> actualOutputFileNames = Arrays.stream(Objects.requireNonNull(outputDir.listFiles()))
+                .map(File::getName)
+                .filter(name -> !name.endsWith(".crc"))
+                .collect(Collectors.toSet());
+        final Set<String> expectedOutputFileNames = new HashSet<>(Arrays.asList(
+                VET_PARQUET_FILENAME, REF_RANGES_PARQUET_FILENAME, PLOIDY_PARQUET_FILENAME));
+        Assert.assertEquals(actualOutputFileNames, expectedOutputFileNames,
+                "Output directory should contain exactly the three expected Parquet files");
 
         // Convert each Parquet file to TSV so we can compare against the existing golden TSV files
         final File convertedVetTsv = new File(convertedDir, "vet.tsv");
