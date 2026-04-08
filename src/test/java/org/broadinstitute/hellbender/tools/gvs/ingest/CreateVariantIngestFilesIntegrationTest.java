@@ -48,7 +48,9 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
     private static final List<String> VET_TSV_COLUMNS =
             Arrays.stream(VetFieldEnum.values()).map(Enum::name).collect(Collectors.toList());
 
-    // TSV column order for ref_ranges, matching RefRangesTsvWriter's hard-coded header order
+    // Column order for converting ref_ranges Parquet to TSV. The golden files use location-first
+    // ordering (location, sample_id, length, state), which differs from the Parquet schema's
+    // sample_id-first field order; ParquetToTsvConverter uses this list to reorder on read.
     private static final List<String> REF_RANGES_TSV_COLUMNS =
             List.of("location", "sample_id", "length", "state");
 

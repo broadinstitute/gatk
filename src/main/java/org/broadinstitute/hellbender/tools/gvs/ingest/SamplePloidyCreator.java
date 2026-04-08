@@ -53,8 +53,7 @@ public class SamplePloidyCreator {
                     samplePloidyWriter = new SamplePloidyParquetFileWriter(new Path(sampleChromosomePloidyOutputFile.toURI()), schema, CompressionCodecName.SNAPPY);
                     break;
                 default:
-                    logger.warn("Not creating sample ploidy writer for unsupported output type " + outputType);
-                    break;
+                    throw new IllegalArgumentException("Unsupported output type for SamplePloidyCreator: " + outputType);
             }
         } catch (Exception e) {
             throw new UserException("Could not create Sample Ploidy Table Writer", e);
