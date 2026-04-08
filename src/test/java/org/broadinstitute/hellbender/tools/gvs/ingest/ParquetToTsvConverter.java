@@ -11,6 +11,7 @@ import org.apache.parquet.schema.PrimitiveType;
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
@@ -46,7 +47,7 @@ public class ParquetToTsvConverter {
      * @throws IOException if an error occurs reading the Parquet file or writing the TSV
      */
     public static void convert(File parquetFile, List<String> columns, File outputTsvFile) throws IOException {
-        try (BufferedWriter writer = Files.newBufferedWriter(outputTsvFile.toPath());
+        try (BufferedWriter writer = Files.newBufferedWriter(outputTsvFile.toPath(), StandardCharsets.UTF_8);
              ParquetReader<Group> reader = ParquetReader
                      .builder(new GroupReadSupport(), new Path(parquetFile.toURI()))
                      .withConf(new Configuration())
