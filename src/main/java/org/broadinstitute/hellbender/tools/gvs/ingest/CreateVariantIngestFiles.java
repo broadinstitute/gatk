@@ -125,7 +125,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Argument(
             fullName = "output-directory",
-            doc = "directory for output tsv files",
+            doc = "directory for output Parquet files",
             optional = true)
     public File outputDir = new File(".");
 
