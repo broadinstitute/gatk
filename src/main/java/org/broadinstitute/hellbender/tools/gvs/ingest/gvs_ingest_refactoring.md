@@ -11,8 +11,6 @@ src/main/java/org/broadinstitute/hellbender/tools/gvs/ingest/
 ├── VetWriter.java                    (interface)
 ├── RefRangesWriter.java              (interface)
 ├── SamplePloidyWriter.java           (interface)
-├── avro/
-│   └── RefRangesAvroWriter.java
 ├── bq/
 │   ├── AbstractBQWriter.java         (abstract base)
 │   ├── VetBQWriter.java
@@ -63,10 +61,6 @@ Two abstract base classes provide shared infrastructure for their respective out
 - Extend `AbstractParquetFileWriter` and implement respective interfaces
 - Write data to local Parquet files for later bulk loading
 
-
-#### Avro (`avro/`)
-- `RefRangesAvroWriter`
-- Legacy format support
 
 ## Benefits
 

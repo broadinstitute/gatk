@@ -49,7 +49,6 @@ public class CommonCode {
     }
 
     public enum OutputType {
-        AVRO,
         PARQUET,
         BQ
     }

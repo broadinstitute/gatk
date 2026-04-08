@@ -10,7 +10,6 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
-import org.broadinstitute.hellbender.tools.gvs.ingest.avro.RefRangesAvroWriter;
 import org.broadinstitute.hellbender.tools.gvs.ingest.bq.RefRangesBQWriter;
 import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.RefRangesParquetFileWriter;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
@@ -65,9 +64,6 @@ public final class RefRangesCreator {
                             throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
                         }
                         refRangesWriter = new RefRangesBQWriter(projectId, datasetName,REF_RANGES_FILETYPE_PREFIX + tableNumber);
-                        break;
-                    case AVRO: // when do we use this/!?!
-                        refRangesWriter = new RefRangesAvroWriter(refOutputFile.getCanonicalPath());
                         break;
                     case PARQUET:
                         refRangesWriter = new RefRangesParquetFileWriter(new Path(refOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
