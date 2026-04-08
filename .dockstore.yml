@@ -227,7 +227,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1839_ending_pending_jobs
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
@@ -350,7 +349,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1839_ending_pending_jobs
+             - vs_1867_tsv_be_gone
          tags:
              - /.*/
    - name: GvsIngestTieout
