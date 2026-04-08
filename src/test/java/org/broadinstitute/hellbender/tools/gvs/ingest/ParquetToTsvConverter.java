@@ -27,10 +27,14 @@ import java.util.List;
  *       {@code location, sample_id, length, state} while the schema orders them
  *       {@code sample_id, location, length, state}).</li>
  *   <li>INT64 Parquet values are converted to their decimal string representation.</li>
- *   <li>BINARY/UTF8 Parquet values are passed through as-is.</li>
+ *   <li>BINARY (UTF8) Parquet values are passed through as-is.</li>
  *   <li>Optional Parquet fields that are absent from a record are written as empty strings.</li>
  *   <li>Lines are terminated with {@code \n} (not {@code System.lineSeparator()}) to keep
  *       golden-file comparisons platform-independent.</li>
+ *   <li>Any Parquet primitive type other than INT64 or BINARY causes an
+ *       {@link IllegalArgumentException} to be thrown, because the GVS ingest schemas only
+ *       use those two types and silently mishandling an unexpected type would produce
+ *       incorrect TSV output.</li>
  * </ul>
  */
 public class ParquetToTsvConverter {
@@ -71,11 +75,18 @@ public class ParquetToTsvConverter {
                     } else {
                         final PrimitiveType.PrimitiveTypeName typeName =
                                 schema.getType(fieldIndex).asPrimitiveType().getPrimitiveTypeName();
-                        if (typeName == PrimitiveType.PrimitiveTypeName.INT64) {
-                            row.add(String.valueOf(record.getLong(fieldIndex, 0)));
-                        } else {
-                            // BINARY (UTF8) and any other type: use string representation
-                            row.add(record.getString(fieldIndex, 0));
+                        switch (typeName) {
+                            case INT64:
+                                row.add(String.valueOf(record.getLong(fieldIndex, 0)));
+                                break;
+                            case BINARY:
+                                row.add(record.getString(fieldIndex, 0));
+                                break;
+                            default:
+                                throw new IllegalArgumentException(
+                                        "Unsupported Parquet primitive type " + typeName +
+                                        " for field '" + col + "'. Only INT64 and BINARY are used " +
+                                        "by GVS ingest schemas; extend this converter if a new type is needed.");
                         }
                     }
                 }

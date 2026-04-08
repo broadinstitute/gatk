@@ -20,7 +20,7 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
     // *manual_nocalls.vcf.gz modified manually to introduce a no-call (./.) GT at chr20 61417
     // no-call to test marking ./. as GQ 0 in PET and abstaining from putting variant into VET
     // original GT at chr20 61417 = 0/1
-    final String input_vcf_file = "NA12878.haplotypeCalls.reblocked.chr20.100k.manual_nocall.vcf.gz";
+    private static final String input_vcf_file = "NA12878.haplotypeCalls.reblocked.chr20.100k.manual_nocall.vcf.gz";
     final String interval_list_file = "wgs_calling_regions.hg38.chr20.100k.interval_list";
     final String sample_map_file = "test_sample_map.tsv";
 
@@ -35,6 +35,11 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
     private static final String VET_PARQUET_PREFIX         = "vet_"                      + TABLE_NUMBER + "_" + SAMPLE_ID + "_";
     private static final String REF_RANGES_PARQUET_PREFIX  = "ref_ranges_"               + TABLE_NUMBER + "_" + SAMPLE_ID + "_";
     private static final String PLOIDY_PARQUET_PREFIX      = "sample_chromosome_ploidy_"               + SAMPLE_ID + "_";
+
+    // Exact expected Parquet output filenames
+    private static final String VET_PARQUET_FILENAME        = VET_PARQUET_PREFIX        + input_vcf_file + ".parquet";
+    private static final String REF_RANGES_PARQUET_FILENAME = REF_RANGES_PARQUET_PREFIX + input_vcf_file + ".parquet";
+    private static final String PLOIDY_PARQUET_FILENAME     = PLOIDY_PARQUET_PREFIX     + input_vcf_file + ".parquet";
 
     // TSV column order for VET, matching VetFieldEnum.values() and the existing golden TSV header
     private static final List<String> VET_TSV_COLUMNS =
@@ -101,10 +106,13 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         ;
         runCommandLine(args);
 
-        // Find the generated Parquet files by their exact filename prefix (superpartition + sample id)
-        final File vetParquetFile = findParquetFileByPrefix(outputDir, VET_PARQUET_PREFIX);
-        final File refRangesParquetFile = findParquetFileByPrefix(outputDir, REF_RANGES_PARQUET_PREFIX);
-        final File ploidyParquetFile = findParquetFileByPrefix(outputDir, PLOIDY_PARQUET_PREFIX);
+        // Locate the generated Parquet files by their exact expected names
+        final File vetParquetFile        = new File(outputDir, VET_PARQUET_FILENAME);
+        final File refRangesParquetFile  = new File(outputDir, REF_RANGES_PARQUET_FILENAME);
+        final File ploidyParquetFile     = new File(outputDir, PLOIDY_PARQUET_FILENAME);
+        Assert.assertTrue(vetParquetFile.exists(),       "Expected VET Parquet file not found: "        + VET_PARQUET_FILENAME);
+        Assert.assertTrue(refRangesParquetFile.exists(), "Expected ref_ranges Parquet file not found: " + REF_RANGES_PARQUET_FILENAME);
+        Assert.assertTrue(ploidyParquetFile.exists(),    "Expected ploidy Parquet file not found: "     + PLOIDY_PARQUET_FILENAME);
 
         // Convert each Parquet file to TSV so we can compare against the existing golden TSV files
         final File convertedVetTsv = new File(convertedDir, "vet.tsv");
@@ -119,13 +127,5 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         final List<File> convertedFiles = Arrays.asList(convertedRefRangesTsv, convertedVetTsv, convertedPloidyTsv);
         final List<String> expectedOutputFiles = Arrays.asList(expectedRefRangesTsv, expectedVetTsv, expectedPloidyTsv);
         IntegrationTestSpec.assertMatchingFiles(convertedFiles, expectedOutputFiles, false, STRICT);
-    }
-
-    private File findParquetFileByPrefix(final File dir, final String prefix) {
-        final File[] matches = dir.listFiles((d, name) -> name.startsWith(prefix) && name.endsWith(".parquet"));
-        Assert.assertNotNull(matches, "Could not list files in output directory");
-        Assert.assertEquals(matches.length, 1,
-                "Expected exactly one Parquet file with prefix '" + prefix + "' in " + dir);
-        return matches[0];
     }
 }
