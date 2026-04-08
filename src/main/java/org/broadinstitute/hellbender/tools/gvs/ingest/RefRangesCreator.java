@@ -41,7 +41,7 @@ public final class RefRangesCreator {
     // for easily calculating percentages later
     private long totalRefEntries = 0L;
 
-    public RefRangesCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, Set<GQStateEnum> gqStatesToIgnore, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName, final boolean storeCompressedReferences, final MessageType parquetSchema) {
+    public RefRangesCreator(String inputVcfFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, Set<GQStateEnum> gqStatesToIgnore, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName, final boolean storeCompressedReferences, final MessageType parquetSchema) {
         this.sampleId = sampleId;
         this.writeReferenceRanges = writeReferenceRanges;
         this.storeCompressedReferences = storeCompressedReferences;
@@ -53,7 +53,7 @@ public final class RefRangesCreator {
 
         try {
             if (writeReferenceRanges) {
-                String[] sampleComponents = {tableNumber, sampleId.toString(), sampleIdentifierForOutputFileName};
+                String[] sampleComponents = {tableNumber, sampleId.toString(), inputVcfFileName};
                 String filename = REF_RANGES_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) +
                         "." + outputType.toString().toLowerCase();
 

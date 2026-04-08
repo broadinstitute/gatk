@@ -28,7 +28,7 @@ public class SamplePloidyCreator {
 
     private final Long sampleId;
 
-    public SamplePloidyCreator(String sampleIdentifierForOutputFileName, Long sampleId, String projectId, String datasetName, File outputDirectory, MessageType schema, final CommonCode.OutputType outputType) {
+    public SamplePloidyCreator(String inputVcfFileName, Long sampleId, String projectId, String datasetName, File outputDirectory, MessageType schema, final CommonCode.OutputType outputType) {
         try {
             this.sampleId = sampleId;
 
@@ -44,7 +44,7 @@ public class SamplePloidyCreator {
                         throw new UserException("Must specify outputDirectory and schema when writing ploidy data to Parquet.");
                     }
 
-                    String[] sampleComponents = {sampleId.toString(), sampleIdentifierForOutputFileName};
+                    String[] sampleComponents = {sampleId.toString(), inputVcfFileName};
                     String filename = SAMPLE_CHROMOSOME_PLOIDY_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) +
                             "." + outputType.toString().toLowerCase();
 

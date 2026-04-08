@@ -26,7 +26,7 @@ public class VetCreator {
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
     }
 
-    public VetCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields, final MessageType parquetSchema) {
+    public VetCreator(String inputVcfFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields, final MessageType parquetSchema) {
         this.sampleId = sampleId;
 
         try {
@@ -38,7 +38,7 @@ public class VetCreator {
                     vetWriter = new VetBQWriter(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, skipLoadingVqsrFields, forceLoadingFromNonAlleleSpecific);
                     break;
                 case PARQUET:
-                    String filename = getOutputFileName(tableNumber, sampleId, sampleIdentifierForOutputFileName, outputType);
+                    String filename = getOutputFileName(tableNumber, sampleId, inputVcfFileName, outputType);
                     final File parquetOutputFile = new File(outputDirectory, filename);
                     vetWriter = new VetParquetFileWriter(new Path(parquetOutputFile.toURI()), skipLoadingVqsrFields, forceLoadingFromNonAlleleSpecific, parquetSchema, CompressionCodecName.SNAPPY);
                     break;
@@ -58,8 +58,8 @@ public class VetCreator {
     }
 
 
-    public static String getOutputFileName(String tableNumber, Long sampleId, String sampleIdentifierForOutputFileName, CommonCode.OutputType outputType) {
-        String[] sampleComponents = {tableNumber, sampleId.toString(), sampleIdentifierForOutputFileName};
+    public static String getOutputFileName(String tableNumber, Long sampleId, String inputVcfFileName, CommonCode.OutputType outputType) {
+        String[] sampleComponents = {tableNumber, sampleId.toString(), inputVcfFileName};
         return VET_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) +
                 "." + outputType.toString().toLowerCase();
     }

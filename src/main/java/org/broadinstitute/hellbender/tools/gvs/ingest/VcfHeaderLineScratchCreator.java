@@ -70,7 +70,7 @@ public class VcfHeaderLineScratchCreator {
                     vcfHeaderBQJsonWriter = new PendingBQWriter(projectId, datasetName, SCRATCH_TABLE_NAME);
                     break;
                 case PARQUET:
-                    // TODO ensure that there doesn't need to be a table_number or sampleIdentifierForOutputFileName--it's all tables/samples, yes?
+                    // TODO ensure that there doesn't need to be a table_number or inputVcfFileName--it's all tables/samples, yes?
                     final File parquetOutputFile = new File(outputDirectory, HEADER_FILETYPE_PREFIX + ".parquet");
                     vcfHeaderParquetFileWriter = new HeaderParquetFileWriter(new Path(parquetOutputFile.toURI()), headersRowSchema, CompressionCodecName.SNAPPY);
                     break;
