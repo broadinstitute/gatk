@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 
 import com.google.protobuf.Descriptors;
 import org.apache.hadoop.fs.Path;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -19,6 +21,8 @@ import java.util.concurrent.ExecutionException;
 
 
 public class VcfHeaderLineScratchCreator {
+    private static final Logger logger = LogManager.getLogger(VcfHeaderLineScratchCreator.class);
+
     private final CommonCode.OutputType outputType;
     private final Long sampleId;
     private final String projectId;
@@ -64,9 +68,7 @@ public class VcfHeaderLineScratchCreator {
             switch (outputType) {
 
                 case BQ:
-                    if (projectId == null || datasetName == null) {
-                        throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
-                    }
+                    // null-check for projectId/datasetName already performed above
                     vcfHeaderBQJsonWriter = new PendingBQWriter(projectId, datasetName, SCRATCH_TABLE_NAME);
                     break;
                 case PARQUET:
@@ -106,19 +108,8 @@ public class VcfHeaderLineScratchCreator {
                     break;
                 case PARQUET:
                     String chunkHash = Utils.calcMD5(headerChunk.getKey());
-                    Boolean isExpectedUnique = headerChunk.getValue();
                     JSONObject record = HeaderParquetFileWriter.writeJson(this.sampleId, chunkHash);
                     vcfHeaderParquetFileWriter.write(record);
-
-                    //boolean vcfScratchHeaderRowsExist = doScratchRowsExistFor(this.projectId, this.datasetName, chunkHash);
-                    //boolean vcfNonScratchHeaderRowsExist = doNonScratchRowsExistFor(this.projectId, this.datasetName, chunkHash);
-                    // why is there no isExpectedUnique check here?
-                    //if (vcfScratchHeaderRowsExist || vcfNonScratchHeaderRowsExist) {
-                        //vcfHeaderParquetFileWriter.writeJson(this.sampleId, chunkHash);
-                    //}
-                    //else {
-                        //vcfHeaderParquetFileWriter.writeJson(this.sampleId, chunkHash);
-                    //}
                     break;
             }
         }
@@ -144,8 +135,7 @@ public class VcfHeaderLineScratchCreator {
             try {
                 vcfHeaderParquetFileWriter.close();
             } catch (IOException exception) {
-                System.out.println("ERROR CLOSING PARQUET FILE: ");
-                exception.printStackTrace();
+                logger.error("Error closing Parquet VCF header file", exception);
             }
         }
     }
@@ -157,9 +147,6 @@ public class VcfHeaderLineScratchCreator {
             } catch (final Exception e) {
                 throw new IllegalArgumentException("Couldn't close VCF Header Line writer", e);
             }
-        }
-        if (vcfHeaderBQJsonWriter != null) {
-            vcfHeaderBQJsonWriter.close();
         }
     }
 }
