@@ -350,7 +350,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1839_ending_pending_jobs
+             - vs_1866_parquet_default
          tags:
              - /.*/
    - name: GvsIngestTieout
