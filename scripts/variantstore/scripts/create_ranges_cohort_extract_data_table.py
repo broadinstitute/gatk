@@ -24,6 +24,12 @@ SAMPLES_PER_PARTITION = 4000
 output_table_prefix = str(uuid.uuid4()).split("-")[0]
 print(f"running with prefix {output_table_prefix}")
 
+INTERVAL_TABLE_NAME = f"{output_table_prefix}_intervals"
+# Intervals up to this count are inlined directly into the SQL WHERE clause.
+# Above this threshold the intervals are loaded into a temporary BigQuery table
+# and filtered via an EXISTS subquery, removing the effective query-size limit.
+INTERVAL_TEMP_TABLE_THRESHOLD = 5000
+
 REF_VET_TABLE_COUNT = -1
 # noinspection PyTypeChecker
 client: bigquery.Client = None
@@ -134,17 +140,93 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
     return query_return['results']
 
 
-def get_location_filters_from_interval_list(interval_list):
-    interval_test = pybedtools.BedTool(interval_list)
-    # check to make sure there aren't too many locations to build a SQL query from
-    if len(interval_test) > 5000:
-        print(f"\n\nTrying to query over the limit of 5,000 locations; {interval_list} will be discarded, and all locations will be queried.\n\n")
+def load_intervals_to_temp_table(intervals, fq_temp_table_dataset):
+    """Load a pybedtools BedTool of intervals into a temporary BigQuery table.
+
+    Each interval is stored as (location_start INT64, location_end INT64) using
+    the GVS location encoding: chrom_index * 1_000_000_000_000 + position.
+
+    Returns the fully-qualified name of the created table.
+    """
+    fq_interval_table = f"{fq_temp_table_dataset}.{INTERVAL_TABLE_NAME}"
+    schema = [
+        bigquery.SchemaField("location_start", "INT64", mode="REQUIRED"),
+        bigquery.SchemaField("location_end", "INT64", mode="REQUIRED"),
+    ]
+
+    # Create the table with the same TTL used for other temp tables in this run.
+    table = bigquery.Table(fq_interval_table, schema=schema)
+    expiration = datetime.datetime.utcnow() + datetime.timedelta(hours=TEMP_TABLE_TTL_HOURS)
+    table.expires = expiration
+    client.create_table(table, exists_ok=True)
+
+    # Encode each interval into the GVS location integer space.
+    rows = []
+    skipped = 0
+    for interval in intervals:
+        if interval.chrom not in CHROM_MAP:
+            skipped += 1
+            continue
+        chrom_num = int(CHROM_MAP[interval.chrom])
+        rows.append({
+            "location_start": chrom_num * 1_000_000_000_000 + int(interval.start),
+            "location_end":   chrom_num * 1_000_000_000_000 + int(interval.end),
+        })
+
+    if skipped > 0:
+        print(f"Warning: skipped {skipped} interval(s) with unrecognized chromosome names")
+
+    # Stream rows in batches (BigQuery streaming API limit: 50,000 rows / 10 MB per request).
+    BATCH_SIZE = 10_000
+    for batch_start in range(0, len(rows), BATCH_SIZE):
+        batch = rows[batch_start:batch_start + BATCH_SIZE]
+        errors = client.insert_rows_json(fq_interval_table, batch)
+        if errors:
+            raise RuntimeError(f"Error loading intervals to BigQuery table {fq_interval_table}: {errors}")
+
+    print(f"Loaded {len(rows)} intervals into temporary table {fq_interval_table}")
+    return fq_interval_table
+
+
+def get_location_filters(interval_list, fq_temp_table_dataset):
+    """Return a SQL WHERE clause fragment for filtering by genomic location.
+
+    For interval lists with <= INTERVAL_TEMP_TABLE_THRESHOLD intervals the
+    filter is built inline in the SQL text (original behaviour).
+
+    For larger interval lists the intervals are loaded into a temporary
+    BigQuery table and an EXISTS subquery is returned instead.  This removes
+    the practical limit on how many intervals can be used as a filter.
+
+    Returns "" when no interval list is provided (no location filtering).
+    """
+    if not interval_list:
         return ""
 
-    location_clause_list = [f"""(location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} 
+    intervals = pybedtools.BedTool(interval_list)
+    interval_count = len(intervals)
+
+    if interval_count == 0:
+        return ""
+
+    if interval_count <= INTERVAL_TEMP_TABLE_THRESHOLD:
+        # Small list: inline every interval directly into the SQL WHERE clause.
+        location_clause_list = [
+            f"""(location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} 
             AND location <= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.end)))}{interval.end})"""
-                            for interval in interval_test]
-    return "WHERE (" + " OR ".join(location_clause_list) + ")"
+            for interval in intervals
+        ]
+        return "WHERE (" + " OR ".join(location_clause_list) + ")"
+    else:
+        # Large list: load into a temp table and use an EXISTS subquery so that
+        # BigQuery can plan an efficient join rather than evaluating a massive
+        # OR chain — and so we don't hit query-text size limits.
+        print(f"Interval list has {interval_count} intervals (> {INTERVAL_TEMP_TABLE_THRESHOLD}); "
+              f"loading into a temporary BigQuery table for efficient filtering.")
+        fq_interval_table = load_intervals_to_temp_table(intervals, fq_temp_table_dataset)
+        return (f"WHERE EXISTS "
+                f"(SELECT 1 FROM `{fq_interval_table}` "
+                f"WHERE location BETWEEN location_start AND location_end)")
 
 
 def create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract_table_ttl, vet_ranges_extract_table_version):
@@ -206,11 +288,7 @@ def create_final_extract_ref_table(fq_destination_table_ref_data, enable_extract
     query_return = utils.execute_with_retry(client, "create final export ref table", sql)
     JOBS.append({'job': query_return['job'], 'label': query_return['label']})
 
-def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_data, sample_ids, use_compressed_references, interval_list):
-    location_string = ""
-    if interval_list:
-        location_string = get_location_filters_from_interval_list(interval_list)
-
+def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_data, sample_ids, use_compressed_references, location_string):
     # split file into files with x lines and then run
     def get_ref_subselect(fq_ref_table, samples, id):
         sample_stanza = ','.join([str(s) for s in samples])
@@ -253,11 +331,7 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
     return
 
 
-def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_data, sample_ids, vet_ranges_extract_table_version, interval_list):
-    location_string = ""
-    if interval_list:
-        location_string = get_location_filters_from_interval_list(interval_list)
-
+def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_data, sample_ids, vet_ranges_extract_table_version, location_string):
     additional_columns = ""
     if vet_ranges_extract_table_version == "V2":
         additional_columns = ", CALL_PGT, CALL_PID, CALL_PS"
@@ -360,6 +434,10 @@ def make_extract_table(call_set_identifier,
 
         print(f"Using {REF_VET_TABLE_COUNT} tables in {fq_ranges_dataset}...")
 
+        # Compute the location filter string once; for large interval lists this will also
+        # create and populate a temporary BigQuery table with the encoded interval bounds.
+        location_string = get_location_filters(interval_list, fq_temp_table_dataset)
+
         # if we have a file of sample names, load it into a temporary table
         if sample_names_to_extract:
             fq_sample_name_table = load_sample_names(sample_names_to_extract, fq_temp_table_dataset)
@@ -380,10 +458,10 @@ def make_extract_table(call_set_identifier,
         # create and populate the tables for extract data
         if not only_output_vet_tables:
             create_final_extract_ref_table(fq_destination_table_ref_data, enable_extract_table_ttl)
-            populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_ref_data, sample_ids, use_compressed_references, interval_list)
+            populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_ref_data, sample_ids, use_compressed_references, location_string)
 
         create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract_table_ttl, vet_ranges_extract_table_version)
-        populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_vet_data, sample_ids, vet_ranges_extract_table_version, interval_list)
+        populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_vet_data, sample_ids, vet_ranges_extract_table_version, location_string)
 
     finally:
         utils.write_job_stats(JOBS, client, f"{fq_destination_dataset}", call_set_identifier, 'GvsPrepareRanges',
