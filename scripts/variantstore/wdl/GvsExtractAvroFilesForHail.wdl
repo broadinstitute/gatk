@@ -4,7 +4,26 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractAvroFilesForHail {
     input {
-        Int? new_sample_cutoff ## this will allow us to extract a subset of the samples -- specifically the new ones!
+
+        # A sample table or view is expected to exist in the dataset that has at least the following columns:
+        # sample_id (int), sample_name (string), is_control (boolean), and withdrawn (type unspecified but nullable).
+        # `sample_info` fits this bill, but so would a view that filters `sample_info` or joins to other tables, so long
+        # as the result contains those four columns and does *not* contain duplicate rows. e.g. the
+        # following creates a view that contains only samples that have an allele in the alt_allele table at the same
+        # location corresponding to an "accursed" sample with erroneous reference data at that location:
+        #
+        #  CREATE OR REPLACE VIEW `project.dataset.sample_info_vs_1862_accursed_sample`
+        #  AS
+        #  SELECT si.*
+        #  FROM `project.dataset.sample_info` si WHERE si.sample_id IN (
+        #      -- Note the DISTINCT is important here as otherwise split hetvars in alt_allele will cause duplicate rows
+        #      -- in the view which would then cause downstream errors.
+        #      SELECT distinct aa.sample_id from `project.dataset.alt_allele` aa
+        #      WHERE aa.location = 4 * 1000 * 1000 * 1000 * 1000 + 190181397
+        #  )
+
+        # `sample_table_or_view_name` must be the *unqualified* name of the sample table or view, i.e. without the `project.dataset` prefix.
+        String sample_table_or_view_name = "sample_info"
         String? git_branch_or_tag
         String? git_hash
         Boolean go = true
@@ -49,9 +68,9 @@ workflow GvsExtractAvroFilesForHail {
             basic_docker = effective_basic_docker,
     }
 
-    call ExtractFromSampleInfoTable {
+    call ExtractFromSampleTable {
         input:
-            new_sample_cutoff = new_sample_cutoff,
+            sample_table_or_view_name = sample_table_or_view_name,
             project_id = project_id,
             dataset_name = dataset_name,
             avro_sibling = OutputPath.out,
@@ -72,7 +91,7 @@ workflow GvsExtractAvroFilesForHail {
 
     call ExtractFromPloidyTable {
         input:
-            new_sample_cutoff = new_sample_cutoff,
+            sample_table_or_view_name = sample_table_or_view_name,
             project_id = project_id,
             dataset_name = dataset_name,
             ploidy_table_name = ploidy_table_name,
@@ -108,7 +127,7 @@ workflow GvsExtractAvroFilesForHail {
     scatter (i in range(scatter_width)) {
         call ExtractFromSuperpartitionedTables {
             input:
-                new_sample_cutoff = new_sample_cutoff,
+                sample_table_or_view_name = sample_table_or_view_name,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 call_set_identifier = call_set_identifier,
@@ -149,16 +168,16 @@ task OutputPath {
     }
 }
 
-# splitting out the extract sample_info Avros into its own task to create partition-based files
+# splitting out the extract sample table Avros into its own task to create partition-based files
 # this might not be the most efficient for callsets under a certain size
-task ExtractFromSampleInfoTable {
+task ExtractFromSampleTable {
     meta {
-        description: "Extracts from the sample_info table, split up by partition"
+        description: "Extracts from the sample table, split up by partition"
         # Not dealing with caching for now as that would introduce a lot of complexity.
         volatile: true
     }
     input {
-        Int? new_sample_cutoff
+        String sample_table_or_view_name
         String project_id
         String dataset_name
         String avro_sibling
@@ -169,7 +188,6 @@ task ExtractFromSampleInfoTable {
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
     }
-    String new_samples_extract_clause = if (defined(new_sample_cutoff)) then  "--new_sample_cutoff ~{new_sample_cutoff}" else ""
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
@@ -178,12 +196,12 @@ task ExtractFromSampleInfoTable {
         avro_prefix="$(dirname ~{avro_sibling})/avro"
         echo $avro_prefix > "avro_prefix.out"
 
-        python3 /app/run_avro_query_for_sample_info.py \
+        python3 /app/run_avro_query_for_sample_table.py \
             --avro_prefix ${avro_prefix} \
             --call_set_identifier ~{call_set_identifier} \
             --dataset_name ~{dataset_name} \
             --project_id=~{project_id} \
-            ~{new_samples_extract_clause}
+            --sample_table_name ~{sample_table_or_view_name}
     >>>
 
     output {
@@ -227,7 +245,7 @@ task ExtractFromFilterTables {
 
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/vets_filtering_data/vets_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
+            uri='${avro_prefix}/vets_filtering_data/vets_filtering_data_*.avro', format='AVRO', compression='SNAPPY', overwrite=true) AS
             SELECT location, type as model, ref, alt, calibration_sensitivity, yng_status
             FROM \`~{project_id}.~{dataset_name}.filter_set_info\`
             WHERE filter_set_name = '~{filter_set_name}'
@@ -236,7 +254,7 @@ task ExtractFromFilterTables {
 
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/site_filtering_data/site_filtering_data_*.avro', format='AVRO', compression='SNAPPY') AS
+            uri='${avro_prefix}/site_filtering_data/site_filtering_data_*.avro', format='AVRO', compression='SNAPPY', overwrite=true) AS
             SELECT location, filters
             FROM \`~{project_id}.~{dataset_name}.filter_set_sites\`
             WHERE filter_set_name = '~{filter_set_name}'
@@ -263,7 +281,7 @@ task ExtractFromPloidyTable {
         volatile: true
     }
     input {
-        Int? new_sample_cutoff
+        String sample_table_or_view_name
         String project_id
         String dataset_name
         String ploidy_table_name
@@ -275,7 +293,6 @@ task ExtractFromPloidyTable {
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
     }
-    String new_samples_extract_clause = if (defined(new_sample_cutoff)) then  "AND s.sample_id > ~{new_sample_cutoff}" else ""
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
@@ -289,16 +306,17 @@ task ExtractFromPloidyTable {
 
         python3 /app/run_avro_query.py --sql "
             EXPORT DATA OPTIONS(
-            uri='${avro_prefix}/ploidy_data/ploidy_data_*.avro', format='AVRO', compression='SNAPPY') AS
+            uri='${avro_prefix}/ploidy_data/ploidy_data_*.avro', format='AVRO', compression='SNAPPY', overwrite=true) AS
             SELECT (
                 CASE (p.chromosome / 1000000000000)
                     WHEN 23 THEN 'chrX'
                     WHEN 24 THEN 'chrY'
                     END) AS location, s.sample_name, p.ploidy
             FROM \`~{project_id}.~{dataset_name}.~{ploidy_table_name}\` p
-            JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON p.sample_id = s.sample_id
+            JOIN \`~{project_id}.~{dataset_name}.~{sample_table_or_view_name}\` s ON p.sample_id = s.sample_id
             WHERE (p.chromosome / 1000000000000 = 23 or p.chromosome / 1000000000000 = 24)
-            ~{new_samples_extract_clause}
+            AND s.withdrawn IS NULL
+            AND s.is_control = false
         " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ~{ploidy_table_name} --project_id=~{project_id}
     >>>
     output {
@@ -319,7 +337,7 @@ task ExtractFromSuperpartitionedTables {
         volatile: true
     }
     input {
-        Int? new_sample_cutoff
+        String sample_table_or_view_name
         String project_id
         String dataset_name
         String avro_sibling
@@ -330,8 +348,6 @@ task ExtractFromSuperpartitionedTables {
         String variants_docker
         Boolean use_compressed_references = false
     }
-    String fq_sample_mapping_table = "~{project_id}.~{dataset_name}.sample_info"
-    String new_samples_extract_clause = if (defined(new_sample_cutoff)) then  "AND s.sample_id > ~{new_sample_cutoff}" else ""
 
     parameter_meta {
         avro_sibling: "Cloud path to a file that will be the sibling to the 'avro' 'directory' under which output Avro files will be written."
@@ -347,59 +363,58 @@ task ExtractFromSuperpartitionedTables {
 
         avro_prefix="$(dirname ~{avro_sibling})/avro"
 
-        if [[ -z "~{new_sample_cutoff}" ]]
-        then
-            # Default to a 1-based first superpartition
-            start_table=$((~{shard_index} + 1))
-        else
-            # +1 here since new_sample_cutoff is *excluded* from the data we want to export
-            first_sample=~{new_sample_cutoff + 1}
-            if [[ $((${first_sample} % 4000)) == 0 ]]
-            then
-                # e.g. samples 1 to 4000 go in the first superpartition
-                start_table=$((${first_sample} / 4000))
-            else
-                start_table=$(((${first_sample} / 4000) + 1))
-            fi
-        fi
+        # Query the sample table upfront to find only the superpartitions that (a) have at least one
+        # non-withdrawn, non-control sample and (b) are assigned to this shard. A superpartition p
+        # belongs to shard shard_index when (p - 1) % num_shards == shard_index, which is the same
+        # assignment produced by `seq shard_index+1 num_shards num_superpartitions`. Skipping empty
+        # superpartitions avoids running EXPORT DATA queries that would produce no output.
+        python3 /app/run_avro_query.py \
+            --sql '
+                SELECT superpartition
+                FROM (
+                    SELECT DISTINCT CAST(CEIL(sample_id / 4000.0) AS INT64) AS superpartition
+                    FROM `~{project_id}.~{dataset_name}.~{sample_table_or_view_name}`
+                    WHERE withdrawn IS NULL AND is_control = false
+                )
+                WHERE MOD(superpartition - 1, ~{num_shards}) = ~{shard_index}
+                  AND superpartition <= ~{num_superpartitions}
+                ORDER BY superpartition
+            ' \
+            --call_set_identifier ~{call_set_identifier} \
+            --dataset_name ~{dataset_name} \
+            --table_name ~{sample_table_or_view_name} \
+            --project_id ~{project_id} \
+            --output_file superpartitions_to_process.txt
 
-        for superpartition in $(seq ~{shard_index + 1} ~{num_shards} ~{num_superpartitions})
+        readarray -t superpartitions_to_process < superpartitions_to_process.txt
+
+        for superpartition in "${superpartitions_to_process[@]}"
         do
-            if (( ${superpartition} < ${start_table} ))
-            then
-                # Do not process superpartitions less than the start table. The queries below wouldn't extract any data
-                # anyway due to the "new_samples_extract_clause", but they would generate empty files that would
-                # frustrate lining up vet and ref avros with sample mapping avros.
-                continue
-            fi
-
             str_table_index=$(printf "%03d" $superpartition)
 
             # These bq exports error out if there are any objects at the sibling level to where output files would be written
             # so an extra layer of `vet_${str_table_index}` is inserted here.
             python3 /app/run_avro_query.py --sql "
                 EXPORT DATA OPTIONS(
-                uri='${avro_prefix}/vets/vet_${str_table_index}/vet_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
+                uri='${avro_prefix}/vets/vet_${str_table_index}/vet_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY', overwrite=true) AS
                 SELECT location, v.sample_id, ref, REPLACE(alt,',<NON_REF>','') alt, call_GT as GT, call_AD as AD, call_GQ as GQ, cast(SPLIT(call_pl,',')[OFFSET(0)] as int64) as RGQ,
                 call_PS as PS
                 FROM \`~{project_id}.~{dataset_name}.vet_${str_table_index}\` v
-                INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = v.sample_id
+                INNER JOIN \`~{project_id}.~{dataset_name}.~{sample_table_or_view_name}\` s ON s.sample_id = v.sample_id
                 WHERE withdrawn IS NULL AND
                 is_control = false
-                ~{new_samples_extract_clause}
                 ORDER BY location
             " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name vet_${str_table_index} --project_id=~{project_id}
 
             if [ ~{use_compressed_references} = false ]; then
                 python3 /app/run_avro_query.py --sql "
                     EXPORT DATA OPTIONS(
-                    uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
+                    uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY', overwrite=true) AS
                     SELECT location, r.sample_id, length, state
                     FROM \`~{project_id}.~{dataset_name}.ref_ranges_${str_table_index}\` r
-                    INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = r.sample_id
+                    INNER JOIN \`~{project_id}.~{dataset_name}.~{sample_table_or_view_name}\` s ON s.sample_id = r.sample_id
                     WHERE withdrawn IS NULL AND
                     is_control = false
-                    ~{new_samples_extract_clause}
                     ORDER BY location
                 " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ref_ranges_${str_table_index} --project_id ~{project_id}
             else
@@ -424,13 +439,12 @@ task ExtractFromSuperpartitionedTables {
                           intToState(superpackEntry & 0xF))
                     );
                     EXPORT DATA OPTIONS(
-                    uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY') AS
+                    uri='${avro_prefix}/refs/ref_ranges_${str_table_index}/ref_ranges_${str_table_index}_*.avro', format='AVRO', compression='SNAPPY', overwrite=true) AS
                     SELECT UnpackRefRangeInfo(packed_ref_data).location as location, r.sample_id, UnpackRefRangeInfo(packed_ref_data).len as length, UnpackRefRangeInfo(packed_ref_data).state as state
                     FROM \`~{project_id}.~{dataset_name}.ref_ranges_${str_table_index}\` r
-                    INNER JOIN \`~{project_id}.~{dataset_name}.sample_info\` s ON s.sample_id = r.sample_id
+                    INNER JOIN \`~{project_id}.~{dataset_name}.~{sample_table_or_view_name}\` s ON s.sample_id = r.sample_id
                     WHERE withdrawn IS NULL AND
                     is_control = false
-                    ~{new_samples_extract_clause}
                     ORDER BY location
                     " --call_set_identifier ~{call_set_identifier} --dataset_name ~{dataset_name} --table_name ref_ranges_${str_table_index} --project_id ~{project_id}
             fi
