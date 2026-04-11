@@ -40,10 +40,11 @@ public class SplitReadEvidenceGenotyper {
     private final int commonMin;
     private final int commonMax;
 
-    private final List<RecoverResult> recoverSinglePass = new ArrayList<>();
-    private final List<RecoverResult> recoverSingleFail = new ArrayList<>();
-    private final List<RecoverResult> recoverBothPass = new ArrayList<>();
-    private final List<RecoverResult> recoverBothFail = new ArrayList<>();
+    // Recovery histograms: bin index k counts entries with frac in [k*0.1, (k+1)*0.1);
+    // bin 10 counts frac == 1.0. Suffix sums at finalization give counts >= each cutoff.
+    // Dimensions: [freq bin (rare=0, common=1)][single=0, both=1][pass=0, fail=1][frac bin 0..10]
+    private static final int NUM_FRAC_BINS = 11;
+    private final int[][][][] recoverHistograms = new int[2][2][2][NUM_FRAC_BINS];
 
     private static final Median MEDIAN = new Median();
     private static final NormalDistribution Z_DISTRIBUTION = new NormalDistribution();
@@ -159,76 +160,72 @@ public class SplitReadEvidenceGenotyper {
         firstPassMade = true;
     }
 
-    private record RecoverResult(String variant, String sample, int count, double frac) {}
     public record CutoffResult(double fracSingle, double fracBoth, int countPass, int countFail, int freqMin, int freqMax) {}
 
     /**
-     * For a sorted array of frac values (ascending), count the number of elements >= threshold
-     * using binary search. Returns the count of elements in the suffix starting from the
-     * leftmost element >= threshold.
+     * Compute suffix sums from a histogram: result[k] = number of entries with frac >= cutoffs[k].
+     * The histogram bin j holds the count of entries with frac in [j*0.1, (j+1)*0.1); bin 10 holds frac == 1.0.
      */
-    private static int countAboveThreshold(final double[] sortedFracs, final double threshold) {
-        if (sortedFracs.length == 0) {
-            return 0;
+    private static int[] suffixSumsFromHistogram(final int[] histogram) {
+        final int[] suffixSums = new int[NUM_FRAC_BINS];
+        suffixSums[NUM_FRAC_BINS - 1] = histogram[NUM_FRAC_BINS - 1];
+        for (int k = NUM_FRAC_BINS - 2; k >= 0; k--) {
+            suffixSums[k] = suffixSums[k + 1] + histogram[k];
         }
-        // Binary search for leftmost index where sortedFracs[idx] >= threshold
-        int lo = 0;
-        int hi = sortedFracs.length;
-        while (lo < hi) {
-            final int mid = (lo + hi) >>> 1;
-            if (sortedFracs[mid] < threshold) {
-                lo = mid + 1;
-            } else {
-                hi = mid;
-            }
-        }
-        return sortedFracs.length - lo;
+        return suffixSums;
     }
 
     /**
-     * Pre-filter a recovery list by count range, sort the resulting frac values,
-     * then compute the count of elements with frac >= cutoff for each cutoff value
-     * using binary search. This replaces N linear scans with one sort + N binary searches.
+     * Map a frac value in [0, 1] to a histogram bin index in [0, 10].
+     * Bin k covers [k*0.1, (k+1)*0.1); bin 10 covers exactly 1.0.
      */
-    private static int[] precomputeCountsForCutoffs(final List<RecoverResult> list, final double[] cutoffs,
-                                                     final int freqMin, final int freqMax) {
-        final double[] filteredFracs = list.stream()
-                .filter(r -> r.count > freqMin && r.count <= freqMax)
-                .mapToDouble(RecoverResult::frac)
-                .sorted()
-                .toArray();
-        final int[] counts = new int[cutoffs.length];
-        for (int i = 0; i < cutoffs.length; i++) {
-            counts[i] = countAboveThreshold(filteredFracs, cutoffs[i]);
+    private static int fracToBin(final double frac) {
+        final int bin = (int) (frac * 10);
+        return Math.min(bin, NUM_FRAC_BINS - 1);
+    }
+
+    /**
+     * Increment the appropriate recovery histogram bin for a single entry.
+     * @param count the variant-level count (nonRefCount or twoSidedPassCount) used for frequency bin selection
+     * @param frac the ratio value to bin (backgroundRatio or genotypeRatio)
+     * @param pass whether this entry passes training criteria
+     * @param singleOrBoth 0 for single-sided, 1 for both-sided
+     */
+    private void addToRecoveryHistogram(final int count, final double frac, final boolean pass, final int singleOrBoth) {
+        final int fracBin = fracToBin(frac);
+        final int passIndex = pass ? 0 : 1;
+        // Rare frequency bin
+        if (count > rareMin && count <= rareMax) {
+            recoverHistograms[0][singleOrBoth][passIndex][fracBin]++;
         }
-        return counts;
+        // Common frequency bin
+        if (count > commonMin && count <= commonMax) {
+            recoverHistograms[1][singleOrBoth][passIndex][fracBin]++;
+        }
     }
 
     public SplitReadGenotypeFrequencyCutoffs finalizeThirdPass() {
         Utils.validate(!thirdPassMade, "Third pass has already been made");
         final double[] cutoffs = IntStream.rangeClosed(0, 10).mapToDouble(i -> i * 0.1).toArray();
-        final CutoffResult commonResult = cutoffOptimization(cutoffs, commonMin, commonMax);
-        final CutoffResult rareResult = cutoffOptimization(cutoffs, rareMin, rareMax);
+        final CutoffResult rareResult = cutoffOptimizationFromHistograms(cutoffs, 0);
+        final CutoffResult commonResult = cutoffOptimizationFromHistograms(cutoffs, 1);
         thirdPassMade = true;
-        // Free recovery lists that are no longer needed
-        recoverSinglePass.clear();
-        recoverSingleFail.clear();
-        recoverBothPass.clear();
-        recoverBothFail.clear();
         return new SplitReadGenotypeFrequencyCutoffs(rareResult, commonResult);
     }
 
     /**
-     * Optimized cutoff search: pre-sort each recovery list's frac values (filtered by count range)
-     * once, then use binary search for each cutoff threshold. This reduces the complexity from
-     * O(121 * M) to O(M * log(M) + 44 * log(M)) where M is the recovery list size.
+     * Cutoff optimization using fixed-size histogram suffix sums. Each histogram has 11 bins
+     * (one per 0.1 increment from 0.0 to 1.0). Suffix sums give counts of entries >= each
+     * cutoff threshold, exactly matching the previous binary-search approach.
      */
-    private CutoffResult cutoffOptimization(final double[] cutoffs, final int freqMin, final int freqMax) {
-        // Precompute counts for each cutoff value via sort + binary search
-        final int[] singlePassCounts = precomputeCountsForCutoffs(recoverSinglePass, cutoffs, freqMin, freqMax);
-        final int[] singleFailCounts = precomputeCountsForCutoffs(recoverSingleFail, cutoffs, freqMin, freqMax);
-        final int[] bothPassCounts = precomputeCountsForCutoffs(recoverBothPass, cutoffs, freqMin, freqMax);
-        final int[] bothFailCounts = precomputeCountsForCutoffs(recoverBothFail, cutoffs, freqMin, freqMax);
+    private CutoffResult cutoffOptimizationFromHistograms(final double[] cutoffs, final int freqBinIndex) {
+        final int[] singlePassCounts = suffixSumsFromHistogram(recoverHistograms[freqBinIndex][0][0]);
+        final int[] singleFailCounts = suffixSumsFromHistogram(recoverHistograms[freqBinIndex][0][1]);
+        final int[] bothPassCounts = suffixSumsFromHistogram(recoverHistograms[freqBinIndex][1][0]);
+        final int[] bothFailCounts = suffixSumsFromHistogram(recoverHistograms[freqBinIndex][1][1]);
+
+        final int freqMin = freqBinIndex == 0 ? rareMin : commonMin;
+        final int freqMax = freqBinIndex == 0 ? rareMax : commonMax;
 
         final List<CutoffResult> combine = new ArrayList<>(cutoffs.length * cutoffs.length);
         for (int s = 0; s < cutoffs.length; s++) {
@@ -473,31 +470,13 @@ public class SplitReadEvidenceGenotyper {
             final boolean pass = depthGenotype != null && nonRefCount > 0 && largeEnough && hasSplitReadEvidence && (nonRefDiscordantPair || nonRefDepth);
             if (bothsideNonZeroCount > 0 && twoSidedPassCount > 0) {
                 final double backgroundRatio = twoSidedPassCount / (double) bothsideNonZeroCount;
-                // compute ratio with number of fully supported samples
-                // recover.bothsides.txt
                 if (genotypes[i] > 0) {
-                    final RecoverResult result = new RecoverResult(record.getId(), samples.get(i), twoSidedPassCount, backgroundRatio);
-                    if (pass) {
-                        // recover.both.txt
-                        recoverBothPass.add(result);
-                    } else {
-                        // recover.both.fail.txt
-                        recoverBothFail.add(result);
-                    }
+                    addToRecoveryHistogram(twoSidedPassCount, backgroundRatio, pass, 1);
                 }
-            } else if (samplesOverOneCount > 0 && nonRefCount > 0) {  // in original code, this is not an "else" but records are deduplicated later in optimalsrcutoffs.sh
+            } else if (samplesOverOneCount > 0 && nonRefCount > 0) {
                 final double genotypeRatio = nonRefCount / (double) samplesOverOneCount;
-                // One-sided support
                 if (genotypes[i] > 0) {
-                    final RecoverResult result = new RecoverResult(record.getId(), samples.get(i), nonRefCount, genotypeRatio);
-                    // recover.txt
-                    if (pass) {
-                        // recover.single.txt
-                        recoverSinglePass.add(result);
-                    } else {
-                        // recover.single.fail.txt
-                        recoverSingleFail.add(result);
-                    }
+                    addToRecoveryHistogram(nonRefCount, genotypeRatio, pass, 0);
                 }
             }
         }
