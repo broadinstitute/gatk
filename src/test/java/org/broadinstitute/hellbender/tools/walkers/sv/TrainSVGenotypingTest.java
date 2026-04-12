@@ -79,7 +79,8 @@ public class TrainSVGenotypingTest extends GatkToolIntegrationTest {
                 .add(TrainSVGenotyping.DEPTH_EXCLUSION_INTERVALS_LONG_NAME, depthExclude)
                 .add(TrainSVGenotyping.PESR_EXCLUSION_INTERVALS_LONG_NAME, pesrExclude)
                 .add(TrainSVGenotyping.TABLES_DIR_LONG_NAME, outputDir.toString())
-                .add(TrainSVGenotyping.TABLES_NAME_LONG_NAME, outputName);
+                .add(TrainSVGenotyping.TABLES_NAME_LONG_NAME, outputName)
+                .add(TrainSVGenotyping.OUTPUT_TRAINING_VCF_LONG_NAME, true);
 
         runCommandLine(args, TrainSVGenotyping.class.getSimpleName());
 
@@ -136,6 +137,55 @@ public class TrainSVGenotypingTest extends GatkToolIntegrationTest {
                 }
             }
         }
+
+        assertTsvFilesEqual(rdDepthParamsFile, new File(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.rd_geno_params.tsv"));
+        assertTsvFilesEqual(rdPesrParamsFile, new File(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.rd_geno_params.tsv"));
+        assertTsvFilesEqual(peParamsFile, new File(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.pe_geno_params.tsv"));
+        assertTsvFilesEqual(srParamsFile, new File(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.sr_geno_params.tsv"));
+    }
+
+    @Test
+    public void testTrainSVGenotypingTablesOnly() throws IOException {
+        // Run without --output-training-vcf (defaults to false) to verify that
+        // parameter tables are produced correctly via the SR-only histogram path.
+        final File vcfFile = new File(TOOL_TEST_DIR, "train_sv_genotyping_test.vcf.gz");
+        final File peFile = new File(LARGE_FILE_TEST_DIR, "train_sv_genotyping_test.pe.txt.gz");
+        final File srFile = new File(LARGE_FILE_TEST_DIR, "train_sv_genotyping_test.sr.txt.gz");
+        final File rdFile = new File(LARGE_FILE_TEST_DIR, "train_sv_genotyping_test.rd.txt.gz");
+        final File trainingIntervals = new File(TOOL_TEST_DIR, "train_sv_genotyping_test.training_intervals.bed");
+        final File depthExclude = new File(TOOL_TEST_DIR, "train_sv_genotyping_test.depth_exclude.bed.gz");
+        final File pesrExclude = new File(TOOL_TEST_DIR, "train_sv_genotyping_test.pesr_exclude.bed.gz");
+
+        final File ploidyTable = new File(AGGREGATE_SV_TEST_DIR, "1kg_ref_panel_v1.ploidy_table.tsv");
+        final File coverageFile = new File(AGGREGATE_SV_TEST_DIR, "aggregate_sv_test.medianCov.tsv");
+
+        final String outputName = "train_sv_test_tables_only";
+        final Path outputDir = createTempDir("trainSVGenotypingTablesOnly").toPath();
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addVCF(vcfFile)
+                .addReference(hg38Reference)
+                .add(TrainSVGenotyping.DEPTH_EVIDENCE_FILE_PATH_LONG_NAME, rdFile)
+                .add(AggregateSVEvidence.DISCORDANT_PAIRS_LONG_NAME, peFile)
+                .add(AggregateSVEvidence.SPLIT_READ_LONG_NAME, srFile)
+                .add(TrainSVGenotyping.MEDIAN_COUNTS_FILE_PATH_LONG_NAME, coverageFile)
+                .add(SVClusterWalker.PLOIDY_TABLE_LONG_NAME, ploidyTable)
+                .add(TrainSVGenotyping.TRAINING_INTERVALS_LONG_NAME, trainingIntervals)
+                .add(TrainSVGenotyping.DEPTH_EXCLUSION_INTERVALS_LONG_NAME, depthExclude)
+                .add(TrainSVGenotyping.PESR_EXCLUSION_INTERVALS_LONG_NAME, pesrExclude)
+                .add(TrainSVGenotyping.TABLES_DIR_LONG_NAME, outputDir.toString())
+                .add(TrainSVGenotyping.TABLES_NAME_LONG_NAME, outputName);
+
+        runCommandLine(args, TrainSVGenotyping.class.getSimpleName());
+
+        final File rdDepthParamsFile = outputDir.resolve(outputName + ".rd_depth_geno_params.tsv").toFile();
+        final File rdPesrParamsFile = outputDir.resolve(outputName + ".rd_pesr_geno_params.tsv").toFile();
+        final File peParamsFile = outputDir.resolve(outputName + ".pe_geno_params.tsv").toFile();
+        final File srParamsFile = outputDir.resolve(outputName + ".sr_geno_params.tsv").toFile();
+        Assert.assertTrue(rdDepthParamsFile.exists(), "RD depth genotype parameters file should exist");
+        Assert.assertTrue(rdPesrParamsFile.exists(), "RD PESR genotype parameters file should exist");
+        Assert.assertTrue(peParamsFile.exists(), "PE genotype parameters file should exist");
+        Assert.assertTrue(srParamsFile.exists(), "SR genotype parameters file should exist");
 
         assertTsvFilesEqual(rdDepthParamsFile, new File(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.rd_geno_params.tsv"));
         assertTsvFilesEqual(rdPesrParamsFile, new File(TOOL_TEST_DIR, "train_sv_genotyping_test.expected.rd_geno_params.tsv"));

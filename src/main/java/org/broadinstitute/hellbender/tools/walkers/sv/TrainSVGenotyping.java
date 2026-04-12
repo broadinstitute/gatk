@@ -129,6 +129,8 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     public static final String SPLIT_READ_QUERY_LOOKAHEAD_LONG_NAME = "sr-query-lookahead";
     public static final String DEPTH_MIN_SEPARATION_LONG_NAME = "rd-depth-min-separation";
     public static final String PESR_MIN_SEPARATION_LONG_NAME = "rd-pesr-min-separation";
+    public static final String OUTPUT_TRAINING_VCF_LONG_NAME = "output-training-vcf";
+    public static final String SR_CUTOFF_STRIDE_LONG_NAME = "sr-cutoff-stride";
 
     @Argument(
             fullName = DEPTH_EVIDENCE_FILE_PATH_LONG_NAME,
@@ -191,7 +193,8 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     @Argument(
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
-            doc = "Output VCF"
+            doc = "Output VCF (required when --" + OUTPUT_TRAINING_VCF_LONG_NAME + " is true)",
+            optional = true
     )
     public GATKPath outputVcf;
 
@@ -293,6 +296,26 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     public double pesrMinSeparation = 0.;
 
     @Argument(
+            fullName = OUTPUT_TRAINING_VCF_LONG_NAME,
+            doc = "Write genotyped training VCF output. When false (the default), only parameter " +
+                    "tables are produced and the -O argument is not required. Enable for debugging " +
+                    "or integration testing.",
+            optional = true
+    )
+    public boolean outputTrainingVcf = false;
+
+    @Argument(
+            fullName = SR_CUTOFF_STRIDE_LONG_NAME,
+            doc = "Process every Nth variant for SR frequency cutoff estimation in the final pass. " +
+                    "Higher values reduce runtime by skipping SR evidence queries. Histogram counts " +
+                    "are scaled by the stride factor to compensate. Only applies when --" +
+                    OUTPUT_TRAINING_VCF_LONG_NAME + " is false; ignored when writing the training VCF.",
+            minValue = 1,
+            optional = true
+    )
+    public int srCutoffStride = 1;
+
+    @Argument(
             fullName = AggregateDepthEvidence.MAX_QUALITY_LONG_NAME,
             doc = "Max quality score",
             minValue = 1
@@ -375,10 +398,20 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
      * depth genotype results are cached in memory. After training completes, all training
      * data is freed.
      *
-     * Phase 2 (Genotype + Write): Re-reads the VCF from disk, streaming each variant through
-     * depth/PE/SR genotyping with the trained parameters, and writes immediately. No per-variant
-     * data accumulates across records. SR recovery statistics are maintained as fixed-size
-     * histograms (352 bytes total) rather than unbounded lists.
+     * Phase 2 has two modes depending on {@code --output-training-vcf}:
+     *
+     * Phase 2a (Full Genotype + Write, when --output-training-vcf is true): Re-reads the VCF
+     * from disk, streaming each variant through depth/PE/SR genotyping with the trained
+     * parameters, and writes immediately.
+     *
+     * Phase 2b (SR Histogram Only, when --output-training-vcf is false): Re-reads the VCF
+     * from disk but only queries SR evidence for recovery histogram accumulation, skipping
+     * depth and PE evidence queries entirely. A stride ({@code --sr-cutoff-stride}) can
+     * further reduce the number of variants processed; histogram counts are scaled by the
+     * stride factor to compensate.
+     *
+     * In both modes, SR recovery statistics are maintained as fixed-size histograms (352 bytes
+     * total) rather than unbounded lists. No per-variant data accumulates across records.
      *
      * Memory usage scales with the number of trainable variants (~100-200K) rather than the
      * total VCF size (3-4M), reducing peak memory from ~50+ GB to ~2-4 GB.
@@ -528,44 +561,82 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         trainablePERecords.clear();
         logger.info("Phase 1 complete — all training parameters learned");
 
-        // ========== PHASE 2: GENOTYPE + WRITE (streaming) ==========
-        // Re-read the VCF from disk and process each variant with constant memory.
-        // Depth genotypes are re-computed from the tabix-indexed RD file (<1ms compute per variant).
-        // PE and SR genotypes use the trained parameters. SR recovery stats accumulate in
-        // fixed-size histograms (352 bytes). No per-variant data persists across records.
+        if (outputTrainingVcf) {
+            // ========== PHASE 2a: FULL GENOTYPE + WRITE ==========
+            // Re-read the VCF from disk and process each variant with constant memory.
+            // Depth genotypes are re-computed from the tabix-indexed RD file.
+            // PE and SR genotypes use the trained parameters. SR recovery stats accumulate in
+            // fixed-size histograms (352 bytes). No per-variant data persists across records.
 
-        logger.info("Phase 2: Streaming genotype + write");
-        StreamSupport.stream(getSpliteratorForDrivingVariants(), false)
-                .filter(countingVariantFilter)
-                .forEach(variant -> {
-                    progressMeter.update(new SimpleInterval(variant));
-                    final SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
+            logger.info("Phase 2: Streaming genotype + write");
+            StreamSupport.stream(getSpliteratorForDrivingVariants(), false)
+                    .filter(countingVariantFilter)
+                    .forEach(variant -> {
+                        progressMeter.update(new SimpleInterval(variant));
+                        final SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
 
-                    // Depth genotype (re-computed from tabix)
-                    final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = computeDepthGenotype(record);
+                        // Depth genotype (re-computed from tabix)
+                        final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = computeDepthGenotype(record);
 
-                    // PE genotype
-                    DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult peResult = null;
-                    if (discordantPairCollectionEnabled()) {
-                        final List<DiscordantPairEvidence> peEvidence = discordantPairCollector.collectEvidence(record);
-                        peResult = discordantPairGenotyper.genotype(record, peEvidence, discordantPairParameters, masterSampleList);
-                    }
+                        // PE genotype
+                        DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult peResult = null;
+                        if (discordantPairCollectionEnabled()) {
+                            final List<DiscordantPairEvidence> peEvidence = discordantPairCollector.collectEvidence(record);
+                            peResult = discordantPairGenotyper.genotype(record, peEvidence, discordantPairParameters, masterSampleList);
+                        }
 
-                    // SR genotype + recovery histogram accumulation
-                    SplitReadEvidenceGenotyper.SplitReadGenotypeResult srResult = null;
-                    if (splitReadCollectionEnabled()) {
+                        // SR genotype + recovery histogram accumulation
+                        SplitReadEvidenceGenotyper.SplitReadGenotypeResult srResult = null;
+                        if (splitReadCollectionEnabled()) {
+                            final List<SplitReadEvidence> startSplitReads = splitReadStartCollector.collectEvidence(record);
+                            final List<SplitReadEvidence> endSplitReads = splitReadEndCollector.collectEvidence(record);
+                            srResult = splitReadGenotyper.genotypeTraining(record, startSplitReads, endSplitReads, depthResult, peResult, splitReadParameters, masterSampleList);
+                        }
+
+                        // Write immediately — no accumulation
+                        writeGenotypes(record, depthResult, peResult, srResult);
+                    });
+            logger.info("Phase 2: Genotype + write complete");
+        } else {
+            // ========== PHASE 2b: SR HISTOGRAM ACCUMULATION ONLY ==========
+            // When not writing the training VCF, Phase 2 only needs SR evidence queries
+            // for recovery histogram accumulation. Depth and PE evidence queries are skipped
+            // because the histogram's pass flag depends only on SVType (CNV <-> depthGenotype
+            // != null) and PE GQ which is always >= 1. See accumulateHistogramOnly() for details.
+
+            logger.info("Phase 2: SR histogram accumulation (stride=" + srCutoffStride + ")");
+            final int[] strideCounter = {0};
+            StreamSupport.stream(getSpliteratorForDrivingVariants(), false)
+                    .filter(countingVariantFilter)
+                    .forEach(variant -> {
+                        progressMeter.update(new SimpleInterval(variant));
+                        if (strideCounter[0]++ % srCutoffStride != 0) {
+                            return;
+                        }
+                        if (!splitReadCollectionEnabled()) {
+                            return;
+                        }
+                        final SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
+                        final GATKSVVCFConstants.StructuralVariantAnnotationType svtype = record.getType();
+                        final boolean isCNV = svtype == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL
+                                || svtype == GATKSVVCFConstants.StructuralVariantAnnotationType.DUP
+                                || svtype == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV;
                         final List<SplitReadEvidence> startSplitReads = splitReadStartCollector.collectEvidence(record);
                         final List<SplitReadEvidence> endSplitReads = splitReadEndCollector.collectEvidence(record);
-                        srResult = splitReadGenotyper.genotypeTraining(record, startSplitReads, endSplitReads, depthResult, peResult, splitReadParameters, masterSampleList);
-                    }
-
-                    // Write immediately — no accumulation
-                    writeGenotypes(record, depthResult, peResult, srResult);
-                });
-        logger.info("Phase 2: Genotype + write complete");
+                        splitReadGenotyper.accumulateHistogramOnly(record, startSplitReads, endSplitReads, isCNV, splitReadParameters, masterSampleList);
+                    });
+            logger.info("Phase 2: SR histogram accumulation complete");
+        }
 
         // Finalize SR recovery cutoffs from histograms and write params
         if (splitReadCollectionEnabled()) {
+            if (srCutoffStride > 1 && !outputTrainingVcf) {
+                // Compensate histogram counts for stride-based downsampling so that
+                // the written countPass/countFail approximate the full-cohort values.
+                // The cutoff optimization uses ratios which are invariant under uniform
+                // scaling, so the selected fracSingle/fracBoth cutoffs are unchanged.
+                splitReadGenotyper.scaleHistograms(srCutoffStride);
+            }
             splitReadFrequencyCutoffs = splitReadGenotyper.finalizeThirdPass();
             writeSplitReadParameters(new SplitReadEvidenceGenotyper.SplitReadGenotypeMetrics(splitReadParameters, splitReadFrequencyCutoffs));
         }
@@ -633,9 +704,14 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         }
 
         loader = new DepthMatrixLoader(depthSource, numBins, largeVariantSize, largeVariantPoints, largeVariantWindow, depthExclusionIntervals, dictionary);
-        writer = createVCFWriter(outputVcf);
+        if (outputTrainingVcf) {
+            Utils.validate(outputVcf != null, "Output VCF path (-O) is required when --" + OUTPUT_TRAINING_VCF_LONG_NAME + " is true");
+            writer = createVCFWriter(outputVcf);
+        }
         outputHeader = createHeader(getHeaderForVariants());
-        writer.writeHeader(outputHeader);
+        if (writer != null) {
+            writer.writeHeader(outputHeader);
+        }
         masterSampleList = outputHeader.getSampleNamesInOrder();
         depthGenotyper = new DepthEvidenceGenotyper(null, masterSampleList, maxQual, dictionary);
         trainCopyNumberSites();
