@@ -426,6 +426,17 @@ public class SplitReadEvidenceGenotyper {
         }
     }
 
+    /**
+     * Computes SR genotypes for a variant and accumulates recovery histogram data.
+     * This is the full computation used when writing the training VCF.
+     *
+     * <p>Note: The {@code pass} flag for histogram binning simplifies in practice to
+     * {@code isCNV && nonRefCount > 0 && largeEnough && hasSplitReadEvidence} because
+     * PE GQ is clamped to min 1 (making nonRefDiscordantPair always true) and nonRefDepth
+     * is subsumed by the depthGenotype null check. The full expression is preserved here
+     * for clarity and future-proofing. See {@link #accumulateHistogramOnly} for a
+     * streamlined version used when only histogram accumulation is needed.</p>
+     */
     public SplitReadGenotypeResult genotypeTraining(final SVCallRecord record,
                                                     final List<SplitReadEvidence> startEvidence,
                                                     final List<SplitReadEvidence> endEvidence,
@@ -481,6 +492,82 @@ public class SplitReadEvidenceGenotyper {
             }
         }
         return new SplitReadGenotypeResult(genotypes, null, maxQuality, null, null);
+    }
+
+    /**
+     * Accumulates SR recovery histogram data without computing full genotypes or querying
+     * depth/PE evidence. Used by the fast (non-VCF) Phase 2 path in TrainSVGenotyping.
+     *
+     * <p>The {@code pass} flag is derived from {@code isCNV} (equivalent to
+     * {@code depthGenotype != null} since the depth genotyper returns null for non-CNV types)
+     * combined with SR-derived metrics. This is equivalent to the full {@link #genotypeTraining}
+     * pass flag because PE GQ is clamped to min 1 (making nonRefDiscordantPair always true)
+     * and nonRefDepth is subsumed by the depthGenotype null check.</p>
+     */
+    public void accumulateHistogramOnly(final SVCallRecord record,
+                                        final List<SplitReadEvidence> startEvidence,
+                                        final List<SplitReadEvidence> endEvidence,
+                                        final boolean isCNV,
+                                        final SplitReadGenotypeParameters parameters,
+                                        final List<String> samples) {
+        final Map<String, Double> startCounts = normalizeCounts(startEvidence);
+        final Map<String, Double> endCounts = normalizeCounts(endEvidence);
+        final int[] genotypes = new int[samples.size()];
+        int nonRefCount = 0;
+        for (int i = 0; i < samples.size(); i++) {
+            final String sample = samples.get(i);
+            final double startCount = startCounts.getOrDefault(sample, 0.);
+            final double endCount = endCounts.getOrDefault(sample, 0.);
+            final double countSum = startCount + endCount;
+            if (countSum < parameters.minCount) {
+                genotypes[i] = 0;
+            } else if (countSum <= parameters.medianHom - parameters.sdHet) {
+                genotypes[i] = 1;
+            } else {
+                genotypes[i] = (int) ((countSum / (parameters.medianHom * 0.5)) + 0.5);
+            }
+            if (genotypes[i] != 0) {
+                ++nonRefCount;
+            }
+        }
+        final boolean largeEnough = record.getLength() != null && record.getLength() >= minSize;
+        final boolean hasSplitReadEvidence = record.getEvidence().contains(GATKSVVCFConstants.EvidenceTypes.SR);
+        final int minCount = Math.max(trainingCountCutoff / 2, 1);
+        final int twoSidedPassCount = countBothSideSupport(startCounts, endCounts, minCount);
+        final int bothsideNonZeroCount = countBothSideSupport(startCounts, endCounts, 0);
+        final int samplesOverOneCount = countSummedSupport(startCounts, endCounts, 1);
+        final boolean pass = isCNV && nonRefCount > 0 && largeEnough && hasSplitReadEvidence;
+        for (int i = 0; i < samples.size(); i++) {
+            if (bothsideNonZeroCount > 0 && twoSidedPassCount > 0) {
+                final double backgroundRatio = twoSidedPassCount / (double) bothsideNonZeroCount;
+                if (genotypes[i] > 0) {
+                    addToRecoveryHistogram(twoSidedPassCount, backgroundRatio, pass, 1);
+                }
+            } else if (samplesOverOneCount > 0 && nonRefCount > 0) {
+                final double genotypeRatio = nonRefCount / (double) samplesOverOneCount;
+                if (genotypes[i] > 0) {
+                    addToRecoveryHistogram(nonRefCount, genotypeRatio, pass, 0);
+                }
+            }
+        }
+    }
+
+    /**
+     * Scale all histogram bin counts by the given factor. Used to compensate for stride-based
+     * downsampling: multiplying by the stride factor produces approximate full-cohort counts.
+     * The cutoff optimization uses ratios (countFail / total and countPass / baseline) which
+     * are invariant under uniform scaling, so the selected cutoffs are unchanged.
+     */
+    public void scaleHistograms(final int factor) {
+        for (int f = 0; f < 2; f++) {
+            for (int s = 0; s < 2; s++) {
+                for (int p = 0; p < 2; p++) {
+                    for (int b = 0; b < NUM_FRAC_BINS; b++) {
+                        recoverHistograms[f][s][p][b] *= factor;
+                    }
+                }
+            }
+        }
     }
 
     public boolean trainableRecord(final SVCallRecord record,
