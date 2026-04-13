@@ -40,11 +40,23 @@ public class SplitReadEvidenceGenotyper {
     private final int commonMin;
     private final int commonMax;
 
-    // Recovery histograms: bin index k counts entries with frac in [k*0.1, (k+1)*0.1);
-    // bin 10 counts frac == 1.0. Suffix sums at finalization give counts >= each cutoff.
-    // Dimensions: [freq bin (rare=0, common=1)][single=0, both=1][pass=0, fail=1][frac bin 0..10]
+    // Recovery histograms for SR frequency cutoff optimization, matching v1.1's union semantics.
+    // In v1.1 (SR_genotype.opt_part1.sh + optimalsrcutoff.sh), ALL non-ref entries go into
+    // recover.single.txt, and variants with bothside support ALSO go into recover.bothsides.txt.
+    // The optimalsrcutoff.sh script combines them with `sort -u` on VID@Sample (set union).
+    // To replicate this efficiently, we use three histograms and inclusion-exclusion:
+    //   union(i,j) = single(i) + both(j) - overlap(i,j)
+    //
+    // singleHistogram: ALL non-ref sample entries, indexed by single-sided frac
+    //   Dimensions: [freq (rare=0, common=1)][pass=0, fail=1][single_frac_bin 0..10]
+    // bothHistogram: non-ref sample entries from bothside variants, indexed by both-sided frac
+    //   Dimensions: [freq][pass][both_frac_bin 0..10]
+    // overlapHistogram: non-ref sample entries from bothside variants, indexed by BOTH fracs
+    //   Dimensions: [freq][pass][single_frac_bin 0..10][both_frac_bin 0..10]
     private static final int NUM_FRAC_BINS = 11;
-    private final int[][][][] recoverHistograms = new int[2][2][2][NUM_FRAC_BINS];
+    private final int[][][] singleHistogram = new int[2][2][NUM_FRAC_BINS];
+    private final int[][][] bothHistogram = new int[2][2][NUM_FRAC_BINS];
+    private final int[][][][] overlapHistogram = new int[2][2][NUM_FRAC_BINS][NUM_FRAC_BINS];
 
     private static final Median MEDIAN = new Median();
     private static final NormalDistribution Z_DISTRIBUTION = new NormalDistribution();
@@ -96,12 +108,19 @@ public class SplitReadEvidenceGenotyper {
     }
 
     // Assumes samples with 0 counts are not present in the key set
+    // Uses strict > to match v1.1's awk '$NF>(sr_count/2)' and stay consistent with
+    // countBothSideSupport(), which also uses >. Both methods port the same v1.1 pattern.
+    // Note: v1.1 uses awk float division (sr_count/2=3.5 for sr_count=7) while v1.2 uses
+    // Java integer division (trainingCountCutoff/2=3 for 7). The threshold value differs
+    // but the comparison operator must be consistent across hasBothSideSupport and
+    // countBothSideSupport to avoid a sample being counted as two-sided in Phase 1 but
+    // not in Phase 2/3.
     private static Set<String> hasBothSideSupport(final Map<String, Double> startCounts,
                                               final Map<String, Double> endCounts, final double threshold) {
         final Set<String> result = new HashSet<>();
         for (final Map.Entry<String, Double> entry : startCounts.entrySet()) {
-            if (entry.getValue() >= threshold) {
-                if (endCounts.getOrDefault(entry.getKey(), 0.0) >= threshold) {
+            if (entry.getValue() > threshold) {
+                if (endCounts.getOrDefault(entry.getKey(), 0.0) > threshold) {
                     result.add(entry.getKey());
                 }
             }
@@ -185,22 +204,61 @@ public class SplitReadEvidenceGenotyper {
     }
 
     /**
-     * Increment the appropriate recovery histogram bin for a single entry.
-     * @param count the variant-level count (nonRefCount or twoSidedPassCount) used for frequency bin selection
-     * @param frac the ratio value to bin (backgroundRatio or genotypeRatio)
+     * Increment the single-sided recovery histogram. Called for ALL non-ref samples.
+     * @param count the variant-level count (nonRefCount) used for frequency bin selection
+     * @param frac the single-sided ratio (nonRefCount / samplesOverOneCount)
      * @param pass whether this entry passes training criteria
-     * @param singleOrBoth 0 for single-sided, 1 for both-sided
      */
-    private void addToRecoveryHistogram(final int count, final double frac, final boolean pass, final int singleOrBoth) {
+    private void addToSingleHistogram(final int count, final double frac, final boolean pass) {
         final int fracBin = fracToBin(frac);
         final int passIndex = pass ? 0 : 1;
-        // Rare frequency bin
         if (count > rareMin && count <= rareMax) {
-            recoverHistograms[0][singleOrBoth][passIndex][fracBin]++;
+            singleHistogram[0][passIndex][fracBin]++;
         }
-        // Common frequency bin
         if (count > commonMin && count <= commonMax) {
-            recoverHistograms[1][singleOrBoth][passIndex][fracBin]++;
+            singleHistogram[1][passIndex][fracBin]++;
+        }
+    }
+
+    /**
+     * Increment the both-sided recovery histogram. Called for non-ref samples of variants
+     * with bothside support.
+     * @param count the variant-level count (twoSidedPassCount) used for frequency bin selection
+     * @param frac the both-sided ratio (twoSidedPassCount / bothsideNonZeroCount)
+     * @param pass whether this entry passes training criteria
+     */
+    private void addToBothHistogram(final int count, final double frac, final boolean pass) {
+        final int fracBin = fracToBin(frac);
+        final int passIndex = pass ? 0 : 1;
+        if (count > rareMin && count <= rareMax) {
+            bothHistogram[0][passIndex][fracBin]++;
+        }
+        if (count > commonMin && count <= commonMax) {
+            bothHistogram[1][passIndex][fracBin]++;
+        }
+    }
+
+    /**
+     * Increment the overlap histogram (entries that appear in BOTH single and both histograms).
+     * Used for inclusion-exclusion: union(i,j) = single(i) + both(j) - overlap(i,j).
+     * An entry only appears in the overlap for a given frequency bin if it passes
+     * BOTH the single-sided and both-sided frequency range tests for that bin.
+     */
+    private void addToOverlapHistogram(final int singleCount, final double singleFrac,
+                                       final int bothCount, final double bothFrac,
+                                       final boolean pass) {
+        final int singleFracBin = fracToBin(singleFrac);
+        final int bothFracBin = fracToBin(bothFrac);
+        final int passIndex = pass ? 0 : 1;
+        // Rare bin: must pass both single (nonRefCount) and both (twoSidedPassCount) freq checks
+        if (singleCount > rareMin && singleCount <= rareMax
+                && bothCount > rareMin && bothCount <= rareMax) {
+            overlapHistogram[0][passIndex][singleFracBin][bothFracBin]++;
+        }
+        // Common bin: must pass both freq checks
+        if (singleCount > commonMin && singleCount <= commonMax
+                && bothCount > commonMin && bothCount <= commonMax) {
+            overlapHistogram[1][passIndex][singleFracBin][bothFracBin]++;
         }
     }
 
@@ -214,15 +272,26 @@ public class SplitReadEvidenceGenotyper {
     }
 
     /**
-     * Cutoff optimization using fixed-size histogram suffix sums. Each histogram has 11 bins
-     * (one per 0.1 increment from 0.0 to 1.0). Suffix sums give counts of entries >= each
-     * cutoff threshold, exactly matching the previous binary-search approach.
+     * Cutoff optimization using inclusion-exclusion on histogram suffix sums to replicate
+     * v1.1's {@code sort -u} union semantics across single-sided and both-sided entries.
+     *
+     * <p>In v1.1, a variant with bothside support appears in BOTH recover.single.txt and
+     * recover.both.txt. The optimalsrcutoff.sh script concatenates them and deduplicates
+     * with {@code sort -u} on VID@Sample. To replicate this efficiently:</p>
+     * <pre>
+     *   union_pass(i, j) = singlePass(i) + bothPass(j) - overlapPass(i, j)
+     * </pre>
+     * where {@code overlapPass(i, j)} is the count of entries that pass BOTH thresholds.
      */
     private CutoffResult cutoffOptimizationFromHistograms(final double[] cutoffs, final int freqBinIndex) {
-        final int[] singlePassCounts = suffixSumsFromHistogram(recoverHistograms[freqBinIndex][0][0]);
-        final int[] singleFailCounts = suffixSumsFromHistogram(recoverHistograms[freqBinIndex][0][1]);
-        final int[] bothPassCounts = suffixSumsFromHistogram(recoverHistograms[freqBinIndex][1][0]);
-        final int[] bothFailCounts = suffixSumsFromHistogram(recoverHistograms[freqBinIndex][1][1]);
+        final int[] singlePassSuffix = suffixSumsFromHistogram(singleHistogram[freqBinIndex][0]);
+        final int[] singleFailSuffix = suffixSumsFromHistogram(singleHistogram[freqBinIndex][1]);
+        final int[] bothPassSuffix = suffixSumsFromHistogram(bothHistogram[freqBinIndex][0]);
+        final int[] bothFailSuffix = suffixSumsFromHistogram(bothHistogram[freqBinIndex][1]);
+
+        // 2D suffix sums for overlap: overlapPassSuffix2D[s][b] = sum of overlap[s'][b'] for s'>=s AND b'>=b
+        final int[][] overlapPassSuffix2D = suffix2DFromHistogram(overlapHistogram[freqBinIndex][0]);
+        final int[][] overlapFailSuffix2D = suffix2DFromHistogram(overlapHistogram[freqBinIndex][1]);
 
         final int freqMin = freqBinIndex == 0 ? rareMin : commonMin;
         final int freqMax = freqBinIndex == 0 ? rareMax : commonMax;
@@ -230,14 +299,32 @@ public class SplitReadEvidenceGenotyper {
         final List<CutoffResult> combine = new ArrayList<>(cutoffs.length * cutoffs.length);
         for (int s = 0; s < cutoffs.length; s++) {
             for (int b = 0; b < cutoffs.length; b++) {
-                final int passCount = singlePassCounts[s] + bothPassCounts[b];
-                final int failCount = singleFailCounts[s] + bothFailCounts[b];
+                // Inclusion-exclusion: union = single + both - overlap
+                final int passCount = singlePassSuffix[s] + bothPassSuffix[b] - overlapPassSuffix2D[s][b];
+                final int failCount = singleFailSuffix[s] + bothFailSuffix[b] - overlapFailSuffix2D[s][b];
                 combine.add(new CutoffResult(cutoffs[s], cutoffs[b], passCount, failCount, freqMin, freqMax));
             }
         }
         final double baseline = computeBaseline(combine);
         final int maxIndex = MathUtils.maxElementIndex(combine.stream().mapToDouble(c -> computeCutoffScore(c, baseline)).toArray());
         return combine.get(maxIndex);
+    }
+
+    /**
+     * Compute 2D suffix sums from a 2D histogram: result[s][b] = sum of hist[s'][b'] for s'>=s AND b'>=b.
+     */
+    private static int[][] suffix2DFromHistogram(final int[][] histogram) {
+        final int[][] suffix = new int[NUM_FRAC_BINS][NUM_FRAC_BINS];
+        // Start from bottom-right corner and work backwards
+        for (int s = NUM_FRAC_BINS - 1; s >= 0; s--) {
+            for (int b = NUM_FRAC_BINS - 1; b >= 0; b--) {
+                suffix[s][b] = histogram[s][b]
+                        + (s + 1 < NUM_FRAC_BINS ? suffix[s + 1][b] : 0)
+                        + (b + 1 < NUM_FRAC_BINS ? suffix[s][b + 1] : 0)
+                        - (s + 1 < NUM_FRAC_BINS && b + 1 < NUM_FRAC_BINS ? suffix[s + 1][b + 1] : 0);
+            }
+        }
+        return suffix;
     }
 
     private static double computeBaseline(final List<CutoffResult> list) {
@@ -369,8 +456,9 @@ public class SplitReadEvidenceGenotyper {
         boolean onesidePass = false;
         if (bothsideNonZeroCount > 0) {
             final double backgroundRatio = twoSidedPassCount / (double) bothsideNonZeroCount;
-            bothsidePass = (backgroundRatio >= frequencyCutoffs.rare.fracBoth && bothsideNonZeroCount <= frequencyCutoffs.rare.freqMax) ||
-                    (backgroundRatio >= frequencyCutoffs.common.fracBoth && bothsideNonZeroCount >= frequencyCutoffs.common.freqMin);
+            // v1.1 uses twoSidedPassCount ($2 in recover.bothsides.txt) for frequency binning
+            bothsidePass = (backgroundRatio >= frequencyCutoffs.rare.fracBoth && twoSidedPassCount <= frequencyCutoffs.rare.freqMax) ||
+                    (backgroundRatio >= frequencyCutoffs.common.fracBoth && twoSidedPassCount >= frequencyCutoffs.common.freqMin);
         }
         if (samplesOverOneCount > 0) {
             final double genotypeRatio = nonRefCount / (double) samplesOverOneCount;
@@ -479,15 +567,22 @@ public class SplitReadEvidenceGenotyper {
             final boolean nonRefDiscordantPair = discordantPairGenotype != null && discordantPairGenotype.genotypeQuals()[i] > 0;
             final boolean nonRefDepth = depthGenotype != null && depthGenotype.copyStates()[i] != 2;
             final boolean pass = depthGenotype != null && nonRefCount > 0 && largeEnough && hasSplitReadEvidence && (nonRefDiscordantPair || nonRefDepth);
-            if (bothsideNonZeroCount > 0 && twoSidedPassCount > 0) {
-                final double backgroundRatio = twoSidedPassCount / (double) bothsideNonZeroCount;
-                if (genotypes[i] > 0) {
-                    addToRecoveryHistogram(twoSidedPassCount, backgroundRatio, pass, 1);
+            if (genotypes[i] > 0) {
+                // ALL non-ref samples go into single-sided histogram (matching v1.1's recover.txt
+                // which is built from sr.geno.final.oneside.txt.gz covering all variants)
+                if (samplesOverOneCount > 0 && nonRefCount > 0) {
+                    final double genotypeRatio = nonRefCount / (double) samplesOverOneCount;
+                    addToSingleHistogram(nonRefCount, genotypeRatio, pass);
                 }
-            } else if (samplesOverOneCount > 0 && nonRefCount > 0) {
-                final double genotypeRatio = nonRefCount / (double) samplesOverOneCount;
-                if (genotypes[i] > 0) {
-                    addToRecoveryHistogram(nonRefCount, genotypeRatio, pass, 0);
+                // Variants with bothside support ALSO go into both-sided histogram
+                // (matching v1.1's recover.bothsides.txt) and the overlap histogram
+                if (bothsideNonZeroCount > 0 && twoSidedPassCount > 0) {
+                    final double backgroundRatio = twoSidedPassCount / (double) bothsideNonZeroCount;
+                    addToBothHistogram(twoSidedPassCount, backgroundRatio, pass);
+                    if (samplesOverOneCount > 0 && nonRefCount > 0) {
+                        final double genotypeRatio = nonRefCount / (double) samplesOverOneCount;
+                        addToOverlapHistogram(nonRefCount, genotypeRatio, twoSidedPassCount, backgroundRatio, pass);
+                    }
                 }
             }
         }
@@ -538,15 +633,20 @@ public class SplitReadEvidenceGenotyper {
         final int samplesOverOneCount = countSummedSupport(startCounts, endCounts, 1);
         final boolean pass = isCNV && nonRefCount > 0 && largeEnough && hasSplitReadEvidence;
         for (int i = 0; i < samples.size(); i++) {
-            if (bothsideNonZeroCount > 0 && twoSidedPassCount > 0) {
-                final double backgroundRatio = twoSidedPassCount / (double) bothsideNonZeroCount;
-                if (genotypes[i] > 0) {
-                    addToRecoveryHistogram(twoSidedPassCount, backgroundRatio, pass, 1);
+            if (genotypes[i] > 0) {
+                // ALL non-ref samples go into single-sided histogram
+                if (samplesOverOneCount > 0 && nonRefCount > 0) {
+                    final double genotypeRatio = nonRefCount / (double) samplesOverOneCount;
+                    addToSingleHistogram(nonRefCount, genotypeRatio, pass);
                 }
-            } else if (samplesOverOneCount > 0 && nonRefCount > 0) {
-                final double genotypeRatio = nonRefCount / (double) samplesOverOneCount;
-                if (genotypes[i] > 0) {
-                    addToRecoveryHistogram(nonRefCount, genotypeRatio, pass, 0);
+                // Variants with bothside support ALSO go into both-sided + overlap histograms
+                if (bothsideNonZeroCount > 0 && twoSidedPassCount > 0) {
+                    final double backgroundRatio = twoSidedPassCount / (double) bothsideNonZeroCount;
+                    addToBothHistogram(twoSidedPassCount, backgroundRatio, pass);
+                    if (samplesOverOneCount > 0 && nonRefCount > 0) {
+                        final double genotypeRatio = nonRefCount / (double) samplesOverOneCount;
+                        addToOverlapHistogram(nonRefCount, genotypeRatio, twoSidedPassCount, backgroundRatio, pass);
+                    }
                 }
             }
         }
@@ -560,10 +660,14 @@ public class SplitReadEvidenceGenotyper {
      */
     public void scaleHistograms(final int factor) {
         for (int f = 0; f < 2; f++) {
-            for (int s = 0; s < 2; s++) {
-                for (int p = 0; p < 2; p++) {
+            for (int p = 0; p < 2; p++) {
+                for (int b = 0; b < NUM_FRAC_BINS; b++) {
+                    singleHistogram[f][p][b] *= factor;
+                    bothHistogram[f][p][b] *= factor;
+                }
+                for (int s = 0; s < NUM_FRAC_BINS; s++) {
                     for (int b = 0; b < NUM_FRAC_BINS; b++) {
-                        recoverHistograms[f][s][p][b] *= factor;
+                        overlapHistogram[f][p][s][b] *= factor;
                     }
                 }
             }
