@@ -53,8 +53,8 @@ workflow GvsBulkIngestGenomes {
         Boolean is_wgs = true
         # End GvsImportGenomes
 
-        Boolean use_parquet_ingest = false
-        # Dump these parquet files to a bucket already
+        Boolean use_parquet_ingest = true
+        # `parquet_output_gcs_dir` must be defined if `use_parquet_ingest` is true.
         String? parquet_output_gcs_dir
 
         Boolean use_compressed_references = false
