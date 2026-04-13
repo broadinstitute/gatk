@@ -558,4 +558,201 @@ public class SplitReadEvidenceGenotyperTest extends GATKBaseTest {
         Assert.assertTrue(result.bothsidePass(), "Should have bothsidePass with good both-sided evidence");
         Assert.assertFalse(result.backgroundFail(), "Should not have backgroundFail when passes");
     }
+
+    // ---- Regression tests for v1.1 porting correctness ----
+
+    /**
+     * Regression test: bothsidePass frequency binning must use twoSidedPassCount (not
+     * bothsideNonZeroCount) for the rare/common frequency check, matching v1.1's
+     * recover.bothsides.txt column $2 which is the count of samples passing the two-sided
+     * SR threshold.
+     *
+     * <p>Scenario: 5 samples, one has strong both-sided evidence (passes the threshold),
+     * three have weak both-sided evidence (both sides nonzero, but below threshold), and one
+     * has no evidence. This gives twoSidedPassCount=1 but bothsideNonZeroCount=4.</p>
+     *
+     * <p>With cutoffs set so that rare freqMax=2: twoSidedPassCount=1 fits in rare
+     * (1&le;2), but bothsideNonZeroCount=4 does not (4&gt;2). Using the wrong count causes
+     * bothsidePass=false when it should be true.</p>
+     */
+    @Test
+    public void testBothsidePassUsesPassingCountForFrequencyBinning() {
+        // 5 samples, all 30x coverage. numSamples=100 → rareMax=2, commonMin=2.
+        final List<String> samples = Arrays.asList("s1", "s2", "s3", "s4", "s5");
+        final SplitReadEvidenceGenotyper genotyper = makeGenotyper(samples, NUM_SAMPLES);
+
+        final SVCallRecord record = makeDELRecord("del1", 1000, 5000,
+                Arrays.asList(GATKSVVCFConstants.EvidenceTypes.PE, GATKSVVCFConstants.EvidenceTypes.SR),
+                Collections.singletonList("pesr"));
+
+        // s1: start=3, end=3 → countSum=6, non-ref, twoSided (3>threshold=1 on both sides)
+        // s2-s4: start=1, end=1 → countSum=2, non-ref, NOT twoSidedPass (1 not > 1) but
+        //        nonzero on both sides (1 > 0)
+        // s5: no evidence → ref
+        //
+        // Result: twoSidedPassCount=1, bothsideNonZeroCount=4, nonRefCount=4
+        //         backgroundRatio = 1/4 = 0.25
+        final List<SplitReadEvidence> startEvidence = new ArrayList<>();
+        final List<SplitReadEvidence> endEvidence = new ArrayList<>();
+        startEvidence.addAll(makeSREvidence("s1", "chr1", 1000, 3, true));
+        endEvidence.addAll(makeSREvidence("s1", "chr1", 5000, 3, false));
+        for (final String sample : Arrays.asList("s2", "s3", "s4")) {
+            startEvidence.addAll(makeSREvidence(sample, "chr1", 1000, 1, true));
+            endEvidence.addAll(makeSREvidence(sample, "chr1", 5000, 1, false));
+        }
+
+        // Construct cutoffs:
+        // rare:   fracBoth=0.2 (so 0.25 passes), freqMax=2 (twoSidedPassCount=1 fits; bothsideNonZeroCount=4 does NOT)
+        // common: fracBoth=0.5 (so 0.25 fails), freqMin=2
+        // fracSingle set above 1.0 so onesidePass is guaranteed false — test depends entirely on bothsidePass
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeParameters params =
+                new SplitReadEvidenceGenotyper.SplitReadGenotypeParameters(2.0, 20.0, 5.0);
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeFrequencyCutoffs cutoffs =
+                new SplitReadEvidenceGenotyper.SplitReadGenotypeFrequencyCutoffs(
+                        new SplitReadEvidenceGenotyper.CutoffResult(1.1, 0.2, 10, 2, 0, 2),
+                        new SplitReadEvidenceGenotyper.CutoffResult(1.1, 0.5, 20, 5, 2, 100)
+                );
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeMetrics metrics =
+                new SplitReadEvidenceGenotyper.SplitReadGenotypeMetrics(params, cutoffs);
+
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeResult result =
+                genotyper.genotype(record, startEvidence, endEvidence, metrics, 15, 2.0, samples);
+
+        Assert.assertNotNull(result);
+        // twoSidedPassCount=1 ≤ rareFreqMax=2 and backgroundRatio=0.25 ≥ rareFracBoth=0.2
+        // → bothsidePass must be true (v1.1 uses twoSidedPassCount for frequency binning)
+        Assert.assertTrue(result.bothsidePass(),
+                "bothsidePass should use twoSidedPassCount (1) not bothsideNonZeroCount (4) " +
+                "for rare/common frequency binning — this matches v1.1's recover.bothsides.txt $2 column");
+        Assert.assertFalse(result.backgroundFail(),
+                "backgroundFail should be false when bothsidePass is true");
+
+        // Verify non-ref genotypes: s1-s4 should be non-ref, s5 should be ref
+        Assert.assertTrue(result.genotypes()[0] > 0, "s1 should be non-ref");
+        Assert.assertTrue(result.genotypes()[1] > 0, "s2 should be non-ref");
+        Assert.assertTrue(result.genotypes()[2] > 0, "s3 should be non-ref");
+        Assert.assertTrue(result.genotypes()[3] > 0, "s4 should be non-ref");
+        Assert.assertEquals(result.genotypes()[4], 0, "s5 should be ref");
+    }
+
+    /**
+     * Complementary test: when twoSidedPassCount genuinely exceeds the rare frequency max
+     * and the ratio doesn't meet the common threshold, bothsidePass should correctly be false.
+     */
+    @Test
+    public void testBothsidePassCorrectlyFalseWhenPassingCountExceedsRareMax() {
+        // 5 samples, all 30x. numSamples=100 → rareMax=2, commonMin=2.
+        final List<String> samples = Arrays.asList("s1", "s2", "s3", "s4", "s5");
+        final SplitReadEvidenceGenotyper genotyper = makeGenotyper(samples, NUM_SAMPLES);
+
+        final SVCallRecord record = makeDELRecord("del1", 1000, 5000,
+                Arrays.asList(GATKSVVCFConstants.EvidenceTypes.PE, GATKSVVCFConstants.EvidenceTypes.SR),
+                Collections.singletonList("pesr"));
+
+        // All 4 non-ref samples have strong both-sided evidence (count=3 on each side).
+        // This gives twoSidedPassCount=4 (all pass > 1 on both sides),
+        // bothsideNonZeroCount=4, backgroundRatio=4/4=1.0.
+        // twoSidedPassCount=4 > rareMax=2, so rare check fails.
+        // For common: ratio=1.0 >= commonBoth=0.5 and twoSidedPassCount=4 >= commonMin=2 → passes common.
+        final List<SplitReadEvidence> startEvidence = new ArrayList<>();
+        final List<SplitReadEvidence> endEvidence = new ArrayList<>();
+        for (final String sample : Arrays.asList("s1", "s2", "s3", "s4")) {
+            startEvidence.addAll(makeSREvidence(sample, "chr1", 1000, 3, true));
+            endEvidence.addAll(makeSREvidence(sample, "chr1", 5000, 3, false));
+        }
+
+        // Set commonBoth very high (1.1) so common check also fails
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeParameters params =
+                new SplitReadEvidenceGenotyper.SplitReadGenotypeParameters(2.0, 20.0, 5.0);
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeFrequencyCutoffs cutoffs =
+                new SplitReadEvidenceGenotyper.SplitReadGenotypeFrequencyCutoffs(
+                        new SplitReadEvidenceGenotyper.CutoffResult(1.1, 0.2, 10, 2, 0, 2),
+                        new SplitReadEvidenceGenotyper.CutoffResult(1.1, 1.1, 20, 5, 2, 100)
+                );
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeMetrics metrics =
+                new SplitReadEvidenceGenotyper.SplitReadGenotypeMetrics(params, cutoffs);
+
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeResult result =
+                genotyper.genotype(record, startEvidence, endEvidence, metrics, 15, 2.0, samples);
+
+        // twoSidedPassCount=4 > rareMax=2 → rare fails. ratio=1.0 but commonBoth=1.1 → common fails.
+        Assert.assertFalse(result.bothsidePass(),
+                "bothsidePass should be false when twoSidedPassCount exceeds rare max and common ratio threshold is not met");
+        Assert.assertTrue(result.backgroundFail(),
+                "backgroundFail should be true when both onesidePass and bothsidePass are false");
+    }
+
+    /**
+     * Regression test: hasBothSideSupport must use strict {@code >} (not {@code >=}) to be
+     * consistent with countBothSideSupport. Both methods port the same v1.1 awk pattern
+     * {@code $NF>(sr_count/2)}. Using {@code >=} in hasBothSideSupport but {@code >} in
+     * countBothSideSupport would cause a sample at exactly the threshold to be counted as
+     * having both-side support in Phase 1 (affecting het/hom calibration) but NOT counted
+     * in Phase 2/3 training or genotyping.
+     *
+     * <p>Scenario: With QUALITY_CUTOFF=5.0, trainingCountCutoff=1, minCount=max(1/2,1)=1.
+     * A sample with raw SR count=1 on each side at 30x coverage → normalized=1.0, which
+     * equals the threshold exactly. With strict {@code >}, this sample should NOT qualify
+     * as having both-side support. A second sample with count=2 on each side does qualify.</p>
+     *
+     * <p>If hasBothSideSupport used {@code >=}, the borderline sample would be included in
+     * Phase 1 (incorrectly increasing the het/hom calibration data), but countBothSideSupport
+     * in Phase 2/3 would exclude it (since it uses {@code >}). The test verifies consistency
+     * by checking that a variant with ONLY the borderline sample is not registered as a
+     * training variant (firstPassCounts would be empty → finalizeFirstPass throws).</p>
+     */
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testBothSideSupportThresholdIsStrictGreaterThan() {
+        // 2 samples, 30x coverage (= targetCoverage, so normalization is identity).
+        final List<String> samples = Arrays.asList("borderline", "noevidence");
+        final SplitReadEvidenceGenotyper genotyper = new SplitReadEvidenceGenotyper(
+                makeCoverageMap(samples, TARGET_COVERAGE),
+                samples.size(), QUALITY_CUTOFF, MIN_SIZE, TARGET_COVERAGE, MAX_QUAL);
+
+        final SVCallRecord record = makeDELRecord("del1", 1000, 5000,
+                Arrays.asList(GATKSVVCFConstants.EvidenceTypes.PE, GATKSVVCFConstants.EvidenceTypes.SR),
+                Collections.singletonList("pesr"));
+
+        // "borderline" has raw count=1 on each side → normalized=Math.round(30*1/30)=1.0
+        // With trainingCountCutoff=1 and minCount=max(1/2,1)=1, threshold=1.
+        // Strict > means 1.0 > 1 is FALSE → sample excluded from both-side support.
+        // Since "noevidence" has no SR, the variant has zero both-side support samples
+        // and is NOT added to firstPassCounts.
+        final List<SplitReadEvidence> startEvidence = makeSREvidence("borderline", "chr1", 1000, 1, true);
+        final List<SplitReadEvidence> endEvidence = makeSREvidence("borderline", "chr1", 5000, 1, false);
+        final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = makeDepthResult(new int[]{1, 2});
+
+        genotyper.addFirstPass(record, startEvidence, endEvidence, depthResult, samples);
+
+        // With no variants registered (borderline sample excluded by strict >),
+        // firstPassCounts is empty → finalizeFirstPass should throw IllegalStateException.
+        // If hasBothSideSupport incorrectly used >= , the borderline sample would pass,
+        // the variant would be registered, and this would NOT throw.
+        genotyper.finalizeFirstPass();
+    }
+
+    /**
+     * Complementary test: a sample just above the threshold DOES qualify.
+     */
+    @Test
+    public void testBothSideSupportAboveThresholdPasses() {
+        final List<String> samples = Arrays.asList("abovethreshold", "noevidence");
+        final SplitReadEvidenceGenotyper genotyper = new SplitReadEvidenceGenotyper(
+                makeCoverageMap(samples, TARGET_COVERAGE),
+                samples.size(), QUALITY_CUTOFF, MIN_SIZE, TARGET_COVERAGE, MAX_QUAL);
+
+        final SVCallRecord record = makeDELRecord("del1", 1000, 5000,
+                Arrays.asList(GATKSVVCFConstants.EvidenceTypes.PE, GATKSVVCFConstants.EvidenceTypes.SR),
+                Collections.singletonList("pesr"));
+
+        // Raw count=2 on each side → normalized=2.0 > threshold=1. Passes strict >.
+        final List<SplitReadEvidence> startEvidence = makeSREvidence("abovethreshold", "chr1", 1000, 2, true);
+        final List<SplitReadEvidence> endEvidence = makeSREvidence("abovethreshold", "chr1", 5000, 2, false);
+        final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = makeDepthResult(new int[]{1, 2});
+
+        genotyper.addFirstPass(record, startEvidence, endEvidence, depthResult, samples);
+
+        // Should not throw: the sample above threshold was registered
+        genotyper.finalizeFirstPass();
+    }
 }
