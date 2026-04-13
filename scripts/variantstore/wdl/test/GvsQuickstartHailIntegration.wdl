@@ -39,6 +39,8 @@ workflow GvsQuickstartHailIntegration {
 
         Int? maximum_alternate_alleles
         String ploidy_table_name = "sample_chromosome_ploidy"
+        # Do not turn on `use_parquet_ingest` without either turning off header loading in this test or implementing
+        # Parquet header loading generally.
         Boolean use_parquet_ingest = false
     }
 

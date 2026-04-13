@@ -35,7 +35,7 @@ workflow GvsQuickstartIntegration {
         Boolean chr20_X_Y_only = true
         Int? maximum_alternate_alleles
         File? gatk_override
-        Boolean use_parquet_ingest = false
+        Boolean use_parquet_ingest = true
     }
 
     String expected_subdir = if (!chr20_X_Y_only) then "all_chrs/"  else ""
@@ -133,7 +133,8 @@ workflow GvsQuickstartIntegration {
                 submission_id = submission_id,
                 hail_version = effective_hail_version,
                 maximum_alternate_alleles = maximum_alternate_alleles,
-                use_parquet_ingest = use_parquet_ingest,
+                # The Hail integration test turns on header loading which is currently unsupported with Parquet.
+                use_parquet_ingest = false,
         }
 
         if (GvsQuickstartHailVETSIntegration.used_tighter_gcp_quotas) {

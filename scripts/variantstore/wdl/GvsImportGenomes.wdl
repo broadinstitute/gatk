@@ -48,7 +48,6 @@ workflow GvsImportGenomes {
     File? load_data_gatk_override
     String? billing_project_id
 
-    # Currently only in limited use.
     Boolean use_parquet_ingest = true
     # Dump these Parquet files to a bucket.
     String? parquet_output_gcs_dir
@@ -91,8 +90,6 @@ workflow GvsImportGenomes {
         basic_docker = effective_basic_docker,
     }
   }
-  # We're not considering the combo of !use_parquet_ingest && defined(parquet_output_gcs_dir) an error for now, this is
-  # how this workflow is (indirectly) invoked through our integration test.
 
   if (load_vcf_headers && use_parquet_ingest) {
     call Utils.TerminateWorkflow as CannotLoadHeadersWithParquetIngest {
