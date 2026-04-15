@@ -12,7 +12,7 @@ workflow GvsQuickstartVcfIntegration {
         Boolean extract_do_not_filter_override = true
         Boolean use_compressed_references = false
         Boolean load_vcf_headers = false
-        Boolean use_parquet_ingest = false
+        Boolean use_parquet_ingest = true
         String drop_state = "FORTY"
         Boolean bgzip_output_vcfs = false
         String dataset_suffix

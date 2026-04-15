@@ -49,12 +49,7 @@ public class CommonCode {
     }
 
     public enum OutputType {
-        TSV,
-        ORC,
-        AVRO,
         PARQUET,
-        TSV2,
-        BQ,
-        NONE
+        BQ
     }
 }

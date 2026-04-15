@@ -6,11 +6,9 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
-import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.SchemaUtils;
 import org.broadinstitute.hellbender.tools.gvs.ingest.bq.VetBQWriter;
 import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.VetParquetFileWriter;
-import org.broadinstitute.hellbender.tools.gvs.ingest.tsv.VetTsvWriter;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 
 import java.io.File;
@@ -28,7 +26,7 @@ public class VetCreator {
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
     }
 
-    public VetCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields, final MessageType parquetSchema) {
+    public VetCreator(String inputVcfFileName, Long sampleId, String tableNumber, final File outputDirectory, final CommonCode.OutputType outputType, final String projectId, final String datasetName, final boolean forceLoadingFromNonAlleleSpecific, final boolean skipLoadingVqsrFields, final MessageType parquetSchema) {
         this.sampleId = sampleId;
 
         try {
@@ -39,13 +37,8 @@ public class VetCreator {
                     }
                     vetWriter = new VetBQWriter(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, skipLoadingVqsrFields, forceLoadingFromNonAlleleSpecific);
                     break;
-                case TSV:
-                    // If the vet directory inside it doesn't exist yet -- create it
-                    final File vetOutputFile = new File(outputDirectory, VET_FILETYPE_PREFIX + tableNumber + PREFIX_SEPARATOR + sampleIdentifierForOutputFileName + IngestConstants.FILETYPE);
-                    vetWriter = new VetTsvWriter(vetOutputFile, skipLoadingVqsrFields, forceLoadingFromNonAlleleSpecific);
-                    break;
                 case PARQUET:
-                    String filename = getOutputFileName(tableNumber, sampleId, sampleIdentifierForOutputFileName, outputType);
+                    String filename = getOutputFileName(tableNumber, sampleId, inputVcfFileName, outputType);
                     final File parquetOutputFile = new File(outputDirectory, filename);
                     vetWriter = new VetParquetFileWriter(new Path(parquetOutputFile.toURI()), skipLoadingVqsrFields, forceLoadingFromNonAlleleSpecific, parquetSchema, CompressionCodecName.SNAPPY);
                     break;
@@ -65,8 +58,8 @@ public class VetCreator {
     }
 
 
-    public static String getOutputFileName(String tableNumber, Long sampleId, String sampleIdentifierForOutputFileName, CommonCode.OutputType outputType) {
-        String[] sampleComponents = {tableNumber, sampleId.toString(), sampleIdentifierForOutputFileName};
+    public static String getOutputFileName(String tableNumber, Long sampleId, String inputVcfFileName, CommonCode.OutputType outputType) {
+        String[] sampleComponents = {tableNumber, sampleId.toString(), inputVcfFileName};
         return VET_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) +
                 "." + outputType.toString().toLowerCase();
     }

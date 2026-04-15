@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.gvs.ingest;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.VariantContext;
-import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.hadoop.fs.Path;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -10,10 +9,8 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
-import org.broadinstitute.hellbender.tools.gvs.ingest.avro.RefRangesAvroWriter;
 import org.broadinstitute.hellbender.tools.gvs.ingest.bq.RefRangesBQWriter;
 import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.RefRangesParquetFileWriter;
-import org.broadinstitute.hellbender.tools.gvs.ingest.tsv.RefRangesTsvWriter;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.GenomeLocSortedSet;
@@ -43,7 +40,7 @@ public final class RefRangesCreator {
     // for easily calculating percentages later
     private long totalRefEntries = 0L;
 
-    public RefRangesCreator(String sampleIdentifierForOutputFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, Set<GQStateEnum> gqStatesToIgnore, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName, final boolean storeCompressedReferences, final MessageType parquetSchema) {
+    public RefRangesCreator(String inputVcfFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, Set<GQStateEnum> gqStatesToIgnore, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName, final boolean storeCompressedReferences, final MessageType parquetSchema) {
         this.sampleId = sampleId;
         this.writeReferenceRanges = writeReferenceRanges;
         this.storeCompressedReferences = storeCompressedReferences;
@@ -55,7 +52,7 @@ public final class RefRangesCreator {
 
         try {
             if (writeReferenceRanges) {
-                String[] sampleComponents = {tableNumber, sampleId.toString(), sampleIdentifierForOutputFileName};
+                String[] sampleComponents = {tableNumber, sampleId.toString(), inputVcfFileName};
                 String filename = REF_RANGES_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) +
                         "." + outputType.toString().toLowerCase();
 
@@ -66,12 +63,6 @@ public final class RefRangesCreator {
                             throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
                         }
                         refRangesWriter = new RefRangesBQWriter(projectId, datasetName,REF_RANGES_FILETYPE_PREFIX + tableNumber);
-                        break;
-                    case TSV:
-                        refRangesWriter = new RefRangesTsvWriter(refOutputFile.getCanonicalPath());
-                        break;
-                    case AVRO: // when do we use this/!?!
-                        refRangesWriter = new RefRangesAvroWriter(refOutputFile.getCanonicalPath());
                         break;
                     case PARQUET:
                         refRangesWriter = new RefRangesParquetFileWriter(new Path(refOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);

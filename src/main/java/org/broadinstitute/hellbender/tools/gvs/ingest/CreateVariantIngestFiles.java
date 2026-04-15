@@ -55,9 +55,6 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private Long sampleId;
 
-    // Inside the parent directory, a directory for each chromosome will be created, with a vet directory in each one.
-    // Each vet directory will hold all the vet TSVs for each sample.
-    // A sample_info directory will be created, with a sample_info tsv for each sample.
 
     @Argument(fullName = "ref-block-gq-to-ignore",
             shortName = "IG",
@@ -116,9 +113,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Argument(fullName = "output-type",
             shortName = "ot",
-            doc = "[Experimental] Output file format: TSV, ORC, PARQUET or BQ [default=TSV].",
+            doc = "Output file format: PARQUET or BQ [default=PARQUET].",
             optional = true)
-    public CommonCode.OutputType outputType = CommonCode.OutputType.TSV;
+    public CommonCode.OutputType outputType = CommonCode.OutputType.PARQUET;
 
     @Argument(
             fullName = "ref-version",
@@ -128,7 +125,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     @Argument(
             fullName = "output-directory",
-            doc = "directory for output tsv files",
+            doc = "directory for output Parquet files",
             optional = true)
     public File outputDir = new File(".");
 
@@ -275,9 +272,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             sampleId = IngestUtils.getSampleId(sampleName, sampleMap);
         }
 
-        // TODO when we pass in the full file path or gvs_id as an input arg, use path here instead or gvs_id in addition
-        // use input gvcf file name instead of sample name in output filenames
-        String sampleIdentifierForOutputFileName = getInputFileName();
+        // Use the input GVCF filename (not the sample name) as the identifier in output filenames.
+        String inputVcfFileName = new File(getInputFileName()).getName();
 
         // Mod the sample directories
         int sampleTableNumber = IngestUtils.getTableNumber(sampleId, IngestConstants.partitionPerTable);
@@ -369,7 +365,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (enableReferenceRanges && refRangesRowsExist == Boolean.FALSE) {
             logger.info("Writing reference range data for sample id = {}, name = {}", sampleId, sampleName);
             MessageType refRangesParquetSchema = storeCompressedReferences ? refRangesCompressedRowSchema : refRangesRowSchema;
-            refRangesCreator = new RefRangesCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences, refRangesParquetSchema);
+            refRangesCreator = new RefRangesCreator(inputVcfFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences, refRangesParquetSchema);
 
             switch (outputType) {
                 case PARQUET:
@@ -377,7 +373,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
                     // The ploidy table is really only needed for inferring reference ploidy, as variants store their genotypes
                     // directly.  If we're not ingesting references, we can't compute and ingest ploidy either
                     logger.info("Writing ploidy data for sample id = {}, name = {}", sampleId, sampleName);
-                    samplePloidyCreator = new SamplePloidyCreator(sampleIdentifierForOutputFileName, sampleId, projectID, datasetName, outputDir, sampleChromosomePloidyRowSchema, outputType);
+                    samplePloidyCreator = new SamplePloidyCreator(inputVcfFileName, sampleId, projectID, datasetName, outputDir, sampleChromosomePloidyRowSchema, outputType);
                     break;
                 default:
                     logger.info("Not Writing ploidy data for output type {}", outputType);
@@ -388,7 +384,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         if (enableVet && vetRowsExist == Boolean.FALSE) {
             logger.info("Writing vet data for sample id = {}, name = {}", sampleId, sampleName);
-            vetCreator = new VetCreator(sampleIdentifierForOutputFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, variantRowSchema);
+            vetCreator = new VetCreator(inputVcfFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, variantRowSchema);
         }
         if (enableVCFHeaders && vcfHeaderRowsExist == Boolean.FALSE) {
             logger.info("Writing vcf header data for sample id = {}, name = {}", sampleId, sampleName);
