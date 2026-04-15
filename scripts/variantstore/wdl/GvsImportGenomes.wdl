@@ -1233,7 +1233,7 @@ task ConsolidateVrsAlleleParquet {
     fi
 
     apk add --no-cache openjdk17-jre-headless py3-pip
-    pip3 install --no-cache-dir pyspark==3.5.1 pyarrow==15.0.0
+    pip3 install --no-cache-dir pyspark==3.5.1
 
     mkdir -p vrs_allele_input
     while IFS= read -r parquet_file
@@ -1327,9 +1327,12 @@ for req_field in required_fields:
 print("Deduplicating records...")
 deduped = df.dropDuplicates()
 
+# Re-project columns in schema order to preserve field definitions
+deduped = deduped.select(*[col(field.name).cast(field.dataType).alias(field.name) for field in spark_schema.fields])
+
 # Write with explicit schema to ensure REQUIRED/NULLABLE mode is preserved
 print(f"Writing deduplicated parquet to {output_dir} with enforced schema...")
-deduped.coalesce(1).write.schema(spark_schema).mode("overwrite").parquet(output_dir)
+deduped.coalesce(1).write.mode("overwrite").parquet(output_dir)
 
 # Validate output schema matches input schema
 print("Validating output schema integrity...")
