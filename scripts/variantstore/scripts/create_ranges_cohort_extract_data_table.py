@@ -2,6 +2,7 @@
 import uuid
 import datetime
 import argparse
+import io
 import pybedtools
 import re
 
@@ -146,6 +147,11 @@ def load_intervals_to_temp_table(intervals, fq_temp_table_dataset):
     Each interval is stored as (location_start INT64, location_end INT64) using
     the GVS location encoding: chrom_index * 1_000_000_000_000 + position.
 
+    Intervals are written row-by-row to a CSV buffer and uploaded via a BQ load
+    job rather than the streaming insert API.  This avoids accumulating a large
+    Python list in memory and is far faster for very large interval lists (e.g.
+    tens of millions of intervals).
+
     Returns the fully-qualified name of the created table.
     """
     fq_interval_table = f"{fq_temp_table_dataset}.{INTERVAL_TABLE_NAME}"
@@ -154,37 +160,42 @@ def load_intervals_to_temp_table(intervals, fq_temp_table_dataset):
         bigquery.SchemaField("location_end", "INT64", mode="REQUIRED"),
     ]
 
-    # Create the table with the same TTL used for other temp tables in this run.
-    table = bigquery.Table(fq_interval_table, schema=schema)
-    expiration = datetime.datetime.utcnow() + datetime.timedelta(hours=TEMP_TABLE_TTL_HOURS)
-    table.expires = expiration
-    client.create_table(table, exists_ok=True)
-
-    # Encode each interval into the GVS location integer space.
-    rows = []
+    # Write intervals as CSV directly into a buffer — avoids building a large
+    # Python list and keeps peak memory proportional to the encoded CSV size
+    # (~20 bytes/row) rather than the size of Python dict objects (~250 bytes/row).
+    buf = io.BytesIO()
+    rows_written = 0
     skipped = 0
     for interval in intervals:
         if interval.chrom not in CHROM_MAP:
             skipped += 1
             continue
         chrom_num = int(CHROM_MAP[interval.chrom])
-        rows.append({
-            "location_start": chrom_num * 1_000_000_000_000 + int(interval.start),
-            "location_end":   chrom_num * 1_000_000_000_000 + int(interval.end),
-        })
+        loc_start = chrom_num * 1_000_000_000_000 + int(interval.start)
+        loc_end   = chrom_num * 1_000_000_000_000 + int(interval.end)
+        buf.write(f"{loc_start},{loc_end}\n".encode())
+        rows_written += 1
 
     if skipped > 0:
         print(f"Warning: skipped {skipped} interval(s) with unrecognized chromosome names")
 
-    # Stream rows in batches (BigQuery streaming API limit: 50,000 rows / 10 MB per request).
-    BATCH_SIZE = 10_000
-    for batch_start in range(0, len(rows), BATCH_SIZE):
-        batch = rows[batch_start:batch_start + BATCH_SIZE]
-        errors = client.insert_rows_json(fq_interval_table, batch)
-        if errors:
-            raise RuntimeError(f"Error loading intervals to BigQuery table {fq_interval_table}: {errors}")
+    buf.seek(0)
+    job_config = bigquery.LoadJobConfig(
+        schema=schema,
+        source_format=bigquery.SourceFormat.CSV,
+        skip_leading_rows=0,
+        write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+    )
+    job = client.load_table_from_file(buf, fq_interval_table, job_config=job_config)
+    job.result()  # Wait for the load job to complete.
 
-    print(f"Loaded {len(rows)} intervals into temporary table {fq_interval_table}")
+    # Set the TTL as a second API call (same pattern used by load_sample_names).
+    table = bigquery.Table(fq_interval_table, schema=schema)
+    expiration = datetime.datetime.utcnow() + datetime.timedelta(hours=TEMP_TABLE_TTL_HOURS)
+    table.expires = expiration
+    client.update_table(table, ["expires"])
+
+    print(f"Loaded {rows_written} intervals into temporary table {fq_interval_table}")
     return fq_interval_table
 
 
@@ -198,16 +209,31 @@ def get_location_filters(interval_list, fq_temp_table_dataset):
     BigQuery table and an EXISTS subquery is returned instead.  This removes
     the practical limit on how many intervals can be used as a filter.
 
+    In both cases overlapping and adjacent intervals are merged first, which
+    reduces the number of ranges that need to be evaluated and is particularly
+    valuable for dense interval lists such as ClinVar or ACAF where many
+    adjacent single-base positions can collapse into far fewer contiguous runs.
+
     Returns "" when no interval list is provided (no location filtering).
     """
     if not interval_list:
         return ""
 
-    intervals = pybedtools.BedTool(interval_list)
-    interval_count = len(intervals)
+    raw_intervals = pybedtools.BedTool(interval_list)
+    raw_count = len(raw_intervals)
 
-    if interval_count == 0:
+    if raw_count == 0:
         return ""
+
+    # Merge overlapping / adjacent intervals.  This is semantically equivalent
+    # to the original list (a location passes the filter iff it falls within at
+    # least one input interval) but can dramatically reduce the number of ranges
+    # — especially for dense lists like ACAF where adjacent 1-bp positions
+    # collapse into long contiguous runs.
+    intervals = raw_intervals.merge()
+    interval_count = len(intervals)
+    if interval_count < raw_count:
+        print(f"Merged {raw_count:,} intervals into {interval_count:,} non-overlapping ranges.")
 
     if interval_count <= INTERVAL_TEMP_TABLE_THRESHOLD:
         # Small list: inline every interval directly into the SQL WHERE clause.
@@ -221,7 +247,7 @@ def get_location_filters(interval_list, fq_temp_table_dataset):
         # Large list: load into a temp table and use an EXISTS subquery so that
         # BigQuery can plan an efficient join rather than evaluating a massive
         # OR chain — and so we don't hit query-text size limits.
-        print(f"Interval list has {interval_count} intervals (> {INTERVAL_TEMP_TABLE_THRESHOLD}); "
+        print(f"Interval list has {interval_count:,} intervals (> {INTERVAL_TEMP_TABLE_THRESHOLD}); "
               f"loading into a temporary BigQuery table for efficient filtering.")
         fq_interval_table = load_intervals_to_temp_table(intervals, fq_temp_table_dataset)
         return (f"WHERE EXISTS "
