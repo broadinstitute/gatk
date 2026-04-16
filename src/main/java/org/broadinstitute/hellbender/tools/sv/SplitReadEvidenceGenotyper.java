@@ -143,23 +143,18 @@ public class SplitReadEvidenceGenotyper {
     }
 
     /**
-     * Count samples whose raw (un-normalized) summed split read evidence exceeds the threshold.
-     * This matches v1.1's background.sr.txt computation which uses raw counts ({@code $3 > 1}),
-     * not normalized counts. Using raw counts prevents coverage normalization from inflating
-     * the denominator of the genotype ratio, which would compress all ratios toward 0 and
-     * prevent the cutoff optimization from finding meaningful thresholds.
+     * Count samples whose normalized summed split read evidence exceeds the threshold.
+     * This matches the legacy SR training path, which learns single-sided background ratios
+     * from {@code SR_sum} after coverage normalization rather than raw start/end counts.
      */
-    private static int countRawSummedSupport(final List<SplitReadEvidence> startEvidence,
-                                             final List<SplitReadEvidence> endEvidence, final int threshold) {
-        final Map<String, Integer> rawSums = new HashMap<>();
-        for (final SplitReadEvidence e : startEvidence) {
-            rawSums.put(e.getSample(), rawSums.getOrDefault(e.getSample(), 0) + e.getCount());
-        }
-        for (final SplitReadEvidence e : endEvidence) {
-            rawSums.put(e.getSample(), rawSums.getOrDefault(e.getSample(), 0) + e.getCount());
-        }
+    private static int countNormalizedSummedSupport(final Map<String, Double> startCounts,
+                                                    final Map<String, Double> endCounts,
+                                                    final double threshold) {
+        final Set<String> samples = new HashSet<>(startCounts.keySet());
+        samples.addAll(endCounts.keySet());
         int count = 0;
-        for (final int sum : rawSums.values()) {
+        for (final String sample : samples) {
+            final double sum = startCounts.getOrDefault(sample, 0.0) + endCounts.getOrDefault(sample, 0.0);
             if (sum > threshold) {
                 count++;
             }
@@ -462,10 +457,7 @@ public class SplitReadEvidenceGenotyper {
         final int twosidedMinCount = Math.max((int) parameters.minCount()/ 2, 1);
         final int twoSidedPassCount = countBothSideSupport(startCounts, endCounts, twosidedMinCount);
         final int bothsideNonZeroCount = countBothSideSupport(startCounts, endCounts, 0);
-        // Use raw counts to match v1.1's background.sr.txt: awk '{if ($3>1) print $1}'
-        // Normalized counts inflate the denominator for low-coverage samples, compressing
-        // ratios toward 0 and preventing the cutoff optimization from differentiating.
-        final int samplesOverOneCount = countRawSummedSupport(startEvidence, endEvidence, 1);
+        final int samplesOverOneCount = countNormalizedSummedSupport(startCounts, endCounts, 1.0);
         boolean bothsidePass = false;
         boolean onesidePass = false;
         if (bothsideNonZeroCount > 0) {
@@ -573,8 +565,7 @@ public class SplitReadEvidenceGenotyper {
         final int minCount = Math.max(trainingCountCutoff / 2, 1);
         final int twoSidedPassCount = countBothSideSupport(startCounts, endCounts, minCount);
         final int bothsideNonZeroCount = countBothSideSupport(startCounts, endCounts, 0);
-        // Use raw counts to match v1.1's background.sr.txt: awk '{if ($3>1) print $1}'
-        final int samplesOverOneCount = countRawSummedSupport(startEvidence, endEvidence, 1);
+        final int samplesOverOneCount = countNormalizedSummedSupport(startCounts, endCounts, 1.0);
         for (int i = 0; i < samples.size(); i++) {
             // Note: nonRefDiscordantPair checks GQ > 0, which is always true since GQ is clamped to min 1.
             // This matches v1.1 behavior (SR_genotype.opt_part1.sh checks $NF>0 on pe.geno.withquality.txt.gz,
@@ -645,8 +636,7 @@ public class SplitReadEvidenceGenotyper {
         final int minCount = Math.max(trainingCountCutoff / 2, 1);
         final int twoSidedPassCount = countBothSideSupport(startCounts, endCounts, minCount);
         final int bothsideNonZeroCount = countBothSideSupport(startCounts, endCounts, 0);
-        // Use raw counts to match v1.1's background.sr.txt: awk '{if ($3>1) print $1}'
-        final int samplesOverOneCount = countRawSummedSupport(startEvidence, endEvidence, 1);
+        final int samplesOverOneCount = countNormalizedSummedSupport(startCounts, endCounts, 1.0);
         final boolean pass = isCNV && nonRefCount > 0 && largeEnough && hasSplitReadEvidence;
         for (int i = 0; i < samples.size(); i++) {
             if (genotypes[i] > 0) {

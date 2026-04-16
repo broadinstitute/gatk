@@ -36,6 +36,10 @@ public class SplitReadEvidenceGenotyperTest extends GATKBaseTest {
         return map;
     }
 
+        private static Map<String, Double> makeCoverageMap(final Map<String, Double> coverageBySample) {
+                return new HashMap<>(coverageBySample);
+        }
+
     private static SplitReadEvidenceGenotyper makeGenotyper(final List<String> samples, final int numSamples) {
         return new SplitReadEvidenceGenotyper(
                 makeCoverageMap(samples, TARGET_COVERAGE),
@@ -65,6 +69,30 @@ public class SplitReadEvidenceGenotyperTest extends GATKBaseTest {
                                                            final int position, final int count, final boolean strand) {
         return Collections.singletonList(new SplitReadEvidence(sample, contig, position, count, strand));
     }
+
+        private static void addSREvidence(final List<SplitReadEvidence> evidence, final Collection<String> samples,
+                                                                          final String contig, final int position, final int count, final boolean strand) {
+                for (final String sample : samples) {
+                        evidence.addAll(makeSREvidence(sample, contig, position, count, strand));
+                }
+        }
+
+        private static List<String> combineSamples(final List<String> firstGroup, final List<String> secondGroup) {
+                final List<String> samples = new ArrayList<>();
+                samples.addAll(firstGroup);
+                samples.addAll(secondGroup);
+                return samples;
+        }
+
+        private static Map<String, Double> makeCoverageMap(final List<String> lowCoverageSamples,
+                                                                                                           final double lowCoverage,
+                                                                                                           final List<String> highCoverageSamples,
+                                                                                                           final double highCoverage) {
+                final Map<String, Double> coverageMap = new HashMap<>();
+                lowCoverageSamples.forEach(sample -> coverageMap.put(sample, lowCoverage));
+                highCoverageSamples.forEach(sample -> coverageMap.put(sample, highCoverage));
+                return coverageMap;
+        }
 
     private static List<DiscordantPairEvidence> makePEEvidence(final String sample, final String contig,
                                                                 final int start, final int end, final int count) {
@@ -522,6 +550,47 @@ public class SplitReadEvidenceGenotyperTest extends GATKBaseTest {
                 "Low coverage sample should have equal or higher genotype due to normalization");
     }
 
+    @Test
+    public void testGenotypeUsesNormalizedSummedSupportForSingleSidedBackgroundRatio() {
+        final List<String> carrierSamples = Arrays.asList("c1", "c2", "c3", "c4");
+        final List<String> backgroundSamples = Arrays.asList("b1", "b2", "b3", "b4", "b5", "b6");
+                final List<String> samples = combineSamples(carrierSamples, backgroundSamples);
+                final Map<String, Double> coverageMap = makeCoverageMap(carrierSamples, 10.0, backgroundSamples, 60.0);
+
+        final SplitReadEvidenceGenotyper genotyper = new SplitReadEvidenceGenotyper(
+                makeCoverageMap(coverageMap), 100, QUALITY_CUTOFF, MIN_SIZE, TARGET_COVERAGE, MAX_QUAL);
+        final SVCallRecord record = makeDELRecord("del_normalized_background", 1000, 5000,
+                Arrays.asList(GATKSVVCFConstants.EvidenceTypes.PE, GATKSVVCFConstants.EvidenceTypes.SR),
+                Collections.singletonList("pesr"));
+
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeParameters params =
+                new SplitReadEvidenceGenotyper.SplitReadGenotypeParameters(3.0, 20.0, 5.0);
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeFrequencyCutoffs cutoffs =
+                new SplitReadEvidenceGenotyper.SplitReadGenotypeFrequencyCutoffs(
+                        new SplitReadEvidenceGenotyper.CutoffResult(1.1, 1.1, 0, 0, 0, 0),
+                        new SplitReadEvidenceGenotyper.CutoffResult(0.5, 1.1, 0, 0, 1, 100)
+                );
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeMetrics metrics =
+                new SplitReadEvidenceGenotyper.SplitReadGenotypeMetrics(params, cutoffs);
+
+        final List<SplitReadEvidence> startEvidence = new ArrayList<>();
+        addSREvidence(startEvidence, carrierSamples, "chr1", 1000, 2, true);
+        addSREvidence(startEvidence, backgroundSamples, "chr1", 1000, 2, true);
+
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeResult result =
+                genotyper.genotype(record, startEvidence, Collections.emptyList(), metrics, 15, 2.0, samples);
+
+        Assert.assertFalse(result.backgroundFail(),
+                "Single-sided background filtering must use normalized summed support so low-coverage carriers are not drowned out by high-coverage background samples");
+        Assert.assertFalse(result.bothsidePass(), "One-sided evidence should not trigger bothsidePass");
+        for (int i = 0; i < carrierSamples.size(); i++) {
+            Assert.assertTrue(result.genotypes()[i] > 0, "Carrier sample should be non-ref: " + carrierSamples.get(i));
+        }
+        for (int i = carrierSamples.size(); i < samples.size(); i++) {
+            Assert.assertEquals(result.genotypes()[i], 0, "High-coverage background sample should remain ref");
+        }
+    }
+
     // ---- backgroundFail and bothsidePass flags ----
 
     @Test
@@ -557,6 +626,112 @@ public class SplitReadEvidenceGenotyperTest extends GATKBaseTest {
         Assert.assertNotNull(result);
         Assert.assertTrue(result.bothsidePass(), "Should have bothsidePass with good both-sided evidence");
         Assert.assertFalse(result.backgroundFail(), "Should not have backgroundFail when passes");
+    }
+
+    @Test
+    public void testAccumulateHistogramOnlyUsesNormalizedSummedSupportForCutoffOptimization() {
+        final List<String> rareCarrierSamples = Arrays.asList("r1", "r2");
+        final List<String> commonCarrierSamples = Arrays.asList("c1", "c2", "c3", "c4");
+        final List<String> backgroundSamples = Arrays.asList("b1", "b2", "b3", "b4", "b5", "b6");
+                final List<String> carrierSamples = combineSamples(rareCarrierSamples, commonCarrierSamples);
+                final List<String> samples = combineSamples(carrierSamples, backgroundSamples);
+                final Map<String, Double> coverageMap = makeCoverageMap(carrierSamples, 10.0, backgroundSamples, 60.0);
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeParameters params =
+                new SplitReadEvidenceGenotyper.SplitReadGenotypeParameters(3.0, 20.0, 5.0);
+
+        final SVCallRecord rarePassRecord = makeDELRecord("rare_pass", 1000, 5000,
+                Arrays.asList(GATKSVVCFConstants.EvidenceTypes.PE, GATKSVVCFConstants.EvidenceTypes.SR),
+                Collections.singletonList("pesr"));
+        final SVCallRecord commonPassRecord = makeDELRecord("common_pass", 6000, 12000,
+                Arrays.asList(GATKSVVCFConstants.EvidenceTypes.PE, GATKSVVCFConstants.EvidenceTypes.SR),
+                Collections.singletonList("pesr"));
+        final SVCallRecord rareFailRecord = makeINSRecord("rare_fail", 20000);
+        final SVCallRecord commonFailRecord = makeINSRecord("common_fail", 30000);
+
+        final List<SplitReadEvidence> rarePassEvidence = new ArrayList<>();
+        addSREvidence(rarePassEvidence, rareCarrierSamples, "chr1", 1000, 2, true);
+        addSREvidence(rarePassEvidence, backgroundSamples, "chr1", 1000, 2, true);
+
+        final List<SplitReadEvidence> commonPassEvidence = new ArrayList<>();
+        addSREvidence(commonPassEvidence, commonCarrierSamples, "chr1", 6000, 2, true);
+        addSREvidence(commonPassEvidence, backgroundSamples, "chr1", 6000, 2, true);
+
+        final List<SplitReadEvidence> rareFailEvidence = new ArrayList<>();
+        addSREvidence(rareFailEvidence, rareCarrierSamples, "chr1", 20000, 2, true);
+        addSREvidence(rareFailEvidence, backgroundSamples, "chr1", 20000, 4, true);
+        final List<SplitReadEvidence> commonFailEvidence = new ArrayList<>();
+        addSREvidence(commonFailEvidence, commonCarrierSamples, "chr1", 30000, 2, true);
+        addSREvidence(commonFailEvidence, backgroundSamples, "chr1", 30000, 4, true);
+
+        final SplitReadEvidenceGenotyper cutoffGenotyper = new SplitReadEvidenceGenotyper(
+                makeCoverageMap(coverageMap), 100, QUALITY_CUTOFF, MIN_SIZE, TARGET_COVERAGE, MAX_QUAL);
+        cutoffGenotyper.accumulateHistogramOnly(rarePassRecord, rarePassEvidence, Collections.emptyList(), true, params, samples);
+        cutoffGenotyper.accumulateHistogramOnly(commonPassRecord, commonPassEvidence, Collections.emptyList(), true, params, samples);
+        cutoffGenotyper.accumulateHistogramOnly(rareFailRecord, rareFailEvidence, Collections.emptyList(), false, params, samples);
+        cutoffGenotyper.accumulateHistogramOnly(commonFailRecord, commonFailEvidence, Collections.emptyList(), false, params, samples);
+
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeFrequencyCutoffs cutoffs = cutoffGenotyper.finalizeThirdPass();
+
+        Assert.assertEquals(cutoffs.rare().fracSingle(), 0.3, TEST_TOLERANCE,
+                "Rare single-sided cutoff should separate normalized pass ratio 1.0 from fail ratio 0.2");
+        Assert.assertEquals(cutoffs.common().fracSingle(), 0.5, TEST_TOLERANCE,
+                "Common single-sided cutoff should separate normalized pass ratio 1.0 from fail ratio 0.4");
+    }
+
+    @Test
+    public void testGenotypeTrainingUsesNormalizedSummedSupportForCutoffOptimization() {
+        final List<String> rareCarrierSamples = Arrays.asList("r1", "r2");
+        final List<String> commonCarrierSamples = Arrays.asList("c1", "c2", "c3", "c4");
+        final List<String> backgroundSamples = Arrays.asList("b1", "b2", "b3", "b4", "b5", "b6");
+                final List<String> carrierSamples = combineSamples(rareCarrierSamples, commonCarrierSamples);
+                final List<String> samples = combineSamples(carrierSamples, backgroundSamples);
+                final Map<String, Double> passCoverageMap = makeCoverageMap(carrierSamples, 10.0, backgroundSamples, 60.0);
+        final SplitReadEvidenceGenotyper genotyper = new SplitReadEvidenceGenotyper(
+                makeCoverageMap(passCoverageMap), 100, QUALITY_CUTOFF, MIN_SIZE, TARGET_COVERAGE, MAX_QUAL);
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeParameters params =
+                new SplitReadEvidenceGenotyper.SplitReadGenotypeParameters(3.0, 20.0, 5.0);
+        final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = makeDepthResult(new int[samples.size()]);
+        final int[] peGenotypeQuals = new int[samples.size()];
+        Arrays.fill(peGenotypeQuals, 1);
+        final DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult peResult =
+                new DiscordantPairEvidenceGenotyper.DiscordantPairGenotypeResult(new int[samples.size()], peGenotypeQuals, 10.0);
+
+        final SVCallRecord rarePassRecord = makeDELRecord("rare_pass_training", 1000, 5000,
+                Arrays.asList(GATKSVVCFConstants.EvidenceTypes.PE, GATKSVVCFConstants.EvidenceTypes.SR),
+                Collections.singletonList("pesr"));
+        final SVCallRecord commonPassRecord = makeDELRecord("common_pass_training", 6000, 12000,
+                Arrays.asList(GATKSVVCFConstants.EvidenceTypes.PE, GATKSVVCFConstants.EvidenceTypes.SR),
+                Collections.singletonList("pesr"));
+        final SVCallRecord rareFailRecord = makeINSRecord("rare_fail_training", 20000);
+        final SVCallRecord commonFailRecord = makeINSRecord("common_fail_training", 30000);
+
+        final List<SplitReadEvidence> rarePassEvidence = new ArrayList<>();
+        addSREvidence(rarePassEvidence, rareCarrierSamples, "chr1", 1000, 2, true);
+        addSREvidence(rarePassEvidence, backgroundSamples, "chr1", 1000, 2, true);
+
+        final List<SplitReadEvidence> commonPassEvidence = new ArrayList<>();
+        addSREvidence(commonPassEvidence, commonCarrierSamples, "chr1", 6000, 2, true);
+        addSREvidence(commonPassEvidence, backgroundSamples, "chr1", 6000, 2, true);
+
+        final List<SplitReadEvidence> rareFailEvidence = new ArrayList<>();
+        addSREvidence(rareFailEvidence, rareCarrierSamples, "chr1", 20000, 2, true);
+        addSREvidence(rareFailEvidence, backgroundSamples, "chr1", 20000, 4, true);
+
+        final List<SplitReadEvidence> commonFailEvidence = new ArrayList<>();
+        addSREvidence(commonFailEvidence, commonCarrierSamples, "chr1", 30000, 2, true);
+        addSREvidence(commonFailEvidence, backgroundSamples, "chr1", 30000, 4, true);
+
+        genotyper.genotypeTraining(rarePassRecord, rarePassEvidence, Collections.emptyList(), depthResult, peResult, params, samples);
+        genotyper.genotypeTraining(commonPassRecord, commonPassEvidence, Collections.emptyList(), depthResult, peResult, params, samples);
+        genotyper.genotypeTraining(rareFailRecord, rareFailEvidence, Collections.emptyList(), null, peResult, params, samples);
+        genotyper.genotypeTraining(commonFailRecord, commonFailEvidence, Collections.emptyList(), null, peResult, params, samples);
+
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeFrequencyCutoffs cutoffs = genotyper.finalizeThirdPass();
+
+        Assert.assertEquals(cutoffs.rare().fracSingle(), 0.3, TEST_TOLERANCE,
+                "Full training path should match normalized rare single-sided cutoff");
+        Assert.assertEquals(cutoffs.common().fracSingle(), 0.5, TEST_TOLERANCE,
+                "Full training path should match normalized common single-sided cutoff");
     }
 
     // ---- Regression tests for v1.1 porting correctness ----
