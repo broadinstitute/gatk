@@ -23,9 +23,9 @@ def remove_samples_from_vds(
     input_vds_path : str
         GCS (or local) path to the input VDS.
     samples_to_remove_path : str
-        Path to a CSV/TSV file listing research IDs to remove.
-        The file must have a header row whose first column is ``research_id``.
-        One sample ID per line.
+        Path to a comma-delimited file listing research IDs to remove.
+        The file must have a single column with a header of ``research_id``,
+        one sample ID per line.
     output_vds_path : str
         GCS (or local) path where the filtered VDS will be written.
     """
@@ -34,13 +34,32 @@ def remove_samples_from_vds(
 
     # Load the samples-to-remove table and key by 's' (the Hail sample-column key).
     samples_to_remove_table = hl.import_table(samples_to_remove_path, delimiter=',')
+
+    # Fail fast if the removal file contains duplicate research_ids.
+    n_to_remove = samples_to_remove_table.count()
+    n_distinct = samples_to_remove_table.distinct().count()
+    if n_to_remove != n_distinct:
+        raise ValueError(
+            f"samples_to_remove file contains {n_to_remove - n_distinct} duplicate research_id(s). "
+            "Please deduplicate before proceeding."
+        )
+
     samples_to_remove_table = samples_to_remove_table.key_by(s=samples_to_remove_table.research_id)
 
-    # Sanity-check counts before proceeding.
+    # Compute the intersection of the removal list with the VDS columns so we know
+    # how many samples will actually be removed, and print informative counts.
     n_input = input_vds.variant_data.cols().count()
-    n_to_remove = samples_to_remove_table.count()
-    print(f"Input VDS sample count:       {n_input}")
-    print(f"Samples to remove:            {n_to_remove}")
+    n_in_vds = samples_to_remove_table.semi_join(input_vds.variant_data.cols()).count()
+    n_not_in_vds = n_to_remove - n_in_vds
+    print(f"Input VDS sample count:                {n_input}")
+    print(f"Samples in removal file:               {n_to_remove}")
+    print(f"Samples in removal file found in VDS:  {n_in_vds}")
+    print(f"Samples in removal file not in VDS:    {n_not_in_vds}")
+
+    if n_in_vds == 0:
+        raise ValueError(
+            "None of the samples listed in the removal file are present in the VDS. Aborting."
+        )
 
     # Step 1: filter samples and remove dead alleles.
     filtered_vds = hl.vds.filter_samples(
@@ -63,16 +82,16 @@ def remove_samples_from_vds(
     # Step 3: recalculate GT from LGT + LA.
     # Hail stores GT at import time; it is NOT updated automatically when
     # samples are removed, so we must recompute it ourselves.
+    # annotate_entries overwrites GT in-place, preserving all other entry fields.
     vd = filtered_vds.variant_data
-    vd = vd.drop(vd.GT)
-    vd = vd.select_entries(GT=hl.vds.lgt_to_gt(vd.LGT, vd.LA), **vd.entry)
+    vd = vd.annotate_entries(GT=hl.vds.lgt_to_gt(vd.LGT, vd.LA))
     filtered_vds = hl.vds.VariantDataset(filtered_vds.reference_data, vd)
 
-    # Verify the arithmetic adds up.
+    # Verify the arithmetic adds up using the intersection count.
     n_output = filtered_vds.variant_data.cols().count()
-    print(f"Output VDS sample count:      {n_output}")
-    assert n_output + n_to_remove == n_input, (
-        f"Sample count mismatch: {n_output} + {n_to_remove} != {n_input}"
+    print(f"Output VDS sample count:               {n_output}")
+    assert n_output + n_in_vds == n_input, (
+        f"Sample count mismatch: {n_output} + {n_in_vds} != {n_input}"
     )
     print("Sample count check passed.")
 
@@ -102,7 +121,7 @@ if __name__ == '__main__':
         required=True,
         help=(
             "Path to a file listing research IDs of samples to remove. "
-            "Must be a comma-delimited file with a header whose first column is 'research_id', "
+            "Must be a comma-delimited file with a single column whose header is 'research_id', "
             "one sample ID per line."
         ),
     )
