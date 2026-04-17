@@ -23,9 +23,8 @@ def remove_samples_from_vds(
     input_vds_path : str
         GCS (or local) path to the input VDS.
     samples_to_remove_path : str
-        Path to a comma-delimited file listing research IDs to remove.
-        The file must have a single column with a header of ``research_id``,
-        one sample ID per line.
+        Path to a single-column file listing research IDs to remove.
+        The file must have a header of ``research_id``, one research ID per line.
     output_vds_path : str
         GCS (or local) path where the filtered VDS will be written.
     """
@@ -36,8 +35,11 @@ def remove_samples_from_vds(
     samples_to_remove_table = hl.import_table(samples_to_remove_path, delimiter=',')
 
     # Fail fast if the removal file contains duplicate research_ids.
-    n_to_remove = samples_to_remove_table.count()
-    n_distinct = samples_to_remove_table.distinct().count()
+    # Select only research_id before comparing so the check is unambiguous
+    # regardless of whether the file contains extra columns.
+    research_ids = samples_to_remove_table.select('research_id')
+    n_to_remove = research_ids.count()
+    n_distinct = research_ids.distinct().count()
     if n_to_remove != n_distinct:
         raise ValueError(
             f"samples_to_remove file contains {n_to_remove - n_distinct} duplicate research_id(s). "
@@ -48,8 +50,9 @@ def remove_samples_from_vds(
 
     # Compute the intersection of the removal list with the VDS columns so we know
     # how many samples will actually be removed, and print informative counts.
-    n_input = input_vds.variant_data.cols().count()
-    n_in_vds = samples_to_remove_table.semi_join(input_vds.variant_data.cols()).count()
+    input_cols = input_vds.variant_data.cols()
+    n_input = input_cols.count()
+    n_in_vds = samples_to_remove_table.semi_join(input_cols).count()
     n_not_in_vds = n_to_remove - n_in_vds
     print(f"Input VDS sample count:                {n_input}")
     print(f"Samples in removal file:               {n_to_remove}")
@@ -120,9 +123,8 @@ if __name__ == '__main__':
         type=str,
         required=True,
         help=(
-            "Path to a file listing research IDs of samples to remove. "
-            "Must be a comma-delimited file with a single column whose header is 'research_id', "
-            "one sample ID per line."
+            "Path to a single-column file listing research IDs of samples to remove. "
+            "Must have a header of 'research_id', with one research ID per line."
         ),
     )
     parser.add_argument(

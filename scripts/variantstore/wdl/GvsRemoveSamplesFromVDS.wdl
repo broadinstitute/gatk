@@ -36,7 +36,7 @@ workflow GvsRemoveSamplesFromVDS {
             help: "Path to the input VDS from which samples will be removed."
         }
         samples_to_remove_path: {
-            help: "Path to a comma-delimited file listing research IDs of samples to remove. Must have a header whose first column is 'research_id', one sample ID per line."
+            help: "Path to a single-column file listing research IDs of samples to remove. Must have a header of 'research_id', with one research ID per line."
         }
         output_vds_path: {
             help: "Path to write the output VDS with the specified samples removed."
