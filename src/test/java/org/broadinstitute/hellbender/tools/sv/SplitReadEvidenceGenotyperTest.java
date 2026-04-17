@@ -426,6 +426,29 @@ public class SplitReadEvidenceGenotyperTest extends GATKBaseTest {
         Assert.assertEquals(SplitReadEvidenceGenotyper.SplitReadTableParser.CUTOFFS_COLUMNS.columnCount(), 15);
     }
 
+        @Test
+        public void testSplitReadTableParserSupportsLargePassFailCounts() {
+                final SplitReadEvidenceGenotyper.SplitReadTableParser parser = new SplitReadEvidenceGenotyper.SplitReadTableParser();
+                final SplitReadEvidenceGenotyper.SplitReadGenotypeMetrics metrics = new SplitReadEvidenceGenotyper.SplitReadGenotypeMetrics(
+                                new SplitReadEvidenceGenotyper.SplitReadGenotypeParameters(5.0, 98.0, 19.511015999999998),
+                                new SplitReadEvidenceGenotyper.SplitReadGenotypeFrequencyCutoffs(
+                                                new SplitReadEvidenceGenotyper.CutoffResult(0.0, 0.0, 3_000_000_000L, 4_000_000_000L, 0, 5),
+                                                new SplitReadEvidenceGenotyper.CutoffResult(0.1, 0.0, 5_000_000_000L, 6_000_000_000L, 5, 516)
+                                )
+                );
+
+                final org.broadinstitute.hellbender.utils.tsv.DataLine line = new org.broadinstitute.hellbender.utils.tsv.DataLine(
+                        SplitReadEvidenceGenotyper.SplitReadTableParser.CUTOFFS_COLUMNS,
+                        IllegalArgumentException::new);
+                parser.composeCutoffsLine(metrics, line);
+                final SplitReadEvidenceGenotyper.SplitReadGenotypeMetrics parsed = parser.parseTableLine(line);
+
+                Assert.assertEquals(parsed.cutoffs().rare().countPass(), 3_000_000_000L);
+                Assert.assertEquals(parsed.cutoffs().rare().countFail(), 4_000_000_000L);
+                Assert.assertEquals(parsed.cutoffs().common().countPass(), 5_000_000_000L);
+                Assert.assertEquals(parsed.cutoffs().common().countFail(), 6_000_000_000L);
+        }
+
     // ---- Training pipeline validation ----
 
     @Test(expectedExceptions = IllegalStateException.class)

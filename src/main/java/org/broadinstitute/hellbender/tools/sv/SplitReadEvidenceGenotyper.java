@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.sv;
 
-import autovalue.shaded.com.google.common.collect.Sets;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
@@ -54,9 +53,9 @@ public class SplitReadEvidenceGenotyper {
     // overlapHistogram: non-ref sample entries from bothside variants, indexed by BOTH fracs
     //   Dimensions: [freq][pass][single_frac_bin 0..10][both_frac_bin 0..10]
     private static final int NUM_FRAC_BINS = 11;
-    private final int[][][] singleHistogram = new int[2][2][NUM_FRAC_BINS];
-    private final int[][][] bothHistogram = new int[2][2][NUM_FRAC_BINS];
-    private final int[][][][] overlapHistogram = new int[2][2][NUM_FRAC_BINS][NUM_FRAC_BINS];
+    private final long[][][] singleHistogram = new long[2][2][NUM_FRAC_BINS];
+    private final long[][][] bothHistogram = new long[2][2][NUM_FRAC_BINS];
+    private final long[][][][] overlapHistogram = new long[2][2][NUM_FRAC_BINS][NUM_FRAC_BINS];
 
     private static final Median MEDIAN = new Median();
     private static final NormalDistribution Z_DISTRIBUTION = new NormalDistribution();
@@ -185,14 +184,14 @@ public class SplitReadEvidenceGenotyper {
         firstPassMade = true;
     }
 
-    public record CutoffResult(double fracSingle, double fracBoth, int countPass, int countFail, int freqMin, int freqMax) {}
+    public record CutoffResult(double fracSingle, double fracBoth, long countPass, long countFail, int freqMin, int freqMax) {}
 
     /**
      * Compute suffix sums from a histogram: result[k] = number of entries with frac >= cutoffs[k].
      * The histogram bin j holds the count of entries with frac in [j*0.1, (j+1)*0.1); bin 10 holds frac == 1.0.
      */
-    private static int[] suffixSumsFromHistogram(final int[] histogram) {
-        final int[] suffixSums = new int[NUM_FRAC_BINS];
+    private static long[] suffixSumsFromHistogram(final long[] histogram) {
+        final long[] suffixSums = new long[NUM_FRAC_BINS];
         suffixSums[NUM_FRAC_BINS - 1] = histogram[NUM_FRAC_BINS - 1];
         for (int k = NUM_FRAC_BINS - 2; k >= 0; k--) {
             suffixSums[k] = suffixSums[k + 1] + histogram[k];
@@ -290,14 +289,14 @@ public class SplitReadEvidenceGenotyper {
      * where {@code overlapPass(i, j)} is the count of entries that pass BOTH thresholds.
      */
     private CutoffResult cutoffOptimizationFromHistograms(final double[] cutoffs, final int freqBinIndex) {
-        final int[] singlePassSuffix = suffixSumsFromHistogram(singleHistogram[freqBinIndex][0]);
-        final int[] singleFailSuffix = suffixSumsFromHistogram(singleHistogram[freqBinIndex][1]);
-        final int[] bothPassSuffix = suffixSumsFromHistogram(bothHistogram[freqBinIndex][0]);
-        final int[] bothFailSuffix = suffixSumsFromHistogram(bothHistogram[freqBinIndex][1]);
+        final long[] singlePassSuffix = suffixSumsFromHistogram(singleHistogram[freqBinIndex][0]);
+        final long[] singleFailSuffix = suffixSumsFromHistogram(singleHistogram[freqBinIndex][1]);
+        final long[] bothPassSuffix = suffixSumsFromHistogram(bothHistogram[freqBinIndex][0]);
+        final long[] bothFailSuffix = suffixSumsFromHistogram(bothHistogram[freqBinIndex][1]);
 
         // 2D suffix sums for overlap: overlapPassSuffix2D[s][b] = sum of overlap[s'][b'] for s'>=s AND b'>=b
-        final int[][] overlapPassSuffix2D = suffix2DFromHistogram(overlapHistogram[freqBinIndex][0]);
-        final int[][] overlapFailSuffix2D = suffix2DFromHistogram(overlapHistogram[freqBinIndex][1]);
+        final long[][] overlapPassSuffix2D = suffix2DFromHistogram(overlapHistogram[freqBinIndex][0]);
+        final long[][] overlapFailSuffix2D = suffix2DFromHistogram(overlapHistogram[freqBinIndex][1]);
 
         final int freqMin = freqBinIndex == 0 ? rareMin : commonMin;
         final int freqMax = freqBinIndex == 0 ? rareMax : commonMax;
@@ -306,8 +305,8 @@ public class SplitReadEvidenceGenotyper {
         for (int s = 0; s < cutoffs.length; s++) {
             for (int b = 0; b < cutoffs.length; b++) {
                 // Inclusion-exclusion: union = single + both - overlap
-                final int passCount = singlePassSuffix[s] + bothPassSuffix[b] - overlapPassSuffix2D[s][b];
-                final int failCount = singleFailSuffix[s] + bothFailSuffix[b] - overlapFailSuffix2D[s][b];
+                final long passCount = singlePassSuffix[s] + bothPassSuffix[b] - overlapPassSuffix2D[s][b];
+                final long failCount = singleFailSuffix[s] + bothFailSuffix[b] - overlapFailSuffix2D[s][b];
                 combine.add(new CutoffResult(cutoffs[s], cutoffs[b], passCount, failCount, freqMin, freqMax));
             }
         }
@@ -319,8 +318,8 @@ public class SplitReadEvidenceGenotyper {
     /**
      * Compute 2D suffix sums from a 2D histogram: result[s][b] = sum of hist[s'][b'] for s'>=s AND b'>=b.
      */
-    private static int[][] suffix2DFromHistogram(final int[][] histogram) {
-        final int[][] suffix = new int[NUM_FRAC_BINS][NUM_FRAC_BINS];
+    private static long[][] suffix2DFromHistogram(final long[][] histogram) {
+        final long[][] suffix = new long[NUM_FRAC_BINS][NUM_FRAC_BINS];
         // Start from bottom-right corner and work backwards
         for (int s = NUM_FRAC_BINS - 1; s >= 0; s--) {
             for (int b = NUM_FRAC_BINS - 1; b >= 0; b--) {
@@ -382,8 +381,8 @@ public class SplitReadEvidenceGenotyper {
         Utils.validate(!homCounts.isEmpty(), "No split read counts after second pass");
         Utils.validate(!hetCounts.isEmpty(), "No split read counts after second pass");
         Utils.validate(!secondPassMade, "Second pass has already been made");
-        final double[] homArr = homCounts.stream().mapToDouble(Double::valueOf).toArray();
-        final double[] hetArr = hetCounts.stream().mapToDouble(Double::valueOf).toArray();
+        final double[] homArr = homCounts.stream().mapToDouble(Double::doubleValue).toArray();
+        final double[] hetArr = hetCounts.stream().mapToDouble(Double::doubleValue).toArray();
         final double homMedian = MEDIAN.evaluate(homArr);
         final double hetMedian = MEDIAN.evaluate(hetArr);
         final double hetMadValue = MEDIAN.evaluate(DoubleStream.of(hetArr).map(d -> Math.abs(d - hetMedian)).toArray());
@@ -665,15 +664,16 @@ public class SplitReadEvidenceGenotyper {
      * are invariant under uniform scaling, so the selected cutoffs are unchanged.
      */
     public void scaleHistograms(final int factor) {
+        final long scaleFactor = factor;
         for (int f = 0; f < 2; f++) {
             for (int p = 0; p < 2; p++) {
                 for (int b = 0; b < NUM_FRAC_BINS; b++) {
-                    singleHistogram[f][p][b] *= factor;
-                    bothHistogram[f][p][b] *= factor;
+                    singleHistogram[f][p][b] *= scaleFactor;
+                    bothHistogram[f][p][b] *= scaleFactor;
                 }
                 for (int s = 0; s < NUM_FRAC_BINS; s++) {
                     for (int b = 0; b < NUM_FRAC_BINS; b++) {
-                        overlapHistogram[f][p][s][b] *= factor;
+                        overlapHistogram[f][p][s][b] *= scaleFactor;
                     }
                 }
             }
@@ -709,7 +709,8 @@ public class SplitReadEvidenceGenotyper {
         private final Map<String, Integer> depthGenotypes;
         public FirstPassResult(final Set<String> passingSamples, final Map<String, Double> startCounts, final Map<String, Double> endCounts, final DepthEvidenceGenotyper.DepthGenotypeResult depthGenotype, final List<String> depthGenotypeSamples) {
             this.counts = new HashMap<>();
-            final Set<String> keys = Sets.union(startCounts.keySet(), endCounts.keySet());
+            final Set<String> keys = new HashSet<>(startCounts.keySet());
+            keys.addAll(endCounts.keySet());
             for (final String key : keys) {
                 if (passingSamples.contains(key)) {
                     final double startCount = startCounts.getOrDefault(key, 0.);
@@ -742,7 +743,7 @@ public class SplitReadEvidenceGenotyper {
                     throw new IllegalArgumentException("Sample '" + entry.getKey() + "' does not exist in depth genotype");
                 }
             }
-            return countsList.stream().mapToDouble(Double::valueOf).toArray();
+            return countsList.stream().mapToDouble(Double::doubleValue).toArray();
         }
     }
 
@@ -813,10 +814,10 @@ public class SplitReadEvidenceGenotyper {
             final int rareMax = Integer.parseInt(dataLine.get(4));
             final int commonMin = Integer.parseInt(dataLine.get(5));
             final int commonMax = Integer.parseInt(dataLine.get(6));
-            final int rarePass = Integer.parseInt(dataLine.get(7));
-            final int rareFail = Integer.parseInt(dataLine.get(8));
-            final int commonPass = Integer.parseInt(dataLine.get(9));
-            final int commonFail = Integer.parseInt(dataLine.get(10));
+            final long rarePass = Long.parseLong(dataLine.get(7));
+            final long rareFail = Long.parseLong(dataLine.get(8));
+            final long commonPass = Long.parseLong(dataLine.get(9));
+            final long commonFail = Long.parseLong(dataLine.get(10));
             final double rareSingle = Double.parseDouble(dataLine.get(11));
             final double rareBoth = Double.parseDouble(dataLine.get(12));
             final double commonSingle = Double.parseDouble(dataLine.get(13));
