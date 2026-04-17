@@ -516,6 +516,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1862_deconsent
+         - vs_1862_remove_samples_from_foxtrot
        tags:
          - /.*/
