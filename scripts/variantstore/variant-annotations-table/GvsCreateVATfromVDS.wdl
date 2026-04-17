@@ -74,7 +74,6 @@ workflow GvsCreateVATfromVDS {
     }
 
     String region = "us-central1"
-    String gcs_subnetwork_name = "subnetwork"
     File mane_annotation_file = "gs://gvs_quickstart_storage/MANE/MANE_human/release_1.4/MANE.GRCh38.v1.4.summary.txt"
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
@@ -190,7 +189,6 @@ workflow GvsCreateVATfromVDS {
                     ancestry_file_path = MakeSubpopulationFilesAndReadSchemaFiles.ancestry_file_path,
                     workspace_bucket = GetToolVersions.workspace_bucket,
                     region = region,
-                    gcs_subnetwork_name = gcs_subnetwork_name,
                     leave_cluster_running_at_end = leave_hail_cluster_running_at_end,
                     cloud_sdk_docker = effective_cloud_sdk_docker,
                     run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
@@ -442,7 +440,6 @@ task GenerateSitesOnlyVcf {
         String workspace_project
         String workspace_bucket
         String region
-        String gcs_subnetwork_name
         Boolean leave_cluster_running_at_end
         String hail_version
         File run_in_hail_cluster_script

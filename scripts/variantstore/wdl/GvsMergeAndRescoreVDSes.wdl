@@ -16,7 +16,6 @@ workflow GvsMergeAndRescoreVDSes {
         Boolean skip_validate = false
 
         String cluster_prefix = "vds-cluster"
-        String gcs_subnetwork_name = "subnetwork"
         String? hail_temp_path
         Int? intermediate_resume_point
         String region = "us-central1"
@@ -54,9 +53,6 @@ workflow GvsMergeAndRescoreVDSes {
         }
         cluster_prefix: {
             help: "Prefix of the Dataproc cluster name"
-        }
-        gcs_subnetwork_name: {
-            help: "Set to 'subnetwork' if running in Terra Cromwell"
         }
         hail_temp_path: {
             help: "Hail temp path to use, specify if resuming from a run that failed midway through creating intermediate VDSes."
@@ -140,7 +136,6 @@ workflow GvsMergeAndRescoreVDSes {
             workspace_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
-            gcs_subnetwork_name = gcs_subnetwork_name,
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
             leave_cluster_running_at_end = leave_cluster_running_at_end,
             cluster_max_idle_minutes = cluster_max_idle_minutes,
@@ -179,7 +174,6 @@ task MergeAndRescoreVDS {
         String workspace_project
         String workspace_bucket
         String region
-        String gcs_subnetwork_name
 
         String cloud_sdk_slim_docker
     }
