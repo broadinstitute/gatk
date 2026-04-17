@@ -229,6 +229,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1873_prepare_for_foxtrot_2
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
