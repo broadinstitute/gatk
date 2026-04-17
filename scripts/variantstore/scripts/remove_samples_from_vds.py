@@ -39,7 +39,7 @@ def remove_samples_from_vds(
     # regardless of whether the file contains extra columns.
     research_ids = samples_to_remove_table.select('research_id')
     n_to_remove = research_ids.count()
-    n_distinct = research_ids.distinct().count()
+    n_distinct = research_ids.key_by('research_id').distinct().count()
     if n_to_remove != n_distinct:
         raise ValueError(
             f"samples_to_remove file contains {n_to_remove - n_distinct} duplicate research_id(s). "
