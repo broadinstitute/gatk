@@ -15,8 +15,6 @@ def remove_samples_from_vds(
     1. Filter out the specified samples (and remove dead alleles).
     2. Drop variant-data rows that no longer carry any alternate alleles
        (monomorphic reference rows left behind after sample removal).
-    3. Recalculate GT from LGT + LA so that per-genotype GT values remain
-       accurate after the cohort composition changes.
 
     Parameters
     ----------
@@ -82,13 +80,6 @@ def remove_samples_from_vds(
         ),
     )
 
-    # Step 3: recalculate GT from LGT + LA.
-    # Hail stores GT at import time; it is NOT updated automatically when
-    # samples are removed, so we must recompute it ourselves.
-    # annotate_entries overwrites GT in-place, preserving all other entry fields.
-    vd = filtered_vds.variant_data
-    vd = vd.annotate_entries(GT=hl.vds.lgt_to_gt(vd.LGT, vd.LA))
-    filtered_vds = hl.vds.VariantDataset(filtered_vds.reference_data, vd)
 
     # Verify the arithmetic adds up using the intersection count.
     n_output = filtered_vds.variant_data.cols().count()
