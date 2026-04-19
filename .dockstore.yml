@@ -173,6 +173,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1862_remove_samples_from_foxtrot
        tags:
          - /.*/
    - name: GvsTieOutVDS
