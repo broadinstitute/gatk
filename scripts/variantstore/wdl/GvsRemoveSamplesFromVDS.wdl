@@ -1,11 +1,12 @@
 version 1.0
 
-# This WDL removes a specified set of samples from a Hail VDS and writes the result to a new path.
-# It drops monomorphic reference rows left behind after sample removal and recalculates GT from LGT.
 import "GvsUtils.wdl" as Utils
 
 
 workflow GvsRemoveSamplesFromVDS {
+    meta {
+        description: "Removes a specified set of samples from a Hail VDS and writes the result to a new path. Implemented by remove_samples_from_vds.py, which: (1) validates the removal file for duplicates and checks that at least one listed research ID exists in the VDS; (2) filters out the specified samples and removes dead alleles; (3) drops monomorphic reference rows in the variant data left behind after sample removal (important when a withdrawn sample was the sole carrier of an alt allele at a site). GVS-produced VDSes do not contain a GT field, so no GT recalculation is needed or performed. Phasing information is passed through unchanged."
+    }
     input {
         String input_vds_path
         String samples_to_remove_path
