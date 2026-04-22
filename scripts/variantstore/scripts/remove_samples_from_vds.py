@@ -99,7 +99,7 @@ if __name__ == '__main__':
         allow_abbrev=False,
         description=(
             'Remove a set of samples from a Hail VDS. '
-            'Monomorphic reference rows are dropped and GT is recalculated from LGT.'
+            'Monomorphic reference rows are dropped.'
         ),
     )
 
