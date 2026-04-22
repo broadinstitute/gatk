@@ -238,7 +238,7 @@ if __name__ == '__main__':
     else:
         # If we have a single merged VDS that just needs to have scoring data applied, we would pass that as the 'Echo'
         # VDS and not specify a 'Foxtrot' VDS.
-        tmp_merged_vds_path = hl.vds.read_vds(args.input_echo_vds)
+        tmp_merged_vds = hl.vds.read_vds(args.input_echo_vds)
 
     # Drop any samples that need dropping before patching.
     if samples_to_remove_table:
