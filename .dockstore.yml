@@ -176,6 +176,16 @@ workflows:
          - vs_1862_remove_samples_from_foxtrot
        tags:
          - /.*/
+   - name: ApplyFilterDataToMergedFoxtrot2VDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsMergeAndRescoreVDSes.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - FoxtrotRelease_20260422_01
+       tags:
+         - /.*/
    - name: GvsTieOutVDS
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsTieOutVDS.wdl

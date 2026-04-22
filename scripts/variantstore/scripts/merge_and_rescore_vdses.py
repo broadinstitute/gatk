@@ -175,7 +175,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--input-echo-vds', help="Echo VDS with Echo filter, will not be overwritten", required=True)
 
-    parser.add_argument('--input-unmerged-foxtrot-vds', help="Foxtrot VDS with Foxtrot filter, contains only samples new for Foxtrot, will not be overwritten", required=True)
+    parser.add_argument('--input-unmerged-foxtrot-vds', help="Foxtrot VDS with Foxtrot filter, contains only samples new for Foxtrot, will not be overwritten", required=False)
 
     parser.add_argument('--input-foxtrot-avro-path', type=str,
                         help='Path at which exported Foxtrot GVS Avro files are found, including the filter data to apply in the output merged VDS.',
@@ -226,14 +226,20 @@ if __name__ == '__main__':
     site = import_site_filters(site_filtering_data, site_path)
     vets = import_vets_filters(vets_filtering_data, vets_path)
 
-    # First merge the Echo and new-to-Foxtrot VDSes, then rescore. Although the new-to-Foxtrot VDS already has correct
-    # filter data, we don't get correct AC/AN/AF results during our VDS tieout tests if we score just the Foxtrot-only
-    # VDS and then merge.
-    merge_vdses(tmp_dir,
-                tmp_merged_vds_path,
-                args.input_echo_vds, args.input_unmerged_foxtrot_vds)
+    if args.input_unmerged_foxtrot_vds_path:
+        # If we have Echo and new-to-Foxtrot VDSes to merge, merge those then rescore. Although the new-to-Foxtrot VDS
+        # already has correct filter data, we don't get correct AC/AN/AF results during our VDS tieout tests if we score
+        # just the Foxtrot-only VDS and then merge.
+        merge_vdses(tmp_dir,
+                    tmp_merged_vds_path,
+                    args.input_echo_vds, args.input_unmerged_foxtrot_vds)
 
-    tmp_merged_vds = hl.vds.read_vds(tmp_merged_vds_path)
+        tmp_merged_vds = hl.vds.read_vds(tmp_merged_vds_path)
+    else:
+        # If we have a single merged VDS that just needs to have scoring data applied, we would pass that as the 'Echo'
+        # VDS and not specify a 'Foxtrot' VDS.
+        tmp_merged_vds_path = hl.vds.read_vds(args.input_echo_vds)
+
     # Drop any samples that need dropping before patching.
     if samples_to_remove_table:
         tmp_merged_vds = hl.vds.filter_samples(tmp_merged_vds, samples_to_remove_table, keep=False,
