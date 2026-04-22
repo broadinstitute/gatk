@@ -226,7 +226,7 @@ if __name__ == '__main__':
     site = import_site_filters(site_filtering_data, site_path)
     vets = import_vets_filters(vets_filtering_data, vets_path)
 
-    if args.input_unmerged_foxtrot_vds_path:
+    if args.input_unmerged_foxtrot_vds:
         # If we have Echo and new-to-Foxtrot VDSes to merge, merge those then rescore. Although the new-to-Foxtrot VDS
         # already has correct filter data, we don't get correct AC/AN/AF results during our VDS tieout tests if we score
         # just the Foxtrot-only VDS and then merge.
