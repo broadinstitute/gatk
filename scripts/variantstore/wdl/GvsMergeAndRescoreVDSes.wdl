@@ -9,7 +9,7 @@ import "GvsValidateVDS.wdl" as ValidateVDS
 workflow GvsMergeAndRescoreVDSes {
     input {
         String input_echo_vds_path
-        String input_unmerged_foxtrot_vds_path
+        String? input_unmerged_foxtrot_vds_path
         String input_foxtrot_avro_path
         String output_merged_and_rescored_foxtrot_vds_path
         String? samples_to_remove_path
@@ -153,7 +153,7 @@ task MergeAndRescoreVDS {
     input {
         String prefix
         String input_echo_vds_path
-        String input_unmerged_foxtrot_vds_path
+        String? input_unmerged_foxtrot_vds_path
         String input_foxtrot_avro_path
         String output_merged_and_rescored_foxtrot_vds_path
         String? samples_to_remove_path
@@ -236,9 +236,9 @@ task MergeAndRescoreVDS {
             "temp-path": "${hail_temp_path}",
             "input-foxtrot-avro-path": "~{input_foxtrot_avro_path}",
             "input-echo-vds": "~{input_echo_vds_path}",
-            "input-unmerged-foxtrot-vds": "~{input_unmerged_foxtrot_vds_path}",
             "output-vds-path": "~{output_merged_and_rescored_foxtrot_vds_path}"
             ~{if (skip_validate) then '' else ', "run-validation": ""'}
+            ~{', "input-unmerged-foxtrot-vds": "' + input_unmerged_foxtrot_vds_path + '"'}
             ~{', "intermediate-resume-point": ' + intermediate_resume_point}
             ~{', "samples-to-remove-path": "' + samples_to_remove_path + '"'}
         }
