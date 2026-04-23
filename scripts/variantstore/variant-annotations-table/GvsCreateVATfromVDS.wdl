@@ -23,6 +23,7 @@ workflow GvsCreateVATfromVDS {
         String? vat_version
         String? workspace_gcs_project
 
+        Boolean generate_vep_and_loftee_annotations = true
         Boolean leave_hail_cluster_running_at_end = false
         Int? merge_vcfs_disk_size_override
         Int? split_intervals_disk_size_override
@@ -70,6 +71,9 @@ workflow GvsCreateVATfromVDS {
         }
         sites_to_exclude: {
             help: "An optional file of sites to exclude from the sites-only VCF. It may become necessary to specify this if annotations for a particular position have issues that prevent Nirvana from running successfully, e.g. chr2:20447683 observed in AnVIL 3K data. The format is one bcftools-style region per line, e.g. 'chr2:20447683', no header."
+        }
+        generate_vep_and_loftee_annotations: {
+            help: "If true (the default), run VEP + LOFTEE and load the resulting annotations into the VAT. Set to false to skip VEP + LOFTEE annotation entirely, which can significantly reduce runtime and cost for large callsets (500K+ samples). The VAT BigQuery schema is unchanged regardless of this setting; VEP/LOFTEE columns will simply be null when disabled."
         }
     }
 
@@ -270,16 +274,18 @@ workflow GvsCreateVATfromVDS {
                     variants_docker = effective_variants_docker,
             }
 
-            call GenerateVepAndLofteeAnnotations {
-                input:
-                    vep_loftee_docker = effective_vep_loftee_docker,
-                    vep_cache = loftee_references_dir + "homo_sapiens_vep_115_GRCh38.tar.gz",
-                    loftee_human_ancestor_fa_gz = loftee_references_dir + "human_ancestor.fa.gz",
-                    loftee_human_ancestor_fa_gz_fai = loftee_references_dir + "human_ancestor.fa.gz.fai",
-                    loftee_human_ancestor_fa_gz_gzi = loftee_references_dir + "human_ancestor.fa.gz.gzi",
-                    loftee_gerp_scores = loftee_references_dir + "gerp_conservation_scores.homo_sapiens.GRCh38.bw",
-                    loftee_phylo_csf_database = loftee_references_dir + "loftee.sql",
-                    input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
+            if (generate_vep_and_loftee_annotations) {
+                call GenerateVepAndLofteeAnnotations {
+                    input:
+                        vep_loftee_docker = effective_vep_loftee_docker,
+                        vep_cache = loftee_references_dir + "homo_sapiens_vep_115_GRCh38.tar.gz",
+                        loftee_human_ancestor_fa_gz = loftee_references_dir + "human_ancestor.fa.gz",
+                        loftee_human_ancestor_fa_gz_fai = loftee_references_dir + "human_ancestor.fa.gz.fai",
+                        loftee_human_ancestor_fa_gz_gzi = loftee_references_dir + "human_ancestor.fa.gz.gzi",
+                        loftee_gerp_scores = loftee_references_dir + "gerp_conservation_scores.homo_sapiens.GRCh38.bw",
+                        loftee_phylo_csf_database = loftee_references_dir + "loftee.sql",
+                        input_vcf = StripCustomAnnotationsFromSitesOnlyVCF.output_vcf,
+                }
             }
 
             ## Use Nirvana to annotate the sites-only VCF and include the AC/AN/AF calculations as custom annotations
@@ -310,25 +316,27 @@ workflow GvsCreateVATfromVDS {
             }
         }
 
-        call BigQueryLoadRawVepAndLofteeAnnotations {
-            input:
-                vep_loftee_raw_output = GenerateVepAndLofteeAnnotations.output_file,
-                project_id = project_id,
-                dataset_name = dataset_name,
-                raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
-                raw_data_table_schema = MakeSubpopulationFilesAndReadSchemaFiles.vep_loftee_raw_schema_json_file,
-                variants_docker = effective_variants_docker,
-        }
+        if (generate_vep_and_loftee_annotations) {
+            call BigQueryLoadRawVepAndLofteeAnnotations {
+                input:
+                    vep_loftee_raw_output = select_all(GenerateVepAndLofteeAnnotations.output_file),
+                    project_id = project_id,
+                    dataset_name = dataset_name,
+                    raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
+                    raw_data_table_schema = MakeSubpopulationFilesAndReadSchemaFiles.vep_loftee_raw_schema_json_file,
+                    variants_docker = effective_variants_docker,
+            }
 
-        call BigQueryCookVepAndLofteeRawAnnotations {
-            input:
-                go = BigQueryLoadRawVepAndLofteeAnnotations.done,
-                project_id = project_id,
-                dataset_name = dataset_name,
-                raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
-                cooked_data_table = select_first([vep_loftee_data_table_cooked, "vep_loftee_data_table_cooked"]),
-                cooked_data_table_schema = MakeSubpopulationFilesAndReadSchemaFiles.vep_loftee_cooked_schema_json_file,
-                variants_docker = effective_variants_docker,
+            call BigQueryCookVepAndLofteeRawAnnotations {
+                input:
+                    go = BigQueryLoadRawVepAndLofteeAnnotations.done,
+                    project_id = project_id,
+                    dataset_name = dataset_name,
+                    raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
+                    cooked_data_table = select_first([vep_loftee_data_table_cooked, "vep_loftee_data_table_cooked"]),
+                    cooked_data_table_schema = MakeSubpopulationFilesAndReadSchemaFiles.vep_loftee_cooked_schema_json_file,
+                    variants_docker = effective_variants_docker,
+            }
         }
 
         call Utils.MergeTsvs {
@@ -351,7 +359,8 @@ workflow GvsCreateVATfromVDS {
                 variant_transcript_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
                 genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
                 mane_table_name = LoadManeDataIntoBigQuery.mane_table,
-                vep_loftee_cooked_table_name = BigQueryCookVepAndLofteeRawAnnotations.cooked_table_name,
+                vep_loftee_cooked_table_name = select_first([BigQueryCookVepAndLofteeRawAnnotations.cooked_table_name, select_first([vep_loftee_data_table_cooked, "vep_loftee_data_table_cooked"])]),
+                run_vep_loftee_update = generate_vep_and_loftee_annotations,
                 project_id = project_id,
                 dataset_name = dataset_name,
                 variant_transcripts_path = variant_transcripts_output_path,
@@ -1431,6 +1440,7 @@ task BigQueryLoadJson {
         File genes_schema
         String mane_table_name
         String vep_loftee_cooked_table_name
+        Boolean run_vep_loftee_update
         String project_id
         String dataset_name
         String variant_transcripts_path
@@ -1484,6 +1494,7 @@ task BigQueryLoadJson {
         'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Plus Clinical" AND vtt.transcript is not null;'
 
         echo "Adding VEP + LOFTEE annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+        if [[ "~{run_vep_loftee_update}" == "true" ]]; then
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
 
         UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET
@@ -1506,6 +1517,9 @@ task BigQueryLoadJson {
         SPLIT(vtt.transcript, ".")[OFFSET(0)] = SPLIT(vep.Feature, ".")[OFFSET(0)]
 
         '
+        else
+            echo "Skipping VEP + LOFTEE update because run_vep_loftee_update is false."
+        fi
 
         set +o errexit
         bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{genes_table} > /dev/null
