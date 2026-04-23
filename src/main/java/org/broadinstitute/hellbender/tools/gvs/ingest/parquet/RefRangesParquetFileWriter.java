@@ -32,20 +32,26 @@ public class RefRangesParquetFileWriter extends AbstractParquetFileWriter implem
     }
 
     @Override
-    public void write(long location, long sampleId, int length, String state) throws IOException {
+    public void write(long location, long sampleId, int length, String state, Integer dp) throws IOException {
         JSONObject record = new JSONObject();
         record.put("location", location);
         record.put("sample_id", sampleId);
         record.put("length", length);
         record.put("state", state);
+        if (dp != null) {
+            record.put("dp", dp);
+        }
         super.write(record);
     }
 
     @Override
-    public void writeCompressed(long packedData, long sampleId) throws IOException {
+    public void writeCompressed(long packedData, long sampleId, Integer dp) throws IOException {
         JSONObject compressedRecord = new JSONObject();
         compressedRecord.put("packed_ref_data", packedData);
         compressedRecord.put("sample_id", sampleId);
+        if (dp != null) {
+            compressedRecord.put("dp", dp);
+        }
         super.write(compressedRecord);
     }
 }

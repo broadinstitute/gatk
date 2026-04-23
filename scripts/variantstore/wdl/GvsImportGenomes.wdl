@@ -18,6 +18,7 @@ workflow GvsImportGenomes {
 
     Boolean skip_loading_vqsr_fields = false
     Boolean use_compressed_references = false
+    Boolean include_ref_ranges_dp = false
     # Turn Parquet lifecycle configuration off by default as pet service accounts don't seem to automatically get the
     # required permissions on the workspace bucket for this to work.
     Boolean configure_parquet_lifecycle = false
@@ -205,6 +206,7 @@ workflow GvsImportGenomes {
           billing_project_id = billing_project_id,
           use_compressed_references = use_compressed_references,
           parquet_output_gcs_dir = parquet_output_gcs_dir,
+          include_ref_ranges_dp = include_ref_ranges_dp,
           use_parquet_ingest = true,
       }
     }
@@ -230,6 +232,7 @@ workflow GvsImportGenomes {
           load_vcf_headers = load_vcf_headers,
           billing_project_id = billing_project_id,
           use_compressed_references = use_compressed_references,
+          include_ref_ranges_dp = include_ref_ranges_dp,
           use_parquet_ingest = false,
       }
     }
@@ -389,6 +392,7 @@ task ProcessInputGVCFs {
     Boolean force_loading_from_non_allele_specific = false
     Boolean skip_loading_vqsr_fields = false
     Boolean use_compressed_references = false
+    Boolean include_ref_ranges_dp = false
     Boolean load_vet_and_ref_ranges
     Boolean load_vcf_headers
 
@@ -560,7 +564,8 @@ task ProcessInputGVCFs {
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
         --enable-vcf-headers ~{load_vcf_headers} \
-        --use-compressed-refs ~{use_compressed_references}
+        --use-compressed-refs ~{use_compressed_references} \
+        --include-ref-ranges-dp ~{include_ref_ranges_dp}
 
       # The Parquet / non-Parquet branches here might also be coalesced.
       if [[ "~{use_parquet_ingest}" = 'true' ]]

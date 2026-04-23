@@ -57,6 +57,7 @@ workflow GvsBulkIngestGenomes {
         # `parquet_output_gcs_dir` must be defined if `use_parquet_ingest` is true.
         String? parquet_output_gcs_dir
 
+        Boolean include_ref_ranges_dp = false
         Boolean use_compressed_references = false
     }
 
@@ -166,6 +167,7 @@ workflow GvsBulkIngestGenomes {
             is_rate_limited_beta_customer = tighter_gcp_quotas,
             use_parquet_ingest = use_parquet_ingest,
             parquet_output_gcs_dir = parquet_output_gcs_dir,
+            include_ref_ranges_dp = include_ref_ranges_dp,
             is_wgs = is_wgs,
     }
 
