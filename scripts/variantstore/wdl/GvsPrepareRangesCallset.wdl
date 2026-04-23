@@ -24,6 +24,7 @@ workflow GvsPrepareCallset {
     File? sample_names_to_extract
     Boolean only_output_vet_tables = false
     Boolean write_cost_to_db = true
+    Boolean rare_variant_mode = false
     String? basic_docker
     String? gatk_docker
     String? cloud_sdk_docker
@@ -112,6 +113,7 @@ workflow GvsPrepareCallset {
       control_samples                 = control_samples,
       only_output_vet_tables          = only_output_vet_tables,
       write_cost_to_db                = write_cost_to_db,
+      rare_variant_mode               = rare_variant_mode,
       variants_docker                 = effective_variants_docker,
       use_compressed_references       = IsUsingCompressedReferences.is_using_compressed_references,
       vet_extract_table_version       = GetExtractVetTableVersion.version,
@@ -142,6 +144,7 @@ task PrepareRangesCallsetTask {
     Int temp_table_ttl_in_hours = 24
     Boolean only_output_vet_tables
     Boolean write_cost_to_db
+    Boolean rare_variant_mode
     Boolean use_compressed_references
     String? vet_extract_table_version
     String variants_docker
@@ -189,6 +192,7 @@ task PrepareRangesCallsetTask {
           --ttl ~{temp_table_ttl_in_hours} \
           ~{true="--only_output_vet_tables True" false='' only_output_vet_tables} \
           ~{true="--write_cost_to_db True" false="--write_cost_to_db ''" write_cost_to_db} \
+          ~{true="--include_ref_ranges_dp True" false='' rare_variant_mode} \
           ~{true="--use_compressed_references True" false='' use_compressed_references} \
           ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
           ~{true="--enable_extract_table_ttl True" false='' enable_extract_table_ttl} \

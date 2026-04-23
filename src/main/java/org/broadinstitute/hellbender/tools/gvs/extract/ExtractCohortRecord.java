@@ -30,6 +30,7 @@ public class ExtractCohortRecord implements Locatable {
     private final String callPID;
 
     private final String callPS;
+    private final Integer dp;
 
     // COHORT_FIELDS
 //    public static final ImmutableSet<String> COHORT_FIELDS = ImmutableSet.of(
@@ -68,6 +69,8 @@ public class ExtractCohortRecord implements Locatable {
 
         // if this record is being constructed from the VET data, we won't have a state so we default it to 'v'
         this.state = Objects.toString(getNoThrow(genericRecord, SchemaUtils.STATE_FIELD_NAME), "v");
+        Object dpValue = getNoThrow(genericRecord, SchemaUtils.DP);
+        this.dp = dpValue == null ? null : ((Number) dpValue).intValue();
 
         // the rest are nullable
         this.refAllele = Objects.toString(genericRecord.get(SchemaUtils.REF_ALLELE_FIELD_NAME), null);
@@ -99,10 +102,14 @@ public class ExtractCohortRecord implements Locatable {
 
     // constructor for single base reference
     public ExtractCohortRecord(long location, long sampleId, String state) {
-        this(location, sampleId, state, null, null, null, null, null, null, null, null, null, null, null, null );
+        this(location, sampleId, state, null, null, null, null, null, null, null, null, null, null, null, null, null);
     }
 
-    public ExtractCohortRecord(long location, long sampleId, String state, String refAllele, String altAllele, String callGT, String callAD, String callGQ, String callRGQ, String qualapprox, String asQualapprox, String callPL, String callPGT, String callPID, String callPS) {
+    public ExtractCohortRecord(long location, long sampleId, String state, Integer dp) {
+        this(location, sampleId, state, null, null, null, null, null, null, null, null, null, null, null, null, dp);
+    }
+
+    public ExtractCohortRecord(long location, long sampleId, String state, String refAllele, String altAllele, String callGT, String callAD, String callGQ, String callRGQ, String qualapprox, String asQualapprox, String callPL, String callPGT, String callPID, String callPS, Integer dp) {
         this.location = location;
         this.sampleId = sampleId;
         this.contig = SchemaUtils.decodeContig(location);
@@ -122,6 +129,7 @@ public class ExtractCohortRecord implements Locatable {
         this.callPGT = callPGT;
         this.callPID = callPID;
         this.callPS = callPS;
+        this.dp = dp;
     }
 
     @Override
@@ -162,6 +170,8 @@ public class ExtractCohortRecord implements Locatable {
     public String getCallPID() { return callPID; }
 
     public String getCallPS() { return callPS; }
+
+    public Integer getDp() { return dp; }
 
     public String toString() {
         return ReflectionToStringBuilder.toString(this);

@@ -16,6 +16,7 @@ public class SchemaUtils {
 
     public static final String STATE_FIELD_NAME = "state";
     public static final String LENGTH_FIELD_NAME = "length";
+    public static final String DP = "dp";
 
     public static final String REF_ALLELE_FIELD_NAME = "ref";
     public static final String ALT_ALLELE_FIELD_NAME = "alt";
@@ -80,7 +81,7 @@ public class SchemaUtils {
 
     public static final List<String> SAMPLE_PLOIDY_FIELDS = Arrays.asList(CHROMOSOME, SAMPLE_ID, PLOIDY);
 
-    public static final List<String> EXTRACT_REF_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, LENGTH_FIELD_NAME, STATE_FIELD_NAME);
+    public static final List<String> EXTRACT_REF_FIELDS = Arrays.asList(LOCATION_FIELD_NAME, SAMPLE_ID_FIELD_NAME, LENGTH_FIELD_NAME, STATE_FIELD_NAME, DP);
 
     public static final List<String> SAMPLE_FIELDS = Arrays.asList(SchemaUtils.SAMPLE_NAME_FIELD_NAME, SchemaUtils.SAMPLE_ID_FIELD_NAME);
     public static final List<String> YNG_FIELDS = Arrays.asList(FILTER_SET_NAME, LOCATION_FIELD_NAME, REF_ALLELE_FIELD_NAME, ALT_ALLELE_FIELD_NAME, VQSLOD, YNG_STATUS);

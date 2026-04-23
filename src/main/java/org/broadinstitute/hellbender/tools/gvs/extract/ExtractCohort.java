@@ -129,6 +129,27 @@ public abstract class ExtractCohort extends ExtractTool {
     private boolean emitADs = false;
 
     @Argument(
+            fullName = "emit-ref-ranges-dp",
+            doc = "Should genotype DP from ref_ranges be emitted in output VCF",
+            optional = true
+    )
+    private boolean emitRefRangesDp = false;
+
+    @Argument(
+            fullName = "emit-gq0-ref-blocks",
+            doc = "Should GQ0 reference blocks be emitted as reference genotypes instead of no-calls",
+            optional = true
+    )
+    private boolean emitGq0RefBlocks = false;
+
+    @Argument(
+            fullName = "rare-variant-mode",
+            doc = "Enable rare variant mode (emits ref_ranges DP and emits GQ0 reference blocks)",
+            optional = true
+    )
+    private boolean rareVariantMode = false;
+
+    @Argument(
             fullName = "use-vqsr-scoring",
             doc = "If true, use VQSR scoring (vqs Lod score). Otherwise use VETS scoring (calibration_sensitivity)",
             optional = true
@@ -239,7 +260,8 @@ public abstract class ExtractCohort extends ExtractTool {
 
     private static VCFHeader generateVcfHeader(Set<String> sampleNames,
                                                  final SAMSequenceDictionary sequenceDictionary,
-                                                 final Set<VCFHeaderLine> extraHeaders) {
+                                                 final Set<VCFHeaderLine> extraHeaders,
+                                                 final boolean emitRefRangesDp) {
         final Set<VCFHeaderLine> headerLines = new HashSet<>();
 
         // Filter fields
@@ -261,6 +283,9 @@ public abstract class ExtractCohort extends ExtractTool {
                 VCFConstants.GENOTYPE_KEY,
                 VCFConstants.GENOTYPE_QUALITY_KEY
         );
+        if (emitRefRangesDp) {
+            VCFStandardHeaderLines.addStandardFormatLines(headerLines, true, VCFConstants.DEPTH_KEY);
+        }
         headerLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.REFERENCE_GENOTYPE_QUALITY));
 
         headerLines.addAll(extraHeaders);
@@ -420,7 +445,10 @@ public abstract class ExtractCohort extends ExtractTool {
             extraHeaderLines.add(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.PHASE_SET_KEY));
         }
 
-        header = generateVcfHeader(new HashSet<>(sampleIdToName.values()), reference.getSequenceDictionary(), extraHeaderLines);
+        final boolean effectiveEmitRefRangesDp = emitRefRangesDp || rareVariantMode;
+        final boolean effectiveEmitGq0RefBlocks = emitGq0RefBlocks || rareVariantMode;
+
+        header = generateVcfHeader(new HashSet<>(sampleIdToName.values()), reference.getSequenceDictionary(), extraHeaderLines, effectiveEmitRefRangesDp);
 
         final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
 
@@ -479,6 +507,8 @@ public abstract class ExtractCohort extends ExtractTool {
                         filterSetName,
                         emitPLs,
                         emitADs,
+                        effectiveEmitRefRangesDp,
+                        effectiveEmitGq0RefBlocks,
                         vqScoreFilteringType,
                         convertFilteredGenotypesToNoCalls,
                         optionalMaximumAlternateAlleles,
@@ -511,6 +541,8 @@ public abstract class ExtractCohort extends ExtractTool {
                         filterSetName,
                         emitPLs,
                         emitADs,
+                        effectiveEmitRefRangesDp,
+                        effectiveEmitGq0RefBlocks,
                         vqScoreFilteringType,
                         convertFilteredGenotypesToNoCalls,
                         optionalMaximumAlternateAlleles,
