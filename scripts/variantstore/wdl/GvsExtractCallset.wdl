@@ -61,6 +61,7 @@ workflow GvsExtractCallset {
     Boolean is_wgs = true
     Boolean convert_filtered_genotypes_to_nocalls = false
     Boolean write_cost_to_db = true
+    Boolean rare_variant_mode = false
     Int maximum_alternate_alleles = 100
   }
 
@@ -86,7 +87,6 @@ workflow GvsExtractCallset {
 
   Boolean emit_pls = false
   Boolean emit_ads = true
-  Boolean rare_variant_mode = false
 
   String intervals_file_extension = if (zero_pad_output_vcf_filenames) then '-~{output_file_base_name}.interval_list' else '-scattered.interval_list'
 

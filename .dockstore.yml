@@ -285,6 +285,7 @@ workflows:
      filters:
          branches:
              - master
+             - VS-1813
              - ah_var_store
          tags:
              - /.*/
