@@ -342,6 +342,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vat_optional_vep
          tags:
              - /.*/
    - name: GvsIngestTieout
