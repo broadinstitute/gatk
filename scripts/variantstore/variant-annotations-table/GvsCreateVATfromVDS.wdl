@@ -359,7 +359,7 @@ workflow GvsCreateVATfromVDS {
                 variant_transcript_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
                 genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
                 mane_table_name = LoadManeDataIntoBigQuery.mane_table,
-                vep_loftee_cooked_table_name = select_first([BigQueryCookVepAndLofteeRawAnnotations.cooked_table_name, select_first([vep_loftee_data_table_cooked, "vep_loftee_data_table_cooked"])]),
+                vep_loftee_cooked_table_name = BigQueryCookVepAndLofteeRawAnnotations.cooked_table_name,
                 run_vep_loftee_update = generate_vep_and_loftee_annotations,
                 project_id = project_id,
                 dataset_name = dataset_name,
@@ -1439,7 +1439,7 @@ task BigQueryLoadJson {
         File variant_transcript_schema
         File genes_schema
         String mane_table_name
-        String vep_loftee_cooked_table_name
+        String? vep_loftee_cooked_table_name
         Boolean run_vep_loftee_update
         String project_id
         String dataset_name
@@ -1466,6 +1466,11 @@ task BigQueryLoadJson {
         # Prepend date, time and pwd to xtrace log entries.
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
+
+        if [[ "~{run_vep_loftee_update}" == "true" && -z "~{vep_loftee_cooked_table_name}" ]]; then
+            echo "Error: 'run_vep_loftee_update' is true but 'vep_loftee_cooked_table_name' is not defined." 1>&2
+            exit 1
+        fi
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
