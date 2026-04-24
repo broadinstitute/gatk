@@ -11,7 +11,7 @@ The pipeline takes in a Hail Variant Dataset (VDS) or a sites only VCF, creates 
 ### Run GvsCreateVATfromVDS
 
 - **Note:** in order for this workflow to run successfully the 'Use reference disks' option must be selected in Terra workflow
-configuration. If this option is not selected the `AnnotateVCF` tasks will refuse to run. If you forget and it fails, re-run it with call-caching on and all the same inputs, and it will resume at the right point.
+configuration. If this option is not selected the `AnnotateVCF` tasks will fail because the Nirvana reference files will not be found. If you forget and it fails, re-run it with call-caching on and all the same inputs, and it will resume at the right point.
 - **Note:** due to an [open issue with GCP Batch](https://partnerissuetracker.corp.google.com/issues/449751210) it is expected that some shards of `GenerateVepAndLofteeAnnotations` will fail
 with 50002 errors that are caused by this task consuming all the memory on the VM, leaving the Batch agent unable to checkin with the Batch service.
 If and when the workflow fails in this manner, double the value in the `memory` runtime attribute of the `GenerateVepAndLofteeAnnotations` task  and rerun `GvsCreateVATfromVDS` with call caching enabled.
@@ -30,30 +30,15 @@ Optional inputs of note:
 - `vat_version`: if you are creating multiple VATs for one callset, you can distinguish between them (and not overwrite others) by passing in increasing numbers
 - If you are debugging a Hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](../docs/aou/HAIL_DEBUGGING.md). 
 
-There are two temporary tables that are created in addition to the main VAT table: the Genes and VT tables. They have a time to live of 24 hours.  The VAT table is created by that query fresh each time so that there is no risk of duplicates.
+There are several temporary tables that are created in addition to the main VAT table. The Genes, VT (variant transcripts), and intermediate `_w_dups` VAT tables all have a time to live of 24 hours. The VEP/LOFTEE raw and cooked tables have a time to live of 3 days. The final VAT table is (re)created fresh each time so that there is no risk of duplicates.
 
 Variants may be filtered out of the VAT (that were in the VDS) for the following reasons:
 
 - they are hard-filtered out based on the initial soft filtering from the GVS extract (site- and GT-level filtering)
 - they have excess alternate alleles, currently that cut off is 50 alternate alleles
 - they are spanning deletions
-- they are duplicate variants; they are tracked via the `GvsCreateVATfromVDS` workflow's scattered `RemoveDuplicatesFromSites` task and then merged into one file by the `MergeTsvs` task
+- they are duplicate variants; they are tracked via the `GvsCreateVATfromVDS` workflow's scattered `RemoveDuplicatesFromSitesOnlyVCF` task and then merged into one file by the `MergeTsvs` task
 
-### Remove duplicates from the VAT table.
-
-There is a bug in the way we build the VAT table from the shards. If a variant (e.g. for an insertion or deletion) spans between the end of one shard and the beginning of the next shard, it will be entered TWICE into the resultant vat table as there will be duplicate entries in each of the shards. To address this issue, we run a manual SQL statement in BigQuery in order to remove these duplicates.
-**Note:** The purpose of this query is to create a NEW copy of the VAT table with the duplicates removed. So, when you run it, have BigQuery write the output to a new table (More -> Query Settings -> Destination )
-
->     select * except(row_number) from (
->      SELECT
->       *,
->       row_number()
->       over (partition by vid, transcript)
->       row_number
->       FROM
->        `<project_id>.<dataset>.<vat_table_name>`    
->       )
->     where row_number = 1;
 
 ### Run GvsValidateVAT
 
