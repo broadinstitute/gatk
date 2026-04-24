@@ -5,6 +5,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
@@ -130,6 +132,75 @@ public final class SVFederate extends MultiVariantWalker {
     protected CanonicalSVLinkage<SVCallRecord> linkage;
 
 
+    private static final class VCFHeaderLineBuilder {
+        private final String key;
+        private final VCFHeaderLineCount count;
+        private final int countInt;
+        private final VCFHeaderLineType type;
+        private final String description;
+
+        private VCFHeaderLineBuilder(String key, VCFHeaderLineCount count, VCFHeaderLineType type, String description) {
+            this.key = key;
+            this.count = count;
+            this.countInt = -1;
+            this.type = type;
+            this.description = description;
+        }
+
+        private VCFHeaderLineBuilder(String key, int count, VCFHeaderLineType type, String description) {
+            this.key = key;
+            this.countInt = count;
+            this.count = null;
+            this.type = type;
+            this.description = description;
+        }
+
+        private String getKey() { return key; }
+        private String getKeyWithPrefix(String prefix) { return prefix + "_" + key; }
+
+        private VCFInfoHeaderLine addPrefix(String prefix) {
+            final String keyWithPrefix = getKeyWithPrefix(prefix);
+            final String descriptionWithPrefix = description + " in " + prefix + ".";
+            if (count != null) {
+                return new VCFInfoHeaderLine(keyWithPrefix, count, type, descriptionWithPrefix);
+            } else {
+                return new VCFInfoHeaderLine(keyWithPrefix, countInt, type, descriptionWithPrefix);
+            }
+        }
+    }
+    /**
+     * INFO fields to annotate from each source cohort
+     */
+    private static final List<VCFHeaderLineBuilder> COHORT_INFO_FIELDS = List.of(
+            new VCFHeaderLineBuilder("VID", 1, VCFHeaderLineType.String, "Variant ID"),
+            new VCFHeaderLineBuilder(GATKSVVCFConstants.SVTYPE, 1, VCFHeaderLineType.String, "SV type"),
+            new VCFHeaderLineBuilder(GATKSVVCFConstants.CPX_TYPE, 1, VCFHeaderLineType.String, "Complex SV subtype")
+    );
+
+    private static final List<VCFHeaderLineBuilder> BIALLELIC_COHORT_INFO_FIELDS = List.of(
+        new VCFHeaderLineBuilder(VCFConstants.ALLELE_COUNT_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Integer, "Allele count"),
+        new VCFHeaderLineBuilder(VCFConstants.ALLELE_FREQUENCY_KEY, VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Allele frequency"),
+        new VCFHeaderLineBuilder(VCFConstants.ALLELE_NUMBER_KEY, 1, VCFHeaderLineType.Integer, "Allele number"),
+        new VCFHeaderLineBuilder("N_HOMREF", 1, VCFHeaderLineType.Integer, "Number of samples with homozygous reference genotypes (biallelic sites only)"),
+        new VCFHeaderLineBuilder("N_HET", 1, VCFHeaderLineType.Integer, "Number of samples with heterozygous genotypes (biallelic sites only)"),
+        new VCFHeaderLineBuilder("N_HOMALT", 1, VCFHeaderLineType.Integer, "Number of samples with homozygous alternate genotypes (biallelic sites only)")
+    );
+
+    private static final List<VCFHeaderLineBuilder> MULTIALLELIC_COHORT_INFO_FIELDS = List.of(
+        new VCFHeaderLineBuilder("RD_CN_ESTIMATED_AF", 1, VCFHeaderLineType.Float, "Estimated AF from RD_CN"),
+        new VCFHeaderLineBuilder("CN_NUMBER", 1, VCFHeaderLineType.Integer, "Total number of samples with estimated copy numbers (multiallelic CNVs only)"),
+        new VCFHeaderLineBuilder("CN_COUNT", VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Number of samples observed at each copy state, starting from CN=0 (multiallelic CNVs only)"),
+        new VCFHeaderLineBuilder("CN_NONREF_COUNT", 1, VCFHeaderLineType.Integer, "Number of samples with non-reference copy states (multiallelic CNVs only)"),
+        new VCFHeaderLineBuilder("CN_NONREF_FREQ", 1, VCFHeaderLineType.Float, "Frequency of samples with non-reference copy states (multiallelic CNVs only)"),
+        new VCFHeaderLineBuilder("CN_FREQ", VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Frequency of samples observed at each copy state, starting from CN=0 (multiallelic CNVs only)")
+    );
+
+    private static final List<VCFHeaderLineBuilder> ALL_COHORT_INFO_FIELDS = Stream.of(
+        COHORT_INFO_FIELDS, BIALLELIC_COHORT_INFO_FIELDS, MULTIALLELIC_COHORT_INFO_FIELDS)
+        .flatMap(List::stream)
+        .collect(Collectors.toList());
+
+
     @Override
     protected MultiVariantInputArgumentCollection getMultiVariantInputArgumentCollection() {
         return new MultiVariantInputArgumentCollection() {
@@ -205,7 +276,6 @@ public final class SVFederate extends MultiVariantWalker {
         sourceToPairMap.put(getDrivingVariantsFeatureInputs().get(1).getName(), vidBtoA);
 
         reference = ReferenceUtils.createReferenceReader(referenceArguments.getReferenceSpecifier());
-        // TODO breakpoint summary strategy
         collapser = new SVFederationCollapser(reference,
                 CanonicalSVCollapser.AltAlleleSummaryStrategy.MOST_SPECIFIC_SUBTYPE,
                 CanonicalSVCollapser.BreakpointSummaryStrategy.REPRESENTATIVE,
@@ -218,31 +288,17 @@ public final class SVFederate extends MultiVariantWalker {
         final VCFHeader header = new VCFHeader(getHeaderForVariants().getMetaDataInInputOrder());
         header.setSequenceDictionary(dictionary);
 
-        header.addMetaDataLine(new VCFInfoHeaderLine(prefixA + "_VID", 1, VCFHeaderLineType.String,
-                "Variant ID in " + prefixA));
-        header.addMetaDataLine(new VCFInfoHeaderLine(prefixB + "_VID", 1, VCFHeaderLineType.String,
-                "Variant ID in " + prefixB));
-        header.addMetaDataLine(new VCFInfoHeaderLine(prefixA + "_AF", VCFHeaderLineCount.A, VCFHeaderLineType.Float,
-                "Allele frequency in " + prefixA));
-        header.addMetaDataLine(new VCFInfoHeaderLine(prefixB + "_AF", VCFHeaderLineCount.A, VCFHeaderLineType.Float,
-                "Allele frequency in " + prefixB));
-        header.addMetaDataLine(new VCFInfoHeaderLine(prefixA + "_AN", 1, VCFHeaderLineType.Integer,
-                "Allele number in " + prefixA));
-        header.addMetaDataLine(new VCFInfoHeaderLine(prefixB + "_AN", 1, VCFHeaderLineType.Integer,
-                "Allele number in " + prefixB));
-        header.addMetaDataLine(new VCFInfoHeaderLine(prefixA + "_AC", VCFHeaderLineCount.A, VCFHeaderLineType.Integer,
-                "Allele count in " + prefixA));
-        header.addMetaDataLine(new VCFInfoHeaderLine(prefixB + "_AC", VCFHeaderLineCount.A, VCFHeaderLineType.Integer,
-                "Allele count in " + prefixB));
-        header.addMetaDataLine(new VCFInfoHeaderLine(prefixA + "_RD_CN_ESTIMATED_AF", 1, VCFHeaderLineType.Float,
-                "Estimated AF from RD_CN in " + prefixA));
-        header.addMetaDataLine(new VCFInfoHeaderLine(prefixB + "_RD_CN_ESTIMATED_AF", 1, VCFHeaderLineType.Float,
-                "Estimated AF from RD_CN in " + prefixB));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.RECIPROCAL_OVERLAP_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Reciprocal overlap between merged variants"));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.SIZE_SIMILARITY_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Float, "Size similarity between merged variants"));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.BREAKPOINT_DISTANCE_START_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Distance in bp between start coordinates of merged variants"));
         header.addMetaDataLine(new VCFInfoHeaderLine(GATKSVVCFConstants.BREAKPOINT_DISTANCE_END_INFO, VCFHeaderLineCount.UNBOUNDED, VCFHeaderLineType.Integer, "Distance in bp between end coordinates of merged variants"));
         header.addMetaDataLine(new VCFInfoHeaderLine("LOG_AF_DIFFERENCE", VCFHeaderLineCount.A, VCFHeaderLineType.Float, "Absolute value of the difference of log allele frequencies between variant sources"));
+
+        // Add prefixed cohort-specific INFO fields
+        for (final VCFHeaderLineBuilder line : ALL_COHORT_INFO_FIELDS) {
+            header.addMetaDataLine(line.addPrefix(prefixA));
+            header.addMetaDataLine(line.addPrefix(prefixB));
+        }
 
         return header;
     }
@@ -275,39 +331,81 @@ public final class SVFederate extends MultiVariantWalker {
         attributes.put(GATKSVVCFConstants.BREAKPOINT_DISTANCE_START_INFO, result.getBreakpointDistance1());
         attributes.put(GATKSVVCFConstants.BREAKPOINT_DISTANCE_END_INFO, result.getBreakpointDistance2());
 
-        // store cohort AFs and calculate total AF
-        // TODO: handle mCNV CN frequency annotations and carry over per-cohort subgroup AFs
+        // annotate per-cohort INFO fields
+        for (final VCFHeaderLineBuilder line : COHORT_INFO_FIELDS) {
+            attributes.put(line.getKeyWithPrefix(thisPrefix), thisVariant.hasAttribute(line.getKey()) ? thisVariant.getAttribute(line.getKey()) : VCFConstants.MISSING_VALUE_v4);
+            attributes.put(line.getKeyWithPrefix(thatPrefix), thatVariant.hasAttribute(line.getKey()) ? thatVariant.getAttribute(line.getKey()) : VCFConstants.MISSING_VALUE_v4);
+        }
+
         final boolean thisIsCnv = thisRecord.getType() == StructuralVariantAnnotationType.CNV;
         final boolean thatIsCnv = thatRecord.getType() == StructuralVariantAnnotationType.CNV;
 
-        if (thisIsCnv) {
-            attributes.put(thisPrefix + "_AN", VCFConstants.MISSING_VALUE_v4);
-            attributes.put(thisPrefix + "_AC", VCFConstants.MISSING_VALUE_v4);
-            attributes.put(thisPrefix + "_AF", VCFConstants.MISSING_VALUE_v4);
-        } else {
-            attributes.put(thisPrefix + "_AN", thisVariant.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0));
-            attributes.put(thisPrefix + "_AC", thisVariant.getAttributeAsInt(VCFConstants.ALLELE_COUNT_KEY, 0));
-            attributes.put(thisPrefix + "_AF", thisVariant.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, Double.NaN));
+        // if biallelic, annotate per-cohort biallelic info fields such as AF if they exist
+        if (!thisIsCnv) {
+            for (final VCFHeaderLineBuilder line : BIALLELIC_COHORT_INFO_FIELDS) {
+                if (thisVariant.hasAttribute(line.getKey())) {
+                    attributes.put(line.getKeyWithPrefix(thisPrefix), thisVariant.getAttribute(line.getKey()));
+                }
+            }
         }
 
-        if (thatIsCnv) {
-            attributes.put(thatPrefix + "_AN", VCFConstants.MISSING_VALUE_v4);
-            attributes.put(thatPrefix + "_AC", VCFConstants.MISSING_VALUE_v4);
-            attributes.put(thatPrefix + "_AF", VCFConstants.MISSING_VALUE_v4);
-        } else {
-            attributes.put(thatPrefix + "_AN", thatVariant.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0));
-            attributes.put(thatPrefix + "_AC", thatVariant.getAttributeAsInt(VCFConstants.ALLELE_COUNT_KEY, 0));
-            attributes.put(thatPrefix + "_AF", thatVariant.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, Double.NaN));
+        if (!thatIsCnv) {
+            for (final VCFHeaderLineBuilder line : BIALLELIC_COHORT_INFO_FIELDS) {
+                if (thatVariant.hasAttribute(line.getKey())) {
+                    attributes.put(line.getKeyWithPrefix(thatPrefix), thatVariant.getAttribute(line.getKey()));
+                }
+            }
         }
 
         if (thisIsCnv || thatIsCnv) {
-            attributes.put(VCFConstants.ALLELE_NUMBER_KEY, VCFConstants.MISSING_VALUE_v4);
-            attributes.put(VCFConstants.ALLELE_COUNT_KEY, VCFConstants.MISSING_VALUE_v4);
-            attributes.put(VCFConstants.ALLELE_FREQUENCY_KEY, VCFConstants.MISSING_VALUE_v4);
+            // if either variant is multiallelic, set federated biallelic fields such as AF to missing
+            for (final VCFHeaderLineBuilder line : BIALLELIC_COHORT_INFO_FIELDS) {
+                attributes.put(line.getKey(), VCFConstants.MISSING_VALUE_v4);
+            }
             attributes.put("LOG_AF_DIFFERENCE", VCFConstants.MISSING_VALUE_v4);
-            attributes.put(thisPrefix + "_RD_CN_ESTIMATED_AF", thisVariant.getAttributeAsDouble("RD_CN_ESTIMATED_AF", Double.NaN));
-            attributes.put(thatPrefix + "_RD_CN_ESTIMATED_AF", thatVariant.getAttributeAsDouble("RD_CN_ESTIMATED_AF", Double.NaN));
+
+            // if either variant is multiallleic, annotate per-cohort multiallelic info fields such as CN_FREQ if they exist
+            for (final VCFHeaderLineBuilder line : MULTIALLELIC_COHORT_INFO_FIELDS) {
+                if (thisVariant.hasAttribute(line.getKey())) {
+                    attributes.put(line.getKeyWithPrefix(thisPrefix), thisVariant.getAttribute(line.getKey()));
+                }
+                if (thatVariant.hasAttribute(line.getKey())) {
+                    attributes.put(line.getKeyWithPrefix(thatPrefix), thatVariant.getAttribute(line.getKey()));
+                }
+            }
+
+            // compute federated CN statistics
+            final List<Integer> thisCnCounts = thisVariant.hasAttribute("CN_COUNT") ? thisVariant.getAttributeAsIntList("CN_COUNT", 0) : null;
+            final List<Integer> thatCnCounts = thatVariant.hasAttribute("CN_COUNT") ? thatVariant.getAttributeAsIntList("CN_COUNT", 0) : null;
+            final int maxCnCountSize = Math.max(thisCnCounts == null ? 0 : thisCnCounts.size(), thatCnCounts == null ? 0 : thatCnCounts.size());
+            final int[] totalCnCounts = new int[maxCnCountSize];
+            for (int i = 0; i < maxCnCountSize; i++) {
+                final int thisCount = (thisCnCounts != null && i < thisCnCounts.size()) ? thisCnCounts.get(i) : 0;
+                final int thatCount = (thatCnCounts != null && i < thatCnCounts.size()) ? thatCnCounts.get(i) : 0;
+                totalCnCounts[i] = thisCount + thatCount;
+            }
+            attributes.put("CN_COUNT", totalCnCounts);
+
+            final int thisCnNumber = thisVariant.getAttributeAsInt("CN_NUMBER", 0);
+            final int thatCnNumber = thatVariant.getAttributeAsInt("CN_NUMBER", 0);
+            final int totalCnNumber = thisCnNumber + thatCnNumber;
+            attributes.put("CN_NUMBER", totalCnNumber);
+
+            final double[] totalCnFreqs = new double[maxCnCountSize];
+            for (int i = 0; i < maxCnCountSize; i++) {
+                totalCnFreqs[i] = (double) totalCnCounts[i] / totalCnNumber;
+            }
+            attributes.put("CN_FREQ", totalCnFreqs);
+
+            final int thisCnNonrefCount = thisVariant.getAttributeAsInt("CN_NONREF_COUNT", 0);
+            final int thatCnNonrefCount = thatVariant.getAttributeAsInt("CN_NONREF_COUNT", 0);
+            final int totalCnNonrefCount = thisCnNonrefCount + thatCnNonrefCount;
+            attributes.put("CN_NONREF_COUNT", totalCnNonrefCount);
+
+            final double totalCnNonrefFreq = totalCnNumber > 0 ? (double) totalCnNonrefCount / totalCnNumber : Double.NaN;
+            attributes.put("CN_NONREF_FREQ", totalCnNonrefFreq);
         } else {
+            // for biallelic variants, compute federated AF and related statistics
             final int thisAN = thisVariant.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0);
             final int thatAN = thatVariant.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0);
             final int totalAN = thisAN + thatAN;
@@ -324,10 +422,6 @@ public final class SVFederate extends MultiVariantWalker {
             attributes.put(VCFConstants.ALLELE_FREQUENCY_KEY, totalAF);
             attributes.put("LOG_AF_DIFFERENCE", computeLogAlleleFrequencyDifference(thisAF, thatAF));
         }
-
-        // store original VIDs
-        attributes.put(thisPrefix + "_VID", thisRecord.getId());
-        attributes.put(thatPrefix + "_VID", thatRecord.getId());
 
         return merged;
     }
