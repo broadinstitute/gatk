@@ -83,4 +83,4 @@ Once the VAT has been created, you will need to create a database table mapping 
     - Copy the tarred and bgzipped export of the VAT into the pre-delivery bucket.
     - Send an email out notifying the AoU Researcher Workbench team of the readiness of the VAT. Additionally, a RW Jira ticket will be made by project management to request copying the VAT to pre-prod.
     - A document describing how this information was shared (for previous callsets) is located [here](https://docs.google.com/document/d/1caqgCS1b_dDJXQT4L-tRxjOkLGDgRNkO9eac1xd9ib0/edit)
-1. Copy the created mapping table to the dataset specified by the All of Us DRC. I specifically reached out to Justin Cook and Brian Freeman for the dataset to copy to.
+1. Copy the created mapping table to the dataset specified by the All of Us DRC. Further details of this process are included in the Google Doc linked in the previous step.

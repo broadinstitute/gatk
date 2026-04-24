@@ -7,7 +7,7 @@ workflow GvsMapDroppedDuplicateVIDs {
     input {
         File sites_only_vcf
         File filtered_synonyms
-        String project
+        String project_id
         String dataset
         String participant_mapping_table_name
         String duplicate_mapping_table_name
@@ -25,7 +25,7 @@ workflow GvsMapDroppedDuplicateVIDs {
 
     call MapDroppedDuplicateVIDs {
         input:
-            project = project,
+            project_id = project_id,
             dataset = dataset,
             participant_mapping_table_name = participant_mapping_table_name,
             sites_only_vcf = sites_only_vcf,
@@ -39,7 +39,7 @@ workflow GvsMapDroppedDuplicateVIDs {
 
 task MapDroppedDuplicateVIDs {
     input {
-        String project
+        String project_id
         String dataset
         String participant_mapping_table_name
         File sites_only_vcf
@@ -118,7 +118,7 @@ task MapDroppedDuplicateVIDs {
         python /app/map_input_alignments_to_left_alignments.py to_search.sort.dedup.vcf hits_only.vcf > dropped_duplicate_mappings.tsv
 
         # 12. Load the duplicate vid mapping into BigQuery
-        bq load --project_id ~{project} --source_format=CSV --skip_leading_rows=1 --field_delimiter="\t" \
+        bq load --project_id ~{project_id} --source_format=CSV --skip_leading_rows=1 --field_delimiter="\t" \
             ~{dataset}.~{duplicate_mapping_table_name} dropped_duplicate_mappings.tsv \
             vid:STRING,chr:STRING,input_location:INTEGER,input_position:INTEGER,input_ref:STRING,input_alt:STRING,left_aligned_location:INTEGER,left_aligned_position:INTEGER,left_aligned_ref:STRING,left_aligned_alt:STRING,info_field:STRING
 
@@ -126,7 +126,7 @@ task MapDroppedDuplicateVIDs {
         #
         # bq query --max_rows check: ok delete
         #
-        bq --apilog=false query --nouse_legacy_sql --project_id=~{project} --format=csv '
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv '
 
         DELETE `~{dataset}.~{participant_mapping_table_name}` WHERE vid IN (
             SELECT dup.vid FROM `~{dataset}.~{duplicate_mapping_table_name}` dup
@@ -139,7 +139,7 @@ task MapDroppedDuplicateVIDs {
         #
         # bq query --max_rows check: ok insert
         #
-        bq --apilog=false query --nouse_legacy_sql --project_id=~{project} --format=csv '
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv '
 
         INSERT into `~{dataset}.~{participant_mapping_table_name}` (vid, person_ids)
         SELECT
