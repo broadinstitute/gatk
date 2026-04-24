@@ -8,6 +8,14 @@ The pipeline takes in a Hail Variant Dataset (VDS) or a sites only VCF, creates 
 - [GvsCreateVATfromVDS.wdl](/scripts/variantstore/variant-annotations-table/GvsCreateVATfromVDS.wdl) creates a sites only VCF from a VDS if no input sites only VCF is specified, and then uses that and an ancestry file TSV to build the VAT.
 - [GvsValidateVAT.wdl](/scripts/variantstore/variant-annotations-table/GvsValidateVAT.wdl) checks and validates the created VAT and prints a report of any failing validation.
 
+### Using the Nirvana reference image in Terra (AoU Echo and later callsets)
+
+The Variants team created a Cromwell reference image containing all reference files used by Nirvana 3.18.1. This is
+useful to avoid having to download tens of GiBs of Nirvana references in each shard of the scattered `AnnotateVCF` task.
+In order to use this reference disk, the 'Use reference disk' option in Terra must be selected as shown below:
+
+![Terra Use reference disks](Reference%20Disk%20Terra%20Opt%20In.png)
+
 ### Run GvsCreateVATfromVDS
 
 - **Note:** in order for this workflow to run successfully the 'Use reference disks' option must be selected in Terra workflow
@@ -69,10 +77,3 @@ Once the VAT has been created, you will need to create a database table mapping 
    1. `dropped_duplicate_table_name`: the name to use for a table that will hold the mapping information from input
       position/ref/alt to left-aligned position/ref/alt. This should be a new table.
 
-### Using the Nirvana reference image in Terra (AoU Echo and later callsets)
-
-The Variants team created a Cromwell reference image containing all reference files used by Nirvana 3.18.1. This is
-useful to avoid having to download tens of GiBs of Nirvana references in each shard of the scattered `AnnotateVCF` task.
-In order to use this reference disk, the 'Use reference disk' option in Terra must be selected as shown below:
-
-![Terra Use reference disks](Reference%20Disk%20Terra%20Opt%20In.png)
