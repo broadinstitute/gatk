@@ -23,9 +23,7 @@ workflow GvsCreateVATfromVDS {
         String? vat_version
         String? workspace_gcs_project
 
-        # Boolean generate_vep_and_loftee_annotations = true
-        # temporarily override to false for testing
-        Boolean generate_vep_and_loftee_annotations = false
+        Boolean generate_vep_and_loftee_annotations = true
         Boolean leave_hail_cluster_running_at_end = false
         Int? merge_vcfs_disk_size_override
         Int? split_intervals_disk_size_override
