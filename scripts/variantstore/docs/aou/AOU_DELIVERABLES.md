@@ -23,6 +23,9 @@
   - [GvsCreateVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVDS) workflow
   - [GvsCreateVATfromVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVATfromVDS) workflow
   - [GvsValidateVat](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsValidateVat) workflow
+  - [GvsCreateParticipantMappingTable](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsCreateParticipantMappingTable) workflow
+  - [GvsMapUnmappedVIDs](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsMapUnmappedVIDs) workflow
+  - [GvsMapDroppedDuplicateVIDs](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsMapDroppedDuplicateVIDs) workflow
 - Once the Foxtrot sample list becomes available, perform some checks:
   - Make sure there are columns for reblocked VCFs and reblocked VCF indexes. The column headers will likely be
     `reblocked_gvcf` and `reblocked_gvcf_index`. Do not be alarmed by the presence of "hard-filtered" in file names,
@@ -191,13 +194,6 @@ To create a BigQuery table of variant annotations, you may follow the instructio
 [process to create variant annotations table](../../variant-annotations-table/README.md)
 The pipeline takes in the VDS and outputs a variant annotations table in BigQuery.
 
-Once the VAT table is created and a tsv is exported, the AoU research workbench team should be notified of its creation and permission should be granted so that several members of the team have view permission.
-
-- Grant `BigQuery Data Viewer` permission to specific people's PMI-OPS accounts. This will include members of the AoU research workbench team.
-- Copy the tarred and bgzipped export of the VAT into the pre-delivery bucket.
-- Send an email out notifying the AoU research workbench team of the readiness of the VAT. Additionally, a RW Jira ticket will be made by project management to request copying the VAT to pre-prod.
-- A document describing how this information was shared (for previous callsets) is located [here](https://docs.google.com/document/d/1caqgCS1b_dDJXQT4L-tRxjOkLGDgRNkO9eac1xd9ib0/edit)
-
 ## Additional Deliverables
 
 ### Smaller Interval Lists
@@ -255,12 +251,3 @@ You can take advantage of our existing sub-cohort WDL, `GvsExtractCohortFromSamp
     - For `GvsExtractCallsetPgen` (which is called by `GvsExtractCallsetPgenMerged`), if one (or several) of the `PgenExtractTask` shards fail because of angry cloud, you can re-run the workflow with the exact same inputs with call caching turned on; the successful shards will cache and only the failed ones will re-run.
     - If you want to collect the monitoring logs from a large number of `Extract` shards, the `summarize_task_monitor_logs.py` script will not work if the task is scattered too wide.  Use the `summarize_task_monitor_logs_from_file.py` script, instead, which takes a FOFN of GCS paths instead of a space-separated series of localized files.
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-
-
-### VID to Participant ID Mapping Table
-Once the VAT has been created, you will need to create the VID to Participant ID Mapping Table by following the
-[instructions in the VAT README](../../variant-annotations-table/README.md#vid-to-participant-id-mapping-table).
-
-#### Delivery Steps
-1. Copy the created mapping table to the dataset specified by the All of Us DRC. I specifically reached out to Justin Cook and Brian Freeman for the dataset to copy to.
-

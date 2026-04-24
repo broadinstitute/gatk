@@ -77,3 +77,10 @@ Once the VAT has been created, you will need to create a database table mapping 
    1. `dropped_duplicate_table_name`: the name to use for a table that will hold the mapping information from input
       position/ref/alt to left-aligned position/ref/alt. This should be a new table.
 
+### Delivery Steps
+1. Once the VAT table is created and a TSV is exported, the AoU researcher workbench team should be notified of its creation and permission should be granted so that several members of the team have view permission.
+    - Grant `BigQuery Data Viewer` permission to specific people's PMI-OPS accounts. This will include members of the AoU research workbench team.
+    - Copy the tarred and bgzipped export of the VAT into the pre-delivery bucket.
+    - Send an email out notifying the AoU research workbench team of the readiness of the VAT. Additionally, a RW Jira ticket will be made by project management to request copying the VAT to pre-prod.
+    - A document describing how this information was shared (for previous callsets) is located [here](https://docs.google.com/document/d/1caqgCS1b_dDJXQT4L-tRxjOkLGDgRNkO9eac1xd9ib0/edit)
+1. Copy the created mapping table to the dataset specified by the All of Us DRC. I specifically reached out to Justin Cook and Brian Freeman for the dataset to copy to.
