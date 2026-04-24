@@ -1384,6 +1384,13 @@ task PrepGenesAnnotationJson {
 }
 
 task LoadManeDataIntoBigQuery {
+    meta {
+        # volatile: true so that call caching does not prevent this task from loading MANE data
+        # into the current dataset. Without this, a cache hit would return the correct output
+        # string ("mane_annotations") but skip the actual bq load, leaving the table absent.
+        volatile: true
+    }
+
     input {
         String project_id
         String dataset_name
