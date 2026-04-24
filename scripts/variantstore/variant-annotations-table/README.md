@@ -12,7 +12,7 @@ The pipeline takes in a Hail Variant Dataset (VDS) or a sites only VCF, creates 
 
 The Variants team created a Cromwell reference image containing all reference files used by Nirvana 3.18.1. This is
 useful to avoid having to download tens of GiBs of Nirvana references in each shard of the scattered `AnnotateVCF` task.
-In order to use this reference disk, the 'Use reference disk' option in Terra must be selected as shown below:
+In order to use this reference disk, the 'Use reference disks' option in Terra must be selected as shown below:
 
 ![Terra Use reference disks](Reference%20Disk%20Terra%20Opt%20In.png)
 
@@ -64,23 +64,23 @@ Once the VAT has been created, you will need to create a database table mapping 
    input VCFs only in non-left aligned representations. During the process of creating the VAT these variants were left-aligned and thus
    disconnected from their `alt_allele` representations. Specify the following parameters:
    1. `project_id`, `dataset`, `vat_table_name`, `participant_mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
-   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATFromVDS.wdl`.
+   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATfromVDS.wdl`.
    1. `unmapped_vid_mapping_table_name`: the name to use for a table that will hold the mapping information from input
        position/ref/alt to left-aligned position/ref/alt. This should be a new table.
-1. Finally run `GvsMapDroppedDuplicateVIDs.wdl` to recover all participant ID mappings for VIDs which had multiple variant synonyms with AC != 0. The logic in `GvsCreateVATFromVDS` currently preserves a left-aligned version of the
+1. Finally run `GvsMapDroppedDuplicateVIDs.wdl` to recover all participant ID mappings for VIDs which had multiple variant synonyms with AC != 0. The logic in `GvsCreateVATfromVDS` currently preserves a left-aligned version of the
    synonym with the highest AC, but before running `GvsMapDroppedDuplicateVIDs.wdl` the actual participant mapping will only contain samples whose input synonym was left-aligned, which do not necessarily correspond to the synonym with highest AC.
    Specify the following parameters:
    1. `project_id`, `dataset`, `vat_table_name`, `participant_mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
-   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATFromVDS.wdl`.
+   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATfromVDS.wdl`.
        This should be the same value as specified for the `GvsMapUnmappedVIDs.wdl` step above.
-   1. `filtered_synonyms`: the GCS path to the file of variant synonyms that were filtered as duplicates. This corresponds to the value of the `output_file` output of the `MergeDroppedSynonyms` task in `GvsCreateVATFromVDS.wdl`.
-   1. `dropped_duplicate_table_name`: the name to use for a table that will hold the mapping information from input
+   1. `filtered_synonyms`: the GCS path to the file of variant synonyms that were filtered as duplicates. This corresponds to the value of the `output_file` output of the `MergeDroppedSynonyms` task in `GvsCreateVATfromVDS.wdl`.
+   1. `duplicate_mapping_table_name`: the name to use for a table that will hold the mapping information from input
       position/ref/alt to left-aligned position/ref/alt. This should be a new table.
 
 ### Delivery Steps
-1. Once the VAT table is created and a TSV is exported, the AoU researcher workbench team should be notified of its creation and permission should be granted so that several members of the team have view permission.
-    - Grant `BigQuery Data Viewer` permission to specific people's PMI-OPS accounts. This will include members of the AoU research workbench team.
+1. Once the VAT table is created and a TSV is exported, the AoU Researcher Workbench team should be notified of its creation and permission should be granted so that several members of the team have view permission.
+    - Grant `BigQuery Data Viewer` permission to specific people's PMI-OPS accounts. This will include members of the AoU Researcher Workbench team.
     - Copy the tarred and bgzipped export of the VAT into the pre-delivery bucket.
-    - Send an email out notifying the AoU research workbench team of the readiness of the VAT. Additionally, a RW Jira ticket will be made by project management to request copying the VAT to pre-prod.
+    - Send an email out notifying the AoU Researcher Workbench team of the readiness of the VAT. Additionally, a RW Jira ticket will be made by project management to request copying the VAT to pre-prod.
     - A document describing how this information was shared (for previous callsets) is located [here](https://docs.google.com/document/d/1caqgCS1b_dDJXQT4L-tRxjOkLGDgRNkO9eac1xd9ib0/edit)
 1. Copy the created mapping table to the dataset specified by the All of Us DRC. I specifically reached out to Justin Cook and Brian Freeman for the dataset to copy to.
