@@ -377,6 +377,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - FoxtrotRelease_20260428_01
          tags:
              - /.*/
    - name: GvsFindHailCruft
