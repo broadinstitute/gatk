@@ -245,8 +245,8 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
             if (sampleRdCn.values().stream().filter(value -> value > 4).count() > maxVF) {
                 multiallelicFilter = true;
             }
-            if (sampleRdCn.values().stream().filter(value -> (value < 1 || value > 4)).count() > 4) {
-                if (sampleRdCn.values().stream().filter(value -> (value < 1 || value > 4)).distinct().count() > maxVF) {
+            if (sampleRdCn.values().stream().filter(value -> (value < 1 || value > 4)).distinct().count() > 4) {
+                if (sampleRdCn.values().stream().filter(value -> (value < 1 || value > 4)).count() > maxVF) {
                     multiallelicFilter = true;
                 }
             }
