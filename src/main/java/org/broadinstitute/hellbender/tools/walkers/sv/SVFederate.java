@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
@@ -112,6 +113,30 @@ public final class SVFederate extends MultiVariantWalker {
             optional=true)
     public int maxRecordsInRam = 10000;
 
+    public static final String AF_GROUPINGS_A_LONG_NAME = "af-groupings-A";
+    @Argument(fullName = AF_GROUPINGS_A_LONG_NAME,
+            doc = "Comma-separated list of groups to stratify AFs by that are annotated in VCF A.",
+            optional=true)
+    public List<String> afGroupingsA = new ArrayList<>();
+
+    public static final String AF_GROUPINGS_B_LONG_NAME = "af-groupings-B";
+    @Argument(fullName = AF_GROUPINGS_B_LONG_NAME,
+            doc = "Comma-separated list of groups to stratify AFs by that are annotated in VCF B.",
+            optional=true)
+    public List<String> afGroupingsB = new ArrayList<>();
+
+    public static final String XY_LONG_NAME = "XY-identifier";
+    @Argument(fullName = XY_LONG_NAME,
+            doc = "String used to annotate frequency information among XY individuals in input VCFs.",
+            optional=true)
+    public String xyIdentifier = null;
+
+    public static final String XX_LONG_NAME = "XX-identifier";
+    @Argument(fullName = XX_LONG_NAME,
+            doc = "String used to annotate frequency information among XX individuals in input VCFs.",
+            optional=true)
+    public String xxIdentifier = null;
+
     protected SAMSequenceDictionary dictionary;
     protected ReferenceSequenceFile reference;
     protected SortingCollection<VariantContext> sortingBuffer;
@@ -127,6 +152,10 @@ public final class SVFederate extends MultiVariantWalker {
     protected HashMap<String, VariantContext> vidToRecA;
     protected HashMap<String, VariantContext> vidToRecB;
     protected HashMap<String, String> sourceToPrefixMap;
+    protected Map<String, List<String>> sourceToAFGroupingsMap;
+
+    protected List<String> sexes;
+    protected List<String> afGroupingsAll;
 
     protected CanonicalSVCollapser collapser;
     protected CanonicalSVLinkage<SVCallRecord> linkage;
@@ -157,10 +186,26 @@ public final class SVFederate extends MultiVariantWalker {
 
         private String getKey() { return key; }
         private String getKeyWithPrefix(String prefix) { return prefix + "_" + key; }
+        private String getKeyWithPrefixes(String prefix, String group1, String group2) {
+            if (group2 == null || group2.isEmpty()) {
+                return getKeyWithPrefix(prefix) + "_" + group1;
+            }
+            return getKeyWithPrefix(prefix) + "_" + group1 + "_" + group2;
+        }
 
         private VCFInfoHeaderLine addPrefix(String prefix) {
             final String keyWithPrefix = getKeyWithPrefix(prefix);
             final String descriptionWithPrefix = description + " in " + prefix + ".";
+            if (count != null) {
+                return new VCFInfoHeaderLine(keyWithPrefix, count, type, descriptionWithPrefix);
+            } else {
+                return new VCFInfoHeaderLine(keyWithPrefix, countInt, type, descriptionWithPrefix);
+            }
+        }
+
+        private VCFInfoHeaderLine addPrefixes(String prefix, String group1, String group2) {
+            final String keyWithPrefix = getKeyWithPrefixes(prefix, group1, group2);
+            final String descriptionWithPrefix = description + " in " + group1 + ((group2 == null || group2.isEmpty()) ? "" : " " + group2) + " individuals in " + prefix + ".";
             if (count != null) {
                 return new VCFInfoHeaderLine(keyWithPrefix, count, type, descriptionWithPrefix);
             } else {
@@ -186,6 +231,10 @@ public final class SVFederate extends MultiVariantWalker {
         new VCFHeaderLineBuilder("N_HOMALT", 1, VCFHeaderLineType.Integer, "Number of samples with homozygous alternate genotypes (biallelic sites only)")
     );
 
+    private static final List<VCFHeaderLineBuilder> BIALLELIC_XY_COHORT_INFO_FIELDS = List.of(
+        new VCFHeaderLineBuilder("N_HEMIALT", 1, VCFHeaderLineType.Integer, "Number of XY samples with hemizygous alternate genotypes (biallelic sites only)")
+    );
+
     private static final List<VCFHeaderLineBuilder> MULTIALLELIC_COHORT_INFO_FIELDS = List.of(
         new VCFHeaderLineBuilder("RD_CN_ESTIMATED_AF", 1, VCFHeaderLineType.Float, "Estimated AF from RD_CN"),
         new VCFHeaderLineBuilder("CN_NUMBER", 1, VCFHeaderLineType.Integer, "Total number of samples with estimated copy numbers (multiallelic CNVs only)"),
@@ -200,6 +249,15 @@ public final class SVFederate extends MultiVariantWalker {
         .flatMap(List::stream)
         .collect(Collectors.toList());
 
+    private static final List<VCFHeaderLineBuilder> INFO_FIELDS_TO_STRATIFY = Stream.of(
+        BIALLELIC_COHORT_INFO_FIELDS, MULTIALLELIC_COHORT_INFO_FIELDS)
+        .flatMap(List::stream)
+        .collect(Collectors.toList());
+
+    private static final List<VCFHeaderLineBuilder> ALL_BIALLELIC_INFOS = Stream.of(
+        BIALLELIC_COHORT_INFO_FIELDS, BIALLELIC_XY_COHORT_INFO_FIELDS)
+        .flatMap(List::stream)
+        .collect(Collectors.toList());
 
     @Override
     protected MultiVariantInputArgumentCollection getMultiVariantInputArgumentCollection() {
@@ -264,6 +322,11 @@ public final class SVFederate extends MultiVariantWalker {
         sourceToPrefixMap.put(sourceA, prefixA);
         sourceToPrefixMap.put(sourceB, prefixB);
 
+        // get map of A and B feature input names to their respective AF groupings
+        sourceToAFGroupingsMap = new HashMap<>();
+        sourceToAFGroupingsMap.put(sourceA, afGroupingsA);
+        sourceToAFGroupingsMap.put(sourceB, afGroupingsB);
+
         // load SV pairs
         final SelectSVPairs selector = new SelectSVPairs(svPairFilePath);
         vidAtoB = selector.getVidAToBMap();
@@ -300,6 +363,50 @@ public final class SVFederate extends MultiVariantWalker {
             header.addMetaDataLine(line.addPrefix(prefixB));
         }
 
+        sexes = new ArrayList<>();
+        if (xyIdentifier != null) {
+            sexes.add(xyIdentifier);
+        }
+        if (xxIdentifier != null) {
+            sexes.add(xxIdentifier);
+        }
+
+        afGroupingsAll = Stream.concat(afGroupingsA.stream(), afGroupingsB.stream())
+            .distinct()
+            .collect(Collectors.toList());
+
+        // add sex and group stratified frequency info fields per cohort
+        for (final VCFHeaderLineBuilder line : INFO_FIELDS_TO_STRATIFY) {
+            for (final String sex : sexes) {
+                header.addMetaDataLine(line.addPrefixes(prefixA, sex, ""));
+                header.addMetaDataLine(line.addPrefixes(prefixB, sex, ""));
+            }
+            for (final String grouping : afGroupingsA) {
+                header.addMetaDataLine(line.addPrefixes(prefixA, grouping, ""));
+                for (final String sex : sexes) {
+                    header.addMetaDataLine(line.addPrefixes(prefixA, grouping, sex));
+                }
+            }
+            for (final String grouping : afGroupingsB) {
+                header.addMetaDataLine(line.addPrefixes(prefixB, grouping, ""));
+                for (final String sex : sexes) {
+                    header.addMetaDataLine(line.addPrefixes(prefixB, grouping, sex));
+                }
+            }
+        }
+
+        // add xy-specific frequency info fields per cohort stratified by groups
+        for (final VCFHeaderLineBuilder line : BIALLELIC_XY_COHORT_INFO_FIELDS) {
+            header.addMetaDataLine(line.addPrefixes(prefixA, xyIdentifier, ""));
+            header.addMetaDataLine(line.addPrefixes(prefixB, xyIdentifier, ""));
+            for (final String grouping : afGroupingsA) {
+                header.addMetaDataLine(line.addPrefixes(prefixA, grouping, xyIdentifier));
+            }
+            for (final String grouping : afGroupingsB) {
+                header.addMetaDataLine(line.addPrefixes(prefixB, grouping, xyIdentifier));
+            }
+        }
+
         return header;
     }
 
@@ -312,6 +419,165 @@ public final class SVFederate extends MultiVariantWalker {
         }
     }
 
+    protected void annotateCohortFrequencyInformation(final Map<String, Object> attributes,
+                                                      final VariantContext variant,
+                                                      final String prefix,
+                                                      final List<String> afGroupings,
+                                                      final List<VCFHeaderLineBuilder> frequencyInfoLines) {
+        // if field (with optional groupings) is present in the cohort variant, annotate with cohort prefix
+        // rely on check for presence to only annotate XY fields with XY identifier
+        for (final VCFHeaderLineBuilder line : frequencyInfoLines) {
+            if (variant.hasAttribute(line.getKey())) {
+                attributes.put(line.getKeyWithPrefix(prefix), variant.getAttribute(line.getKey()));
+            }
+            for (final String sex : sexes) {
+                final String key = line.getKey() + "_" + sex;
+                if (variant.hasAttribute(key)) {
+                    attributes.put(line.getKeyWithPrefixes(prefix, sex, ""), variant.getAttribute(key));
+                }
+            }
+            for (final String grouping : afGroupings) {
+                final String key = line.getKey() + "_" + grouping;
+                if (variant.hasAttribute(key)) {
+                    attributes.put(line.getKeyWithPrefixes(prefix, grouping, ""), variant.getAttribute(key));
+                }
+                for (final String sex : sexes) {
+                    final String keyWithSex = key + "_" + sex;
+                    if (variant.hasAttribute(keyWithSex)) {
+                        attributes.put(line.getKeyWithPrefixes(prefix, grouping, sex), variant.getAttribute(keyWithSex));
+                    }
+                }
+            }
+        }
+    }
+
+    protected String getInfoKeyWithGroups(final String baseKey, final String group1, final String group2) {
+        return baseKey + ((group1 == null || group1.isEmpty()) ? "" : "_" + group1) + ((group2 == null || group2.isEmpty()) ? "" : "_" + group2);
+    }
+
+    protected void biallelicFrequencyMergeHelper(final Map<String, Object> attributes,
+                                                 final VariantContext thisVariant,
+                                                 final VariantContext thatVariant,
+                                                 final String group1, final String group2) {
+        final String keyAN = getInfoKeyWithGroups(VCFConstants.ALLELE_NUMBER_KEY, group1, group2);
+        final String keyAC = getInfoKeyWithGroups(VCFConstants.ALLELE_COUNT_KEY, group1, group2);
+        final String keyAF = getInfoKeyWithGroups(VCFConstants.ALLELE_FREQUENCY_KEY, group1, group2);
+
+        final int thisAN = thisVariant.getAttributeAsInt(keyAN, 0);
+        final int thatAN = thatVariant.getAttributeAsInt(keyAN, 0);
+        final int totalAN = thisAN + thatAN;
+        attributes.put(keyAN, totalAN);
+
+        final int thisAC = thisVariant.getAttributeAsInt(keyAC, 0);
+        final int thatAC = thatVariant.getAttributeAsInt(keyAC, 0);
+        final int totalAC = thisAC + thatAC;
+        attributes.put(keyAC, totalAC);
+
+        if (totalAN > 0) {
+            final double totalAF = (double) totalAC / totalAN;
+            attributes.put(keyAF, totalAF);
+        }
+
+        final String keyNHet = getInfoKeyWithGroups("N_HET", group1, group2);
+        final String keyNHomRef = getInfoKeyWithGroups("N_HOMREF", group1, group2);
+        final String keyNHomAlt = getInfoKeyWithGroups("N_HOMALT", group1, group2);
+        final String keyNHemiAlt = getInfoKeyWithGroups("N_HEMIALT", group1, group2);
+
+        final int thisNHet = thisVariant.getAttributeAsInt(keyNHet, 0);
+        final int thatNHet = thatVariant.getAttributeAsInt(keyNHet, 0);
+        attributes.put(keyNHet, thisNHet + thatNHet);
+
+        final int thisNHomRef = thisVariant.getAttributeAsInt(keyNHomRef, 0);
+        final int thatNHomRef = thatVariant.getAttributeAsInt(keyNHomRef, 0);
+        attributes.put(keyNHomRef, thisNHomRef + thatNHomRef);
+
+        final int thisNHomAlt = thisVariant.getAttributeAsInt(keyNHomAlt, 0);
+        final int thatNHomAlt = thatVariant.getAttributeAsInt(keyNHomAlt, 0);
+        attributes.put(keyNHomAlt, thisNHomAlt + thatNHomAlt);
+
+        // annotate hemialt only if at least one of the variants has the key to safeguard nonsense combinations or autosomes
+        if (thisVariant.hasAttribute(keyNHemiAlt) || thatVariant.hasAttribute(keyNHemiAlt)) {
+            final int thisNHemiAlt = thisVariant.getAttributeAsInt(keyNHemiAlt, 0);
+            final int thatNHemiAlt = thatVariant.getAttributeAsInt(keyNHemiAlt, 0);
+            attributes.put(keyNHemiAlt, thisNHemiAlt + thatNHemiAlt);
+        }
+    }
+
+    protected void annotateFederatedBiallelicFrequencyInformation(final Map<String, Object> attributes,
+                                                                  final VariantContext thisVariant,
+                                                                  final VariantContext thatVariant) {
+        biallelicFrequencyMergeHelper(attributes, thisVariant, thatVariant, "", "");
+        for (final String sex: sexes) {
+            biallelicFrequencyMergeHelper(attributes, thisVariant, thatVariant, sex, "");
+        }
+        for (final String group: afGroupingsAll) {
+            biallelicFrequencyMergeHelper(attributes, thisVariant, thatVariant, group, "");
+            for (final String sex: sexes) {
+                biallelicFrequencyMergeHelper(attributes, thisVariant, thatVariant, group, sex);
+            }
+        }
+    }
+
+    protected void multiallelicFrequencyMergeHelper(final Map<String, Object> attributes,
+                                                    final VariantContext thisVariant,
+                                                    final VariantContext thatVariant,
+                                                    final String group1, final String group2) {
+        final String keyCnNumber = getInfoKeyWithGroups("CN_NUMBER", group1, group2);
+        final String keyCnCount = getInfoKeyWithGroups("CN_COUNT", group1, group2);
+        final String keyCnFreq = getInfoKeyWithGroups("CN_FREQ", group1, group2);
+        final String keyCnNonrefCount = getInfoKeyWithGroups("CN_NONREF_COUNT", group1, group2);
+        final String keyCnNonrefFreq = getInfoKeyWithGroups("CN_NONREF_FREQ", group1, group2);
+
+        final List<Integer> thisCnCounts = thisVariant.getAttributeAsIntList(keyCnCount, 0);
+        final List<Integer> thatCnCounts = thatVariant.getAttributeAsIntList(keyCnCount, 0);
+        final int maxCnCountSize = Math.max(thisCnCounts == null ? 0 : thisCnCounts.size(), thatCnCounts == null ? 0 : thatCnCounts.size());
+        final int[] totalCnCounts = new int[maxCnCountSize];
+        for (int i = 0; i < maxCnCountSize; i++) {
+            final int thisCount = (thisCnCounts != null && i < thisCnCounts.size()) ? thisCnCounts.get(i) : 0;
+            final int thatCount = (thatCnCounts != null && i < thatCnCounts.size()) ? thatCnCounts.get(i) : 0;
+            totalCnCounts[i] = thisCount + thatCount;
+        }
+        attributes.put(keyCnCount, totalCnCounts);
+
+        final int thisCnNumber = thisVariant.getAttributeAsInt(keyCnNumber, 0);
+        final int thatCnNumber = thatVariant.getAttributeAsInt(keyCnNumber, 0);
+        final int totalCnNumber = thisCnNumber + thatCnNumber;
+        attributes.put(keyCnNumber, totalCnNumber);
+
+        final int thisCnNonrefCount = thisVariant.getAttributeAsInt(keyCnNonrefCount, 0);
+        final int thatCnNonrefCount = thatVariant.getAttributeAsInt(keyCnNonrefCount, 0);
+        final int totalCnNonrefCount = thisCnNonrefCount + thatCnNonrefCount;
+        attributes.put(keyCnNonrefCount, totalCnNonrefCount);
+
+        if (totalCnNumber > 0) {
+            final double[] totalCnFreqs = new double[maxCnCountSize];
+            for (int i = 0; i < maxCnCountSize; i++) {
+                totalCnFreqs[i] = (double) totalCnCounts[i] / totalCnNumber;
+            }
+            attributes.put(keyCnFreq, totalCnFreqs);
+
+            final double totalCnNonrefFreq = (double) totalCnNonrefCount / totalCnNumber;
+            attributes.put(keyCnNonrefFreq, totalCnNonrefFreq);
+        }
+    }
+
+
+    protected void annotateFederatedMultiallelicFrequencyInformation(final Map<String, Object> attributes,
+                                                                     final VariantContext thisVariant,
+                                                                     final VariantContext thatVariant) {
+        multiallelicFrequencyMergeHelper(attributes, thisVariant, thatVariant, "", "");
+        for (final String sex: sexes) {
+            multiallelicFrequencyMergeHelper(attributes, thisVariant, thatVariant, sex, "");
+        }
+        for (final String group: afGroupingsAll) {
+            multiallelicFrequencyMergeHelper(attributes, thisVariant, thatVariant, group, "");
+            for (final String sex: sexes) {
+                multiallelicFrequencyMergeHelper(attributes, thisVariant, thatVariant, group, sex);
+            }
+        }
+
+    }
+
     protected SVCallRecord merge(final VariantContext thisVariant,
                                  final VariantContext thatVariant) {
         final SVCallRecord thisRecord = SVCallRecordUtils.create(thisVariant, true, false, dictionary);
@@ -320,10 +586,16 @@ public final class SVFederate extends MultiVariantWalker {
         final String thisPrefix = sourceToPrefixMap.get(thisVariant.getSource());
         final String thatPrefix = sourceToPrefixMap.get(thatVariant.getSource());
 
+        final List<String> thisAFGroupings = sourceToAFGroupingsMap.get(thisVariant.getSource());
+        final List<String> thatAFGroupings = sourceToAFGroupingsMap.get(thatVariant.getSource());
+
         final SVClusterEngine.OutputCluster outputCluster =
                 new SVClusterEngine.OutputCluster(List.of(thisRecord, thatRecord));
         final SVCallRecord merged = collapser.collapse(outputCluster);
         final Map<String, Object> attributes = merged.getAttributes();
+
+        attributes.put(thisPrefix + "_VID", thisRecord.getId());
+        attributes.put(thatPrefix + "_VID", thatRecord.getId());
 
         final CanonicalSVLinkage.CanonicalLinkageResult result = linkage.areClusterable(thisRecord, thatRecord);
         attributes.put(GATKSVVCFConstants.RECIPROCAL_OVERLAP_INFO, result.getReciprocalOverlap());
@@ -342,19 +614,11 @@ public final class SVFederate extends MultiVariantWalker {
 
         // if biallelic, annotate per-cohort biallelic info fields such as AF if they exist
         if (!thisIsCnv) {
-            for (final VCFHeaderLineBuilder line : BIALLELIC_COHORT_INFO_FIELDS) {
-                if (thisVariant.hasAttribute(line.getKey())) {
-                    attributes.put(line.getKeyWithPrefix(thisPrefix), thisVariant.getAttribute(line.getKey()));
-                }
-            }
+            annotateCohortFrequencyInformation(attributes, thisVariant, thisPrefix, thisAFGroupings, ALL_BIALLELIC_INFOS);
         }
 
         if (!thatIsCnv) {
-            for (final VCFHeaderLineBuilder line : BIALLELIC_COHORT_INFO_FIELDS) {
-                if (thatVariant.hasAttribute(line.getKey())) {
-                    attributes.put(line.getKeyWithPrefix(thatPrefix), thatVariant.getAttribute(line.getKey()));
-                }
-            }
+            annotateCohortFrequencyInformation(attributes, thatVariant, thatPrefix, thatAFGroupings, ALL_BIALLELIC_INFOS);
         }
 
         if (thisIsCnv || thatIsCnv) {
@@ -365,61 +629,18 @@ public final class SVFederate extends MultiVariantWalker {
             attributes.put("LOG_AF_DIFFERENCE", VCFConstants.MISSING_VALUE_v4);
 
             // if either variant is multiallleic, annotate per-cohort multiallelic info fields such as CN_FREQ if they exist
-            for (final VCFHeaderLineBuilder line : MULTIALLELIC_COHORT_INFO_FIELDS) {
-                if (thisVariant.hasAttribute(line.getKey())) {
-                    attributes.put(line.getKeyWithPrefix(thisPrefix), thisVariant.getAttribute(line.getKey()));
-                }
-                if (thatVariant.hasAttribute(line.getKey())) {
-                    attributes.put(line.getKeyWithPrefix(thatPrefix), thatVariant.getAttribute(line.getKey()));
-                }
-            }
+            annotateCohortFrequencyInformation(attributes, thisVariant, thisPrefix, thisAFGroupings, MULTIALLELIC_COHORT_INFO_FIELDS);
+            annotateCohortFrequencyInformation(attributes, thatVariant, thatPrefix, thatAFGroupings, MULTIALLELIC_COHORT_INFO_FIELDS);
 
             // compute federated CN statistics
-            final List<Integer> thisCnCounts = thisVariant.hasAttribute("CN_COUNT") ? thisVariant.getAttributeAsIntList("CN_COUNT", 0) : null;
-            final List<Integer> thatCnCounts = thatVariant.hasAttribute("CN_COUNT") ? thatVariant.getAttributeAsIntList("CN_COUNT", 0) : null;
-            final int maxCnCountSize = Math.max(thisCnCounts == null ? 0 : thisCnCounts.size(), thatCnCounts == null ? 0 : thatCnCounts.size());
-            final int[] totalCnCounts = new int[maxCnCountSize];
-            for (int i = 0; i < maxCnCountSize; i++) {
-                final int thisCount = (thisCnCounts != null && i < thisCnCounts.size()) ? thisCnCounts.get(i) : 0;
-                final int thatCount = (thatCnCounts != null && i < thatCnCounts.size()) ? thatCnCounts.get(i) : 0;
-                totalCnCounts[i] = thisCount + thatCount;
-            }
-            attributes.put("CN_COUNT", totalCnCounts);
+            annotateFederatedMultiallelicFrequencyInformation(attributes, thisVariant, thatVariant);
 
-            final int thisCnNumber = thisVariant.getAttributeAsInt("CN_NUMBER", 0);
-            final int thatCnNumber = thatVariant.getAttributeAsInt("CN_NUMBER", 0);
-            final int totalCnNumber = thisCnNumber + thatCnNumber;
-            attributes.put("CN_NUMBER", totalCnNumber);
-
-            final double[] totalCnFreqs = new double[maxCnCountSize];
-            for (int i = 0; i < maxCnCountSize; i++) {
-                totalCnFreqs[i] = (double) totalCnCounts[i] / totalCnNumber;
-            }
-            attributes.put("CN_FREQ", totalCnFreqs);
-
-            final int thisCnNonrefCount = thisVariant.getAttributeAsInt("CN_NONREF_COUNT", 0);
-            final int thatCnNonrefCount = thatVariant.getAttributeAsInt("CN_NONREF_COUNT", 0);
-            final int totalCnNonrefCount = thisCnNonrefCount + thatCnNonrefCount;
-            attributes.put("CN_NONREF_COUNT", totalCnNonrefCount);
-
-            final double totalCnNonrefFreq = totalCnNumber > 0 ? (double) totalCnNonrefCount / totalCnNumber : Double.NaN;
-            attributes.put("CN_NONREF_FREQ", totalCnNonrefFreq);
         } else {
             // for biallelic variants, compute federated AF and related statistics
-            final int thisAN = thisVariant.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0);
-            final int thatAN = thatVariant.getAttributeAsInt(VCFConstants.ALLELE_NUMBER_KEY, 0);
-            final int totalAN = thisAN + thatAN;
-            attributes.put(VCFConstants.ALLELE_NUMBER_KEY, totalAN);
-
-            final int thisAC = thisVariant.getAttributeAsInt(VCFConstants.ALLELE_COUNT_KEY, 0);
-            final int thatAC = thatVariant.getAttributeAsInt(VCFConstants.ALLELE_COUNT_KEY, 0);
-            final int totalAC = thisAC + thatAC;
-            attributes.put(VCFConstants.ALLELE_COUNT_KEY, totalAC);
+            annotateFederatedBiallelicFrequencyInformation(attributes, thisVariant, thatVariant);
 
             final double thisAF = thisVariant.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, Double.NaN);
             final double thatAF = thatVariant.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, Double.NaN);
-            final double totalAF = (double) totalAC / totalAN;
-            attributes.put(VCFConstants.ALLELE_FREQUENCY_KEY, totalAF);
             attributes.put("LOG_AF_DIFFERENCE", computeLogAlleleFrequencyDifference(thisAF, thatAF));
         }
 
