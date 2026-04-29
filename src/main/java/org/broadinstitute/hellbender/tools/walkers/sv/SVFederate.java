@@ -117,13 +117,13 @@ public final class SVFederate extends MultiVariantWalker {
     @Argument(fullName = AF_GROUPINGS_A_LONG_NAME,
             doc = "Comma-separated list of groups to stratify AFs by that are annotated in VCF A.",
             optional=true)
-    public List<String> afGroupingsA = new ArrayList<>();
+    public String afGroupingsAInput = null;
 
     public static final String AF_GROUPINGS_B_LONG_NAME = "af-groupings-B";
     @Argument(fullName = AF_GROUPINGS_B_LONG_NAME,
             doc = "Comma-separated list of groups to stratify AFs by that are annotated in VCF B.",
             optional=true)
-    public List<String> afGroupingsB = new ArrayList<>();
+    public String afGroupingsBInput = null;
 
     public static final String XY_LONG_NAME = "XY-identifier";
     @Argument(fullName = XY_LONG_NAME,
@@ -155,6 +155,8 @@ public final class SVFederate extends MultiVariantWalker {
     protected Map<String, List<String>> sourceToAFGroupingsMap;
 
     protected List<String> sexes;
+    protected List<String> afGroupingsA;
+    protected List<String> afGroupingsB;
     protected List<String> afGroupingsAll;
 
     protected CanonicalSVCollapser collapser;
@@ -292,6 +294,20 @@ public final class SVFederate extends MultiVariantWalker {
     @Override
     public void onTraversalStart() {
         super.onTraversalStart();  // loads ploidy table, reference dictionary, initializes writer
+
+        // Parse comma-separated AF groupings inputs into lists
+        if (afGroupingsAInput != null && !afGroupingsAInput.isEmpty()) {
+            afGroupingsA = Arrays.stream(afGroupingsAInput.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toList());
+        }
+        if (afGroupingsBInput != null && !afGroupingsBInput.isEmpty()) {
+            afGroupingsB = Arrays.stream(afGroupingsBInput.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .collect(Collectors.toList());
+        }
 
         reference = ReferenceUtils.createReferenceReader(referenceArguments.getReferenceSpecifier());
         dictionary = reference.getSequenceDictionary();
