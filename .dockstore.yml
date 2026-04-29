@@ -173,7 +173,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1862_remove_samples_from_foxtrot
        tags:
          - /.*/
    - name: GvsTieOutVDS
@@ -239,7 +238,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vat_optional_vep
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -342,7 +340,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vat_optional_vep
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -519,6 +516,5 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1862_remove_samples_from_foxtrot
        tags:
          - /.*/
