@@ -23,6 +23,9 @@
   - [GvsCreateVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVDS) workflow
   - [GvsCreateVATfromVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVATfromVDS) workflow
   - [GvsValidateVat](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsValidateVat) workflow
+  - [GvsCreateParticipantMappingTable](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsCreateParticipantMappingTable) workflow
+  - [GvsMapUnmappedVIDs](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsMapUnmappedVIDs) workflow
+  - [GvsMapDroppedDuplicateVIDs](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsMapDroppedDuplicateVIDs) workflow
 - Once the Foxtrot sample list becomes available, perform some checks:
   - Make sure there are columns for reblocked VCFs and reblocked VCF indexes. The column headers will likely be
     `reblocked_gvcf` and `reblocked_gvcf_index`. Do not be alarmed by the presence of "hard-filtered" in file names,
@@ -191,13 +194,6 @@ To create a BigQuery table of variant annotations, you may follow the instructio
 [process to create variant annotations table](../../variant-annotations-table/README.md)
 The pipeline takes in the VDS and outputs a variant annotations table in BigQuery.
 
-Once the VAT table is created and a tsv is exported, the AoU research workbench team should be notified of its creation and permission should be granted so that several members of the team have view permission.
-
-- Grant `BigQuery Data Viewer` permission to specific people's PMI-OPS accounts. This will include members of the AoU research workbench team.
-- Copy the tarred and bgzipped export of the VAT into the pre-delivery bucket.
-- Send an email out notifying the AoU research workbench team of the readiness of the VAT. Additionally, a RW Jira ticket will be made by project management to request copying the VAT to pre-prod.
-- A document describing how this information was shared (for previous callsets) is located [here](https://docs.google.com/document/d/1caqgCS1b_dDJXQT4L-tRxjOkLGDgRNkO9eac1xd9ib0/edit)
-
 ## Additional Deliverables
 
 ### Smaller Interval Lists
@@ -255,37 +251,3 @@ You can take advantage of our existing sub-cohort WDL, `GvsExtractCohortFromSamp
     - For `GvsExtractCallsetPgen` (which is called by `GvsExtractCallsetPgenMerged`), if one (or several) of the `PgenExtractTask` shards fail because of angry cloud, you can re-run the workflow with the exact same inputs with call caching turned on; the successful shards will cache and only the failed ones will re-run.
     - If you want to collect the monitoring logs from a large number of `Extract` shards, the `summarize_task_monitor_logs.py` script will not work if the task is scattered too wide.  Use the `summarize_task_monitor_logs_from_file.py` script, instead, which takes a FOFN of GCS paths instead of a space-separated series of localized files.
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-
-
-### VID to Participant ID Mapping Table
-Once the VAT has been created, you will need to create a database table mapping the VIDs (Variant IDs) from that table to all the participants in the dataset that share that VID. This table is used by the AoU Researcher Workbench, and will need to be copied over to a location specified by them. 
-
-1. First run `GvsCreateParticipantMappingTable.wdl` to create this participant ID mapping table and most of its data.
-   Specify the `project_id`, `dataset` and `vat_table_name` for the VAT created above. Also specify the `participant_mapping_table_name` that
-   will be created to hold the VID to participant mapping information.
-1. Next run `GvsMapUnmappedVIDs.wdl` to recover participant ID mappings for "unmapped VIDs" (a.k.a "pseudo VIDs"). These unmapped VIDs have
-   VAT table entries but no corresponding `alt_allele` entries and correspond to data that appeared in
-   input VCFs only in non-left aligned representations. During the process of creating the VAT these variants were left-aligned and thus
-   disconnected from their `alt_allele` representations. Specify the following parameters:
-   1. `project_id`, `dataset`, `vat_table_name`, `participant_mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
-   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATFromVDS.wdl`.
-   1. `unmapped_vid_mapping_table_name`: the name to use for a table that will hold the mapping information from input
-       position/ref/alt to left-aligned position/ref/alt. This should be a new table.
-1. Finally run `GvsMapDroppedDuplicateVIDs.wdl` to recover all participant ID mappings for VIDs which had multiple variant synonyms with AC != 0. The logic in `GvsCreateVATFromVDS` currently preserves a left-aligned version of the
-   synonym with the highest AC, but before running `GvsMapDroppedDuplicateVIDs.wdl` the actual participant mapping will only contain samples whose input synonym was left-aligned, which do not necessarily correspond to the synonym with highest AC.
-   1. `project_id`, `dataset`, `vat_table_name`, `participant_mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
-   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATFromVDS.wdl`.
-       This should be the same value as specified for the `GvsMapUnmappedVIDs.wdl` step above.
-   1. `filtered_synonyms`: the GCS path to the file of variant synonyms that were filtered as duplicates. This corresponds to the value of the `output_file` output of the `MergeDroppedSynonyms` task in `GvsCreateVATFromVDS.wdl`.
-   1. `dropped_duplicate_table_name`: the name to use for a table that will hold the mapping information from input
-      position/ref/alt to left-aligned position/ref/alt. This should be a new table.
-
-#### Delivery Steps
-1. Copy the created mapping table to the dataset specified by the All of Us DRC. I specifically reached out to Justin Cook and Brian Freeman for the dataset to copy to.
-
-1. Note well that there will be a small difference in the number of vids in the VAT and that in the new mapping table that you have just created. For the Echo callset there are 3595 vids in the VAT that don't exist in the new mapping table (use the query below to determine them). The difference occurs because when we generate annotations using Nirvana, Nirvana left align and truncates the indels. For some of these indels, they now are remapped to a slightly different location than we had defined them as in the `alt_allele` table. This is a known issue that will be resolved in a future release.
-
-    ```
-   select distinct vid from `<dataset>.<vat_table_name>` where vid not in (select vid from `<dataset>.<mapping_table_name>`) ;
-    ```
-   Instructions for adding these "unmapped VIDs" into the participant mapping table are forthcoming.
