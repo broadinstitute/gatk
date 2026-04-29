@@ -324,6 +324,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1813
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
