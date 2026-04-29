@@ -1,23 +1,19 @@
 version 1.0
 
-# This WDL will merge the Echo VDS with a VDS of only samples new to Foxtrot and apply the full Foxtrot filter created
-# from all samples to the merged result.
 import "GvsUtils.wdl" as Utils
-import "GvsValidateVDS.wdl" as ValidateVDS
 
 
-workflow GvsMergeAndRescoreVDSes {
+workflow GvsRemoveSamplesFromVDS {
+    meta {
+        description: "Removes a specified set of samples from a Hail VDS and writes the result to a new path. Implemented by remove_samples_from_vds.py, which: (1) validates the removal file for duplicates and checks that at least one listed research ID exists in the VDS; (2) filters out the specified samples and removes dead alleles; (3) drops monomorphic reference rows in the variant data left behind after sample removal (important when a withdrawn sample was the sole carrier of an alt allele at a site). GVS-produced VDSes do not contain a GT field, so no GT recalculation is needed or performed. Phasing information is passed through unchanged."
+    }
     input {
-        String input_echo_vds_path
-        String input_unmerged_foxtrot_vds_path
-        String input_foxtrot_avro_path
-        String output_merged_and_rescored_foxtrot_vds_path
-        String? samples_to_remove_path
-        Boolean skip_validate = false
+        String input_vds_path
+        String samples_to_remove_path
+        String output_vds_path
 
         String cluster_prefix = "vds-cluster"
         String? hail_temp_path
-        Int? intermediate_resume_point
         String region = "us-central1"
 
         Int? cluster_max_idle_minutes
@@ -36,41 +32,31 @@ workflow GvsMergeAndRescoreVDSes {
     }
 
     parameter_meta {
-        input_foxtrot_avro_path : {
-            help: "Input location for Foxtrot Avro files including the new Foxtrot filter data"
-        }
-        input_echo_vds_path: {
-            help: "Previous full Echo VDS"
-        }
-        input_unmerged_foxtrot_vds_path: {
-           help: "New unmerged Foxtrot VDS with only the samples new to Foxtrot"
-        }
-        output_merged_and_rescored_foxtrot_vds_path: {
-            help: "Location for the complete merged and rescored Foxtrot VDS with all samples and Foxtrot filters"
+        input_vds_path: {
+            help: "Path to the input VDS from which samples will be removed."
         }
         samples_to_remove_path: {
-            help: "File of sample ids to remove from the final output merged and rescored VDS."
+            help: "Path to a single-column file listing research IDs of samples to remove. Must have a header of 'research_id', with one research ID per line."
+        }
+        output_vds_path: {
+            help: "Path to write the output VDS with the specified samples removed."
         }
         cluster_prefix: {
-            help: "Prefix of the Dataproc cluster name"
+            help: "Prefix of the Dataproc cluster name."
         }
         hail_temp_path: {
-            help: "Hail temp path to use, specify if resuming from a run that failed midway through creating intermediate VDSes."
-        }
-        intermediate_resume_point: {
-            help: "Index at which to resume creating intermediate VDSes."
+            help: "Optional Hail temp path for intermediate files."
         }
         region: {
-            help: "us-central1"
+            help: "GCP region, e.g. us-central1."
         }
         hail_version: {
-            help: "Optional Hail version, defaults to 0.2.130.post1. Cannot define both this parameter and `hail_wheel`."
+            help: "Optional Hail version. Cannot define both this parameter and `hail_wheel`."
         }
         hail_wheel: {
             help: "Optional Hail wheel. Cannot define both this parameter and `hail_version`."
         }
     }
-
 
     if (!defined(variants_docker) || !defined(basic_docker) || !defined(cloud_sdk_slim_docker) || !defined(workspace_bucket) || !defined(workspace_project) || !defined(hail_version)) {
         call Utils.GetToolVersions {
@@ -95,44 +81,22 @@ workflow GvsMergeAndRescoreVDSes {
 
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
-    if (defined(intermediate_resume_point) && !defined(hail_temp_path)) {
-        call Utils.TerminateWorkflow as NeedHailTempPath {
-            input:
-                message = "GvsCreateVDS called with an intermediate resume point but no specified hail temp path from which to resume",
-                basic_docker = effective_basic_docker,
-        }
-    }
-
-    if (!defined(intermediate_resume_point) && defined(hail_temp_path)) {
-        call Utils.TerminateWorkflow as NeedIntermediateResumePoint {
-            input:
-                message = "GvsCreateVDS called with no intermediate resume point but a specified hail temp path, which isn't a known use case",
-                basic_docker = effective_basic_docker,
-        }
-    }
-
     call Utils.GetHailScripts {
         input:
             variants_docker = effective_variants_docker,
     }
 
-    call MergeAndRescoreVDS {
+    call RemoveSamplesFromVDS {
         input:
             prefix = cluster_prefix,
-            input_echo_vds_path = input_echo_vds_path,
-            input_unmerged_foxtrot_vds_path = input_unmerged_foxtrot_vds_path,
-            output_merged_and_rescored_foxtrot_vds_path = output_merged_and_rescored_foxtrot_vds_path,
-            input_foxtrot_avro_path = input_foxtrot_avro_path,
+            input_vds_path = input_vds_path,
             samples_to_remove_path = samples_to_remove_path,
-            skip_validate = skip_validate,
+            output_vds_path = output_vds_path,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
             hail_temp_path = hail_temp_path,
             run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
-            merge_and_rescore_script = GetHailScripts.merge_and_rescore_script,
-            hail_gvs_util_script = GetHailScripts.hail_gvs_util_script,
-            vds_validation_script = GetHailScripts.vds_validation_script,
-            intermediate_resume_point = intermediate_resume_point,
+            remove_samples_from_vds_script = GetHailScripts.remove_samples_from_vds_script,
             workspace_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
@@ -144,29 +108,23 @@ workflow GvsMergeAndRescoreVDSes {
     }
 
     output {
-        String cluster_name = MergeAndRescoreVDS.cluster_name
+        String cluster_name = RemoveSamplesFromVDS.cluster_name
         Boolean done = true
     }
 }
 
-task MergeAndRescoreVDS {
+task RemoveSamplesFromVDS {
     input {
         String prefix
-        String input_echo_vds_path
-        String input_unmerged_foxtrot_vds_path
-        String input_foxtrot_avro_path
-        String output_merged_and_rescored_foxtrot_vds_path
-        String? samples_to_remove_path
-        Boolean skip_validate
+        String input_vds_path
+        String samples_to_remove_path
+        String output_vds_path
         Boolean leave_cluster_running_at_end
-        File merge_and_rescore_script
-        File hail_gvs_util_script
+        File remove_samples_from_vds_script
         File run_in_hail_cluster_script
-        File vds_validation_script
         String? hail_version
         File? hail_wheel
         String? hail_temp_path
-        Int? intermediate_resume_point
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
@@ -230,25 +188,19 @@ task MergeAndRescoreVDS {
         FIN
         gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{workspace_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
 
-        # construct a JSON of arguments for python script to be run in the hail cluster
+        # Construct a JSON of arguments for the python script to be run in the Hail cluster.
         cat > script-arguments.json <<FIN
         {
-            "temp-path": "${hail_temp_path}",
-            "input-foxtrot-avro-path": "~{input_foxtrot_avro_path}",
-            "input-echo-vds": "~{input_echo_vds_path}",
-            "input-unmerged-foxtrot-vds": "~{input_unmerged_foxtrot_vds_path}",
-            "output-vds-path": "~{output_merged_and_rescored_foxtrot_vds_path}"
-            ~{if (skip_validate) then '' else ', "run-validation": ""'}
-            ~{', "intermediate-resume-point": ' + intermediate_resume_point}
-            ~{', "samples-to-remove-path": "' + samples_to_remove_path + '"'}
+            "input-vds-path": "~{input_vds_path}",
+            "samples-to-remove-path": "~{samples_to_remove_path}",
+            "output-vds-path": "~{output_vds_path}",
+            "temp-path": "${hail_temp_path}"
         }
         FIN
 
-        # Run the hail python script to make a VDS
+        # Run the Hail python script to remove samples from the VDS.
         python3 ~{run_in_hail_cluster_script} \
-            --script-path ~{merge_and_rescore_script} \
-            --secondary-script-path-list ~{hail_gvs_util_script} \
-            --secondary-script-path-list ~{vds_validation_script} \
+            --script-path ~{remove_samples_from_vds_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --autoscaling-policy gvs-autoscaling-policy \

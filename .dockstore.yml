@@ -173,6 +173,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_1862_remove_samples_from_foxtrot
        tags:
          - /.*/
    - name: GvsTieOutVDS
@@ -508,5 +509,15 @@ workflows:
        branches:
          - master
          - ah_var_store
+       tags:
+         - /.*/
+   - name: GvsRemoveSamplesFromVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsRemoveSamplesFromVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1862_remove_samples_from_foxtrot
        tags:
          - /.*/

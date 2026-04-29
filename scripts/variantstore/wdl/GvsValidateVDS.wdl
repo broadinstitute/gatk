@@ -10,7 +10,6 @@ workflow GvsValidateVDS {
         String vds_path
 
         String cluster_prefix = "vds-cluster"
-        String gcs_subnetwork_name = "subnetwork"
         String? hail_temp_path
         String region = "us-central1"
 
@@ -35,9 +34,6 @@ workflow GvsValidateVDS {
         }
         cluster_prefix: {
             help: "Prefix of the Dataproc cluster name"
-        }
-        gcs_subnetwork_name: {
-            help: "Set to 'subnetwork' if running in Terra Cromwell"
         }
         hail_temp_path: {
             help: "Hail temp path to use, specify if resuming from a run that failed midway through creating intermediate VDSes."
@@ -94,7 +90,6 @@ workflow GvsValidateVDS {
             workspace_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
-            gcs_subnetwork_name = gcs_subnetwork_name,
             leave_cluster_running_at_end = leave_cluster_running_at_end,
             cluster_max_idle_minutes = cluster_max_idle_minutes,
             cluster_max_age_minutes = cluster_max_age_minutes,
@@ -121,7 +116,6 @@ task ValidateVds {
         String workspace_project
         String workspace_bucket
         String region
-        String gcs_subnetwork_name
         String cloud_sdk_slim_docker
         Boolean leave_cluster_running_at_end
         Int? cluster_max_idle_minutes

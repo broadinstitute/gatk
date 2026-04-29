@@ -139,8 +139,6 @@ def import_gvs(refs: 'List[List[str]]',
     * Run the combiner on the VDSes (which does a hierarchical merge).
     * Annotate with VETS / filter.
     * Compute FT genotype annotation.
-    * Remove phase on LGT.
-    * Add GT (computed from LGT).
     * Write final VDS.
 
     Returns
