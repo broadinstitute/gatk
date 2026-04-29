@@ -6,7 +6,7 @@ import "../structs/Range.wdl" as Range
 workflow GvsMapUnmappedVIDs {
     input {
         File sites_only_vcf
-        String project
+        String project_id
         String dataset
         String vat_table_name
         String participant_mapping_table_name
@@ -25,7 +25,7 @@ workflow GvsMapUnmappedVIDs {
 
     call MapUnmappedVIDs {
         input:
-            project = project,
+            project_id = project_id,
             dataset = dataset,
             vat_table_name = vat_table_name,
             participant_mapping_table_name = participant_mapping_table_name,
@@ -39,7 +39,7 @@ workflow GvsMapUnmappedVIDs {
 
 task MapUnmappedVIDs {
     input {
-        String project
+        String project_id
         String dataset
         String vat_table_name
         String participant_mapping_table_name
@@ -60,7 +60,7 @@ task MapUnmappedVIDs {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         # 1. Get the unmapped VIDs.
-        bq --apilog=false query --use_legacy_sql=false --project_id=~{project} --format=csv --max_rows 1000000000 '
+        bq --apilog=false query --use_legacy_sql=false --project_id=~{project_id} --format=csv --max_rows 1000000000 '
 
             CREATE TEMP FUNCTION vidToLocation(vid string)
              RETURNS int64
@@ -122,12 +122,12 @@ task MapUnmappedVIDs {
         python /app/map_input_alignments_to_left_alignments.py to_search.sort.dedup.vcf hits_only.vcf > unmapped_vid_mappings.tsv
 
         # 11. Load the unmapped vid mapping into BigQuery
-        bq load --project_id ~{project} --source_format=CSV --skip_leading_rows=1 --field_delimiter="\t" \
+        bq load --project_id ~{project_id} --source_format=CSV --skip_leading_rows=1 --field_delimiter="\t" \
             ~{dataset}.~{unmapped_vid_mapping_table_name} unmapped_vid_mappings.tsv \
             vid:STRING,chr:STRING,input_location:INTEGER,input_position:INTEGER,input_ref:STRING,input_alt:STRING,left_aligned_location:INTEGER,left_aligned_position:INTEGER,left_aligned_ref:STRING,left_aligned_alt:STRING,info_field:STRING
 
         # 12. Add the mappings for these no-longer-unmapped VIDs into the mapping table.
-        bq --apilog=false query --nouse_legacy_sql --project_id=~{project} --format=csv '
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv '
 
         INSERT into `~{dataset}.~{participant_mapping_table_name}` (vid, person_ids)
         SELECT
