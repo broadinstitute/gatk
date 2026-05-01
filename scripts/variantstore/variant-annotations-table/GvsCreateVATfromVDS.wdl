@@ -979,9 +979,9 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
 
     runtime {
         docker: variants_docker
-        preemptible: 2
+        cpu: 16
         memory: "7 GB"
-        disks: "local-disk 1000 HDD"
+        disks: "local-disk 4000 SSD"
     }
 
     output {
