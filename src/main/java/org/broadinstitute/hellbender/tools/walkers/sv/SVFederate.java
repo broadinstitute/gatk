@@ -155,9 +155,9 @@ public final class SVFederate extends MultiVariantWalker {
     protected Map<String, List<String>> sourceToAFGroupingsMap;
 
     protected List<String> sexes;
-    protected List<String> afGroupingsA;
-    protected List<String> afGroupingsB;
-    protected List<String> afGroupingsAll;
+    protected List<String> afGroupingsA = new ArrayList<>();
+    protected List<String> afGroupingsB = new ArrayList<>();
+    protected List<String> afGroupingsAll = new ArrayList<>();
 
     protected CanonicalSVCollapser collapser;
     protected CanonicalSVLinkage<SVCallRecord> linkage;
@@ -309,6 +309,19 @@ public final class SVFederate extends MultiVariantWalker {
                     .collect(Collectors.toList());
         }
 
+        if (afGroupingsA != null) {
+            if (afGroupingsB != null) {
+                afGroupingsAll = Stream.concat(afGroupingsA.stream(), afGroupingsB.stream())
+                    .distinct()
+                    .collect(Collectors.toList());
+            }
+            else {
+                afGroupingsAll = new ArrayList<>(afGroupingsA);
+            }
+        } else if (afGroupingsB != null) {
+            afGroupingsAll = new ArrayList<>(afGroupingsB);
+        }
+
         reference = ReferenceUtils.createReferenceReader(referenceArguments.getReferenceSpecifier());
         dictionary = reference.getSequenceDictionary();
         if (dictionary == null) {
@@ -386,10 +399,6 @@ public final class SVFederate extends MultiVariantWalker {
         if (xxIdentifier != null) {
             sexes.add(xxIdentifier);
         }
-
-        afGroupingsAll = Stream.concat(afGroupingsA.stream(), afGroupingsB.stream())
-            .distinct()
-            .collect(Collectors.toList());
 
         // add sex and group stratified frequency info fields per cohort
         for (final VCFHeaderLineBuilder line : INFO_FIELDS_TO_STRATIFY) {
@@ -610,9 +619,6 @@ public final class SVFederate extends MultiVariantWalker {
         final SVCallRecord merged = collapser.collapse(outputCluster);
         final Map<String, Object> attributes = merged.getAttributes();
 
-        attributes.put(thisPrefix + "_VID", thisRecord.getId());
-        attributes.put(thatPrefix + "_VID", thatRecord.getId());
-
         final CanonicalSVLinkage.CanonicalLinkageResult result = linkage.areClusterable(thisRecord, thatRecord);
         attributes.put(GATKSVVCFConstants.RECIPROCAL_OVERLAP_INFO, result.getReciprocalOverlap());
         attributes.put(GATKSVVCFConstants.SIZE_SIMILARITY_INFO, result.getSizeSimilarity());
@@ -624,6 +630,9 @@ public final class SVFederate extends MultiVariantWalker {
             attributes.put(line.getKeyWithPrefix(thisPrefix), thisVariant.hasAttribute(line.getKey()) ? thisVariant.getAttribute(line.getKey()) : VCFConstants.MISSING_VALUE_v4);
             attributes.put(line.getKeyWithPrefix(thatPrefix), thatVariant.hasAttribute(line.getKey()) ? thatVariant.getAttribute(line.getKey()) : VCFConstants.MISSING_VALUE_v4);
         }
+        // annotate cohort VIDs (above loop will not work since they are not in info in cohort records)
+        attributes.put(thisPrefix + "_VID", thisRecord.getId());
+        attributes.put(thatPrefix + "_VID", thatRecord.getId());
 
         final boolean thisIsCnv = thisRecord.getType() == StructuralVariantAnnotationType.CNV;
         final boolean thatIsCnv = thatRecord.getType() == StructuralVariantAnnotationType.CNV;
