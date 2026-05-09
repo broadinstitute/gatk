@@ -21,7 +21,7 @@ workflow GvsCreateVATfromVDS {
         String? hail_version
         File? hail_wheel
         String? vat_version
-        String? workspace_gcs_project
+        String? workspace_project
 
         Boolean generate_vep_and_loftee_annotations = true
         Boolean leave_hail_cluster_running_at_end = false
@@ -95,7 +95,7 @@ workflow GvsCreateVATfromVDS {
     String effective_variants_nirvana_docker = select_first([variants_nirvana_docker, GetToolVersions.variants_nirvana_docker])
     String effective_vep_loftee_docker = select_first([vep_loftee_docker, GetToolVersions.vep_loftee_docker])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
-    String effective_google_project = select_first([workspace_gcs_project, GetToolVersions.google_project])
+    String effective_google_project = select_first([workspace_project, GetToolVersions.google_project])
 
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
     String effective_vat_version = if (defined(vat_version) && select_first([vat_version]) != "v1") then "_" + select_first([vat_version]) else ""
@@ -523,7 +523,7 @@ task GenerateSitesOnlyVcf {
             --account ${account_name} \
             ~{true='--use-tiny-dataproc-cluster' false='' use_tiny_dataproc_cluster} \
             --region ~{region} \
-            --gcs-project ~{workspace_project} \
+            --workspace-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \

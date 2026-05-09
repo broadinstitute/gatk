@@ -57,7 +57,7 @@ def unwrap(string):
     return re.sub("\\s{2,}", " ", string).strip()
 
 
-def create_autoscaling_policy(use_tiny_dataproc_cluster, gcs_project, region):
+def create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, region):
     """Create (or update) the GVS autoscaling policy in Dataproc.
 
     Chooses a small configuration when use_tiny_dataproc_cluster is True
@@ -75,7 +75,7 @@ def create_autoscaling_policy(use_tiny_dataproc_cluster, gcs_project, region):
     try:
         import_cmd = unwrap(f"""
             gcloud dataproc autoscaling-policies import {AUTOSCALING_POLICY_NAME}
-              --project={gcs_project}
+              --project={workspace_project}
               --source={yaml_path}
               --region={region}
               --quiet
@@ -93,14 +93,14 @@ def create_autoscaling_policy(use_tiny_dataproc_cluster, gcs_project, region):
     return AUTOSCALING_POLICY_NAME
 
 
-def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_type, region, use_tiny_dataproc_cluster, gcs_project,
+def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_type, region, use_tiny_dataproc_cluster, workspace_project,
                    script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end, cluster_max_idle_minutes, cluster_max_age_minutes, master_memory_fraction):
 
     cluster_max_idle_arg = f"--max-idle {cluster_max_idle_minutes}m" if cluster_max_idle_minutes else ""
     cluster_max_age_arg = f"--max-age {cluster_max_age_minutes}m" if cluster_max_age_minutes else ""
 
     try:
-        autoscaling_policy = create_autoscaling_policy(use_tiny_dataproc_cluster, gcs_project, region)
+        autoscaling_policy = create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, region)
 
         cluster_start_cmd = unwrap(f"""
         
@@ -110,13 +110,13 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
          --master-machine-type {master_machine_type}
          --master-memory-fraction {master_memory_fraction}
          --region {region}
-         --project {gcs_project}
+         --project {workspace_project}
          --service-account {account}
          {cluster_max_idle_arg}
          {cluster_max_age_arg}
          --num-master-local-ssds 1
          --num-worker-local-ssds 1 
-         --subnet=projects/{gcs_project}/regions/{region}/subnetworks/subnetwork
+         --subnet=projects/{workspace_project}/regions/{region}/subnetworks/subnetwork
          --properties=dataproc:dataproc.monitoring.stackdriver.enable=true,dataproc:dataproc.logging.stackdriver.enable=true,core:fs.gs.outputstream.sync.min.interval=5
          --packages=python-snappy
          {cluster_name}
@@ -132,13 +132,13 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
             exit_code = os.waitstatus_to_exitcode(wait_status)
             raise RuntimeError(f"Unexpected exit code from cluster creation: {exit_code}")
 
-        run_in_existing_cluster(cluster_name, account, region, gcs_project,
+        run_in_existing_cluster(cluster_name, account, region, workspace_project,
                         script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end)
 
     except Exception:
         raise
 
-def run_in_existing_cluster(cluster_name, account, region, gcs_project,
+def run_in_existing_cluster(cluster_name, account, region, workspace_project,
                    script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end):
 
     try:
@@ -156,7 +156,7 @@ def run_in_existing_cluster(cluster_name, account, region, gcs_project,
             custom_script_args = [f"--{key} {arguments.get(key)}" for key in arguments.keys()]
 
         found_cluster = False
-        for cluster in cluster_client.list_clusters(request={"project_id": gcs_project, "region": region}):
+        for cluster in cluster_client.list_clusters(request={"project_id": workspace_project, "region": region}):
             if cluster.cluster_name == cluster_name:
                 found_cluster = True
                 info("Found cluster: " + cluster_name)
@@ -166,7 +166,7 @@ def run_in_existing_cluster(cluster_name, account, region, gcs_project,
                 gcloud dataproc jobs submit pyspark {script_path}
                  {secondary_script_path_arg}
                  --cluster={cluster_name}
-                 --project {gcs_project}
+                 --project {workspace_project}
                  --region={region}
                  --account {account}
                  --driver-log-levels root=WARN
@@ -195,7 +195,7 @@ def run_in_existing_cluster(cluster_name, account, region, gcs_project,
             delete_cmd = unwrap(f"""
 
                 gcloud dataproc clusters delete
-                  --project {gcs_project}
+                  --project {workspace_project}
                   --region {region}
                   --account {account}
                   --quiet
@@ -228,7 +228,7 @@ if __name__ == "__main__":
     parser.add_argument('--use-tiny-dataproc-cluster', action='store_true', default=False,
                         help='Use a small autoscaling configuration suited for integration tests rather than '
                              'the default large configuration suited for production callsets.')
-    parser.add_argument('--gcs-project', type=str, required=True, help='GCS project')
+    parser.add_argument('--workspace-project', type=str, required=True, help='GCP project for the Dataproc cluster')
     parser.add_argument('--script-path', type=str, required=True, help='Path to script to run in Hail cluster')
     parser.add_argument('--secondary-script-path-list', type=str, required=False, action="append", default=[],
                         help='List of paths to secondary scripts to run in Hail cluster')
@@ -246,7 +246,7 @@ if __name__ == "__main__":
                    worker_machine_type=args.worker_machine_type,
                    region=args.region,
                    use_tiny_dataproc_cluster=args.use_tiny_dataproc_cluster,
-                   gcs_project=args.gcs_project,
+                   workspace_project=args.workspace_project,
                    script_path=args.script_path,
                    secondary_script_path_list=args.secondary_script_path_list,
                    script_arguments_json_path=args.script_arguments_json_path,
