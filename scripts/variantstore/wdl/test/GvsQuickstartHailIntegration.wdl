@@ -42,8 +42,9 @@ workflow GvsQuickstartHailIntegration {
         # Do not turn on `use_parquet_ingest` without either turning off header loading in this test or implementing
         # Parquet header loading generally.
         Boolean use_parquet_ingest = false
-        String project_id = "gvs-internal"
     }
+
+    String project_id = "gvs-internal"
 
     if (!defined(workspace_bucket) || !defined(workspace_id) || !defined(submission_id) ||
         !defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(cloud_sdk_slim_docker) ||
