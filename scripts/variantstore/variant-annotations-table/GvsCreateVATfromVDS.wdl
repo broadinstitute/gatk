@@ -26,6 +26,7 @@ workflow GvsCreateVATfromVDS {
         Boolean generate_vep_and_loftee_annotations = true
         Boolean leave_hail_cluster_running_at_end = false
         Boolean use_tiny_dataproc_cluster = false
+        Boolean use_tiny_vep_annotation_load_runtime = false
         Int? merge_vcfs_disk_size_override
         Int? split_intervals_disk_size_override
         Int? split_intervals_mem_override
@@ -101,6 +102,11 @@ workflow GvsCreateVATfromVDS {
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
     String effective_vat_version = if (defined(vat_version) && select_first([vat_version]) != "v1") then "_" + select_first([vat_version]) else ""
     String effective_vat_table_name = filter_set_name + "_vat" + effective_vat_version
+
+    Int vep_annotation_load_cpu         = if use_tiny_vep_annotation_load_runtime then 2                     else 16
+    String vep_annotation_load_memory   = if use_tiny_vep_annotation_load_runtime then "7 GB"                else "16 GB"
+    String vep_annotation_load_disks    = if use_tiny_vep_annotation_load_runtime then "local-disk 1000 HDD" else "local-disk 4000 SSD"
+    Int vep_annotation_load_preemptible = if use_tiny_vep_annotation_load_runtime then 2                     else 0
 
     String output_path_without_a_trailing_slash = sub(output_path, "/$", "")
     String effective_output_path = if (output_path == output_path_without_a_trailing_slash) then output_path + "/" else output_path
@@ -327,6 +333,10 @@ workflow GvsCreateVATfromVDS {
                     raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
                     raw_data_table_schema = MakeSubpopulationFilesAndReadSchemaFiles.vep_loftee_raw_schema_json_file,
                     variants_docker = effective_variants_docker,
+                    runtime_cpu = vep_annotation_load_cpu,
+                    runtime_memory = vep_annotation_load_memory,
+                    runtime_disks = vep_annotation_load_disks,
+                    runtime_preemptible = vep_annotation_load_preemptible,
             }
 
             call BigQueryCookVepAndLofteeRawAnnotations {
@@ -918,6 +928,10 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
         String dataset_name
         String raw_data_table
         File raw_data_table_schema
+        Int runtime_cpu
+        String runtime_memory
+        String runtime_disks
+        Int runtime_preemptible
     }
 
     meta {
@@ -982,10 +996,10 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
 
     runtime {
         docker: variants_docker
-        cpu: 16
-        memory: "16 GB"
-        disks: "local-disk 4000 SSD"
-        preemptible: 0
+        cpu: runtime_cpu
+        memory: runtime_memory
+        disks: runtime_disks
+        preemptible: runtime_preemptible
     }
 
     output {
