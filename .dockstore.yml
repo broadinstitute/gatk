@@ -458,6 +458,14 @@ workflows:
        branches:
          - master
          - ah_var_store
+   - name: ACAFExtractCallsetPgenMerged
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - FoxtrotRelease_20260509_01
    - name: GvsMapUnmappedVIDs
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsMapUnmappedVIDs.wdl
