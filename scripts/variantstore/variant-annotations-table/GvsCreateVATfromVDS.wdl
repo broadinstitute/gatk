@@ -186,6 +186,7 @@ workflow GvsCreateVATfromVDS {
         if (!defined(sites_only_vcf)) {
             call GenerateSitesOnlyVcf {
                 input:
+                    project_id = project_id,
                     vds_path = select_first([vds_path]),
                     workspace_project = effective_google_project,
                     hail_version = effective_hail_version,
@@ -445,6 +446,7 @@ task ExcludeSitesFromSitesOnlyVcf {
 
 task GenerateSitesOnlyVcf {
     input {
+        String project_id
         String vds_path
         String workspace_project
         String workspace_bucket
@@ -502,6 +504,7 @@ task GenerateSitesOnlyVcf {
             hail_temp_path="~{hail_temp_path}"
         fi
 
+
         # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
         {
@@ -513,13 +516,12 @@ task GenerateSitesOnlyVcf {
         FIN
 
         # Run the hail python script to make a sites-only VCF from a VDS
-        # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
         python3 ~{run_in_hail_cluster_script} \
             --script-path ~{hail_create_vat_inputs_script} \
             --secondary-script-path-list ~{create_vat_inputs_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
-            --autoscaling-policy gvs-autoscaling-policy \
+            --project-id ~{project_id} \
             --region ~{region} \
             --gcs-project ~{workspace_project} \
             --cluster-name ${cluster_name} \

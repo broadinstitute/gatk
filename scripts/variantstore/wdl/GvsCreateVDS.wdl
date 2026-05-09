@@ -6,6 +6,7 @@ import "GvsValidateVDS.wdl" as ValidateVDS
 
 workflow GvsCreateVDS {
     input {
+        String project_id
         String avro_path
         String vds_destination_path
 
@@ -30,6 +31,9 @@ workflow GvsCreateVDS {
     }
 
     parameter_meta {
+        project_id: {
+            help: "GVS project ID (e.g. the BigQuery project). Used to select the Dataproc autoscaling policy size."
+        }
         avro_path : {
             help: "Input location for the avro files"
         }
@@ -104,6 +108,7 @@ workflow GvsCreateVDS {
     call CreateVds {
         input:
             prefix = cluster_prefix,
+            project_id = project_id,
             vds_path = vds_destination_path,
             avro_path = avro_path,
             hail_version = effective_hail_version,
@@ -136,6 +141,7 @@ workflow GvsCreateVDS {
 task CreateVds {
     input {
         String prefix
+        String project_id
         String vds_path
         String avro_path
         Boolean leave_cluster_running_at_end
@@ -198,21 +204,6 @@ task CreateVds {
             hail_temp_path="~{hail_temp_path}"
         fi
 
-        # Set up the autoscaling policy
-        cat > auto-scale-policy.yaml <<FIN
-        workerConfig:
-            minInstances: 2
-            maxInstances: 2
-        secondaryWorkerConfig:
-            maxInstances: 200
-        basicAlgorithm:
-            cooldownPeriod: 120s
-            yarnConfig:
-                scaleUpFactor: 1.0
-                scaleDownFactor: 1.0
-                gracefulDecommissionTimeout: 120s
-        FIN
-        gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{workspace_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
 
         # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
@@ -234,7 +225,7 @@ task CreateVds {
             --secondary-script-path-list ~{vds_validation_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
-            --autoscaling-policy gvs-autoscaling-policy \
+            --project-id ~{project_id} \
             --region ~{region} \
             --gcs-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
