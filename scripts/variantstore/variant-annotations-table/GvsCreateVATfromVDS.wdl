@@ -186,7 +186,7 @@ workflow GvsCreateVATfromVDS {
         if (!defined(sites_only_vcf)) {
             call GenerateSitesOnlyVcf {
                 input:
-                    project_id = project_id,
+                    use_tiny_dataproc_cluster = false,
                     vds_path = select_first([vds_path]),
                     workspace_project = effective_google_project,
                     hail_version = effective_hail_version,
@@ -446,7 +446,7 @@ task ExcludeSitesFromSitesOnlyVcf {
 
 task GenerateSitesOnlyVcf {
     input {
-        String project_id
+        Boolean use_tiny_dataproc_cluster
         String vds_path
         String workspace_project
         String workspace_bucket
@@ -521,7 +521,7 @@ task GenerateSitesOnlyVcf {
             --secondary-script-path-list ~{create_vat_inputs_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
-            --project-id ~{project_id} \
+            ~{true='--use-tiny-dataproc-cluster' false='' use_tiny_dataproc_cluster} \
             --region ~{region} \
             --gcs-project ~{workspace_project} \
             --cluster-name ${cluster_name} \

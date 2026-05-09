@@ -6,7 +6,7 @@ import "GvsValidateVDS.wdl" as ValidateVDS
 
 workflow GvsCreateVDS {
     input {
-        String project_id
+        Boolean use_tiny_dataproc_cluster = false
         String avro_path
         String vds_destination_path
 
@@ -31,8 +31,8 @@ workflow GvsCreateVDS {
     }
 
     parameter_meta {
-        project_id: {
-            help: "GVS project ID (e.g. the BigQuery project). Used to select the Dataproc autoscaling policy size."
+        use_tiny_dataproc_cluster: {
+            help: "If true, use a small Dataproc autoscaling configuration suited for integration tests. Defaults to false (large configuration for production callsets)."
         }
         avro_path : {
             help: "Input location for the avro files"
@@ -108,7 +108,7 @@ workflow GvsCreateVDS {
     call CreateVds {
         input:
             prefix = cluster_prefix,
-            project_id = project_id,
+            use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
             vds_path = vds_destination_path,
             avro_path = avro_path,
             hail_version = effective_hail_version,
@@ -141,7 +141,7 @@ workflow GvsCreateVDS {
 task CreateVds {
     input {
         String prefix
-        String project_id
+        Boolean use_tiny_dataproc_cluster
         String vds_path
         String avro_path
         Boolean leave_cluster_running_at_end
@@ -225,7 +225,7 @@ task CreateVds {
             --secondary-script-path-list ~{vds_validation_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
-            --project-id ~{project_id} \
+            ~{true='--use-tiny-dataproc-cluster' false='' use_tiny_dataproc_cluster} \
             --region ~{region} \
             --gcs-project ~{workspace_project} \
             --cluster-name ${cluster_name} \

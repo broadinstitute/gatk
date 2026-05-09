@@ -7,7 +7,7 @@ import "GvsUtils.wdl" as Utils
 workflow GvsValidateVDS {
     input {
         Boolean go = true
-        String project_id
+        Boolean use_tiny_dataproc_cluster = false
         String vds_path
 
         String cluster_prefix = "vds-cluster"
@@ -30,8 +30,8 @@ workflow GvsValidateVDS {
     }
 
     parameter_meta {
-        project_id: {
-            help: "GVS project ID (e.g. the BigQuery project). Used to select the Dataproc autoscaling policy size."
+        use_tiny_dataproc_cluster: {
+            help: "If true, use a small Dataproc autoscaling configuration suited for integration tests. Defaults to false (large configuration for production callsets)."
         }
         vds_path: {
             help: "Location of the VDS to be validated"
@@ -87,7 +87,7 @@ workflow GvsValidateVDS {
             run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
             vds_validation_script = GetHailScripts.vds_validation_script,
             prefix = cluster_prefix,
-            project_id = project_id,
+            use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
             vds_path = vds_path,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
@@ -114,7 +114,7 @@ task ValidateVds {
         File run_in_hail_cluster_script
         File vds_validation_script
         String prefix
-        String project_id
+        Boolean use_tiny_dataproc_cluster
         String vds_path
         String? hail_version
         File? hail_wheel
@@ -182,7 +182,7 @@ task ValidateVds {
             --script-path ~{vds_validation_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
-            --project-id ~{project_id} \
+            ~{true='--use-tiny-dataproc-cluster' false='' use_tiny_dataproc_cluster} \
             --region ~{region} \
             --gcs-project ~{workspace_project} \
             --cluster-name ${cluster_name} \

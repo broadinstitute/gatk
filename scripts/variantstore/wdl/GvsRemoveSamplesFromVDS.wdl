@@ -8,7 +8,7 @@ workflow GvsRemoveSamplesFromVDS {
         description: "Removes a specified set of samples from a Hail VDS and writes the result to a new path. Implemented by remove_samples_from_vds.py, which: (1) validates the removal file for duplicates and checks that at least one listed research ID exists in the VDS; (2) filters out the specified samples and removes dead alleles; (3) drops monomorphic reference rows in the variant data left behind after sample removal (important when a withdrawn sample was the sole carrier of an alt allele at a site). GVS-produced VDSes do not contain a GT field, so no GT recalculation is needed or performed. Phasing information is passed through unchanged."
     }
     input {
-        String project_id
+        Boolean use_tiny_dataproc_cluster = false
         String input_vds_path
         String samples_to_remove_path
         String output_vds_path
@@ -33,8 +33,8 @@ workflow GvsRemoveSamplesFromVDS {
     }
 
     parameter_meta {
-        project_id: {
-            help: "GVS project ID (e.g. the BigQuery project). Used to select the Dataproc autoscaling policy size."
+        use_tiny_dataproc_cluster: {
+            help: "If true, use a small Dataproc autoscaling configuration suited for integration tests. Defaults to false (large configuration for production callsets)."
         }
         input_vds_path: {
             help: "Path to the input VDS from which samples will be removed."
@@ -93,7 +93,7 @@ workflow GvsRemoveSamplesFromVDS {
     call RemoveSamplesFromVDS {
         input:
             prefix = cluster_prefix,
-            project_id = project_id,
+            use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
             input_vds_path = input_vds_path,
             samples_to_remove_path = samples_to_remove_path,
             output_vds_path = output_vds_path,
@@ -121,7 +121,7 @@ workflow GvsRemoveSamplesFromVDS {
 task RemoveSamplesFromVDS {
     input {
         String prefix
-        String project_id
+        Boolean use_tiny_dataproc_cluster
         String input_vds_path
         String samples_to_remove_path
         String output_vds_path
@@ -194,7 +194,7 @@ task RemoveSamplesFromVDS {
             --script-path ~{remove_samples_from_vds_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
-            --project-id ~{project_id} \
+            ~{true='--use-tiny-dataproc-cluster' false='' use_tiny_dataproc_cluster} \
             --region ~{region} \
             --gcs-project ~{workspace_project} \
             --cluster-name ${cluster_name} \

@@ -8,7 +8,7 @@ import "GvsValidateVDS.wdl" as ValidateVDS
 
 workflow GvsMergeAndRescoreVDSes {
     input {
-        String project_id
+        Boolean use_tiny_dataproc_cluster = false
         String input_echo_vds_path
         String input_unmerged_foxtrot_vds_path
         String input_foxtrot_avro_path
@@ -37,8 +37,8 @@ workflow GvsMergeAndRescoreVDSes {
     }
 
     parameter_meta {
-        project_id: {
-            help: "GVS project ID (e.g. the BigQuery project). Used to select the Dataproc autoscaling policy size."
+        use_tiny_dataproc_cluster: {
+            help: "If true, use a small Dataproc autoscaling configuration suited for integration tests. Defaults to false (large configuration for production callsets)."
         }
         input_foxtrot_avro_path : {
             help: "Input location for Foxtrot Avro files including the new Foxtrot filter data"
@@ -123,7 +123,7 @@ workflow GvsMergeAndRescoreVDSes {
     call MergeAndRescoreVDS {
         input:
             prefix = cluster_prefix,
-            project_id = project_id,
+            use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
             input_echo_vds_path = input_echo_vds_path,
             input_unmerged_foxtrot_vds_path = input_unmerged_foxtrot_vds_path,
             output_merged_and_rescored_foxtrot_vds_path = output_merged_and_rescored_foxtrot_vds_path,
@@ -157,7 +157,7 @@ workflow GvsMergeAndRescoreVDSes {
 task MergeAndRescoreVDS {
     input {
         String prefix
-        String project_id
+        Boolean use_tiny_dataproc_cluster
         String input_echo_vds_path
         String input_unmerged_foxtrot_vds_path
         String input_foxtrot_avro_path
@@ -242,7 +242,7 @@ task MergeAndRescoreVDS {
             --secondary-script-path-list ~{vds_validation_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
-            --project-id ~{project_id} \
+            ~{true='--use-tiny-dataproc-cluster' false='' use_tiny_dataproc_cluster} \
             --region ~{region} \
             --gcs-project ~{workspace_project} \
             --cluster-name ${cluster_name} \

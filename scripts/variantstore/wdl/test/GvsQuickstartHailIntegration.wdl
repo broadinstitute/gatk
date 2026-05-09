@@ -121,7 +121,7 @@ workflow GvsQuickstartHailIntegration {
         input:
             git_branch_or_tag = git_branch_or_tag,
             hail_version = effective_hail_version,
-            project_id = project_id,
+            use_tiny_dataproc_cluster = true,
             avro_path = GvsExtractAvroFilesForHail.avro_path,
             vds_destination_path = vds_path,
             cluster_prefix = "vds-cluster",

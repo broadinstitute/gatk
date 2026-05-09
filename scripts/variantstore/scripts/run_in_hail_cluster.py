@@ -7,15 +7,14 @@ from logging import info
 
 
 AUTOSCALING_POLICY_NAME = "gvs-autoscaling-policy"
-INTEGRATION_TEST_PROJECT = "gvs-internal"
 
-# Small autoscaling config for integration tests (e.g. 3 samples, 3 chromosomes in gvs-internal).
+# Small autoscaling config suitable for integration tests (e.g. 3 samples, 3 chromosomes).
 SMALL_AUTOSCALING_CONFIG = """\
 workerConfig:
     minInstances: 2
     maxInstances: 2
 secondaryWorkerConfig:
-    maxInstances: 200
+    maxInstances: 5
 basicAlgorithm:
     cooldownPeriod: 120s
     yarnConfig:
@@ -24,7 +23,7 @@ basicAlgorithm:
         gracefulDecommissionTimeout: 3600s
 """
 
-# Large autoscaling config for production callsets (e.g. 500K+ sample AoU WGS).
+# Large autoscaling config for production callsets (e.g. 500K+ sample AoU WGS), other large datasets.
 LARGE_AUTOSCALING_CONFIG = """\
 workerConfig:
     minInstances: 8
@@ -58,17 +57,16 @@ def unwrap(string):
     return re.sub("\\s{2,}", " ", string).strip()
 
 
-def create_autoscaling_policy(project_id, gcs_project, region):
+def create_autoscaling_policy(use_tiny_dataproc_cluster, gcs_project, region):
     """Create (or update) the GVS autoscaling policy in Dataproc.
 
-    Chooses a small configuration when running in the integration-test project
-    (gvs-internal) and a large configuration otherwise.  Returns the name of
-    the policy that was imported.
+    Chooses a small configuration when use_tiny_dataproc_cluster is True
+    (e.g. integration tests) and a large configuration otherwise.  Returns the
+    name of the policy that was imported.
     """
-    config = SMALL_AUTOSCALING_CONFIG if project_id == INTEGRATION_TEST_PROJECT else LARGE_AUTOSCALING_CONFIG
+    config = SMALL_AUTOSCALING_CONFIG if use_tiny_dataproc_cluster else LARGE_AUTOSCALING_CONFIG
     info(f"Creating autoscaling policy '{AUTOSCALING_POLICY_NAME}' "
-         f"({'small' if project_id == INTEGRATION_TEST_PROJECT else 'large'} configuration) "
-         f"for project '{project_id}'...")
+         f"({'small' if use_tiny_dataproc_cluster else 'large'} configuration)...")
 
     with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
         f.write(config)
@@ -95,14 +93,14 @@ def create_autoscaling_policy(project_id, gcs_project, region):
     return AUTOSCALING_POLICY_NAME
 
 
-def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_type, region, project_id, gcs_project,
+def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_type, region, use_tiny_dataproc_cluster, gcs_project,
                    script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end, cluster_max_idle_minutes, cluster_max_age_minutes, master_memory_fraction):
 
     cluster_max_idle_arg = f"--max-idle {cluster_max_idle_minutes}m" if cluster_max_idle_minutes else ""
     cluster_max_age_arg = f"--max-age {cluster_max_age_minutes}m" if cluster_max_age_minutes else ""
 
     try:
-        autoscaling_policy = create_autoscaling_policy(project_id, gcs_project, region)
+        autoscaling_policy = create_autoscaling_policy(use_tiny_dataproc_cluster, gcs_project, region)
 
         cluster_start_cmd = unwrap(f"""
         
@@ -227,9 +225,9 @@ if __name__ == "__main__":
                         help='Dataproc cluster master machine type')
     parser.add_argument('--master-memory-fraction', type=float, default=0.8, help='Dataproc master memory fraction')
     parser.add_argument('--region', type=str, required=True, help='GCS region')
-    parser.add_argument('--project-id', type=str, required=True,
-                        help='GVS project ID (e.g. the BigQuery project). Used to select the autoscaling policy '
-                             f'size: small when project-id is \'{INTEGRATION_TEST_PROJECT}\', large otherwise.')
+    parser.add_argument('--use-tiny-dataproc-cluster', action='store_true', default=False,
+                        help='Use a small autoscaling configuration suited for integration tests rather than '
+                             'the default large configuration suited for production callsets.')
     parser.add_argument('--gcs-project', type=str, required=True, help='GCS project')
     parser.add_argument('--script-path', type=str, required=True, help='Path to script to run in Hail cluster')
     parser.add_argument('--secondary-script-path-list', type=str, required=False, action="append", default=[],
@@ -247,7 +245,7 @@ if __name__ == "__main__":
                    master_machine_type=args.master_machine_type,
                    worker_machine_type=args.worker_machine_type,
                    region=args.region,
-                   project_id=args.project_id,
+                   use_tiny_dataproc_cluster=args.use_tiny_dataproc_cluster,
                    gcs_project=args.gcs_project,
                    script_path=args.script_path,
                    secondary_script_path_list=args.secondary_script_path_list,
