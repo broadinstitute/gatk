@@ -25,6 +25,7 @@ workflow GvsCreateVATfromVDS {
 
         Boolean generate_vep_and_loftee_annotations = true
         Boolean leave_hail_cluster_running_at_end = false
+        Boolean use_tiny_dataproc_cluster = false
         Int? merge_vcfs_disk_size_override
         Int? split_intervals_disk_size_override
         Int? split_intervals_mem_override
@@ -186,7 +187,7 @@ workflow GvsCreateVATfromVDS {
         if (!defined(sites_only_vcf)) {
             call GenerateSitesOnlyVcf {
                 input:
-                    use_tiny_dataproc_cluster = false,
+                    use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
                     vds_path = select_first([vds_path]),
                     workspace_project = effective_google_project,
                     hail_version = effective_hail_version,
