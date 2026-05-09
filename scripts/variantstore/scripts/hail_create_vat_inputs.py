@@ -183,15 +183,24 @@ def add_variant_tracking_info(mt, sites_only_vcf_path):
 
 def main(vds, ancestry_file_location, sites_only_vcf_path):
     n_samples = vds.n_samples()
-    n_rounds = math.ceil(n_samples / 100000)
-    # note: this was hardcoded as 5 for the Echo callset creation  n_rounds = 5
+
+    # --- Tuning Variables ---
+    # Decrease target_samples_per_round to speed up chunks and improve Spot VM resilience.
+    # The original script implicitly used 100,000.
+    target_samples_per_round = 25000
+
+    n_rounds = math.ceil(n_samples / target_samples_per_round)
+    n_rounds = max(1, n_rounds) # Safety catch to ensure at least 1 round
+
+    # --- Input Partition Math ---
     n_parts = vds.variant_data.n_partitions()
-    # Add in 'n_rounds - 1' to include all of the partitions in the set of groups, otherwise we would omit the final
-    # n_parts % n_rounds partitions.
-    parts_per_round = (n_parts + n_rounds - 1) // n_rounds
+
+    # Add in 'n_rounds - 1' to include all of the partitions in the set of groups
+    input_partitions_per_round = (n_parts + n_rounds - 1) // n_rounds
+
     ht_paths = [sites_only_vcf_path.replace(r".sites-only.vcf.bgz", f'_{i}.ht') for i in range(n_rounds)]
     for i in range(n_rounds):
-        part_range = range(i*parts_per_round, min((i+1)*parts_per_round, n_parts))
+        part_range = range(i * input_partitions_per_round, min((i + 1) * input_partitions_per_round, n_parts))
         vds_part = hl.vds.VariantDataset(
             vds.reference_data._filter_partitions(part_range),
             vds.variant_data._filter_partitions(part_range),
@@ -221,8 +230,11 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
         # for debugging information -- remove for now to get us through Echo
         # add_variant_tracking_info(mt, sites_only_vcf_path)
 
+    # Maintain the 20:1 ratio (samples to output partitions) from the original code
+    coalesce_partitions_per_round = target_samples_per_round // 20
+
     # create a sites only VCF (that is hard filtered!) and that can be made into a custom annotations TSV for Nirvana to use with AC, AN, AF, SC for all subpopulations and populations
-    ht_list = [hl.read_table(ht_path).naive_coalesce(5000) for ht_path in ht_paths] # repartition each table to 5k partitions before we union them
+    ht_list = [hl.read_table(ht_path).naive_coalesce(coalesce_partitions_per_round) for ht_path in ht_paths] # repartition each table to 5k partitions before we union them
     ht_all = ht_list[0].union(*ht_list[1:])
     write_sites_only_vcf(ht_all, sites_only_vcf_path)
 
