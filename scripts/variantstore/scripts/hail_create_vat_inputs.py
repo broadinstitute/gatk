@@ -183,19 +183,13 @@ def add_variant_tracking_info(mt, sites_only_vcf_path):
 
 def main(vds, ancestry_file_location, sites_only_vcf_path):
     n_samples = vds.n_samples()
-
-    # --- Tuning Variables ---
-    # Decrease target_samples_per_round to speed up chunks and improve Spot VM resilience.
-    # The original script implicitly used 100,000.
+    # Decrease target_samples_per_round from 100K to 25K to speed up chunks and improve Spot VM resilience.
     target_samples_per_round = 25000
-
     n_rounds = math.ceil(n_samples / target_samples_per_round)
-    n_rounds = max(1, n_rounds) # Safety catch to ensure at least 1 round
-
-    # --- Input Partition Math ---
     n_parts = vds.variant_data.n_partitions()
 
-    # Add in 'n_rounds - 1' to include all of the partitions in the set of groups
+    # Add in 'n_rounds - 1' to include all of the partitions in the set of groups, otherwise we would omit the final
+    # n_parts % n_rounds partitions.
     input_partitions_per_round = (n_parts + n_rounds - 1) // n_rounds
 
     ht_paths = [sites_only_vcf_path.replace(r".sites-only.vcf.bgz", f'_{i}.ht') for i in range(n_rounds)]
@@ -230,7 +224,7 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
         # for debugging information -- remove for now to get us through Echo
         # add_variant_tracking_info(mt, sites_only_vcf_path)
 
-    # Maintain the 20:1 ratio (samples to output partitions) from the original code
+    # Maintain a 20:1 ratio of samples to output partitions.
     coalesce_partitions_per_round = target_samples_per_round // 20
 
     # create a sites only VCF (that is hard filtered!) and that can be made into a custom annotations TSV for Nirvana to use with AC, AN, AF, SC for all subpopulations and populations
