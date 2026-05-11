@@ -528,9 +528,9 @@ public final class SVFederate extends MultiVariantWalker {
         }
     }
 
-    protected void annotateFederatedBiallelicFrequencyInformation(final Map<String, Object> attributes,
-                                                                  final VariantContext thisVariant,
-                                                                  final VariantContext thatVariant) {
+    protected void annotateFederatedBiallelicFrequencies(final Map<String, Object> attributes,
+                                                         final VariantContext thisVariant,
+                                                         final VariantContext thatVariant) {
         biallelicFrequencyMergeHelper(attributes, thisVariant, thatVariant, "", "");
         for (final String sex: sexes) {
             biallelicFrequencyMergeHelper(attributes, thisVariant, thatVariant, sex, "");
@@ -587,9 +587,9 @@ public final class SVFederate extends MultiVariantWalker {
     }
 
 
-    protected void annotateFederatedMultiallelicFrequencyInformation(final Map<String, Object> attributes,
-                                                                     final VariantContext thisVariant,
-                                                                     final VariantContext thatVariant) {
+    protected void annotateFederatedMultiallelicFrequencies(final Map<String, Object> attributes,
+                                                            final VariantContext thisVariant,
+                                                            final VariantContext thatVariant) {
         multiallelicFrequencyMergeHelper(attributes, thisVariant, thatVariant, "", "");
         for (final String sex: sexes) {
             multiallelicFrequencyMergeHelper(attributes, thisVariant, thatVariant, sex, "");
@@ -603,6 +603,29 @@ public final class SVFederate extends MultiVariantWalker {
 
     }
 
+    protected void annotateCohortFields(final VariantContext variant,
+                                        final String prefix,
+                                        final String vid,
+                                        final List<String> afGroupings,
+                                        final boolean annotateBiallelicFields,
+                                        final boolean annotateMultiallelicFields,
+                                        final Map<String,Object> attributes) {
+        // annotate per-cohort INFO fields
+        for (final VCFHeaderLineBuilder line : COHORT_INFO_FIELDS) {
+            attributes.put(line.getKeyWithPrefix(prefix), variant.hasAttribute(line.getKey()) ? variant.getAttribute(line.getKey()) : VCFConstants.MISSING_VALUE_v4);
+        }
+        // annotate cohort VID (above loop will not work since they are not in info in cohort records)
+        attributes.put(prefix + "_VID", vid);
+
+        if (annotateMultiallelicFields) {
+            annotateCohortFrequencyInformation(attributes, variant, prefix, afGroupings, MULTIALLELIC_COHORT_INFO_FIELDS);
+        }
+        if (annotateBiallelicFields) {
+            annotateCohortFrequencyInformation(attributes, variant, prefix, afGroupings, ALL_BIALLELIC_INFOS);
+        }
+    }
+
+
     protected SVCallRecord merge(final VariantContext thisVariant,
                                  final VariantContext thatVariant) {
         final SVCallRecord thisRecord = SVCallRecordUtils.create(thisVariant, true, false, dictionary);
@@ -613,6 +636,10 @@ public final class SVFederate extends MultiVariantWalker {
 
         final List<String> thisAFGroupings = sourceToAFGroupingsMap.get(thisVariant.getSource());
         final List<String> thatAFGroupings = sourceToAFGroupingsMap.get(thatVariant.getSource());
+
+        final boolean thisIsCnv = thisRecord.getType() == StructuralVariantAnnotationType.CNV;
+        final boolean thatIsCnv = thatRecord.getType() == StructuralVariantAnnotationType.CNV;
+        final boolean atLeastOneIsCnv = thisIsCnv || thatIsCnv;
 
         final SVClusterEngine.OutputCluster outputCluster =
                 new SVClusterEngine.OutputCluster(List.of(thisRecord, thatRecord));
@@ -626,43 +653,23 @@ public final class SVFederate extends MultiVariantWalker {
         attributes.put(GATKSVVCFConstants.BREAKPOINT_DISTANCE_END_INFO, result.getBreakpointDistance2());
 
         // annotate per-cohort INFO fields
-        for (final VCFHeaderLineBuilder line : COHORT_INFO_FIELDS) {
-            attributes.put(line.getKeyWithPrefix(thisPrefix), thisVariant.hasAttribute(line.getKey()) ? thisVariant.getAttribute(line.getKey()) : VCFConstants.MISSING_VALUE_v4);
-            attributes.put(line.getKeyWithPrefix(thatPrefix), thatVariant.hasAttribute(line.getKey()) ? thatVariant.getAttribute(line.getKey()) : VCFConstants.MISSING_VALUE_v4);
-        }
-        // annotate cohort VIDs (above loop will not work since they are not in info in cohort records)
-        attributes.put(thisPrefix + "_VID", thisRecord.getId());
-        attributes.put(thatPrefix + "_VID", thatRecord.getId());
+        annotateCohortFields(thisVariant, thisPrefix, thisRecord.getId(), thisAFGroupings, thisIsCnv, atLeastOneIsCnv, attributes);
+        annotateCohortFields(thatVariant, thatPrefix, thatRecord.getId(), thatAFGroupings, thatIsCnv, atLeastOneIsCnv, attributes);
 
-        final boolean thisIsCnv = thisRecord.getType() == StructuralVariantAnnotationType.CNV;
-        final boolean thatIsCnv = thatRecord.getType() == StructuralVariantAnnotationType.CNV;
-
-        // if biallelic, annotate per-cohort biallelic info fields such as AF if they exist
-        if (!thisIsCnv) {
-            annotateCohortFrequencyInformation(attributes, thisVariant, thisPrefix, thisAFGroupings, ALL_BIALLELIC_INFOS);
-        }
-
-        if (!thatIsCnv) {
-            annotateCohortFrequencyInformation(attributes, thatVariant, thatPrefix, thatAFGroupings, ALL_BIALLELIC_INFOS);
-        }
-
-        if (thisIsCnv || thatIsCnv) {
+        // annotate federated frequency information
+        if (atLeastOneIsCnv) {
             // if either variant is multiallelic, set federated biallelic fields such as AF to missing
             for (final VCFHeaderLineBuilder line : BIALLELIC_COHORT_INFO_FIELDS) {
                 attributes.put(line.getKey(), VCFConstants.MISSING_VALUE_v4);
             }
             attributes.put("LOG_AF_DIFFERENCE", VCFConstants.MISSING_VALUE_v4);
 
-            // if either variant is multiallleic, annotate per-cohort multiallelic info fields such as CN_FREQ if they exist
-            annotateCohortFrequencyInformation(attributes, thisVariant, thisPrefix, thisAFGroupings, MULTIALLELIC_COHORT_INFO_FIELDS);
-            annotateCohortFrequencyInformation(attributes, thatVariant, thatPrefix, thatAFGroupings, MULTIALLELIC_COHORT_INFO_FIELDS);
-
             // compute federated CN statistics
-            annotateFederatedMultiallelicFrequencyInformation(attributes, thisVariant, thatVariant);
+            annotateFederatedMultiallelicFrequencies(attributes, thisVariant, thatVariant);
 
         } else {
             // for biallelic variants, compute federated AF and related statistics
-            annotateFederatedBiallelicFrequencyInformation(attributes, thisVariant, thatVariant);
+            annotateFederatedBiallelicFrequencies(attributes, thisVariant, thatVariant);
 
             final double thisAF = thisVariant.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, Double.NaN);
             final double thatAF = thatVariant.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, Double.NaN);
@@ -671,6 +678,20 @@ public final class SVFederate extends MultiVariantWalker {
 
         return merged;
     }
+
+    protected SVCallRecord annotateUnmergedVariant(final VariantContext variant) {
+        final SVCallRecord record = SVCallRecordUtils.create(variant, true, false, dictionary);
+        final String source = variant.getSource();
+        final String prefix = sourceToPrefixMap.get(source);
+        final List<String> afGroupings = sourceToAFGroupingsMap.get(source);
+        final Map<String, Object> attributes = record.getAttributes();
+        final Boolean isCnv = record.getType() == StructuralVariantAnnotationType.CNV;
+
+        annotateCohortFields(variant, prefix, record.getId(), afGroupings, !isCnv, isCnv, attributes);
+
+        return record;
+    }
+
 
     @Override
     public Object onTraversalSuccess() {
@@ -724,7 +745,6 @@ public final class SVFederate extends MultiVariantWalker {
             final String match = pairMap.get(vid);
             if (thatVariantMap.containsKey(match)) {
                 // retrieve the matching variant which was saved in thatVariantMap, merge them, and write
-                // TODO: external AF annotation only mode
                 write(merge(variant, thatVariantMap.get(match)));  // write() handles conversion to VariantContext and sorting in buffer
                 thatVariantMap.remove(match);  // all done with this variant - delete it to save memory
             } else {
@@ -732,7 +752,7 @@ public final class SVFederate extends MultiVariantWalker {
             }
         } else {
             // if the variant has no match, output to sorting buffer
-            write(SVCallRecordUtils.create(variant, true, false, dictionary));
+            write(annotateUnmergedVariant(variant));  // annotate with cohort-specific fields before writing
         }
     }
 }
