@@ -59,7 +59,7 @@ def unwrap(string):
 
 
 def create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, region):
-    """Create (or update) the GVS autoscaling policy in Dataproc.
+    """Create (or update) a GVS Spark autoscaling policy in Dataproc.
 
     Chooses a small configuration when use_tiny_dataproc_cluster is True
     (e.g. integration tests) and a large configuration otherwise.  Returns a
