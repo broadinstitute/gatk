@@ -7,7 +7,8 @@ from google.cloud import dataproc_v1 as dataproc
 from logging import info
 
 
-AUTOSCALING_POLICY_NAME = "gvs-autoscaling-policy"
+TINY_AUTOSCALING_POLICY_NAME = "gvs-tiny-spark-autoscaling-policy"
+DEFAULT_AUTOSCALING_POLICY_NAME = "gvs-default-spark-autoscaling-policy"
 
 # Small autoscaling config suitable for integration tests (e.g. 3 samples, 3 chromosomes).
 SMALL_AUTOSCALING_CONFIG = """\
@@ -66,7 +67,8 @@ def create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, regi
     workerConfig.minInstances field of the chosen config.
     """
     config = SMALL_AUTOSCALING_CONFIG if use_tiny_dataproc_cluster else LARGE_AUTOSCALING_CONFIG
-    info(f"Creating autoscaling policy '{AUTOSCALING_POLICY_NAME}' "
+    policy_name = TINY_AUTOSCALING_POLICY_NAME if use_tiny_dataproc_cluster else DEFAULT_AUTOSCALING_POLICY_NAME
+    info(f"Creating autoscaling policy '{policy_name}' "
          f"({'small' if use_tiny_dataproc_cluster else 'large'} configuration)...")
 
     # Parse primary worker count directly from the config to avoid a separate
@@ -79,7 +81,7 @@ def create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, regi
 
     try:
         import_cmd = unwrap(f"""
-            gcloud dataproc autoscaling-policies import {AUTOSCALING_POLICY_NAME}
+            gcloud dataproc autoscaling-policies import {policy_name}
               --project={workspace_project}
               --source={yaml_path}
               --region={region}
@@ -95,7 +97,7 @@ def create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, regi
     finally:
         os.unlink(yaml_path)
 
-    return AUTOSCALING_POLICY_NAME, num_workers
+    return policy_name, num_workers
 
 
 def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_type, region, use_tiny_dataproc_cluster, workspace_project,
