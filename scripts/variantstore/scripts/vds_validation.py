@@ -49,15 +49,18 @@ def check_densify_small_region(vds):
 
 
 def validate(vds):
-    check_densify_small_region(vds)
-    chrs = [f'chr{c}' for c in itertools.chain(range(1, 23), ['X', 'Y', 'M'])]
-    for chromosome_to_validate in chrs:
-        filtered_vd = vds.variant_data.filter_rows(vds.variant_data.locus.contig == chromosome_to_validate)
-        filtered_rd = vds.reference_data.filter_rows(vds.reference_data.locus.contig == chromosome_to_validate)
-        filtered_vds = hl.vds.VariantDataset(filtered_rd, filtered_vd)
-        print(f"Validating VDS chromosome {chromosome_to_validate}...")
-        check_ref_blocks(filtered_vds)
-        print(f"Hail VDS validation successful for chromosome {chromosome_to_validate}")
+    # For the first run of Foxtrot r2 p1, this stuff already completed successfully. Skip to the parts that didn't
+    # finish before gcloud crashed.
+
+    # check_densify_small_region(vds)
+    # chrs = [f'chr{c}' for c in itertools.chain(range(1, 23), ['X', 'Y', 'M'])]
+    # for chromosome_to_validate in chrs:
+        # filtered_vd = vds.variant_data.filter_rows(vds.variant_data.locus.contig == chromosome_to_validate)
+        # filtered_rd = vds.reference_data.filter_rows(vds.reference_data.locus.contig == chromosome_to_validate)
+        # filtered_vds = hl.vds.VariantDataset(filtered_rd, filtered_vd)
+        # print(f"Validating VDS chromosome {chromosome_to_validate}...")
+        # check_ref_blocks(filtered_vds)
+        # print(f"Hail VDS validation successful for chromosome {chromosome_to_validate}")
 
     check_samples_match(vds)
     vds.validate()
