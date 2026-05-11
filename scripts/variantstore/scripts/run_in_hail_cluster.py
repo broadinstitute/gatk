@@ -1,6 +1,7 @@
 import argparse
 import ijson
 import os
+import re
 import tempfile
 from google.cloud import dataproc_v1 as dataproc
 from logging import info
@@ -53,7 +54,6 @@ def configure_logging():
 
 
 def unwrap(string):
-    import re
     return re.sub("\\s{2,}", " ", string).strip()
 
 
@@ -61,12 +61,17 @@ def create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, regi
     """Create (or update) the GVS autoscaling policy in Dataproc.
 
     Chooses a small configuration when use_tiny_dataproc_cluster is True
-    (e.g. integration tests) and a large configuration otherwise.  Returns the
-    name of the policy that was imported.
+    (e.g. integration tests) and a large configuration otherwise.  Returns a
+    tuple of (policy_name, num_workers) where num_workers is parsed from the
+    workerConfig.minInstances field of the chosen config.
     """
     config = SMALL_AUTOSCALING_CONFIG if use_tiny_dataproc_cluster else LARGE_AUTOSCALING_CONFIG
     info(f"Creating autoscaling policy '{AUTOSCALING_POLICY_NAME}' "
          f"({'small' if use_tiny_dataproc_cluster else 'large'} configuration)...")
+
+    # Parse primary worker count directly from the config to avoid a separate
+    # variable that must be kept in sync with the YAML.
+    num_workers = int(re.search(r'workerConfig:\s+minInstances:\s+(\d+)', config).group(1))
 
     with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
         f.write(config)
@@ -90,7 +95,7 @@ def create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, regi
     finally:
         os.unlink(yaml_path)
 
-    return AUTOSCALING_POLICY_NAME
+    return AUTOSCALING_POLICY_NAME, num_workers
 
 
 def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_type, region, use_tiny_dataproc_cluster, workspace_project,
@@ -100,12 +105,13 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
     cluster_max_age_arg = f"--max-age {cluster_max_age_minutes}m" if cluster_max_age_minutes else ""
 
     try:
-        autoscaling_policy = create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, region)
+        autoscaling_policy, num_workers = create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, region)
 
         cluster_start_cmd = unwrap(f"""
         
         hailctl dataproc start 
          --autoscaling-policy={autoscaling_policy}
+         --num-workers {num_workers}
          --worker-machine-type {worker_machine_type}
          --master-machine-type {master_machine_type}
          --master-memory-fraction {master_memory_fraction}
