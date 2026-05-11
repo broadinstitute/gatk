@@ -513,3 +513,12 @@ workflows:
          - ah_var_store
        tags:
          - /.*/
+   - name: GvsRemoveSamplesFromVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsRemoveSamplesFromVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+       tags:
+         - /.*/
