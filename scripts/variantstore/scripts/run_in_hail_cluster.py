@@ -27,16 +27,16 @@ basicAlgorithm:
 # Large autoscaling config for production callsets (e.g. 500K+ sample AoU WGS), other large datasets.
 LARGE_AUTOSCALING_CONFIG = """\
 workerConfig:
-    minInstances: 8
-    maxInstances: 8
+    minInstances: 4
+    maxInstances: 4
 secondaryWorkerConfig:
-    maxInstances: 500
+    maxInstances: 300
 basicAlgorithm:
     cooldownPeriod: 120s
     yarnConfig:
         scaleUpFactor: 0.2
         scaleDownFactor: 0.5
-        gracefulDecommissionTimeout: 3600s
+        gracefulDecommissionTimeout: 1000s
 """
 
 
