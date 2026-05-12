@@ -37,7 +37,7 @@ basicAlgorithm:
     yarnConfig:
         scaleUpFactor: 0.2
         scaleDownFactor: 0.5
-        gracefulDecommissionTimeout: 3600s
+        gracefulDecommissionTimeout: 1200s
 """
 
 
