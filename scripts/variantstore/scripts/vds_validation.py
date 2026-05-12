@@ -2,6 +2,9 @@ import argparse
 import hail as hl
 import itertools
 
+VDS_COMPUTE_PARTITIONS = 15000
+
+
 ###
 # VDS validation:
 # check that the reference and variant matrix tables contain the same samples
@@ -74,6 +77,14 @@ if __name__ == '__main__':
 
     hl.init(tmp_dir=f'{args.temp_path}/hail_tmp_general')
 
-    vds = hl.vds.read_vds(args.vds_path)
+    # The stored form of the VDS has 100K+ partitions, computing works best with 10K - 20K.
+    stored_vds = hl.vds.read_vds(args.vds_path)
 
-    validate(vds)
+    # Coalesce the underlying MatrixTables down and ideal number of partition for computation.
+    compute_vds = hl.vds.VariantDataset(
+        stored_vds.reference_data.naive_coalesce(VDS_COMPUTE_PARTITIONS),
+        stored_vds.variant_data.naive_coalesce(VDS_COMPUTE_PARTITIONS)
+    )
+
+    # Run the validation on the safely-sized matrix
+    validate(compute_vds)
