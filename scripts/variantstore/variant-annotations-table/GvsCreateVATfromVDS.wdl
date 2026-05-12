@@ -23,6 +23,7 @@ workflow GvsCreateVATfromVDS {
         String? vat_version
         String? workspace_project
 
+        Boolean only_generate_sites_only_file_and_index = false
         Boolean generate_vep_and_loftee_annotations = true
         Boolean leave_hail_cluster_running_at_end = false
         Boolean use_tiny_dataproc_cluster = false
@@ -76,6 +77,9 @@ workflow GvsCreateVATfromVDS {
         }
         generate_vep_and_loftee_annotations: {
             help: "If true (the default), run VEP + LOFTEE and load the resulting annotations into the VAT. Set to false to skip VEP + LOFTEE annotation entirely, which can significantly reduce runtime and cost for large callsets (500K+ samples). The VAT BigQuery schema is unchanged regardless of this setting; VEP/LOFTEE columns will simply be null when disabled."
+        }
+        only_generate_sites_only_file_and_index: {
+            help: "If true, the workflow will terminate after the sites-only VCF and its index have been created and copied to the output path. Defaults to false."
         }
     }
 
@@ -240,6 +244,15 @@ workflow GvsCreateVATfromVDS {
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
+        if (only_generate_sites_only_file_and_index) {
+            call Utils.TerminateWorkflow as EarlyTerminationAfterSitesOnlyFileAndIndex {
+                input:
+                    message = "Terminating workflow after sites-only file and index generation as requested by 'only_generate_sites_only_file_and_index'.",
+                    basic_docker = effective_basic_docker,
+            }
+        }
+
+        if (!only_generate_sites_only_file_and_index) {
         call Utils.SplitIntervals {
             input:
                 intervals = interval_list,
@@ -404,8 +417,9 @@ workflow GvsCreateVATfromVDS {
                 merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
-       }
-    }
+        }
+        } # end if (!only_generate_sites_only_file_and_index)
+    } # end if (defined(sites_only_vcf) || (defined(vds_path)))
 
     output {
         String vat_table_name = effective_vat_table_name

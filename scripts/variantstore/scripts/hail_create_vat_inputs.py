@@ -182,57 +182,37 @@ def add_variant_tracking_info(mt, sites_only_vcf_path):
 
 
 def main(vds, ancestry_file_location, sites_only_vcf_path):
-    n_samples = vds.n_samples()
-    # Decrease target_samples_per_round from 100K to 25K to speed up chunks and improve Spot VM resilience.
-    target_samples_per_round = 25000
-    n_rounds = math.ceil(n_samples / target_samples_per_round)
-    n_parts = vds.variant_data.n_partitions()
 
-    # Add in 'n_rounds - 1' to include all of the partitions in the set of groups, otherwise we would omit the final
-    # n_parts % n_rounds partitions.
-    input_partitions_per_round = (n_parts + n_rounds - 1) // n_rounds
+    # 1. Apply entry-level filters to the whole VDS
+    transforms = [
+        remove_too_many_alt_allele_sites,
+        hard_filter_non_passing_sites,
+        failing_gts_to_no_call,
+    ]
+    transformed_vds = vds
+    for transform in transforms:
+        transformed_vds = transform(transformed_vds)
 
-    ht_paths = [sites_only_vcf_path.replace(r".sites-only.vcf.bgz", f'_{i}.ht') for i in range(n_rounds)]
-    for i in range(n_rounds):
-        part_range = range(i * input_partitions_per_round, min((i + 1) * input_partitions_per_round, n_parts))
-        vds_part = hl.vds.VariantDataset(
-            vds.reference_data._filter_partitions(part_range),
-            vds.variant_data._filter_partitions(part_range),
-        )
+    print("Densifying the Variant Dataset...")
+    mt = hl.vds.to_dense_mt(transformed_vds)
 
-        transforms = [
-            remove_too_many_alt_allele_sites,
-            hard_filter_non_passing_sites,
-            failing_gts_to_no_call,
-        ]
-        transformed_vds=vds_part
-        for transform in transforms:
-            transformed_vds = transform(transformed_vds)
+    # 2. Add ancestry info, calculate AC/AN/AF, and split multi-allelics
+    print("Calculating call stats...")
+    with open(ancestry_file_location, 'r') as ancestry_file:
+        mt = matrix_table_ac_an_af(mt, ancestry_file)
 
-        print(f"densifying dense matrix table index {i}")
-        mt = hl.vds.to_dense_mt(transformed_vds)
+    # 3. Extract just the rows (sites-only) to a Table
+    ht = mt.rows()
+    ht = ht.select('call_stats_by_pop', 'a_index', 'ac_an_af', 'ac_an_af_adj', 'call_stats_by_pop_adj')
 
-        with open(ancestry_file_location, 'r') as ancestry_file:
-            mt = matrix_table_ac_an_af(mt, ancestry_file) # this adds subpopulation information and splits our multi-allelic rows
+    # 4. Coalesce to a safe number of final VCF files to protect the Master Node
+    # (25,000 partitions is the sweet spot for a 500K sample dataset)
+    print("Coalescing partitions for final output...")
+    ht = ht.naive_coalesce(25000)
 
-        ht = mt.rows()
-        ht = ht.select('call_stats_by_pop', 'a_index', 'ac_an_af', 'ac_an_af_adj', 'call_stats_by_pop_adj')
-        ht.write(ht_paths[i])
-
-        # potentially in the future: merge AC, AN, AF back to the original VDS with: vds = vds_ac_an_af(mt, vds)
-
-        # for debugging information -- remove for now to get us through Echo
-        # add_variant_tracking_info(mt, sites_only_vcf_path)
-
-    # Maintain a 20:1 ratio of samples to output partitions.
-    coalesce_partitions_per_round = target_samples_per_round // 20
-
-    # Create a sites only VCF (that is hard filtered!) and that can be made into a custom annotations TSV for Nirvana
-    # to use with AC, AN, AF, SC for all subpopulations and populations.
-    # Repartition each table to `coalesce_partitions_per_round` partitions before we union them.
-    ht_list = [hl.read_table(ht_path).naive_coalesce(coalesce_partitions_per_round) for ht_path in ht_paths]
-    ht_all = ht_list[0].union(*ht_list[1:])
-    write_sites_only_vcf(ht_all, sites_only_vcf_path)
+    # 5. Export to VCF (This triggers the actual Spark execution)
+    print("Writing final sites-only VCF...")
+    write_sites_only_vcf(ht, sites_only_vcf_path)
 
 
 def annotate_entry_filter_flag(mt):
