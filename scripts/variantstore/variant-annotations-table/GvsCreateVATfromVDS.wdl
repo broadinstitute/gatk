@@ -247,6 +247,9 @@ workflow GvsCreateVATfromVDS {
         if (only_generate_sites_only_file_and_index) {
             call Utils.TerminateWorkflow as EarlyTerminationAfterSitesOnlyFileAndIndex {
                 input:
+                    # Pass a reference to CopySitesOnlyVcfIndex output to ensure this task only
+                    # runs after both the sites-only VCF and its index have been copied.
+                    go = (CopySitesOnlyVcfIndex.output_file_path != ""),
                     message = "Terminating workflow after sites-only file and index generation as requested by 'only_generate_sites_only_file_and_index'.",
                     basic_docker = effective_basic_docker,
             }
