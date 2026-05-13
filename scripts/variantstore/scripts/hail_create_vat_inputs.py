@@ -207,8 +207,8 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
 
     # 4. Coalesce to a safe number of final VCF files to protect the Master Node
     # (25,000 partitions is the sweet spot for a 500K sample dataset)
-    print("Coalescing partitions for final output...")
-    ht = ht.naive_coalesce(25000)
+    print("Repartitioning for final output...")
+    ht = ht.repartition(25000, shuffle=True)
 
     # 5. Export to VCF (This triggers the actual Spark execution)
     print("Writing final sites-only VCF...")
