@@ -653,8 +653,8 @@ public final class SVFederate extends MultiVariantWalker {
         attributes.put(GATKSVVCFConstants.BREAKPOINT_DISTANCE_END_INFO, result.getBreakpointDistance2());
 
         // annotate per-cohort INFO fields
-        annotateCohortFields(thisVariant, thisPrefix, thisRecord.getId(), thisAFGroupings, thisIsCnv, atLeastOneIsCnv, attributes);
-        annotateCohortFields(thatVariant, thatPrefix, thatRecord.getId(), thatAFGroupings, thatIsCnv, atLeastOneIsCnv, attributes);
+        annotateCohortFields(thisVariant, thisPrefix, thisRecord.getId(), thisAFGroupings, !thisIsCnv, atLeastOneIsCnv, attributes);
+        annotateCohortFields(thatVariant, thatPrefix, thatRecord.getId(), thatAFGroupings, !thatIsCnv, atLeastOneIsCnv, attributes);
 
         // annotate federated frequency information
         if (atLeastOneIsCnv) {
