@@ -86,6 +86,14 @@
 			<b><@flagDeprecated arg=arg/>${arg.summary}</b><br />
 			${arg.fulltext}
 		</p>
+		<#if arg.name == "--arguments_file">
+			<p>Write argument files as whitespace-separated tokens, the same way the arguments would appear on the command line. A common style is one argument and its value per line:</p>
+			<pre><code>--variant sample1.g.vcf.gz
+--variant sample2.g.vcf.gz
+-O cohort.g.vcf.gz</code></pre>
+			<p>Blank lines are ignored. To add a comment, put <code>#</code> as the first character on the line. The file is split on whitespace and is not parsed by a shell, so quoting does not preserve spaces inside paths or values; avoid spaces in values used in an arguments file.</p>
+			<p>Repeat list-valued arguments just as you would on the command line. For example, provide multiple <code>--variant</code> lines when passing many inputs to a tool such as <code>CombineGVCFs</code>.</p>
+		</#if>
 		<#if arg.otherArgumentRequired != "NA">
 			<p><b>Dependency:</b> This argument requires that you also specify <code>${arg.otherArgumentRequired}</code>.</p>
 		</#if>
