@@ -132,8 +132,8 @@ def matrix_table_ac_an_af(mt, ancestry_file):
         ac_an_af_adj=hl.agg.filter(mt.adj, hl.agg.call_stats(mt.GT, mt.alleles)),
         call_stats_by_pop_adj=hl.agg.filter(mt.adj, hl.agg.group_by(mt.pop, hl.agg.call_stats(mt.GT, mt.alleles))),
     )
-
-    return hl.methods.split_multi(ac_an_af_mt, left_aligned=True) # split each alternate allele onto it's own row. This will also remove all spanning delstions for us
+    # Split each alternate allele onto its own row. This will also remove all spanning deletions.
+    return hl.methods.split_multi(ac_an_af_mt, left_aligned=True)
 
 
 def vds_ac_an_af(mt, vds):
@@ -183,36 +183,50 @@ def add_variant_tracking_info(mt, sites_only_vcf_path):
 
 def main(vds, ancestry_file_location, sites_only_vcf_path):
 
-    # 1. Apply entry-level filters to the whole VDS
-    transforms = [
-        remove_too_many_alt_allele_sites,
-        hard_filter_non_passing_sites,
-        failing_gts_to_no_call,
-    ]
-    transformed_vds = vds
-    for transform in transforms:
-        transformed_vds = transform(transformed_vds)
+    # Calculate safe chunks based on partitions, NOT samples
+    total_partitions = vds.variant_data.n_partitions()
+    partitions_per_round = 20000 # Safe number of tasks for Master Node to track at once
+    n_rounds = max(1, math.ceil(total_partitions / partitions_per_round))
 
-    print("Densifying the Variant Dataset...")
-    mt = hl.vds.to_dense_mt(transformed_vds)
+    ht_paths = []
 
-    # 2. Add ancestry info, calculate AC/AN/AF, and split multi-allelics
-    print("Calculating call stats...")
-    with open(ancestry_file_location, 'r') as ancestry_file:
-        mt = matrix_table_ac_an_af(mt, ancestry_file)
+    for i in range(n_rounds):
+        print(f"Processing round {i+1} of {n_rounds}...")
 
-    # 3. Extract just the rows (sites-only) to a Table
-    ht = mt.rows()
-    ht = ht.select('call_stats_by_pop', 'a_index', 'ac_an_af', 'ac_an_af_adj', 'call_stats_by_pop_adj')
+        # Calculate the start and end partition indices for this round
+        start_idx = i * partitions_per_round
+        end_idx = min((i + 1) * partitions_per_round, total_partitions)
 
-    # 4. Coalesce to a safe number of final VCF files to protect the Master Node
-    # (25,000 partitions is the sweet spot for a 500K sample dataset)
-    print("Repartitioning for final output...")
-    ht = ht.repartition(25000, shuffle=True)
+        # Slice the VDS down to just this round's partitions
+        round_vds = hl.vds.VariantDataset(
+            vds.reference_data._filter_partitions(range(start_idx, end_idx)),
+            vds.variant_data._filter_partitions(range(start_idx, end_idx))
+        )
 
-    # 5. Export to VCF (This triggers the actual Spark execution)
-    print("Writing final sites-only VCF...")
-    write_sites_only_vcf(ht, sites_only_vcf_path)
+        # 1. Densify this chunk
+        mt = hl.vds.to_dense_mt(round_vds)
+
+        # 2. Calculate call stats
+        with open(ancestry_file_location, 'r') as ancestry_file:
+            mt = matrix_table_ac_an_af(mt, ancestry_file)
+
+        # 3. Extract just the rows
+        ht = mt.rows()
+        ht = ht.select('call_stats_by_pop', 'a_index', 'ac_an_af', 'ac_an_af_adj', 'call_stats_by_pop_adj')
+
+        # 4. Checkpoint this chunk to disk to clear the Master Node's memory
+        temp_ht_path = f"{args.temp_dir}/round_{i}.ht"
+        ht.write(temp_ht_path, overwrite=True)
+        ht_paths.append(temp_ht_path)
+
+    # 5. Reload all the tiny chunks, union them, and coalesce safely
+    print("Unioning rounds and writing final output...")
+    ht_list = [hl.read_table(path) for path in ht_paths]
+    final_ht = ht_list[0].union(*ht_list[1:])
+
+    # Now that the lineage is broken and the heavy lifting is done, naive_coalesce is safe!
+    final_ht = final_ht.naive_coalesce(25000)
+    write_sites_only_vcf(final_ht, sites_only_vcf_path)
 
 
 def annotate_entry_filter_flag(mt):
