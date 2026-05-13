@@ -183,8 +183,18 @@ def add_variant_tracking_info(mt, sites_only_vcf_path):
 
 def main(vds, ancestry_file_location, sites_only_vcf_path):
 
+    # 1. Apply entry-level filters to the whole VDS FIRST
+    transforms = [
+        remove_too_many_alt_allele_sites,
+        hard_filter_non_passing_sites,
+        failing_gts_to_no_call,
+    ]
+    filtered_vds = vds
+    for transform in transforms:
+        filtered_vds = transform(filtered_vds)
+
     # Calculate safe chunks based on partitions, NOT samples
-    total_partitions = vds.variant_data.n_partitions()
+    total_partitions = filtered_vds.variant_data.n_partitions()
     partitions_per_round = 20000 # Safe number of tasks for Master Node to track at once
     n_rounds = max(1, math.ceil(total_partitions / partitions_per_round))
 
@@ -197,29 +207,29 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
         start_idx = i * partitions_per_round
         end_idx = min((i + 1) * partitions_per_round, total_partitions)
 
-        # Slice the VDS down to just this round's partitions
+        # Slice the FILTERED VDS down to just this round's partitions
         round_vds = hl.vds.VariantDataset(
-            vds.reference_data._filter_partitions(range(start_idx, end_idx)),
-            vds.variant_data._filter_partitions(range(start_idx, end_idx))
+            filtered_vds.reference_data._filter_partitions(range(start_idx, end_idx)),
+            filtered_vds.variant_data._filter_partitions(range(start_idx, end_idx))
         )
 
-        # 1. Densify this chunk
+        # Densify this chunk
         mt = hl.vds.to_dense_mt(round_vds)
 
-        # 2. Calculate call stats
+        # Calculate call stats (this now has the GT field it expects!)
         with open(ancestry_file_location, 'r') as ancestry_file:
             mt = matrix_table_ac_an_af(mt, ancestry_file)
 
-        # 3. Extract just the rows
+        # Extract just the rows
         ht = mt.rows()
         ht = ht.select('call_stats_by_pop', 'a_index', 'ac_an_af', 'ac_an_af_adj', 'call_stats_by_pop_adj')
 
-        # 4. Checkpoint this chunk to disk to clear the Master Node's memory
-        temp_ht_path = f"{args.temp_dir}/round_{i}.ht"
+        # Checkpoint this chunk to disk to clear the Master Node's memory
+        temp_ht_path = f"{sites_only_vcf_path}.temp_round_{i}.ht"
         ht.write(temp_ht_path, overwrite=True)
         ht_paths.append(temp_ht_path)
 
-    # 5. Reload all the tiny chunks, union them, and coalesce safely
+    # Reload all the tiny chunks, union them, and coalesce safely
     print("Unioning rounds and writing final output...")
     ht_list = [hl.read_table(path) for path in ht_paths]
     final_ht = ht_list[0].union(*ht_list[1:])
