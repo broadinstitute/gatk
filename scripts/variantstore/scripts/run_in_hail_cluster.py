@@ -124,6 +124,8 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
          {cluster_max_age_arg}
          --num-master-local-ssds 1
          --num-worker-local-ssds 1 
+         --master-boot-disk-type=pd-ssd
+         --worker-boot-disk-type=pd-ssd
          --subnet=projects/{workspace_project}/regions/{region}/subnetworks/subnetwork
          --properties=dataproc:dataproc.monitoring.stackdriver.enable=true,dataproc:dataproc.logging.stackdriver.enable=true,core:fs.gs.outputstream.sync.min.interval=5
          --packages=python-snappy
