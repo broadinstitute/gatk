@@ -183,7 +183,7 @@ def add_variant_tracking_info(mt, sites_only_vcf_path):
 
 def main(vds, ancestry_file_location, sites_only_vcf_path):
 
-    # 1. Apply entry-level filters to the whole VDS FIRST
+    # Apply entry-level filters to the whole VDS first
     transforms = [
         remove_too_many_alt_allele_sites,
         hard_filter_non_passing_sites,
@@ -193,9 +193,10 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
     for transform in transforms:
         filtered_vds = transform(filtered_vds)
 
-    # Calculate safe chunks based on partitions, NOT samples
+    # Calculate safe chunks based on partitions, not samples
     total_partitions = filtered_vds.variant_data.n_partitions()
-    partitions_per_round = 20000 # Safe number of tasks for Master Node to track at once
+    # Safe number of tasks for Master Node to track at once
+    partitions_per_round = 20000
     n_rounds = max(1, math.ceil(total_partitions / partitions_per_round))
 
     ht_paths = []
@@ -216,7 +217,7 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
         # Densify this chunk
         mt = hl.vds.to_dense_mt(round_vds)
 
-        # Calculate call stats (this now has the GT field it expects!)
+        # Calculate call stats
         with open(ancestry_file_location, 'r') as ancestry_file:
             mt = matrix_table_ac_an_af(mt, ancestry_file)
 

@@ -21,6 +21,7 @@
   - [GvsCalculatePrecisionAndSensitivity](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCalculatePrecisionAndSensitivity) workflow
   - [GvsCallsetCost](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCallsetCost) workflow
   - [GvsCreateVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVDS) workflow
+  - [GvsValidateVDS](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsValidateVDS) workflow
   - [GvsCreateVATfromVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVATfromVDS) workflow
   - [GvsValidateVat](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsValidateVat) workflow
   - [GvsCreateParticipantMappingTable](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsCreateParticipantMappingTable) workflow
@@ -142,6 +143,10 @@ GROUP BY
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
    - Once a VDS has been created the Variants team will also generate callset statistics using `GvsCallsetStatistics` as described below. The Variants team then forwards both the path to the VDS and the output callset statistics TSV to Lee to quality check the VDS.
    - If you are debugging a Hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](HAIL_DEBUGGING.md).
+1. `GvsValidateVDS` workflow
+   - This step validates the VDS created in the previous step by running a series of checks on it.
+   - The `vds_path` input should be set to the same path that was used for the output VDS in the `GvsCreateVDS` workflow above.
+   - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsMergeAndRescoreVDSes.wdl` workflow
    - This step takes as input both the full Echo VDS from the previous AoU callset and the partial Foxtrot VDS generated in the step above, as well as Avro files from the step before that.
    - The `input_echo_vds_path` is the final VDS for Echo; see the private Variants Slack channel for this location.

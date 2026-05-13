@@ -22,7 +22,7 @@ basicAlgorithm:
     yarnConfig:
         scaleUpFactor: 0.2
         scaleDownFactor: 0.5
-        gracefulDecommissionTimeout: 3600s
+        gracefulDecommissionTimeout: 1200s
 """
 
 # Large autoscaling config for production callsets (e.g. 500K+ sample AoU WGS), other large datasets.
