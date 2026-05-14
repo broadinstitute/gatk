@@ -1,37 +1,30 @@
 import argparse
 import ijson
 import os
-import re
 import tempfile
 from google.cloud import dataproc_v1 as dataproc
 from logging import info
 
 
-TINY_AUTOSCALING_POLICY_NAME = "gvs-tiny-spark-autoscaling-policy"
-DEFAULT_AUTOSCALING_POLICY_NAME = "gvs-default-spark-autoscaling-policy"
+TINY_NUM_WORKERS = 2
+TINY_MAX_SECONDARY = 5
+DEFAULT_NUM_WORKERS = 8
+DEFAULT_MAX_SECONDARY = 500
 
-# Small autoscaling config suitable for integration tests (e.g. 3 samples, 3 chromosomes).
-SMALL_AUTOSCALING_CONFIG = """\
-workerConfig:
-    minInstances: 2
-    maxInstances: 2
-secondaryWorkerConfig:
-    maxInstances: 5
-basicAlgorithm:
-    cooldownPeriod: 120s
-    yarnConfig:
-        scaleUpFactor: 0.2
-        scaleDownFactor: 0.5
-        gracefulDecommissionTimeout: 1200s
-"""
 
-# Large autoscaling config for production callsets (e.g. 500K+ sample AoU WGS), other large datasets.
-LARGE_AUTOSCALING_CONFIG = """\
+def autoscaling_policy_name(num_workers, max_secondary):
+    """Return a policy name that encodes its configuration, e.g. gvs-spark-autoscaling-w8-s500."""
+    return f"gvs-spark-autoscaling-w{num_workers}-s{max_secondary}"
+
+
+def build_autoscaling_config(num_workers, max_secondary):
+    """Build an autoscaling policy YAML string for the given worker counts."""
+    return f"""\
 workerConfig:
-    minInstances: 8
-    maxInstances: 8
+    minInstances: {num_workers}
+    maxInstances: {num_workers}
 secondaryWorkerConfig:
-    maxInstances: 500
+    maxInstances: {max_secondary}
 basicAlgorithm:
     cooldownPeriod: 120s
     yarnConfig:
@@ -55,25 +48,54 @@ def configure_logging():
 
 
 def unwrap(string):
-    return re.sub("\\s{2,}", " ", string).strip()
+    return " ".join(string.split())
 
 
-def create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, region):
-    """Create (or update) a GVS Spark autoscaling policy in Dataproc.
+def _autoscaling_policy_exists(policy_name, workspace_project, region):
+    """Return True if the named autoscaling policy already exists in Dataproc."""
+    describe_cmd = unwrap(f"""
+        gcloud dataproc autoscaling-policies describe {policy_name}
+          --project={workspace_project}
+          --region={region}
+          --quiet
+    """)
+    wait_status = os.popen(f"{describe_cmd} > /dev/null 2>&1").close()
+    return wait_status is None  # None means exit code 0 (policy found)
 
-    Chooses a small configuration when use_tiny_dataproc_cluster is True
-    (e.g. integration tests) and a large configuration otherwise.  Returns a
-    tuple of (policy_name, num_workers) where num_workers is parsed from the
-    workerConfig.minInstances field of the chosen config.
+
+def create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, region,
+                               num_primary_workers=DEFAULT_NUM_WORKERS,
+                               max_secondary_workers=DEFAULT_MAX_SECONDARY):
+    """Create a GVS Spark autoscaling policy in Dataproc if it does not already exist.
+
+    When use_tiny_dataproc_cluster is True the policy is fixed at
+    TINY_NUM_WORKERS primary / TINY_MAX_SECONDARY secondary workers (suitable
+    for integration tests).  Otherwise the caller-supplied num_primary_workers
+    and max_secondary_workers values are used.
+
+    Policy names encode their configuration (e.g. gvs-spark-autoscaling-w8-s500)
+    so that a policy with a given name is written at most once and never
+    overwritten with different content.
+
+    Returns a tuple of (policy_name, num_workers).
     """
-    config = SMALL_AUTOSCALING_CONFIG if use_tiny_dataproc_cluster else LARGE_AUTOSCALING_CONFIG
-    policy_name = TINY_AUTOSCALING_POLICY_NAME if use_tiny_dataproc_cluster else DEFAULT_AUTOSCALING_POLICY_NAME
-    info(f"Creating autoscaling policy '{policy_name}' "
-         f"({'small' if use_tiny_dataproc_cluster else 'large'} configuration)...")
+    if use_tiny_dataproc_cluster:
+        num_workers = TINY_NUM_WORKERS
+        max_secondary = TINY_MAX_SECONDARY
+    else:
+        num_workers = num_primary_workers
+        max_secondary = max_secondary_workers
 
-    # Parse primary worker count directly from the config to avoid a separate
-    # variable that must be kept in sync with the YAML.
-    num_workers = int(re.search(r'workerConfig:\s+minInstances:\s+(\d+)', config).group(1))
+    policy_name = autoscaling_policy_name(num_workers, max_secondary)
+
+    if _autoscaling_policy_exists(policy_name, workspace_project, region):
+        info(f"Autoscaling policy '{policy_name}' already exists, skipping creation.")
+        return policy_name, num_workers
+
+    info(f"Creating autoscaling policy '{policy_name}' "
+         f"(primary workers: {num_workers}, max secondary workers: {max_secondary})...")
+
+    config = build_autoscaling_config(num_workers, max_secondary)
 
     with tempfile.NamedTemporaryFile(mode='w', suffix='.yaml', delete=False) as f:
         f.write(config)
@@ -101,13 +123,16 @@ def create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, regi
 
 
 def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_type, region, use_tiny_dataproc_cluster, workspace_project,
-                   script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end, cluster_max_idle_minutes, cluster_max_age_minutes, master_memory_fraction):
+                   script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end, cluster_max_idle_minutes, cluster_max_age_minutes, master_memory_fraction,
+                   num_primary_workers=DEFAULT_NUM_WORKERS, max_secondary_workers=DEFAULT_MAX_SECONDARY):
 
     cluster_max_idle_arg = f"--max-idle {cluster_max_idle_minutes}m" if cluster_max_idle_minutes else ""
     cluster_max_age_arg = f"--max-age {cluster_max_age_minutes}m" if cluster_max_age_minutes else ""
 
     try:
-        autoscaling_policy, num_workers = create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, region)
+        autoscaling_policy, num_workers = create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, region,
+                                                                     num_primary_workers=num_primary_workers,
+                                                                     max_secondary_workers=max_secondary_workers)
 
         cluster_start_cmd = unwrap(f"""
         
@@ -247,6 +272,12 @@ if __name__ == "__main__":
     parser.add_argument('--leave-cluster-running-at-end', action="store_true", default=False)
     parser.add_argument('--cluster-max-idle-minutes', type=int, help='Maximum idle time of cluster in minutes')
     parser.add_argument('--cluster-max-age-minutes', type=int, help='Maximum age of cluster in minutes')
+    parser.add_argument('--num-primary-workers', type=int, default=DEFAULT_NUM_WORKERS,
+                        help=f'Number of primary workers for the non-tiny autoscaling policy (default: {DEFAULT_NUM_WORKERS}). '
+                             f'Ignored when --use-tiny-dataproc-cluster is set.')
+    parser.add_argument('--max-secondary-workers', type=int, default=DEFAULT_MAX_SECONDARY,
+                        help=f'Maximum number of secondary workers for the non-tiny autoscaling policy (default: {DEFAULT_MAX_SECONDARY}). '
+                             f'Ignored when --use-tiny-dataproc-cluster is set.')
 
     args = parser.parse_args()
 
@@ -264,4 +295,6 @@ if __name__ == "__main__":
                    cluster_max_idle_minutes=args.cluster_max_idle_minutes,
                    cluster_max_age_minutes=args.cluster_max_age_minutes,
                    master_memory_fraction=args.master_memory_fraction,
+                   num_primary_workers=args.num_primary_workers,
+                   max_secondary_workers=args.max_secondary_workers,
                    )
