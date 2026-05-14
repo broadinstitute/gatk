@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 import argparse
 import csv
-import numpy as np
 
 SAMPLE_MAP_TO_BE_LOADED_FILE_SUFFIX = "samples_to_be_loaded_map_file"
 SAMPLE_NAME_FILE_SUFFIX = "sample_name_list_file"
@@ -16,6 +15,12 @@ def read_single_column_file(file_name):
         for row in reader:
             ret.append(row[0])
     return ret
+
+
+def write_single_column_file(file_name, values):
+    with open(file_name, 'w') as fd:
+        for value in values:
+            fd.write(f"{value}\n")
 
 def curate_input_arrays(sample_map_to_be_loaded_file_name,
                         sample_name_list_file_name,
@@ -42,9 +47,9 @@ def curate_input_arrays(sample_map_to_be_loaded_file_name,
 
     if output_files:
         print(f"Creating 'output_{SAMPLE_NAME_FILE_SUFFIX}', 'output_{VCF_FILE_SUFFIX}' and 'output_{VCF_INDEX_FILE_SUFFIX}'.")
-        np.savetxt(f"output_{SAMPLE_NAME_FILE_SUFFIX}", sample_names, fmt='%s')
-        np.savetxt(f"output_{VCF_FILE_SUFFIX}", vcfs, fmt='%s')
-        np.savetxt(f"output_{VCF_INDEX_FILE_SUFFIX}", vcf_indexes, fmt='%s')
+        write_single_column_file(f"output_{SAMPLE_NAME_FILE_SUFFIX}", sample_names)
+        write_single_column_file(f"output_{VCF_FILE_SUFFIX}", vcfs)
+        write_single_column_file(f"output_{VCF_INDEX_FILE_SUFFIX}", vcf_indexes)
     else:
         d = dict();
         d['sample_names_array'] = sample_names
