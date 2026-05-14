@@ -164,7 +164,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - FoxtrotRelease_20260512_01
        tags:
          - /.*/
    - name: GvsMergeAndRescoreVDSes
@@ -239,9 +238,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - FoxtrotRelease_20260510_01
-             - FoxtrotRelease_20260512_01
-             - FoxtrotRelease_20260513_01
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery

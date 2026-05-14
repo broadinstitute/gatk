@@ -11,7 +11,7 @@ if __name__ == "__main__":
     parser.add_argument('--cluster-name', type=str, required=True, help='Name of the Hail cluster')
     parser.add_argument('--account', type=str, help='GCP account name')
     parser.add_argument('--region', type=str, required=True, help='GCS region')
-    parser.add_argument('--workspace-project', type=str, required=True, help='GCP project for the Dataproc cluster')
+    parser.add_argument('--workspace-project', type=str, required=True, help='GCP project for the Managed Spark cluster')
     parser.add_argument('--script-path', type=str, required=True, help='Path to script to run in Hail cluster')
     parser.add_argument('--secondary-script-path-list', type=str, required=False, action="append", default=[],
                         help='List of paths to secondary scripts to run in Hail cluster')
