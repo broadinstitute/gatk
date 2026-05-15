@@ -519,7 +519,8 @@ task GenerateSitesOnlyVcf {
         cluster_name="~{prefix}-${hex}"
         echo ${cluster_name} > cluster_name.txt
 
-        sites_only_vcf_filename="~{workspace_bucket}/~{prefix}-${hex}.sites-only.vcf.bgz"
+        # sites_only_vcf_filename="~{workspace_bucket}/~{prefix}-${hex}.sites-only.vcf.bgz"
+        sites_only_vcf_filename="gs://fc-secure-e5d914fb-2736-402e-b500-a8ce068d5146/sites-only-vcf-2e8fc8b3-4015.sites-only.vcf.bgz"
         echo ${sites_only_vcf_filename} > sites_only_vcf_filename.txt
 
         if [[ -z "~{hail_temp_path}" ]]

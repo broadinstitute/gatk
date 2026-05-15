@@ -183,7 +183,8 @@ def add_variant_tracking_info(mt, sites_only_vcf_path):
 
 def main(vds, ancestry_file_location, sites_only_vcf_path):
 
-    # Apply entry-level filters to the whole VDS first
+    # Apply entry-level filters to the whole VDS FIRST
+    # (We MUST keep these here so the total_partitions math matches the original run perfectly)
     transforms = [
         remove_too_many_alt_allele_sites,
         hard_filter_non_passing_sites,
@@ -193,16 +194,26 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
     for transform in transforms:
         filtered_vds = transform(filtered_vds)
 
-    # Calculate safe chunks based on partitions, not samples
+    # Calculate safe chunks based on partitions
     total_partitions = filtered_vds.variant_data.n_partitions()
-    # Safe number of tasks for Master Node to track at once
     partitions_per_round = 20000
     n_rounds = max(1, math.ceil(total_partitions / partitions_per_round))
 
     ht_paths = []
 
     for i in range(n_rounds):
-        print(f"Processing round {i+1} of {n_rounds}...")
+        # Define the path for this round and add it to our list for the final union
+        temp_ht_path = f"{sites_only_vcf_path}.temp_round_{i}.ht"
+        ht_paths.append(temp_ht_path)
+
+        # --- ONE-OFF RESUME LOGIC ---
+        # Rounds 0, 1, and 2 already successfully wrote to disk.
+        if i < 3:
+            print(f"Skipping round {i} (already checkpointed)...")
+            continue
+        # ----------------------------
+
+        print(f"Processing round {i} of {n_rounds - 1}...")
 
         # Calculate the start and end partition indices for this round
         start_idx = i * partitions_per_round
@@ -226,16 +237,13 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
         ht = ht.select('call_stats_by_pop', 'a_index', 'ac_an_af', 'ac_an_af_adj', 'call_stats_by_pop_adj')
 
         # Checkpoint this chunk to disk to clear the Master Node's memory
-        temp_ht_path = f"{sites_only_vcf_path}.temp_round_{i}.ht"
         ht.write(temp_ht_path, overwrite=True)
-        ht_paths.append(temp_ht_path)
 
-    # Reload all the tiny chunks, union them, and coalesce safely
+    # Reload all the chunks (0 through 5), union them, and coalesce safely
     print("Unioning rounds and writing final output...")
     ht_list = [hl.read_table(path) for path in ht_paths]
     final_ht = ht_list[0].union(*ht_list[1:])
 
-    # Now that the lineage is broken and the heavy lifting is done, naive_coalesce is safe!
     final_ht = final_ht.naive_coalesce(25000)
     write_sites_only_vcf(final_ht, sites_only_vcf_path)
 
