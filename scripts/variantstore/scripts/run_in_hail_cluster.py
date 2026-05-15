@@ -142,6 +142,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
          --worker-machine-type {worker_machine_type}
          --master-machine-type {master_machine_type}
          --master-memory-fraction {master_memory_fraction}
+         --enable-component-gateway
          --region {region}
          --project {workspace_project}
          --service-account {account}
@@ -149,7 +150,6 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
          {cluster_max_age_arg}
          --num-master-local-ssds 1
          --num-worker-local-ssds 1 
-         --num-secondary-worker-local-ssds 1
          --master-boot-disk-type=pd-ssd
          --worker-boot-disk-type=pd-ssd
          --subnet=projects/{workspace_project}/regions/{region}/subnetworks/subnetwork
