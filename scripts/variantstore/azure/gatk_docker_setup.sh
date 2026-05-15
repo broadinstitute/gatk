@@ -26,7 +26,14 @@ apt-get -qq install temurin-17-jdk
 
 export GITHUB_HASH=$(git rev-parse HEAD)
 export STAGING_DIR=/mnt/staging-tmp
+
+# Build the lite image (no Conda/ML stack, used for most GVS tasks)
+bash build_docker.sh -m -u -e ${GITHUB_HASH} -s -d ${STAGING_DIR}
+cp /tmp/idfile.txt /tmp/idfile_lite.txt
+
+# Build the heavy image (full gatkbase with Conda/ML stack, used for VETS/VQSR)
 bash build_docker.sh -u -e ${GITHUB_HASH} -s -d ${STAGING_DIR}
+cp /tmp/idfile.txt /tmp/idfile_heavy.txt
 
 # Install gcloud
 # https://cloud.google.com/sdk/docs/install#deb
