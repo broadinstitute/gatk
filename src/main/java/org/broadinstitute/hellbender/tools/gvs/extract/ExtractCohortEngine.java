@@ -100,6 +100,14 @@ public class ExtractCohortEngine {
         return SchemaUtils.YNG_FIELDS;
     }
 
+    private List<String> getRefRangesFields() {
+        if (!emitRefRangesDp) {
+            return SchemaUtils.EXTRACT_REF_FIELDS;
+        }
+        return Stream.concat(SchemaUtils.EXTRACT_REF_FIELDS.stream(), Stream.of(SchemaUtils.DP))
+                .collect(Collectors.toList());
+    }
+
     String getScoreFieldName() {
         return null;
     }
@@ -1091,7 +1099,7 @@ public class ExtractCohortEngine {
         SortingCollection<GenericRecord> sortedReferenceRange = null;
         for (int tableIndex : tableMap.keySet()) {
             TableReference refTableRef =
-                    new TableReference(fqDatasetName + ".ref_ranges_" + String.format("%03d", tableIndex), SchemaUtils.EXTRACT_REF_FIELDS);
+                    new TableReference(fqDatasetName + ".ref_ranges_" + String.format("%03d", tableIndex), getRefRangesFields());
 
             for (Set<Long> chunkSampleIds : tableMap.get(tableIndex)) {
                 String sampleRestriction = " AND sample_id IN (" + StringUtils.join(chunkSampleIds, ",") + ")";
@@ -1207,7 +1215,7 @@ public class ExtractCohortEngine {
                                                                                                           final VariantBitSet vbs
     ) {
 
-        TableReference tableRef = new TableReference(fqRefTable, SchemaUtils.EXTRACT_REF_FIELDS);
+        TableReference tableRef = new TableReference(fqRefTable, getRefRangesFields());
 
         // We want to look upstream... but don't want to go past the beginning of a chromosome.  Check for underflow by
         // calculating the start of the current chromosome.  Math.max ensures that it'll work as a floor, stopping
