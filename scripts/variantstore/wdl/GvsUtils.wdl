@@ -133,7 +133,6 @@ task GetToolVersions {
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-slim"
     String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-04-22-alpine-636408a165ee"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
-#    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-04-08-gatkbase-9434f9e8577f"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-05-14-gatk-lite-ea11fb73ee27"
     String gatk_heavy_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-05-15-gatkbase-29660e0ad9a8"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
