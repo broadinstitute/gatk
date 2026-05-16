@@ -241,6 +241,16 @@ workflows:
              - FoxtrotRelease_20260515_01
          tags:
              - /.*/
+   - name: GvsCreateVATfromSitesOnlyVCF
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsCreateVATfromVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - FoxtrotRelease_20260515_01
+       tags:
+         - /.*/
    - name: GvsCreateVATFilesFromBigQuery
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsCreateVATFilesFromBigQuery.wdl
