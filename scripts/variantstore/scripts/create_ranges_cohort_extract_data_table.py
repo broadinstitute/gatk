@@ -184,7 +184,7 @@ def load_intervals_to_temp_table(intervals, fq_temp_table_dataset):
         schema=schema,
         source_format=bigquery.SourceFormat.CSV,
         skip_leading_rows=0,
-        write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+        write_disposition=bigquery.WriteDisposition.WRITE_EMPTY,
     )
     job = client.load_table_from_file(buf, fq_interval_table, job_config=job_config)
     job.result()  # Wait for the load job to complete.
@@ -199,7 +199,7 @@ def load_intervals_to_temp_table(intervals, fq_temp_table_dataset):
     return fq_interval_table
 
 
-def get_location_filters(interval_list, fq_temp_table_dataset):
+def get_location_filters(interval_list, fq_temp_table_dataset, maximum_merge_distance=0):
     """Return a SQL WHERE clause fragment for filtering by genomic location.
 
     For interval lists with <= INTERVAL_TEMP_TABLE_THRESHOLD intervals the
@@ -230,7 +230,7 @@ def get_location_filters(interval_list, fq_temp_table_dataset):
     # least one input interval) but can dramatically reduce the number of ranges
     # — especially for dense lists like ACAF where adjacent 1-bp positions
     # collapse into long contiguous runs.
-    intervals = raw_intervals.merge()
+    intervals = raw_intervals.merge(d=maximum_merge_distance)
     interval_count = len(intervals)
     if interval_count < raw_count:
         print(f"Merged {raw_count:,} intervals into {interval_count:,} non-overlapping ranges.")
@@ -411,7 +411,8 @@ def make_extract_table(call_set_identifier,
                        use_compressed_references,
                        vet_ranges_extract_table_version,
                        enable_extract_table_ttl,
-                       interval_list):
+                       interval_list,
+                       maximum_merge_distance=0):
     try:
         fq_destination_table_ref_data = f"{fq_destination_dataset}.{destination_table_prefix}__REF_DATA"
         fq_destination_table_vet_data = f"{fq_destination_dataset}.{destination_table_prefix}__VET_DATA"
@@ -462,7 +463,7 @@ def make_extract_table(call_set_identifier,
 
         # Compute the location filter string once; for large interval lists this will also
         # create and populate a temporary BigQuery table with the encoded interval bounds.
-        location_string = get_location_filters(interval_list, fq_temp_table_dataset)
+        location_string = get_location_filters(interval_list, fq_temp_table_dataset, maximum_merge_distance)
 
         # if we have a file of sample names, load it into a temporary table
         if sample_names_to_extract:
@@ -532,6 +533,12 @@ if __name__ == '__main__':
                         help='Add a TTL to the extract tables', required=False, default=False)
     parser.add_argument('--interval_list', type=str,
                         help='interval list or BAM file to limit the locations', required=False)
+    parser.add_argument('--maximum_merge_distance', type=int,
+                        help='Maximum distance between intervals to merge; passed as the -d argument to bedtools merge. '
+                             'Intervals within this distance will be merged into a single interval, which may cover '
+                             'positions not in the original interval list. Default is 0 (only merge overlapping / '
+                             'directly adjacent intervals).',
+                        required=False, default=0)
 
     sample_args = parser.add_mutually_exclusive_group(required=True)
     sample_args.add_argument('--sample_names_to_extract', type=str,
@@ -567,4 +574,5 @@ if __name__ == '__main__':
                        args.use_compressed_references,
                        args.vet_ranges_extract_table_version,
                        args.enable_extract_table_ttl,
-                       args.interval_list)
+                       args.interval_list,
+                       args.maximum_merge_distance)
