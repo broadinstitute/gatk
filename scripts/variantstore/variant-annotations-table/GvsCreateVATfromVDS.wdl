@@ -515,7 +515,6 @@ task GenerateSitesOnlyVcf {
             hail_temp_path="~{hail_temp_path}"
         fi
 
-
         # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
         {
