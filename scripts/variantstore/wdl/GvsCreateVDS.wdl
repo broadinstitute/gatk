@@ -145,7 +145,7 @@ task CreateVds {
         String vds_path
         String avro_path
         Boolean leave_cluster_running_at_end
-        Boolean run_validation = true
+        Boolean run_validation = false
         File run_in_hail_cluster_script
         File run_in_existing_hail_cluster_script
         File hail_gvs_import_script
