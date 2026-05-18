@@ -125,7 +125,6 @@ workflow GvsQuickstartHailIntegration {
             avro_path = GvsExtractAvroFilesForHail.avro_path,
             vds_destination_path = vds_path,
             cluster_prefix = "vds-cluster",
-            gcs_subnetwork_name = "subnetwork",
             region = "us-central1",
             basic_docker = effective_basic_docker,
             variants_docker = effective_variants_docker,
