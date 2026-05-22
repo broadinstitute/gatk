@@ -572,7 +572,7 @@ public class ExtractCohortEngine {
                 case "0":   // Non-Variant Block with GQ < 10
                     // Reference calls with GQ 0 were historically rendered as no-call (#271)
                     // Optional behavior (rare variant mode) emits them as low-confidence reference blocks.
-                    if (emitGq0RefBlocks) {
+                    if (emitGq0RefBlocks && sampleRecord.getDp() != null) {
                         refCalls.add(new ReferenceGenotypeInfo(sampleName, 0, sampleRecord.getSampleId().intValue(), sampleRecord.getDp()));
                     }
                     break;
