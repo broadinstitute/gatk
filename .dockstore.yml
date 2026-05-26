@@ -340,7 +340,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1945_fix_wrong_calibration_sensitivities
          tags:
              - /.*/
    - name: GvsIngestTieout
