@@ -185,7 +185,7 @@ if __name__ == '__main__':
     vds = hl.vds.read_vds(args.vds_path)
     vd = vds.variant_data
 
-    all_samples_set = hl.literal(set(all_sampled))
+    all_samples_set = hl.literal(set(all_sampled), hl.tset(hl.tstr))
     vd = vd.filter_cols(all_samples_set.contains(vd.s))
     print(f'  Filtered VDS to {vd.count_cols()} sampled columns')
 
