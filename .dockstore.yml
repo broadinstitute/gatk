@@ -88,6 +88,16 @@ workflows:
              - master
          tags:
              - /.*/
+   - name: GvsDetectVariantDropouts.wdl
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsDetectVariantDropouts.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1946_detect_variant_dropouts
+       tags:
+         - /.*/
    - name: GvsAssignIds
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAssignIds.wdl

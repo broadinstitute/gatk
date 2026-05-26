@@ -1690,6 +1690,7 @@ task GetHailScripts {
         File hail_create_vat_inputs_script = "app/hail_create_vat_inputs.py"
         File vds_validation_script = "app/vds_validation.py"
         File remove_samples_from_vds_script = "app/remove_samples_from_vds.py"
+        File genome_wide_dropouts_script = "app/genome_wide_dropouts.py"
     }
     runtime {
         docker: variants_docker

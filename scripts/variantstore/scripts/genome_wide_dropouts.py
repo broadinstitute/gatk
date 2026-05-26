@@ -1,0 +1,238 @@
+"""
+genome_wide_dropouts.py
+-----------------------
+Detect variant-call dropout regions across the entire genome for every
+superpartition in a GVS Hail VDS.
+
+Designed to run as a PySpark job on a Hail Dataproc cluster, submitted by
+run_in_hail_cluster.py.  Arguments are supplied via --key value pairs derived
+from a script-arguments JSON file.
+
+Inputs
+------
+* A VDS (Hail Variant Dataset) at ``--vds-path``.
+* A TSV file at ``--samples-path`` (GCS) produced by the BigQuery
+  superpartition-sampling query.  Required columns:
+      sample_name    (string)
+      sample_id      (integer)
+      superpartition (integer)
+
+Output
+------
+* A TSV written to ``--output-path`` (GCS) with columns:
+      contig, bin_start, bin_end, superpartition,
+      n_variants, median_bin_count, dropout_flag
+  where dropout_flag=1 when n_variants < --dropout-fraction * median.
+
+Usage (direct)
+--------------
+python genome_wide_dropouts.py \
+    --vds-path          gs://<bucket>/my.vds \
+    --temp-path         gs://<bucket>/hail-temp \
+    --samples-path      gs://<bucket>/superpartition_samples.tsv \
+    --output-path       gs://<bucket>/dropout_bins.tsv \
+    [--bin-size         50000] \
+    [--dropout-fraction 0.5]
+"""
+
+import argparse
+import io
+
+import hail as hl
+import pandas as pd
+
+
+# ---------------------------------------------------------------------------
+# Defaults
+# ---------------------------------------------------------------------------
+DEFAULT_BIN_SIZE = 50_000
+DEFAULT_DROPOUT_FRACTION = 0.5  # bins below 50 % of the per-SP/contig median are flagged
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def load_sample_map(samples_path: str) -> tuple:
+    """Read the superpartition TSV from a GCS or local path via hl.hadoop_open."""
+    with hl.hadoop_open(samples_path, 'r') as f:
+        df = pd.read_csv(f, sep='\t')
+
+    required = {'sample_name', 'sample_id', 'superpartition'}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f'TSV is missing required columns: {missing}')
+
+    sp_to_samples = (
+        df.groupby('superpartition')['sample_name']
+        .apply(list)
+        .to_dict()
+    )
+    return sp_to_samples, df
+
+
+def build_bin_counts(vd: hl.MatrixTable, bin_size: int) -> hl.Table:
+    """
+    For every (superpartition, contig, bin_start) triple, count the number of
+    loci at which at least one sample in that superpartition has a defined LGT.
+
+    Parameters
+    ----------
+    vd : MatrixTable
+        variant_data from the VDS, already filtered to sampled columns and
+        annotated with a ``superpartition`` column field (int32).
+    bin_size : int
+        Width of each genomic bin in base-pairs.
+
+    Returns
+    -------
+    hl.Table
+        Schema: { contig: str, bin_start: int, superpartition: int,
+                  n_variants: int64 }
+    """
+    # --- 1. Collapse to one column per superpartition ----------------------
+    # For each (locus, superpartition) entry, record whether *any* sampled
+    # sample in that superpartition has a defined LGT at this locus.
+    vd_by_sp = vd.group_cols_by(vd.superpartition).aggregate(
+        any_defined=hl.agg.any(hl.is_defined(vd.LGT))
+    )
+
+    # Drop rows where no superpartition has any call (reduces shuffle size).
+    vd_by_sp = vd_by_sp.filter_rows(hl.agg.any(vd_by_sp.any_defined))
+
+    # --- 2. Flatten to entries, bin positions, count -----------------------
+    entries = vd_by_sp.entries()
+    entries = entries.filter(entries.any_defined)
+
+    bin_counts = entries.group_by(
+        contig=entries.locus.contig,
+        bin_start=(entries.locus.position // bin_size) * bin_size,
+        superpartition=entries.superpartition,
+    ).aggregate(n_variants=hl.agg.count())
+
+    return bin_counts
+
+
+def add_dropout_flags(df: pd.DataFrame, dropout_fraction: float, bin_size: int) -> pd.DataFrame:
+    """
+    Add ``bin_end``, ``median_bin_count``, and ``dropout_flag`` columns.
+
+    The median is computed per (superpartition, contig) using only non-zero
+    bins so that centromere / telomere silences do not drag the baseline down.
+    """
+    df = df.copy()
+    df['bin_end'] = df['bin_start'] + bin_size
+
+    medians = (
+        df[df['n_variants'] > 0]
+        .groupby(['superpartition', 'contig'])['n_variants']
+        .median()
+        .rename('median_bin_count')
+        .reset_index()
+    )
+    df = df.merge(medians, on=['superpartition', 'contig'], how='left')
+    df['median_bin_count'] = df['median_bin_count'].fillna(0)
+
+    df['dropout_flag'] = (
+        df['n_variants'] < dropout_fraction * df['median_bin_count']
+    ).astype(int)
+
+    return df[
+        ['contig', 'bin_start', 'bin_end', 'superpartition',
+         'n_variants', 'median_bin_count', 'dropout_flag']
+    ].sort_values(['superpartition', 'contig', 'bin_start'])
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(
+        allow_abbrev=False,
+        description='Genome-wide variant dropout detector across all superpartitions',
+    )
+    parser.add_argument('--vds-path',          type=str, required=True,
+                        help='Path to the Hail VDS (GCS)')
+    parser.add_argument('--temp-path',         type=str, required=True,
+                        help='Hail temporary directory (GCS path)')
+    parser.add_argument('--samples-path',      type=str, required=True,
+                        help='GCS path to the superpartition samples TSV '
+                             '(columns: sample_name, sample_id, superpartition)')
+    parser.add_argument('--output-path',       type=str, required=True,
+                        help='Output TSV path (GCS)')
+    parser.add_argument('--bin-size',          type=int, default=DEFAULT_BIN_SIZE,
+                        help=f'Genomic bin size in bp (default: {DEFAULT_BIN_SIZE:,})')
+    parser.add_argument('--dropout-fraction',  type=float, default=DEFAULT_DROPOUT_FRACTION,
+                        help=f'Flag bins below this fraction of the per-SP/contig median '
+                             f'(default: {DEFAULT_DROPOUT_FRACTION})')
+    args = parser.parse_args()
+
+    hl.init(tmp_dir=f'{args.temp_path}/hail_tmp_dropouts')
+
+    # ------------------------------------------------------------------
+    # 1. Load the superpartition sample map from GCS
+    # ------------------------------------------------------------------
+    print(f'Loading sample map from {args.samples_path} ...')
+    sp_to_samples, sp_df = load_sample_map(args.samples_path)
+    all_sampled = list(sp_df['sample_name'])
+    print(f'  {len(sp_to_samples)} superpartitions, {len(all_sampled)} total sampled samples')
+
+    # ------------------------------------------------------------------
+    # 2. Load VDS and filter to sampled samples only
+    # ------------------------------------------------------------------
+    print(f'Loading VDS from {args.vds_path} ...')
+    vds = hl.vds.read_vds(args.vds_path)
+    vd = vds.variant_data
+
+    all_samples_set = hl.literal(set(all_sampled))
+    vd = vd.filter_cols(all_samples_set.contains(vd.s))
+    print(f'  Filtered VDS to {vd.count_cols()} sampled columns')
+
+    # ------------------------------------------------------------------
+    # 3. Annotate columns with their superpartition number
+    # ------------------------------------------------------------------
+    sample_to_sp = {
+        row['sample_name']: int(row['superpartition'])
+        for _, row in sp_df.iterrows()
+    }
+    sp_map_literal = hl.literal(sample_to_sp, hl.tdict(hl.tstr, hl.tint32))
+    vd = vd.annotate_cols(superpartition=sp_map_literal[vd.s])
+
+    # ------------------------------------------------------------------
+    # 4. Compute per-(superpartition, bin) variant counts across the genome
+    # ------------------------------------------------------------------
+    print('Computing per-superpartition bin counts across the genome ...')
+    bin_counts_ht = build_bin_counts(vd, args.bin_size)
+
+    # Collect to the driver: ~60K genome bins × number of superpartitions
+    print('Collecting results to driver ...')
+    bin_counts_df = bin_counts_ht.to_pandas()
+
+    # ------------------------------------------------------------------
+    # 5. Compute dropout flags and write output TSV to GCS
+    # ------------------------------------------------------------------
+    print('Computing dropout flags ...')
+    result_df = add_dropout_flags(bin_counts_df, args.dropout_fraction, args.bin_size)
+
+    print(f'Writing results to {args.output_path} ...')
+    tsv_buffer = io.StringIO()
+    result_df.to_csv(tsv_buffer, sep='\t', index=False)
+    with hl.hadoop_open(args.output_path, 'w') as out:
+        out.write(tsv_buffer.getvalue())
+
+    n_flagged = int(result_df['dropout_flag'].sum())
+    n_total   = len(result_df)
+    print(f'Done. Wrote {n_total:,} rows ({n_flagged:,} dropout bins flagged) to {args.output_path}')
+
+    # Quick summary: superpartitions with the most dropout bins
+    if n_flagged > 0:
+        summary = (
+            result_df[result_df['dropout_flag'] == 1]
+            .groupby('superpartition')
+            .size()
+            .sort_values(ascending=False)
+            .head(20)
+        )
+        print('\nTop superpartitions by dropout bin count:')
+        print(summary.to_string())
