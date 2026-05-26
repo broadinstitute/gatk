@@ -54,9 +54,14 @@ DEFAULT_DROPOUT_FRACTION = 0.5  # bins below 50 % of the per-SP/contig median ar
 # ---------------------------------------------------------------------------
 
 def load_sample_map(samples_path: str) -> tuple:
-    """Read the superpartition TSV from a GCS or local path via hl.hadoop_open."""
+    """Read the superpartition TSV from a GCS or local path via hl.hadoop_open.
+
+    sample_name is forced to str at read time because production GVS sample
+    names are all-numeric and pandas would otherwise silently infer them as
+    int64, causing hl.literal type-check failures downstream.
+    """
     with hl.hadoop_open(samples_path, 'r') as f:
-        df = pd.read_csv(f, sep='\t')
+        df = pd.read_csv(f, sep='\t', dtype={'sample_name': str})
 
     required = {'sample_name', 'sample_id', 'superpartition'}
     missing = required - set(df.columns)
