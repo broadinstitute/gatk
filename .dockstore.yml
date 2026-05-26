@@ -88,16 +88,6 @@ workflows:
              - master
          tags:
              - /.*/
-   - name: GvsDetectVariantDropouts.wdl
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsDetectVariantDropouts.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
-         - vs_1946_detect_variant_dropouts
-       tags:
-         - /.*/
    - name: GvsAssignIds
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsAssignIds.wdl
@@ -404,6 +394,16 @@ workflows:
        branches:
          - ah_var_store
          - master
+       tags:
+         - /.*/
+   - name: GvsDetectVariantDropouts
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsDetectVariantDropouts.wdl
+     filters:
+       branches:
+         - ah_var_store
+         - master
+         - vs_1946_missing_vds_data
        tags:
          - /.*/
    - name: MitochondriaPipeline
