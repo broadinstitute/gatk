@@ -219,14 +219,58 @@ if __name__ == '__main__':
     bin_counts_ht = hl.Table.union(*chr_tables)
 
     # ------------------------------------------------------------------
-    # 5. Compute per-(superpartition, contig) median inside Hail and flag
-    #    dropout bins — avoids pulling the full table to the driver at all.
+    # 5. Expand to a COMPLETE grid: every (contig, bin_start) that has
+    #    data for ANY superpartition × every superpartition.
+    #
+    #    Without this step, bins where a specific SP has zero variants
+    #    are simply absent from the table — they won't appear in the
+    #    output at all, which is exactly the dropout signature we want
+    #    to detect.
+    # ------------------------------------------------------------------
+    print('Building complete bin × superpartition grid (filling absent bins with 0)...')
+
+    # Collect all superpartition numbers to the driver (just 136 ints — trivial)
+    all_sps = sorted(bin_counts_ht.aggregate(
+        hl.agg.collect_as_set(bin_counts_ht.superpartition)
+    ))
+    print(f'  {len(all_sps)} superpartitions, expanding grid...')
+    all_sps_lit = hl.literal(all_sps, hl.tarray(hl.tint32))
+
+    # All (contig, bin_start) pairs that appear for any SP
+    all_bins_ht = (
+        bin_counts_ht
+        .select('contig', 'bin_start')
+        .key_by('contig', 'bin_start')
+        .distinct()
+    )
+
+    # Cross-product: each bin × every SP, then left-join counts
+    all_bins_ht = all_bins_ht.annotate(superpartition=all_sps_lit)
+    all_bins_ht = all_bins_ht.explode('superpartition')
+    all_bins_ht = all_bins_ht.key_by('contig', 'bin_start', 'superpartition')
+
+    complete_ht = all_bins_ht.annotate(
+        n_variants=hl.coalesce(
+            bin_counts_ht[
+                all_bins_ht.contig, all_bins_ht.bin_start, all_bins_ht.superpartition
+            ].n_variants,
+            hl.int64(0),
+        )
+    )
+
+    # Checkpoint the complete grid before the median join
+    complete_chk = f'{args.temp_path}/complete_grid.ht'
+    print(f'Checkpointing complete grid to {complete_chk} ...')
+    complete_ht = complete_ht.checkpoint(complete_chk, overwrite=True)
+
+    # ------------------------------------------------------------------
+    # 6. Compute per-(superpartition, contig) median and flag dropouts
     # ------------------------------------------------------------------
     print('Computing per-SP/contig medians and dropout flags in Hail ...')
 
-    # Median over non-zero bins only, so silent centromere/telomere regions
-    # don't drag the baseline down.
-    nonzero_ht = bin_counts_ht.filter(bin_counts_ht.n_variants > 0)
+    # Median over non-zero bins only, so completely silent regions
+    # (centromeres, telomeres) don't drag the baseline down.
+    nonzero_ht = complete_ht.filter(complete_ht.n_variants > 0)
     medians_ht = (
         nonzero_ht
         .group_by(nonzero_ht.superpartition, nonzero_ht.contig)
@@ -234,10 +278,10 @@ if __name__ == '__main__':
             hl.float64(nonzero_ht.n_variants), 0.5)))
     )
 
-    result_ht = bin_counts_ht.annotate(
-        bin_end=bin_counts_ht.bin_start + args.bin_size,
+    result_ht = complete_ht.annotate(
+        bin_end=complete_ht.bin_start + args.bin_size,
         median_bin_count=hl.coalesce(
-            medians_ht[bin_counts_ht.superpartition, bin_counts_ht.contig].median_bin_count,
+            medians_ht[complete_ht.superpartition, complete_ht.contig].median_bin_count,
             hl.float64(0)
         )
     )
