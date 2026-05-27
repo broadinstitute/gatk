@@ -246,6 +246,9 @@ if __name__ == '__main__':
             result_ht.n_variants < args.dropout_fraction * result_ht.median_bin_count
         )
     )
+    # Clear the composite key so we can freely reorder fields in select
+    # and then sort by the desired output order.
+    result_ht = result_ht.key_by()
     result_ht = result_ht.select(
         'contig', 'bin_start', 'bin_end', 'superpartition',
         'n_variants', 'median_bin_count', 'dropout_flag'
