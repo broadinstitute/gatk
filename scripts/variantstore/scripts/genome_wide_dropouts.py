@@ -236,13 +236,10 @@ if __name__ == '__main__':
     print(f'  {len(all_sps)} superpartitions, expanding grid...')
     all_sps_lit = hl.literal(all_sps, hl.tarray(hl.tint32))
 
-    # All (contig, bin_start) pairs that appear for any SP
-    all_bins_ht = (
-        bin_counts_ht
-        .select('contig', 'bin_start')
-        .key_by('contig', 'bin_start')
-        .distinct()
-    )
+    # All (contig, bin_start) pairs that appear for any SP.
+    # Re-key to (contig, bin_start) — this implicitly drops superpartition
+    # and n_variants from the row — then distinct to deduplicate.
+    all_bins_ht = bin_counts_ht.key_by('contig', 'bin_start').select().distinct()
 
     # Cross-product: each bin × every SP, then left-join counts
     all_bins_ht = all_bins_ht.annotate(superpartition=all_sps_lit)
