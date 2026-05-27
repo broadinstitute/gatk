@@ -36,7 +36,6 @@ python genome_wide_dropouts.py \
 """
 
 import argparse
-import io
 
 import hail as hl
 import pandas as pd
@@ -118,36 +117,6 @@ def build_bin_counts(vd: hl.MatrixTable, bin_size: int) -> hl.Table:
     return bin_counts
 
 
-def add_dropout_flags(df: pd.DataFrame, dropout_fraction: float, bin_size: int) -> pd.DataFrame:
-    """
-    Add ``bin_end``, ``median_bin_count``, and ``dropout_flag`` columns.
-
-    The median is computed per (superpartition, contig) using only non-zero
-    bins so that centromere / telomere silences do not drag the baseline down.
-    """
-    df = df.copy()
-    df['bin_end'] = df['bin_start'] + bin_size
-
-    medians = (
-        df[df['n_variants'] > 0]
-        .groupby(['superpartition', 'contig'])['n_variants']
-        .median()
-        .rename('median_bin_count')
-        .reset_index()
-    )
-    df = df.merge(medians, on=['superpartition', 'contig'], how='left')
-    df['median_bin_count'] = df['median_bin_count'].fillna(0)
-
-    df['dropout_flag'] = (
-        df['n_variants'] < dropout_fraction * df['median_bin_count']
-    ).astype(int)
-
-    return df[
-        ['contig', 'bin_start', 'bin_end', 'superpartition',
-         'n_variants', 'median_bin_count', 'dropout_flag']
-    ].sort_values(['superpartition', 'contig', 'bin_start'])
-
-
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -210,34 +179,73 @@ if __name__ == '__main__':
     print('Computing per-superpartition bin counts across the genome ...')
     bin_counts_ht = build_bin_counts(vd, args.bin_size)
 
-    # Collect to the driver: ~60K genome bins × number of superpartitions
-    print('Collecting results to driver ...')
-    bin_counts_df = bin_counts_ht.to_pandas()
+    # Checkpoint to GCS before any driver-side collect.  Without this the
+    # group_by shuffle blocks live only on worker executors; if any executor
+    # is lost (OOM, preemption) the subsequent collect fails with
+    # FetchFailedException after 10 retries.
+    checkpoint_path = f'{args.temp_path}/bin_counts_checkpoint.ht'
+    print(f'Checkpointing bin counts to {checkpoint_path} ...')
+    bin_counts_ht = bin_counts_ht.checkpoint(checkpoint_path, overwrite=True)
 
     # ------------------------------------------------------------------
-    # 5. Compute dropout flags and write output TSV to GCS
+    # 5. Compute per-(superpartition, contig) median inside Hail and flag
+    #    dropout bins — avoids pulling the full table to the driver at all.
     # ------------------------------------------------------------------
-    print('Computing dropout flags ...')
-    result_df = add_dropout_flags(bin_counts_df, args.dropout_fraction, args.bin_size)
+    print('Computing per-SP/contig medians and dropout flags in Hail ...')
 
+    # Median over non-zero bins only, so silent centromere/telomere regions
+    # don't drag the baseline down.
+    medians_ht = (
+        bin_counts_ht
+        .filter(bin_counts_ht.n_variants > 0)
+        .group_by(bin_counts_ht.superpartition, bin_counts_ht.contig)
+        .aggregate(median_bin_count=hl.float64(hl.agg.approx_quantiles(
+            hl.float64(bin_counts_ht.n_variants), 0.5)))
+    )
+
+    result_ht = bin_counts_ht.annotate(
+        bin_end=bin_counts_ht.bin_start + args.bin_size,
+        median_bin_count=hl.coalesce(
+            medians_ht[bin_counts_ht.superpartition, bin_counts_ht.contig].median_bin_count,
+            hl.float64(0)
+        )
+    )
+    result_ht = result_ht.annotate(
+        dropout_flag=hl.int32(
+            result_ht.n_variants < args.dropout_fraction * result_ht.median_bin_count
+        )
+    )
+    result_ht = result_ht.select(
+        'contig', 'bin_start', 'bin_end', 'superpartition',
+        'n_variants', 'median_bin_count', 'dropout_flag'
+    )
+    result_ht = result_ht.order_by(
+        result_ht.superpartition, result_ht.contig, result_ht.bin_start
+    )
+
+    # ------------------------------------------------------------------
+    # 6. Write output TSV directly to GCS — no to_pandas() needed.
+    # ------------------------------------------------------------------
     print(f'Writing results to {args.output_path} ...')
-    tsv_buffer = io.StringIO()
-    result_df.to_csv(tsv_buffer, sep='\t', index=False)
-    with hl.hadoop_open(args.output_path, 'w') as out:
-        out.write(tsv_buffer.getvalue())
+    result_ht.export(args.output_path)
 
-    n_flagged = int(result_df['dropout_flag'].sum())
-    n_total   = len(result_df)
+    # Collect a small summary to the driver just for the printed report.
+    print('Collecting summary statistics ...')
+    n_total, n_flagged = result_ht.aggregate(
+        (hl.agg.count(), hl.agg.count_where(result_ht.dropout_flag == 1))
+    )
     print(f'Done. Wrote {n_total:,} rows ({n_flagged:,} dropout bins flagged) to {args.output_path}')
 
-    # Quick summary: superpartitions with the most dropout bins
     if n_flagged > 0:
-        summary = (
-            result_df[result_df['dropout_flag'] == 1]
-            .groupby('superpartition')
-            .size()
-            .sort_values(ascending=False)
+        top_sps = (
+            result_ht
+            .filter(result_ht.dropout_flag == 1)
+            .group_by('superpartition')
+            .aggregate(n_dropout_bins=hl.agg.count())
+            .order_by(hl.desc('n_dropout_bins'))
             .head(20)
+            .collect()
         )
         print('\nTop superpartitions by dropout bin count:')
-        print(summary.to_string())
+        for row in top_sps:
+            print(f'  SP {row.superpartition}: {row.n_dropout_bins} dropout bins')
