@@ -212,13 +212,15 @@ task DetectDropouts {
         fi
 
         # Set up the autoscaling policy.
-        # No secondary (preemptible) workers: per-chromosome jobs complete in
-        # ~2 minutes each, so we don't need the extra capacity, and preemptible
-        # nodes being hard-killed mid-shuffle cause FetchFailedException.
+        # Secondary (preemptible) workers are capped at 0: per-chromosome jobs
+        # complete in ~2 minutes each, so we don't need the extra capacity, and
+        # preemptible nodes being hard-killed mid-shuffle cause FetchFailedException.
+        # Primary workers may scale 2–10 (non-preemptible) to satisfy the Dataproc
+        # API requirement that at least one tier must be scalable.
         cat > auto-scale-policy.yaml <<FIN
         workerConfig:
             minInstances: 2
-            maxInstances: 2
+            maxInstances: 10
         secondaryWorkerConfig:
             maxInstances: 0
         basicAlgorithm:
