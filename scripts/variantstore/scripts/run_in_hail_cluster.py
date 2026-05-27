@@ -80,7 +80,7 @@ def run_in_existing_cluster(cluster_name, account, region, gcs_project,
         # the following says `--py-files` is supposed to be a comma separated list
         # https://fig.io/manual/gcloud/dataproc/jobs/submit/pyspark
         secondary_script_path_arg = f'--py-files {",".join(secondary_script_path_list)}' if secondary_script_path_list else ''
-        job_max_restarts_arg = f'--max-restarts {job_max_restarts}' if job_max_restarts else ''
+        job_max_restarts_arg = f'--max-failures-total {job_max_restarts}' if job_max_restarts else ''
         with open(script_arguments_json_path, 'r') as input_file:
             items = ijson.items(input_file, '', use_float=True)
             arguments = items.__next__();
@@ -167,8 +167,9 @@ if __name__ == "__main__":
     parser.add_argument('--leave-cluster-running-at-end', action="store_true", default=False)
     parser.add_argument('--cluster-max-idle-minutes', type=int, help='Maximum idle time of cluster in minutes')
     parser.add_argument('--cluster-max-age-minutes', type=int, help='Maximum age of cluster in minutes')
-    parser.add_argument('--job-max-restarts', type=int, default=0,
-                        help='Number of times Dataproc should automatically restart a failed job (default: 0)')
+    parser.add_argument('--job-max-failures-total', type=int, default=0, dest='job_max_restarts',
+                        help='Passed as --max-failures-total to gcloud dataproc jobs submit: '
+                             'number of times Dataproc will restart a failed job (default: 0)')
 
     args = parser.parse_args()
 
