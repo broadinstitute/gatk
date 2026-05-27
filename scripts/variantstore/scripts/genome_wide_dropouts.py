@@ -117,6 +117,20 @@ def build_bin_counts(vd: hl.MatrixTable, bin_size: int) -> hl.Table:
     return bin_counts
 
 
+def build_bin_counts_for_contig(vd: hl.MatrixTable, contig: str, bin_size: int) -> hl.Table:
+    """
+    Same as build_bin_counts but restricted to a single contig.
+    Called once per chromosome so each Spark job is chromosome-sized rather
+    than whole-genome, which avoids executor OOM during the group_by shuffle.
+    """
+    interval = hl.parse_locus_interval(
+        hl.eval(hl.format('%s:1-%d', contig,
+                          hl.get_reference('GRCh38').lengths[contig])),
+        reference_genome='GRCh38',
+    )
+    vd_chr = hl.filter_intervals(vd, [interval])
+    return build_bin_counts(vd_chr, bin_size)
+
 # ---------------------------------------------------------------------------
 # Main
 # ---------------------------------------------------------------------------
@@ -153,14 +167,18 @@ if __name__ == '__main__':
     print(f'  {len(sp_to_samples)} superpartitions, {len(all_sampled)} total sampled samples')
 
     # ------------------------------------------------------------------
-    # 2. Load VDS and filter to sampled samples only
+    # 2. Load VDS and filter to sampled samples only using the idiomatic
+    #    hl.vds.filter_samples API, which propagates the sample filter
+    #    through both variant_data and reference_data more efficiently
+    #    than a manual filter_cols on the raw MatrixTable.
     # ------------------------------------------------------------------
     print(f'Loading VDS from {args.vds_path} ...')
     vds = hl.vds.read_vds(args.vds_path)
-    vd = vds.variant_data
 
-    all_samples_set = hl.literal(set(all_sampled), hl.tset(hl.tstr))
-    vd = vd.filter_cols(all_samples_set.contains(vd.s))
+    # hl.vds.filter_samples expects a plain Python list of sample names
+    vds_filtered = hl.vds.filter_samples(vds, all_sampled, keep=True,
+                                          remove_dead_alleles=False)
+    vd = vds_filtered.variant_data
     print(f'  Filtered VDS to {vd.count_cols()} sampled columns')
 
     # ------------------------------------------------------------------
@@ -174,18 +192,31 @@ if __name__ == '__main__':
     vd = vd.annotate_cols(superpartition=sp_map_literal[vd.s])
 
     # ------------------------------------------------------------------
-    # 4. Compute per-(superpartition, bin) variant counts across the genome
+    # 4. Compute per-(superpartition, bin) variant counts ONE CHROMOSOME
+    #    AT A TIME and checkpoint each result.
+    #
+    #    Processing the whole genome in one Spark job causes executors to
+    #    OOM during the group_by shuffle (Stage 0 has 119 K partitions for
+    #    the full AoU VDS).  Scattering by chromosome limits each job to
+    #    ~1/25 of that data, which fits comfortably in executor memory.
     # ------------------------------------------------------------------
-    print('Computing per-superpartition bin counts across the genome ...')
-    bin_counts_ht = build_bin_counts(vd, args.bin_size)
+    CONTIGS = [f'chr{i}' for i in range(1, 23)] + ['chrX', 'chrY']
 
-    # Checkpoint to GCS before any driver-side collect.  Without this the
-    # group_by shuffle blocks live only on worker executors; if any executor
-    # is lost (OOM, preemption) the subsequent collect fails with
-    # FetchFailedException after 10 retries.
-    checkpoint_path = f'{args.temp_path}/bin_counts_checkpoint.ht'
-    print(f'Checkpointing bin counts to {checkpoint_path} ...')
-    bin_counts_ht = bin_counts_ht.checkpoint(checkpoint_path, overwrite=True)
+    chr_tables = []
+    for contig in CONTIGS:
+        chk_path = f'{args.temp_path}/bin_counts_{contig}.ht'
+        if hl.hadoop_exists(chk_path + '/_SUCCESS'):
+            print(f'  {contig}: checkpoint already exists, reusing ...')
+            chr_tables.append(hl.read_table(chk_path))
+            continue
+
+        print(f'  {contig}: computing bin counts ...')
+        ht = build_bin_counts_for_contig(vd, contig, args.bin_size)
+        ht = ht.checkpoint(chk_path, overwrite=True)
+        chr_tables.append(ht)
+
+    print('Unioning per-chromosome tables ...')
+    bin_counts_ht = hl.Table.union(*chr_tables)
 
     # ------------------------------------------------------------------
     # 5. Compute per-(superpartition, contig) median inside Hail and flag
