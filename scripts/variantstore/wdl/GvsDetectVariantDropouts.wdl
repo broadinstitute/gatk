@@ -211,13 +211,16 @@ task DetectDropouts {
             hail_temp_path="~{hail_temp_path}"
         fi
 
-        # Set up the autoscaling policy
+        # Set up the autoscaling policy.
+        # No secondary (preemptible) workers: per-chromosome jobs complete in
+        # ~2 minutes each, so we don't need the extra capacity, and preemptible
+        # nodes being hard-killed mid-shuffle cause FetchFailedException.
         cat > auto-scale-policy.yaml <<FIN
         workerConfig:
             minInstances: 2
             maxInstances: 2
         secondaryWorkerConfig:
-            maxInstances: 200
+            maxInstances: 0
         basicAlgorithm:
             cooldownPeriod: 120s
             yarnConfig:
