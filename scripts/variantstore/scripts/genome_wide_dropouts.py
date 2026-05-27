@@ -226,12 +226,12 @@ if __name__ == '__main__':
 
     # Median over non-zero bins only, so silent centromere/telomere regions
     # don't drag the baseline down.
+    nonzero_ht = bin_counts_ht.filter(bin_counts_ht.n_variants > 0)
     medians_ht = (
-        bin_counts_ht
-        .filter(bin_counts_ht.n_variants > 0)
-        .group_by(bin_counts_ht.superpartition, bin_counts_ht.contig)
+        nonzero_ht
+        .group_by(nonzero_ht.superpartition, nonzero_ht.contig)
         .aggregate(median_bin_count=hl.float64(hl.agg.approx_quantiles(
-            hl.float64(bin_counts_ht.n_variants), 0.5)))
+            hl.float64(nonzero_ht.n_variants), 0.5)))
     )
 
     result_ht = bin_counts_ht.annotate(
