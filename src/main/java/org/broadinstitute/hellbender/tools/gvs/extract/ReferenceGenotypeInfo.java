@@ -4,11 +4,13 @@ public class ReferenceGenotypeInfo {
     private final String sampleName;
     private final int sampleId;
     private final int GQ;
+    private final Integer dp;
 
-    public ReferenceGenotypeInfo(String sampleName, int GQ, int sampleId) {
+    public ReferenceGenotypeInfo(String sampleName, int GQ, int sampleId, Integer dp) {
         this.sampleName = sampleName;
         this.GQ = GQ;
         this.sampleId = sampleId;
+        this.dp = dp;
     }
 
     public String getSampleName() {
@@ -21,5 +23,9 @@ public class ReferenceGenotypeInfo {
 
     public int getSampleId() {
         return sampleId;
+    }
+
+    public Integer getDp() {
+        return dp;
     }
 }

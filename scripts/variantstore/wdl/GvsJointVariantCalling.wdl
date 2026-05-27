@@ -89,6 +89,8 @@ workflow GvsJointVariantCalling {
         File? sample_names_to_extract
         Int? split_intervals_disk_size_override
         Int? split_intervals_mem_override
+
+        Boolean rare_variant_mode = false
     }
 
     # The `call_set_identifier` string is used to name many different things throughout this workflow (BQ tables, vcfs etc).
@@ -162,6 +164,7 @@ workflow GvsJointVariantCalling {
             load_data_scatter_width = load_data_scatter_width,
             use_parquet_ingest = use_parquet_ingest,
             parquet_output_gcs_dir = parquet_output_gcs_dir,
+            rare_variant_mode = rare_variant_mode,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
@@ -219,6 +222,7 @@ workflow GvsJointVariantCalling {
             variants_docker = effective_variants_docker,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             enable_extract_table_ttl = true,
+            rare_variant_mode = rare_variant_mode,
     }
 
     call ExtractCallset.GvsExtractCallset {
@@ -253,6 +257,7 @@ workflow GvsJointVariantCalling {
             maximum_alternate_alleles = maximum_alternate_alleles,
             target_interval_list = target_interval_list,
             merge_output_vcfs = merge_output_vcfs,
+            rare_variant_mode = rare_variant_mode,
     }
 
     output {

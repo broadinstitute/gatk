@@ -20,6 +20,11 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
     private final short length;
     private final int sampleId;
     private final short stateOrdinal;
+    private final Integer dp;
+
+    private static Object getNoThrow(GenericRecord record, String key) {
+        return record.hasField(key) ? record.get(key) : null;
+    }
 
     public ReferenceRecord(GenericRecord genericRecord) {
         Long location = (Long) genericRecord.get(SchemaUtils.LOCATION_FIELD_NAME);
@@ -30,14 +35,21 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
         this.length = (short) Math.toIntExact((Long) genericRecord.get("length"));
         String stringState = ((Utf8) genericRecord.get(SchemaUtils.STATE_FIELD_NAME)).toString();
         this.stateOrdinal = (short) GQStateEnum.fromValue(stringState).ordinal();
+        Object dpValue = getNoThrow(genericRecord, SchemaUtils.DP);
+        this.dp = dpValue == null ? null : ((Number) dpValue).intValue();
     }
 
     public ReferenceRecord(long location, long sampleId, int length, String stringState) {
+        this(location, sampleId, length, stringState, null);
+    }
+
+    public ReferenceRecord(long location, long sampleId, int length, String stringState, Integer dp) {
         this.position = SchemaUtils.decodePosition(location);
         this.length = (short) length;
         setChromosome(location);
         this.sampleId = (int) sampleId;
         this.stateOrdinal = (short) GQStateEnum.fromValue(stringState).ordinal();
+        this.dp = dp;
     }
 
     private void setChromosome(Long location) {
@@ -68,6 +80,8 @@ public class ReferenceRecord implements Locatable, Comparable<ReferenceRecord> {
     public long getSampleId() { return this.sampleId; }
 
     public String getState() { return GQStateEnum.fromOrdinal(stateOrdinal).getValue(); }
+
+    public Integer getDp() { return dp; }
 
     public String toString() {
         return ReflectionToStringBuilder.toString(this);

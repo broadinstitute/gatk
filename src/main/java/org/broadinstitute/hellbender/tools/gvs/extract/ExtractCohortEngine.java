@@ -52,6 +52,8 @@ public class ExtractCohortEngine {
     private final String projectID;
     private final boolean emitPLs;
     private final boolean emitADs;
+    private final boolean emitRefRangesDp;
+    private final boolean emitGq0RefBlocks;
 
     // Set of sample ids seen in the variant data from BigQuery.
     private final SortedSet<Long> sampleIdsToExtract;
@@ -96,6 +98,14 @@ public class ExtractCohortEngine {
 
     List<String> getFilterSetInfoTableFields() {
         return SchemaUtils.YNG_FIELDS;
+    }
+
+    private List<String> getRefRangesFields() {
+        if (!emitRefRangesDp) {
+            return SchemaUtils.EXTRACT_REF_FIELDS;
+        }
+        return Stream.concat(SchemaUtils.EXTRACT_REF_FIELDS.stream(), Stream.of(SchemaUtils.DP))
+                .collect(Collectors.toList());
     }
 
     String getScoreFieldName() {
@@ -146,6 +156,8 @@ public class ExtractCohortEngine {
                                final String filterSetName,
                                final boolean emitPLs,
                                final boolean emitADs,
+                               final boolean emitRefRangesDp,
+                               final boolean emitGq0RefBlocks,
                                final ExtractCohort.VQScoreFilteringType vqScoreFilteringType,
                                final boolean convertFilteredGenotypesToNoCalls,
                                final OptionalLong maxAlternateAlleleCount,
@@ -175,6 +187,8 @@ public class ExtractCohortEngine {
 
         this.emitPLs = emitPLs;
         this.emitADs = emitADs;
+        this.emitRefRangesDp = emitRefRangesDp;
+        this.emitGq0RefBlocks = emitGq0RefBlocks;
 
         this.vetRangesFQDataSet = vetRangesFQDataSet;
         this.fqRangesExtractVetTable = fqRangesExtractVetTable;
@@ -556,26 +570,29 @@ public class ExtractCohortEngine {
                     currentPositionHasVariant = true;
                     break;
                 case "0":   // Non-Variant Block with GQ < 10
-                    // Reference calls with GQ 0 should be rendered as no-call (#271)
-                    // Nothing to do here -- just needed to mark the sample as seen so it doesn't get put in the high confidence ref band
+                    // Reference calls with GQ 0 were historically rendered as no-call (#271)
+                    // Optional behavior (rare variant mode) emits them as low-confidence reference blocks.
+                    if (emitGq0RefBlocks && sampleRecord.getDp() != null) {
+                        refCalls.add(new ReferenceGenotypeInfo(sampleName, 0, sampleRecord.getSampleId().intValue(), sampleRecord.getDp()));
+                    }
                     break;
                 case "1":  // Non-Variant Block with 10 <=  GQ < 20
-                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 10, sampleRecord.getSampleId().intValue()));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 10, sampleRecord.getSampleId().intValue(), sampleRecord.getDp()));
                     break;
                 case "2":  // Non-Variant Block with 20 <= GQ < 30
-                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 20, sampleRecord.getSampleId().intValue()));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 20, sampleRecord.getSampleId().intValue(), sampleRecord.getDp()));
                     break;
                 case "3":  // Non-Variant Block with 30 <= GQ < 40
-                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 30, sampleRecord.getSampleId().intValue()));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 30, sampleRecord.getSampleId().intValue(), sampleRecord.getDp()));
                     break;
                 case "4":  // Non-Variant Block with 40 <= GQ < 50
-                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 40, sampleRecord.getSampleId().intValue()));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 40, sampleRecord.getSampleId().intValue(), sampleRecord.getDp()));
                     break;
                 case "5":  // Non-Variant Block with 50 <= GQ < 60
-                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 50, sampleRecord.getSampleId().intValue()));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 50, sampleRecord.getSampleId().intValue(), sampleRecord.getDp()));
                     break;
                 case "6":  // Non-Variant Block with 60 <= GQ (usually omitted from tables)
-                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 60, sampleRecord.getSampleId().intValue()));
+                    refCalls.add(new ReferenceGenotypeInfo(sampleName, 60, sampleRecord.getSampleId().intValue(), sampleRecord.getDp()));
                     break;
                 case "*":   // Spanning Deletion - do nothing. just mark the sample as seen
                     break;
@@ -654,6 +671,9 @@ public class ExtractCohortEngine {
             }
 
             genotypeBuilder.GQ(info.getGQ());
+            if (emitRefRangesDp && info.getDp() != null) {
+                genotypeBuilder.DP(info.getDp());
+            }
             genotypes.add(genotypeBuilder.make());
         }
 
@@ -1079,7 +1099,7 @@ public class ExtractCohortEngine {
         SortingCollection<GenericRecord> sortedReferenceRange = null;
         for (int tableIndex : tableMap.keySet()) {
             TableReference refTableRef =
-                    new TableReference(fqDatasetName + ".ref_ranges_" + String.format("%03d", tableIndex), SchemaUtils.EXTRACT_REF_FIELDS);
+                    new TableReference(fqDatasetName + ".ref_ranges_" + String.format("%03d", tableIndex), getRefRangesFields());
 
             for (Set<Long> chunkSampleIds : tableMap.get(tableIndex)) {
                 String sampleRestriction = " AND sample_id IN (" + StringUtils.join(chunkSampleIds, ",") + ")";
@@ -1195,7 +1215,7 @@ public class ExtractCohortEngine {
                                                                                                           final VariantBitSet vbs
     ) {
 
-        TableReference tableRef = new TableReference(fqRefTable, SchemaUtils.EXTRACT_REF_FIELDS);
+        TableReference tableRef = new TableReference(fqRefTable, getRefRangesFields());
 
         // We want to look upstream... but don't want to go past the beginning of a chromosome.  Check for underflow by
         // calculating the start of the current chromosome.  Math.max ensures that it'll work as a floor, stopping
@@ -1369,7 +1389,7 @@ public class ExtractCohortEngine {
             r = processReferenceDataFromStream(sortedReferenceRangeIterator, referenceCache, location, sampleId);
         }
 
-        return new ExtractCohortRecord(location, sampleId, r.getState());
+        return new ExtractCohortRecord(location, sampleId, r.getState(), r.getDp());
     }
 
     // Refactoring opportunity:  Although this class is used as a singleton

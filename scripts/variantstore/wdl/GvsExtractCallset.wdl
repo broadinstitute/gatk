@@ -61,6 +61,7 @@ workflow GvsExtractCallset {
     Boolean is_wgs = true
     Boolean convert_filtered_genotypes_to_nocalls = false
     Boolean write_cost_to_db = true
+    Boolean rare_variant_mode = false
     Int maximum_alternate_alleles = 100
   }
 
@@ -267,6 +268,7 @@ workflow GvsExtractCallset {
         overhead_memory_gib                   = extract_overhead_memory_override_gib,
         emit_pls                              = emit_pls,
         emit_ads                              = emit_ads,
+        rare_variant_mode                     = rare_variant_mode,
         convert_filtered_genotypes_to_nocalls = convert_filtered_genotypes_to_nocalls,
         write_cost_to_db                      = write_cost_to_db,
         maximum_alternate_alleles             = maximum_alternate_alleles,
@@ -390,6 +392,7 @@ task ExtractTask {
 
     Boolean emit_pls
     Boolean emit_ads
+    Boolean rare_variant_mode
     Boolean convert_filtered_genotypes_to_nocalls = false
 
     Boolean do_not_filter_override
@@ -485,6 +488,7 @@ task ExtractTask {
         --project-id ~{read_project_id} \
         ~{true='--emit-pls' false='' emit_pls} \
         ~{true='--emit-ads' false='' emit_ads} \
+        ~{true='--rare-variant-mode' false='' rare_variant_mode} \
         ~{true='' false='--use-vqsr-scoring' use_VETS} \
         ~{true='--convert-filtered-genotypes-to-no-calls' false='' convert_filtered_genotypes_to_nocalls} \
         ~{'--maximum-alternate-alleles ' + maximum_alternate_alleles} \

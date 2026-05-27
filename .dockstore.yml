@@ -218,6 +218,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - VS-1813
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
@@ -284,6 +285,8 @@ workflows:
      filters:
          branches:
              - master
+             - VS-1813
+             - VS-1813-smaller-docker
              - ah_var_store
          tags:
              - /.*/
@@ -322,6 +325,8 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1813
+             - VS-1813-smaller-docker
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -340,6 +345,8 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-1813
+             - VS-1813-smaller-docker
          tags:
              - /.*/
    - name: GvsIngestTieout

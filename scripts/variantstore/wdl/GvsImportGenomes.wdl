@@ -18,6 +18,7 @@ workflow GvsImportGenomes {
 
     Boolean skip_loading_vqsr_fields = false
     Boolean use_compressed_references = false
+    Boolean rare_variant_mode = false
     # Turn Parquet lifecycle configuration off by default as pet service accounts don't seem to automatically get the
     # required permissions on the workspace bucket for this to work.
     Boolean configure_parquet_lifecycle = false
@@ -205,6 +206,7 @@ workflow GvsImportGenomes {
           billing_project_id = billing_project_id,
           use_compressed_references = use_compressed_references,
           parquet_output_gcs_dir = parquet_output_gcs_dir,
+          rare_variant_mode = rare_variant_mode,
           use_parquet_ingest = true,
       }
     }
@@ -230,6 +232,7 @@ workflow GvsImportGenomes {
           load_vcf_headers = load_vcf_headers,
           billing_project_id = billing_project_id,
           use_compressed_references = use_compressed_references,
+          rare_variant_mode = rare_variant_mode,
           use_parquet_ingest = false,
       }
     }
@@ -389,6 +392,7 @@ task ProcessInputGVCFs {
     Boolean force_loading_from_non_allele_specific = false
     Boolean skip_loading_vqsr_fields = false
     Boolean use_compressed_references = false
+    Boolean rare_variant_mode = false
     Boolean load_vet_and_ref_ranges
     Boolean load_vcf_headers
 
@@ -560,7 +564,8 @@ task ProcessInputGVCFs {
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
         --enable-vcf-headers ~{load_vcf_headers} \
-        --use-compressed-refs ~{use_compressed_references}
+        --use-compressed-refs ~{use_compressed_references} \
+        --include-ref-ranges-dp ~{rare_variant_mode}
 
       # The Parquet / non-Parquet branches here might also be coalesced.
       if [[ "~{use_parquet_ingest}" = 'true' ]]
@@ -1309,13 +1314,33 @@ task DeleteParquetFiles {
     # Normalize GCS path by removing any trailing slash
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
+    # Helper: run a gcloud command and tolerate "no objects found / path not found" exits (idempotent
+    # retries after files were already deleted), but re-raise any other error.
+    gcloud_rm_idempotent() {
+      local stderr_file
+      stderr_file=$(mktemp)
+      if ! "$@" 2>"$stderr_file"; then
+        # gcloud storage rm/ls emit one of these messages when a path doesn't exist / nothing matched
+        if grep -qiE 'not found|no objects|no URLs matched|CommandException|BucketNotFoundException|InvalidUrlError' "$stderr_file"; then
+          echo "No objects found (already deleted or never created) — treating as success."
+          cat "$stderr_file" >&2
+        else
+          cat "$stderr_file" >&2
+          echo "ERROR: gcloud command failed for a reason other than missing objects." >&2
+          rm -f "$stderr_file"
+          return 1
+        fi
+      fi
+      rm -f "$stderr_file"
+    }
+
     if [ "~{use_alternate_delete_strategy}" = "false" ]; then
-      gcloud storage rm --recursive ~{"--billing-project " + billing_project_id} "${OUTPUT_GCS_DIR}/"'**/*.parquet'
+      gcloud_rm_idempotent gcloud storage rm --recursive ~{"--billing-project " + billing_project_id} "${OUTPUT_GCS_DIR}/"'**/*.parquet'
     else
       # List the contents of the vet and ref_ranges directories for subsequent deletion in the loop below
       echo "Listing directories under ${OUTPUT_GCS_DIR}/vet/ and ${OUTPUT_GCS_DIR}/ref_ranges/ ${OUTPUT_GCS_DIR}/sample_chromosome_ploidy/ for deletion..."
-      gcloud storage ls ~{"--billing-project " + billing_project_id} \
-        "${OUTPUT_GCS_DIR}/vet/" "${OUTPUT_GCS_DIR}/ref_ranges/" > parquet_dirs.txt
+      gcloud_rm_idempotent gcloud storage ls ~{"--billing-project " + billing_project_id} \
+        "${OUTPUT_GCS_DIR}/vet/" "${OUTPUT_GCS_DIR}/ref_ranges/"  > parquet_dirs.txt
       echo "${OUTPUT_GCS_DIR}/sample_chromosome_ploidy/" >> parquet_dirs.txt
 
       # Iterate over all Google Cloud paths in parquet_dirs.txt and delete all objects therein
@@ -1323,7 +1348,7 @@ task DeleteParquetFiles {
       while IFS= read -r gcs_path; do
         if [ -n "$gcs_path" ]; then
           echo "Deleting objects in: $gcs_path"
-          gcloud storage rm ~{"--billing-project " + billing_project_id} "$gcs_path" --recursive
+          gcloud_rm_idempotent gcloud storage rm ~{"--billing-project " + billing_project_id} "$gcs_path" --recursive
         fi
       done < parquet_dirs.txt
     fi

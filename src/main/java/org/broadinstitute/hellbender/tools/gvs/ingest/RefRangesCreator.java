@@ -32,6 +32,7 @@ public final class RefRangesCreator {
     private final Set<GQStateEnum> gqStatesToIgnore;
     private final GenomeLocSortedSet coverageLocSortedSet;
     private final boolean storeCompressedReferences;
+    private final boolean includeRefRangesDp;
     private static final String PREFIX_SEPARATOR = "_";
     private final static String REF_RANGES_FILETYPE_PREFIX = "ref_ranges_";
 
@@ -40,10 +41,11 @@ public final class RefRangesCreator {
     // for easily calculating percentages later
     private long totalRefEntries = 0L;
 
-    public RefRangesCreator(String inputVcfFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, Set<GQStateEnum> gqStatesToIgnore, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName, final boolean storeCompressedReferences, final MessageType parquetSchema) {
+    public RefRangesCreator(String inputVcfFileName, Long sampleId, String tableNumber, SAMSequenceDictionary seqDictionary, Set<GQStateEnum> gqStatesToIgnore, final File outputDirectory, final CommonCode.OutputType outputType, final boolean writeReferenceRanges, final String projectId, final String datasetName, final boolean storeCompressedReferences, final boolean includeRefRangesDp, final MessageType parquetSchema) {
         this.sampleId = sampleId;
         this.writeReferenceRanges = writeReferenceRanges;
         this.storeCompressedReferences = storeCompressedReferences;
+        this.includeRefRangesDp = includeRefRangesDp;
         this.gqStatesToIgnore = gqStatesToIgnore;
 
         this.ploidiesCountPerChromosome = new HashMap<>();
@@ -99,6 +101,7 @@ public final class RefRangesCreator {
                 // if we are writing ref ranges, and this is a reference block, write it!
                 if (writeReferenceRanges) {
                     if (variant.isReferenceBlock()) {
+                        final Integer dp = getDepthOrNull(variant);
 
                         // Record reference ploidy if this is not in a PAR
                         if (!PloidyUtils.doesVariantOverlapPAR(variant)) {
@@ -132,13 +135,15 @@ public final class RefRangesCreator {
                                 refRangesWriter.writeCompressed(
                                         SchemaUtils.encodeCompressedRefBlock(variantChr, localStart, length,
                                                 getGQStateEnum(variant.getGenotype(0).getGQ()).getCompressedValue()),
-                                        sampleId
+                                    sampleId,
+                                    dp
                                 );
                             } else {
                                 refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, localStart),
                                         sampleId,
                                         length,
-                                        getGQStateEnum(variant.getGenotype(0).getGQ()).getValue()
+                                    getGQStateEnum(variant.getGenotype(0).getGQ()).getValue(),
+                                    dp
                                 );
                             }
 
@@ -148,17 +153,20 @@ public final class RefRangesCreator {
                     // Write out no-calls as a single-base GQ0 reference.
                     // UNLESS we are ignoring GQ0, in which case ignore them too.
                     } else if (CreateVariantIngestFiles.isNoCall(variant) && (!this.gqStatesToIgnore.contains(GQStateEnum.ZERO))) {
+                        final Integer dp = getDepthOrNull(variant);
                         if (storeCompressedReferences) {
                             refRangesWriter.writeCompressed(
                                     SchemaUtils.encodeCompressedRefBlock(variantChr, start, 1,
                                             GQStateEnum.ZERO.getCompressedValue()),
-                                    sampleId
+                                    sampleId,
+                                    dp
                             );
                         } else {
                             refRangesWriter.write(SchemaUtils.encodeLocation(variantChr, start),
                                     sampleId,
                                     1,
-                                    GQStateEnum.ZERO.getValue()
+                                    GQStateEnum.ZERO.getValue(),
+                                    dp
                             );
                         }
                     }
@@ -210,18 +218,28 @@ public final class RefRangesCreator {
                     refRangesWriter.writeCompressed(
                             SchemaUtils.encodeCompressedRefBlock(chromosome, position, length,
                                     GQStateEnum.ZERO.getCompressedValue()),
-                            sampleId
+                            sampleId,
+                            null
                     );
                 } else {
                     refRangesWriter.write(localStart,
                             sampleId,
                             length,
-                            GQStateEnum.ZERO.getValue()
+                            GQStateEnum.ZERO.getValue(),
+                            null
                     );
                 }
                 localStart = localStart + length ;
             }
         }
+    }
+
+    private Integer getDepthOrNull(final VariantContext variant) {
+        if (!includeRefRangesDp) {
+            return null;
+        }
+        final int dp = variant.getGenotype(0).getDP();
+        return dp >= 0 ? dp : null;
     }
 
     public static GQStateEnum getGQStateEnum(int GQ){
@@ -280,6 +298,8 @@ public final class RefRangesCreator {
                 break;
             case FIFTY:
                 ret.add(GQStateEnum.SIXTY);
+                break;
+            default:
                 break;
         }
 

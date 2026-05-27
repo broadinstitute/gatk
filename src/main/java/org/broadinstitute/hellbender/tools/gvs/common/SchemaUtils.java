@@ -16,6 +16,7 @@ public class SchemaUtils {
 
     public static final String STATE_FIELD_NAME = "state";
     public static final String LENGTH_FIELD_NAME = "length";
+    public static final String DP = "dp";
 
     public static final String REF_ALLELE_FIELD_NAME = "ref";
     public static final String ALT_ALLELE_FIELD_NAME = "alt";

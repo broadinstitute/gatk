@@ -185,10 +185,12 @@ def create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract
     JOBS.append({'job': query_return['job'], 'label': query_return['label']})
 
 
-def create_final_extract_ref_table(fq_destination_table_ref_data, enable_extract_table_ttl):
+def create_final_extract_ref_table(fq_destination_table_ref_data, enable_extract_table_ttl, include_ref_ranges_dp):
     ttl = ""
     if enable_extract_table_ttl:
         ttl = "OPTIONS( expiration_timestamp=TIMESTAMP_ADD(CURRENT_TIMESTAMP(), INTERVAL 14 DAY))"
+
+    optional_dp_column = ",\n              dp            INT64" if include_ref_ranges_dp else ""
 
     sql = f"""
         CREATE OR REPLACE TABLE `{fq_destination_table_ref_data}` 
@@ -196,7 +198,8 @@ def create_final_extract_ref_table(fq_destination_table_ref_data, enable_extract
               location      INT64,
               sample_id	    INT64,
               length        INT64,
-              state	        STRING	
+              state         STRING
+              {optional_dp_column}
         )
           PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 26000000000000, 6500000000))
           CLUSTER BY location
@@ -206,7 +209,7 @@ def create_final_extract_ref_table(fq_destination_table_ref_data, enable_extract
     query_return = utils.execute_with_retry(client, "create final export ref table", sql)
     JOBS.append({'job': query_return['job'], 'label': query_return['label']})
 
-def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_data, sample_ids, use_compressed_references, interval_list):
+def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_data, sample_ids, use_compressed_references, interval_list, include_ref_ranges_dp):
     location_string = ""
     if interval_list:
         location_string = get_location_filters_from_interval_list(interval_list)
@@ -214,13 +217,15 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
     # split file into files with x lines and then run
     def get_ref_subselect(fq_ref_table, samples, id):
         sample_stanza = ','.join([str(s) for s in samples])
-        sql = f"    q_{id} AS (SELECT location, sample_id, length, state FROM \n" \
+        optional_dp_select = ", dp" if include_ref_ranges_dp else ""
+        sql = f"    q_{id} AS (SELECT location, sample_id, length, state{optional_dp_select} FROM \n" \
               f" `{fq_ref_table}` WHERE sample_id IN ({sample_stanza})), "
         return sql
 
     def get_compressed_ref_subselect(fq_ref_table, samples, id):
         sample_stanza = ','.join([str(s) for s in samples])
-        sql = f"    q_{id} AS (SELECT UnpackRefRangeInfo(packed_ref_data).location as location, sample_id, UnpackRefRangeInfo(packed_ref_data).len as length, UnpackRefRangeInfo(packed_ref_data).state as state FROM \n" \
+        optional_dp_select = ", dp" if include_ref_ranges_dp else ""
+        sql = f"    q_{id} AS (SELECT UnpackRefRangeInfo(packed_ref_data).location as location, sample_id, UnpackRefRangeInfo(packed_ref_data).len as length, UnpackRefRangeInfo(packed_ref_data).state as state{optional_dp_select} FROM \n" \
               f" `{fq_ref_table}` WHERE sample_id IN ({sample_stanza})), "
         return sql
 
@@ -229,7 +234,8 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
 
         if len(partition_samples) > 0:
             subs = {}
-            insert = f"\nINSERT INTO `{fq_destination_table_data}` (location, sample_id, length, state) \n WITH \n"
+            optional_dp_select = ", dp" if include_ref_ranges_dp else ""
+            insert = f"\nINSERT INTO `{fq_destination_table_data}` (location, sample_id, length, state{optional_dp_select}) \n WITH \n"
             fq_ref_table = f"{fq_ranges_dataset}.{REF_TABLE_PREFIX}{i:03}"
             j = 1
 
@@ -308,6 +314,7 @@ def make_extract_table(call_set_identifier,
                        temp_table_ttl_hours,
                        only_output_vet_tables,
                        write_cost_to_db,
+                       include_ref_ranges_dp,
                        use_compressed_references,
                        vet_ranges_extract_table_version,
                        enable_extract_table_ttl,
@@ -379,8 +386,8 @@ def make_extract_table(call_set_identifier,
 
         # create and populate the tables for extract data
         if not only_output_vet_tables:
-            create_final_extract_ref_table(fq_destination_table_ref_data, enable_extract_table_ttl)
-            populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_ref_data, sample_ids, use_compressed_references, interval_list)
+            create_final_extract_ref_table(fq_destination_table_ref_data, enable_extract_table_ttl, include_ref_ranges_dp)
+            populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_table_ref_data, sample_ids, use_compressed_references, interval_list, include_ref_ranges_dp)
 
         create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract_table_ttl, vet_ranges_extract_table_version)
         populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_table_vet_data, sample_ids, vet_ranges_extract_table_version, interval_list)
@@ -422,6 +429,8 @@ if __name__ == '__main__':
                         help='Populate cost_observability table with BigQuery query bytes scanned', required=False, default=True)
     parser.add_argument('--use_compressed_references', type=bool,
                         help='Expect compressed reference data and expand the fields', required=False, default=False)
+    parser.add_argument('--include_ref_ranges_dp', type=bool,
+                        help='Include dp column when materializing __REF_DATA extract tables', required=False, default=False)
     parser.add_argument('--vet-ranges-extract-table-version', type=str,
                        help='Version of the vet ranges extract table - for maintaining backwards-compatibility (V2 or V1)', required=False)
     parser.add_argument('--enable_extract_table_ttl', type=bool,
@@ -460,6 +469,7 @@ if __name__ == '__main__':
                        args.ttl,
                        args.only_output_vet_tables,
                        args.write_cost_to_db,
+                       args.include_ref_ranges_dp,
                        args.use_compressed_references,
                        args.vet_ranges_extract_table_version,
                        args.enable_extract_table_ttl,

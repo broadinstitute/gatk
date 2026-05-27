@@ -164,6 +164,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     )
     public boolean storeCompressedReferences = false;
 
+    @Argument(
+            fullName = "include-ref-ranges-dp",
+            doc = "Include the DP (read depth) field from the GVCF genotype in ref_ranges output. Disabled by default.",
+            optional = true
+    )
+    public boolean includeRefRangesDp = false;
+
     private boolean shouldWriteReferencesLoadedStatusRow = false;
 
     private boolean shouldWriteVariantsLoadedStatusRow = false;
@@ -203,6 +210,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             	required int64 location;
             	required int64 length;
             	required binary state (UTF8);
+                optional int64 dp;
             }
             """);
 
@@ -211,6 +219,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             message RefRangesRow {
                 required int64 sample_id;
                 required int64 packed_ref_data;
+                optional int64 dp;
             }
             """);
 
@@ -365,7 +374,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (enableReferenceRanges && refRangesRowsExist == Boolean.FALSE) {
             logger.info("Writing reference range data for sample id = {}, name = {}", sampleId, sampleName);
             MessageType refRangesParquetSchema = storeCompressedReferences ? refRangesCompressedRowSchema : refRangesRowSchema;
-            refRangesCreator = new RefRangesCreator(inputVcfFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences, refRangesParquetSchema);
+            refRangesCreator = new RefRangesCreator(inputVcfFileName, sampleId, tableNumber, seqDictionary, gqStatesToIgnore, outputDir, outputType, enableReferenceRanges, projectID, datasetName, storeCompressedReferences, includeRefRangesDp, refRangesParquetSchema);
 
             switch (outputType) {
                 case PARQUET:
