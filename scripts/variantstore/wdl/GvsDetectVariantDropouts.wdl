@@ -254,6 +254,7 @@ task DetectDropouts {
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes '  + cluster_max_age_minutes} \
             ~{'--master-memory-fraction '   + master_memory_fraction} \
+            --job-max-restarts 1 \
             ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
     >>>
 

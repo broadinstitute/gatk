@@ -24,7 +24,7 @@ def unwrap(string):
 
 
 def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_type, region, gcs_project,
-                   autoscaling_policy, script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end, cluster_max_idle_minutes, cluster_max_age_minutes, master_memory_fraction):
+                   autoscaling_policy, script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end, cluster_max_idle_minutes, cluster_max_age_minutes, master_memory_fraction, job_max_restarts=0):
 
     cluster_max_idle_arg = f"--max-idle {cluster_max_idle_minutes}m" if cluster_max_idle_minutes else ""
     cluster_max_age_arg = f"--max-age {cluster_max_age_minutes}m" if cluster_max_age_minutes else ""
@@ -61,13 +61,15 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
             raise RuntimeError(f"Unexpected exit code from cluster creation: {exit_code}")
 
         run_in_existing_cluster(cluster_name, account, region, gcs_project,
-                        script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end)
+                        script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end,
+                        job_max_restarts=job_max_restarts)
 
     except Exception:
         raise
 
 def run_in_existing_cluster(cluster_name, account, region, gcs_project,
-                   script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end):
+                   script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end,
+                   job_max_restarts=0):
 
     try:
         cluster_client = dataproc.ClusterControllerClient(
@@ -78,6 +80,7 @@ def run_in_existing_cluster(cluster_name, account, region, gcs_project,
         # the following says `--py-files` is supposed to be a comma separated list
         # https://fig.io/manual/gcloud/dataproc/jobs/submit/pyspark
         secondary_script_path_arg = f'--py-files {",".join(secondary_script_path_list)}' if secondary_script_path_list else ''
+        job_max_restarts_arg = f'--max-restarts {job_max_restarts}' if job_max_restarts else ''
         with open(script_arguments_json_path, 'r') as input_file:
             items = ijson.items(input_file, '', use_float=True)
             arguments = items.__next__();
@@ -98,6 +101,7 @@ def run_in_existing_cluster(cluster_name, account, region, gcs_project,
                  --region={region}
                  --account {account}
                  --driver-log-levels root=WARN
+                 {job_max_restarts_arg}
                  --
                  {' '.join(custom_script_args)}
                 """)
@@ -163,6 +167,8 @@ if __name__ == "__main__":
     parser.add_argument('--leave-cluster-running-at-end', action="store_true", default=False)
     parser.add_argument('--cluster-max-idle-minutes', type=int, help='Maximum idle time of cluster in minutes')
     parser.add_argument('--cluster-max-age-minutes', type=int, help='Maximum age of cluster in minutes')
+    parser.add_argument('--job-max-restarts', type=int, default=0,
+                        help='Number of times Dataproc should automatically restart a failed job (default: 0)')
 
     args = parser.parse_args()
 
@@ -180,4 +186,5 @@ if __name__ == "__main__":
                    cluster_max_idle_minutes=args.cluster_max_idle_minutes,
                    cluster_max_age_minutes=args.cluster_max_age_minutes,
                    master_memory_fraction=args.master_memory_fraction,
+                   job_max_restarts=args.job_max_restarts,
                    )
