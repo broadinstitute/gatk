@@ -262,8 +262,12 @@ if __name__ == '__main__':
 
     # Checkpoint the grouped table (~110K rows) before the explode
     bins_chk = f'{args.temp_path}/bins_grouped.ht'
-    print(f'Checkpointing grouped bins to {bins_chk} ...')
-    bins_ht = bins_ht.checkpoint(bins_chk, overwrite=True)
+    if hl.hadoop_exists(bins_chk + '/_SUCCESS'):
+        print(f'  bins_grouped checkpoint already exists, reusing ...')
+        bins_ht = hl.read_table(bins_chk)
+    else:
+        print(f'Checkpointing grouped bins to {bins_chk} ...')
+        bins_ht = bins_ht.checkpoint(bins_chk, overwrite=True)
 
     # For each bin, generate one entry per SP; fill absent SPs with 0.
     # The map+explode is local (no shuffle) because all 136 SP counts are
@@ -289,8 +293,12 @@ if __name__ == '__main__':
 
     # Checkpoint the complete grid before the median join
     complete_chk = f'{args.temp_path}/complete_grid.ht'
-    print(f'Checkpointing complete grid to {complete_chk} ...')
-    complete_ht = complete_ht.checkpoint(complete_chk, overwrite=True)
+    if hl.hadoop_exists(complete_chk + '/_SUCCESS'):
+        print(f'  complete_grid checkpoint already exists, reusing ...')
+        complete_ht = hl.read_table(complete_chk)
+    else:
+        print(f'Checkpointing complete grid to {complete_chk} ...')
+        complete_ht = complete_ht.checkpoint(complete_chk, overwrite=True)
 
     # ------------------------------------------------------------------
     # 6. Compute dropout flags — two complementary signals
