@@ -222,38 +222,59 @@ if __name__ == '__main__':
     # 5. Expand to a COMPLETE grid: every (contig, bin_start) that has
     #    data for ANY superpartition × every superpartition.
     #
-    #    Without this step, bins where a specific SP has zero variants
-    #    are simply absent from the table — they won't appear in the
-    #    output at all, which is exactly the dropout signature we want
-    #    to detect.
+    #    Strategy: group by (contig, bin_start) first (~110K unique bins)
+    #    to collect each bin's SP counts into a single array row, then
+    #    expand to 136 entries per bin with a local map+explode.  This
+    #    avoids any cross-product shuffle; the only shuffle is the initial
+    #    group_by which reduces ~20M rows → ~110K rows.
     # ------------------------------------------------------------------
     print('Building complete bin × superpartition grid (filling absent bins with 0)...')
 
-    # Collect all superpartition numbers to the driver (just 136 ints — trivial)
+    # Collect all SP numbers to the driver (just 136 ints — trivial)
     all_sps = sorted(bin_counts_ht.aggregate(
         hl.agg.collect_as_set(bin_counts_ht.superpartition)
     ))
     print(f'  {len(all_sps)} superpartitions, expanding grid...')
     all_sps_lit = hl.literal(all_sps, hl.tarray(hl.tint32))
 
-    # All (contig, bin_start) pairs that appear for any SP.
-    # Re-key to (contig, bin_start) — this implicitly drops superpartition
-    # and n_variants from the row — then distinct to deduplicate.
-    all_bins_ht = bin_counts_ht.key_by('contig', 'bin_start').select().distinct()
-
-    # Cross-product: each bin × every SP, then left-join counts
-    all_bins_ht = all_bins_ht.annotate(superpartition=all_sps_lit)
-    all_bins_ht = all_bins_ht.explode('superpartition')
-    all_bins_ht = all_bins_ht.key_by('contig', 'bin_start', 'superpartition')
-
-    complete_ht = all_bins_ht.annotate(
-        n_variants=hl.coalesce(
-            bin_counts_ht[
-                all_bins_ht.contig, all_bins_ht.bin_start, all_bins_ht.superpartition
-            ].n_variants,
-            hl.int64(0),
-        )
+    # Group: one row per (contig, bin_start) with all SP counts as an array
+    bins_ht = (
+        bin_counts_ht
+        .group_by('contig', 'bin_start')
+        .aggregate(sp_counts=hl.agg.collect(
+            hl.struct(
+                superpartition=bin_counts_ht.superpartition,
+                n_variants=bin_counts_ht.n_variants,
+            )
+        ))
     )
+
+    # Checkpoint the grouped table (~110K rows) before the explode
+    bins_chk = f'{args.temp_path}/bins_grouped.ht'
+    print(f'Checkpointing grouped bins to {bins_chk} ...')
+    bins_ht = bins_ht.checkpoint(bins_chk, overwrite=True)
+
+    # For each bin, generate one entry per SP; fill absent SPs with 0.
+    # The map+explode is local (no shuffle) because all 136 SP counts are
+    # already co-located on the same row after the group_by.
+    bins_ht = bins_ht.annotate(
+        entries=all_sps_lit.map(lambda sp: hl.struct(
+            superpartition=sp,
+            n_variants=hl.coalesce(
+                hl.dict(bins_ht.sp_counts.map(
+                    lambda x: (x.superpartition, x.n_variants)
+                )).get(sp),
+                hl.int64(0),
+            )
+        ))
+    )
+    bins_ht = bins_ht.drop('sp_counts')
+    bins_ht = bins_ht.explode('entries')
+    complete_ht = bins_ht.transmute(
+        superpartition=bins_ht.entries.superpartition,
+        n_variants=bins_ht.entries.n_variants,
+    )
+    complete_ht = complete_ht.key_by('contig', 'bin_start', 'superpartition')
 
     # Checkpoint the complete grid before the median join
     complete_chk = f'{args.temp_path}/complete_grid.ht'
