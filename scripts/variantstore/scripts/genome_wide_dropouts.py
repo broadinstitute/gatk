@@ -20,9 +20,20 @@ Inputs
 Output
 ------
 * A TSV written to ``--output-path`` (GCS) with columns:
-      contig, bin_start, bin_end, superpartition,
-      n_variants, median_bin_count, dropout_flag
-  where dropout_flag=1 when n_variants < --dropout-fraction * median.
+      contig, bin_start, bin_end, superpartition, n_variants,
+      cross_sp_median, cross_sp_dropout_flag,
+      within_sp_median, within_sp_dropout_flag
+
+  cross_sp_median       — median n_variants at this bin position across all SPs
+                          that have any variants there (the primary baseline).
+  cross_sp_dropout_flag — 1 when n_variants < dropout-fraction * cross_sp_median.
+                          Primary dropout signal: flags bins where a specific SP
+                          has far fewer variants than other SPs at the same locus.
+  within_sp_median      — median n_variants across all non-zero bins on the same
+                          chromosome within the same SP (secondary baseline).
+  within_sp_dropout_flag — 1 when n_variants < dropout-fraction * within_sp_median.
+                          Secondary signal: flags bins sparse relative to that SP's
+                          own chromosomal baseline.
 
 Usage (direct)
 --------------
@@ -282,38 +293,71 @@ if __name__ == '__main__':
     complete_ht = complete_ht.checkpoint(complete_chk, overwrite=True)
 
     # ------------------------------------------------------------------
-    # 6. Compute per-(superpartition, contig) median and flag dropouts
+    # 6. Compute dropout flags — two complementary signals
+    #
+    # within_sp_dropout_flag  (secondary)
+    #   Compares each bin against the median of ALL bins on the same
+    #   chromosome for the same superpartition.  Catches bins that are
+    #   unusually sparse relative to that SP's own chr-level baseline.
+    #
+    # cross_sp_dropout_flag  (primary)
+    #   Compares each bin against the median count at the SAME genomic
+    #   position across ALL superpartitions.  A bin with n_variants=0
+    #   for SP83 while every other SP has ~50 variants there is a clean
+    #   data-dropout signal.  Genuine low-variant genomic regions
+    #   (centromeres, etc.) are not flagged because they depress counts
+    #   equally across all SPs.
     # ------------------------------------------------------------------
     print('Computing per-SP/contig medians and dropout flags in Hail ...')
 
-    # Median over non-zero bins only, so completely silent regions
-    # (centromeres, telomeres) don't drag the baseline down.
     nonzero_ht = complete_ht.filter(complete_ht.n_variants > 0)
-    medians_ht = (
+
+    # Within-SP median: group by (SP, contig)
+    within_sp_medians_ht = (
         nonzero_ht
         .group_by(nonzero_ht.superpartition, nonzero_ht.contig)
-        .aggregate(median_bin_count=hl.float64(hl.agg.approx_quantiles(
+        .aggregate(within_sp_median=hl.float64(hl.agg.approx_quantiles(
+            hl.float64(nonzero_ht.n_variants), 0.5)))
+    )
+
+    # Cross-SP median: group by (contig, bin_start) — the median count at
+    # each genomic position across all SPs that have any variants there.
+    # Intentionally excludes zero-count SPs from the median so that dropout
+    # bins don't pull the baseline down.
+    cross_sp_medians_ht = (
+        nonzero_ht
+        .group_by(nonzero_ht.contig, nonzero_ht.bin_start)
+        .aggregate(cross_sp_median=hl.float64(hl.agg.approx_quantiles(
             hl.float64(nonzero_ht.n_variants), 0.5)))
     )
 
     result_ht = complete_ht.annotate(
         bin_end=complete_ht.bin_start + args.bin_size,
-        median_bin_count=hl.coalesce(
-            medians_ht[complete_ht.superpartition, complete_ht.contig].median_bin_count,
+        within_sp_median=hl.coalesce(
+            within_sp_medians_ht[complete_ht.superpartition, complete_ht.contig].within_sp_median,
             hl.float64(0)
-        )
+        ),
+        cross_sp_median=hl.coalesce(
+            cross_sp_medians_ht[complete_ht.contig, complete_ht.bin_start].cross_sp_median,
+            hl.float64(0)
+        ),
     )
     result_ht = result_ht.annotate(
-        dropout_flag=hl.int32(
-            result_ht.n_variants < args.dropout_fraction * result_ht.median_bin_count
-        )
+        within_sp_dropout_flag=hl.int32(
+            result_ht.n_variants < args.dropout_fraction * result_ht.within_sp_median
+        ),
+        cross_sp_dropout_flag=hl.int32(
+            result_ht.n_variants < args.dropout_fraction * result_ht.cross_sp_median
+        ),
     )
     # Clear the composite key so we can freely reorder fields in select
     # and then sort by the desired output order.
     result_ht = result_ht.key_by()
     result_ht = result_ht.select(
         'contig', 'bin_start', 'bin_end', 'superpartition',
-        'n_variants', 'median_bin_count', 'dropout_flag'
+        'n_variants',
+        'cross_sp_median', 'cross_sp_dropout_flag',
+        'within_sp_median', 'within_sp_dropout_flag',
     )
     result_ht = result_ht.order_by(
         result_ht.superpartition, result_ht.contig, result_ht.bin_start
@@ -327,21 +371,25 @@ if __name__ == '__main__':
 
     # Collect a small summary to the driver just for the printed report.
     print('Collecting summary statistics ...')
-    n_total, n_flagged = result_ht.aggregate(
-        (hl.agg.count(), hl.agg.count_where(result_ht.dropout_flag == 1))
-    )
-    print(f'Done. Wrote {n_total:,} rows ({n_flagged:,} dropout bins flagged) to {args.output_path}')
+    n_total, n_cross_flagged, n_within_flagged = result_ht.aggregate((
+        hl.agg.count(),
+        hl.agg.count_where(result_ht.cross_sp_dropout_flag == 1),
+        hl.agg.count_where(result_ht.within_sp_dropout_flag == 1),
+    ))
+    print(f'Done. Wrote {n_total:,} rows to {args.output_path}')
+    print(f'  cross_sp_dropout_flag=1  : {n_cross_flagged:,} bins')
+    print(f'  within_sp_dropout_flag=1 : {n_within_flagged:,} bins')
 
-    if n_flagged > 0:
+    if n_cross_flagged > 0:
         top_sps = (
             result_ht
-            .filter(result_ht.dropout_flag == 1)
+            .filter(result_ht.cross_sp_dropout_flag == 1)
             .group_by('superpartition')
             .aggregate(n_dropout_bins=hl.agg.count())
             .order_by(hl.desc('n_dropout_bins'))
             .head(20)
             .collect()
         )
-        print('\nTop superpartitions by dropout bin count:')
+        print('\nTop superpartitions by cross-SP dropout bin count:')
         for row in top_sps:
             print(f'  SP {row.superpartition}: {row.n_dropout_bins} dropout bins')
