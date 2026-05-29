@@ -338,8 +338,13 @@ def import_gvs(refs: 'List[List[str]]',
 
         vd = vd.annotate_rows(filters=hl.coalesce(site[vd.locus].filters, hl.empty_set(hl.tstr)))
 
-        # vets ref/alt come in normalized individually, so need to renormalize to the dataset ref allele
+        # vets ref/alt come in normalized individually, so need to renormalize to the dataset ref allele.
+        # Filter out records whose ref is longer than the dataset ref allele — these correspond to alleles from samples
+        # not present in this VDS (e.g. control or withdrawn samples). Without this filter, the renormalization formula
+        # produces a truncated key that can collide with a legitimate allele, silently replacing its
+        # calibration_sensitivity value in the dict.
         vd = vd.annotate_rows(as_vets = hl.dict(vets_filter.index(vd.locus, all_matches=True)
+                                                .filter(lambda record: hl.len(record.ref) <= hl.len(vd.alleles[0]))
                                                 .map(lambda record: (record.alt + vd.alleles[0][hl.len(record.ref):], record.drop('ref', 'alt')))))
 
         vd = vd.annotate_globals(truth_sensitivity_snp_threshold=truth_sensitivity_snp_threshold,
