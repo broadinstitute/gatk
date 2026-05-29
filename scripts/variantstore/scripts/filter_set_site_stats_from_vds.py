@@ -54,7 +54,8 @@ def compute_filter_set_site_stats(
     -------
     hl.Table
         A table with columns ``filters`` (str) and ``n_sites`` (int64),
-        ordered by ``filters``.
+        ordered by ``filters``.  Delegates to
+        :func:`filter_stats_from_rows_table` for the core aggregation.
     """
     vds = hl.vds.read_vds(vds_path)
     mt = vds.variant_data
@@ -67,6 +68,34 @@ def compute_filter_set_site_stats(
     if require_non_ref:
         mt = mt.filter_rows(hl.agg.any(mt.LGT.is_non_ref()))
 
+    stats = filter_stats_from_rows_table(mt.rows())
+
+    if output_path is not None:
+        stats.export(output_path)
+        print(f"Filter-set site statistics written to: {output_path}")
+
+    return stats
+
+
+def filter_stats_from_rows_table(rows: hl.Table) -> hl.Table:
+    """
+    Core aggregation logic: given a rows Table with a ``filters: set<str>``
+    field, return a Table of (filters_string, site_count) pairs.
+
+    This function is separated from the VDS I/O so it can be unit-tested
+    against synthetic Tables without needing a real VDS on disk.
+
+    Parameters
+    ----------
+    rows : hl.Table
+        Must contain a field ``filters`` of type ``set<str>``.
+
+    Returns
+    -------
+    hl.Table
+        Columns ``filters`` (str) and ``n_sites`` (int64), ordered by
+        ``filters``.
+    """
     # -----------------------------------------------------------------
     # Convert the filters set<str> to a canonical, human-readable string
     # that mirrors the BigQuery output format:
@@ -74,7 +103,6 @@ def compute_filter_set_site_stats(
     #   - non-empty  → alphabetically sorted, comma-space-separated values
     #                  e.g. "EXCESS_ALLELES, ExcessHet"
     # -----------------------------------------------------------------
-    rows = mt.rows()
     rows = rows.annotate(
         filter_str=hl.if_else(
             hl.len(rows.filters) == 0,
@@ -86,7 +114,7 @@ def compute_filter_set_site_stats(
     # -----------------------------------------------------------------
     # Aggregate: count sites per unique filter combination.
     # -----------------------------------------------------------------
-    stats = (
+    return (
         rows
         .group_by(rows.filter_str)
         .aggregate(n_sites=hl.agg.count())
@@ -94,11 +122,6 @@ def compute_filter_set_site_stats(
         .order_by('filters')
     )
 
-    if output_path is not None:
-        stats.export(output_path)
-        print(f"Filter-set site statistics written to: {output_path}")
-
-    return stats
 
 
 if __name__ == '__main__':
