@@ -26,8 +26,14 @@ Or import and call compute_filter_set_site_stats() directly from a notebook.
 """
 
 import argparse
+import sys
 
 import hail as hl
+
+# If the number of distinct filter combinations ever exceeds this threshold
+# something unexpected has likely happened.  The count is printed to stderr
+# so the caller is alerted even when stdout is redirected.
+_FILTER_COMBO_WARN_THRESHOLD = 200
 
 
 def compute_filter_set_site_stats(
@@ -123,6 +129,36 @@ def filter_stats_from_rows_table(rows: hl.Table) -> hl.Table:
     )
 
 
+def _print_stats(stats: hl.Table) -> None:
+    """
+    Collect *all* rows of the stats Table and print them to stdout.
+
+    Using collect() instead of show(n) avoids any silent truncation if the
+    number of distinct filter combinations ever grows beyond an expected limit.
+    A warning is emitted to stderr if the count exceeds
+    _FILTER_COMBO_WARN_THRESHOLD, turning a future silent problem into a
+    loud one.
+    """
+    rows = stats.collect()
+    n = len(rows)
+
+    if n > _FILTER_COMBO_WARN_THRESHOLD:
+        print(
+            f"WARNING: {n} distinct filter combinations found, which exceeds "
+            f"the expected threshold of {_FILTER_COMBO_WARN_THRESHOLD}. "
+            "Inspect the output carefully.",
+            file=sys.stderr,
+        )
+
+    col_width = max((len(row.filters) for row in rows), default=len('filters'))
+    col_width = max(col_width, len('filters'))
+    header = f"{'filters':<{col_width}}  {'n_sites':>12}"
+    print(header)
+    print('-' * len(header))
+    for row in rows:
+        print(f"{row.filters:<{col_width}}  {row.n_sites:>12,}")
+    print(f"\n{n} filter combination(s) total.")
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(
@@ -177,12 +213,12 @@ if __name__ == '__main__':
         require_non_ref=not args.skip_non_ref_filter,
     )
 
-    # Only call show() when no output file was written.  stats is a lazy Hail
-    # Table expression, so calling show() after export() would re-execute the
-    # entire query from scratch.  When an output_path was provided the results
-    # are already on disk; just print the path again as a reminder.
+    # Only call collect/print when no output file was written.  stats is a lazy
+    # Hail Table expression, so any additional action after export() would
+    # re-execute the entire query from scratch.  When an output_path was
+    # provided the results are already on disk; just echo the path.
     if args.output_path is None:
-        stats.show(100)
+        _print_stats(stats)
     else:
         print(f"Results written to: {args.output_path}")
 
