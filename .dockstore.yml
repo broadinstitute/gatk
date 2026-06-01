@@ -459,13 +459,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-   - name: GvsMapUnmappedVIDs
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsMapUnmappedVIDs.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
    - name: MergePgenHierarchicalWdl
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/MergePgenHierarchical.wdl
@@ -499,8 +492,17 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - FoxtrotRelease_20260601_01
        tags:
          - /.*/
+   - name: GvsMapUnmappedVIDs
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsMapUnmappedVIDs.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - FoxtrotRelease_20260601_01
    - name: GvsMapDroppedDuplicateVIDs
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsMapDroppedDuplicateVIDs.wdl
@@ -508,6 +510,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - FoxtrotRelease_20260601_01
        tags:
          - /.*/
    - name: GvsRemoveSamplesFromVDS
