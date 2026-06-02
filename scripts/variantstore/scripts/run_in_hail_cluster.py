@@ -8,8 +8,8 @@ from logging import info
 
 TINY_NUM_WORKERS = 2
 TINY_MAX_SECONDARY = 5
-DEFAULT_NUM_WORKERS = 8
-DEFAULT_MAX_SECONDARY = 500
+DEFAULT_NUM_WORKERS = 2
+DEFAULT_MAX_SECONDARY = 200
 
 
 def autoscaling_policy_name(num_workers, max_secondary):
