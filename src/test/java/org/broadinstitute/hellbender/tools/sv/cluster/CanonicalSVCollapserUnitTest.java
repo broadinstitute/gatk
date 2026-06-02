@@ -2033,4 +2033,210 @@ public class CanonicalSVCollapserUnitTest {
         Assert.assertEquals(result.getComplexSubtype(), GATKSVVCFConstants.ComplexVariantSubtype.dDUP);
         Assert.assertEquals(result.getComplexEventIntervals(), cpx1.getComplexEventIntervals());
     }
+
+    @DataProvider(name = "representativeComplexSubtypeData")
+    public Object[][] representativeComplexSubtypeData() {
+        return new Object[][]{
+                {
+                        new SVCallRecord("left", "chr1", 1000, null,
+                                "chr1", 1000, null,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                                GATKSVVCFConstants.ComplexVariantSubtype.dDUP,
+                                List.of(SVCallRecord.ComplexEventInterval.decode("DUP_chr1:6000-8000", SVTestUtils.hg38Dict)),
+                                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict),
+                        new SVCallRecord("right", "chr1", 1000, null,
+                                "chr1", 1000, null,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                                GATKSVVCFConstants.ComplexVariantSubtype.dDUP_iDEL,
+                                List.of(
+                                        SVCallRecord.ComplexEventInterval.decode("DUP_chr1:6000-8000", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("INV_chr1:3000-3500", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("DEL_chr1:8200-8500", SVTestUtils.hg38Dict)),
+                                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict),
+                        "left"
+                },
+                {
+                        new SVCallRecord("left", "chr1", 1000, null,
+                                "chr1", 1000, null,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                                GATKSVVCFConstants.ComplexVariantSubtype.dDUP_iDEL,
+                                List.of(
+                                        SVCallRecord.ComplexEventInterval.decode("DUP_chr1:6000-8000", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("INV_chr1:3000-3500", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("DEL_chr1:8200-8500", SVTestUtils.hg38Dict)),
+                                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict),
+                        new SVCallRecord("right", "chr1", 1000, null,
+                                "chr1", 1000, null,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                                GATKSVVCFConstants.ComplexVariantSubtype.dupINVdel,
+                                List.of(
+                                        SVCallRecord.ComplexEventInterval.decode("DUP_chr1:1100-1400", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("INV_chr1:1500-1800", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("DEL_chr1:1850-2150", SVTestUtils.hg38Dict)),
+                                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict),
+                        "left"
+                },
+                {
+                        new SVCallRecord("left", "chr1", 1000, null,
+                                "chr1", 1000, null,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                                GATKSVVCFConstants.ComplexVariantSubtype.dupINV,
+                                List.of(
+                                        SVCallRecord.ComplexEventInterval.decode("DUP_chr1:1100-1400", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("INV_chr1:1500-1800", SVTestUtils.hg38Dict)),
+                                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict),
+                        new SVCallRecord("right", "chr1", 1000, null,
+                                "chr1", 1000, null,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                                GATKSVVCFConstants.ComplexVariantSubtype.dupINVdup,
+                                List.of(
+                                        SVCallRecord.ComplexEventInterval.decode("DUP_chr1:1100-1400", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("INV_chr1:1500-1800", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("DUP_chr1:1850-2150", SVTestUtils.hg38Dict)),
+                                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict),
+                        "left"
+                },
+                {
+                        new SVCallRecord("left", "chr1", 1000, null,
+                                "chr1", 1000, null,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                                GATKSVVCFConstants.ComplexVariantSubtype.INVdup,
+                                List.of(
+                                        SVCallRecord.ComplexEventInterval.decode("INV_chr1:1500-1800", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("DUP_chr1:1850-2150", SVTestUtils.hg38Dict)),
+                                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict),
+                        new SVCallRecord("right", "chr1", 1000, null,
+                                "chr1", 1000, null,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                                GATKSVVCFConstants.ComplexVariantSubtype.delINVdup,
+                                List.of(
+                                        SVCallRecord.ComplexEventInterval.decode("DEL_chr1:1100-1400", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("INV_chr1:1500-1800", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("DUP_chr1:1850-2150", SVTestUtils.hg38Dict)),
+                                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict),
+                        "left"
+                },
+                {
+                        new SVCallRecord("left", "chr1", 1000, null,
+                                "chr1", 1000, null,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                                GATKSVVCFConstants.ComplexVariantSubtype.delINV,
+                                List.of(
+                                        SVCallRecord.ComplexEventInterval.decode("DEL_chr1:1100-1400", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("INV_chr1:1500-1800", SVTestUtils.hg38Dict)),
+                                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict),
+                        new SVCallRecord("right", "chr1", 1000, null,
+                                "chr1", 1000, null,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                                GATKSVVCFConstants.ComplexVariantSubtype.delINVdel,
+                                List.of(
+                                        SVCallRecord.ComplexEventInterval.decode("DEL_chr1:1100-1400", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("INV_chr1:1500-1800", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("DEL_chr1:1850-2150", SVTestUtils.hg38Dict)),
+                                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict),
+                        "left"
+                },
+                {
+                        new SVCallRecord("left", "chr1", 1000, null,
+                                "chr1", 1000, null,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                                GATKSVVCFConstants.ComplexVariantSubtype.INVdel,
+                                List.of(
+                                        SVCallRecord.ComplexEventInterval.decode("INV_chr1:1500-1800", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("DEL_chr1:1850-2150", SVTestUtils.hg38Dict)),
+                                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict),
+                        new SVCallRecord("right", "chr1", 1000, null,
+                                "chr1", 1000, null,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                                GATKSVVCFConstants.ComplexVariantSubtype.dupINVdel,
+                                List.of(
+                                        SVCallRecord.ComplexEventInterval.decode("DUP_chr1:1100-1400", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("INV_chr1:1500-1800", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("DEL_chr1:1850-2150", SVTestUtils.hg38Dict)),
+                                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict),
+                        "left"
+                },
+                {
+                        new SVCallRecord("left", "chr1", 1000, null,
+                                "chr1", 1000, null,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                                GATKSVVCFConstants.ComplexVariantSubtype.dDUP_iDEL,
+                                List.of(
+                                        SVCallRecord.ComplexEventInterval.decode("DUP_chr1:6000-8000", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("INV_chr1:3000-3500", SVTestUtils.hg38Dict),
+                                        SVCallRecord.ComplexEventInterval.decode("DEL_chr1:8200-8500", SVTestUtils.hg38Dict)),
+                                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict),
+                        new SVCallRecord("right", "chr1", 1000, null,
+                                "chr1", 1000, null,
+                                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                                GATKSVVCFConstants.ComplexVariantSubtype.dDUP,
+                                List.of(SVCallRecord.ComplexEventInterval.decode("DUP_chr1:6000-8000", SVTestUtils.hg38Dict)),
+                                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict),
+                        "right"
+                }
+        };
+    }
+
+    @Test(dataProvider = "representativeComplexSubtypeData")
+    public void testGetRepresentativeComplexSubtypeRecord(final SVCallRecord left,
+                                                          final SVCallRecord right,
+                                                          final String expectedId) {
+        final SVCallRecord representative = collapserRepresentative.getRepresentativeRecord(List.of(left, right), 1000, 1000);
+        Assert.assertEquals(representative.getId(), expectedId);
+    }
+
+    @Test(expectedExceptions = IllegalArgumentException.class)
+    public void testGetRepresentativeComplexSubtypeRecordRejectsUnexpectedPair() {
+        final SVCallRecord left = new SVCallRecord("left", "chr1", 1000, null,
+                "chr1", 1000, null,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                GATKSVVCFConstants.ComplexVariantSubtype.dupINVdup,
+                List.of(
+                        SVCallRecord.ComplexEventInterval.decode("DUP_chr1:1100-1400", SVTestUtils.hg38Dict),
+                        SVCallRecord.ComplexEventInterval.decode("INV_chr1:1500-1800", SVTestUtils.hg38Dict),
+                        SVCallRecord.ComplexEventInterval.decode("DUP_chr1:1850-2150", SVTestUtils.hg38Dict)),
+                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+        final SVCallRecord right = new SVCallRecord("right", "chr1", 1000, null,
+                "chr1", 1000, null,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                GATKSVVCFConstants.ComplexVariantSubtype.delINVdel,
+                List.of(
+                        SVCallRecord.ComplexEventInterval.decode("DEL_chr1:1100-1400", SVTestUtils.hg38Dict),
+                        SVCallRecord.ComplexEventInterval.decode("INV_chr1:1500-1800", SVTestUtils.hg38Dict),
+                        SVCallRecord.ComplexEventInterval.decode("DEL_chr1:1850-2150", SVTestUtils.hg38Dict)),
+                2000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+        collapserRepresentative.getRepresentativeRecord(List.of(left, right), 1000, 1000);
+    }
 }

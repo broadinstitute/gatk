@@ -1,0 +1,5 @@
+NAME	SVTYPE	MIN_SIZE	MAX_SIZE	TRACKS	TRACK_OVERLAP_FRACTION	TRACK_NUM_BREAKPOINTS
+DEL_overlap_override	DEL	50	5000	context1	0.75	0
+DEL_defaults	DEL	50	5000	context1	NULL	NULL
+BND_breakpoint_override	BND	-1	-1	context1	NULL	2
+INS_context1	INS	-1	-1	context1	NULL	NULL

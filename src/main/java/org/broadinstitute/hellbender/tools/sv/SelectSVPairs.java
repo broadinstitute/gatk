@@ -16,10 +16,6 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 
-/**
- * TODO docs
- */
-
 public final class SelectSVPairs {
 
     // SV pair table column names

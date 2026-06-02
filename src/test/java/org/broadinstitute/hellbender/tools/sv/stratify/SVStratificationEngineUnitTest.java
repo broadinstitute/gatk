@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 public class SVStratificationEngineUnitTest extends GATKBaseTest {
 
     private static final GATKPath CONFIG_FILE_PATH = new GATKPath(toolsTestDir + "/sv/sv_stratify_config.tsv");
+    private static final GATKPath CONFIG_WITH_TRACK_CRITERIA_FILE_PATH = new GATKPath(toolsTestDir + "/sv/sv_stratify_config_track_criteria.tsv");
 
     private static final String CONTEXT_1_NAME = "context1";
     private static final String CONTEXT_2_NAME = "context2";
@@ -28,6 +29,13 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
     
     private static SVStratificationEngine makeDefaultEngine() {
         return new SVStratificationEngine(SVTestUtils.hg38Dict);
+    }
+
+    private static Map<String, List<Locatable>> makeDefaultTrackMap() {
+        final Map<String, List<Locatable>> map = new HashMap<>();
+        map.put(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        map.put(CONTEXT_2_NAME, CONTEXT_2_INTERVALS);
+        return map;
     }
 
     @Test
@@ -68,6 +76,19 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
         Assert.assertEquals(stratification.getMaxSize().intValue(), 500);
         Assert.assertEquals(stratification.getTrackNames().size(), 1);
         Assert.assertEquals(stratification.getTrackNames().get(0), CONTEXT_1_NAME);
+        Assert.assertNull(stratification.getTrackOverlapFraction());
+        Assert.assertNull(stratification.getTrackNumBreakpoints());
+    }
+
+    @Test
+    public void testAddStratificationWithTrackCriteria() {
+        final SVStratificationEngine engine = makeDefaultEngine();
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        engine.addStratification("strat", GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                50, 500, Collections.singleton(CONTEXT_1_NAME), 0.75, 1);
+        final SVStratificationEngine.Stratum stratification = engine.getStrata().iterator().next();
+        Assert.assertEquals(stratification.getTrackOverlapFraction(), Double.valueOf(0.75));
+        Assert.assertEquals(stratification.getTrackNumBreakpoints(), Integer.valueOf(1));
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
@@ -110,6 +131,60 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
         Assert.assertNotNull(engine.getTrackIntervals(CONTEXT_1_NAME));
         Assert.assertEquals(engine.getStrata().size(), 7);
     }
+
+    @Test
+    public void testCreateWithTrackCriteriaColumns() {
+        final SVStratificationEngine engine = SVStratificationEngine.create(makeDefaultTrackMap(), CONFIG_WITH_TRACK_CRITERIA_FILE_PATH, SVTestUtils.hg38Dict);
+        Assert.assertEquals(engine.getStrata().size(), 4);
+        final Map<String, SVStratificationEngine.Stratum> strata = engine.getStrata().stream()
+                .collect(Collectors.toMap(SVStratificationEngine.Stratum::getName, s -> s));
+        Assert.assertEquals(strata.get("DEL_overlap_override").getTrackOverlapFraction(), Double.valueOf(0.75));
+        Assert.assertEquals(strata.get("DEL_overlap_override").getTrackNumBreakpoints(), Integer.valueOf(0));
+        Assert.assertNull(strata.get("DEL_defaults").getTrackOverlapFraction());
+        Assert.assertNull(strata.get("DEL_defaults").getTrackNumBreakpoints());
+        Assert.assertEquals(strata.get("BND_breakpoint_override").getTrackNumBreakpoints(), Integer.valueOf(2));
+    }
+
+        @Test
+        public void testGetMatchVariantsUsesConfigTrackOverlapOverride() {
+        final SVStratificationEngine engine = SVStratificationEngine.create(makeDefaultTrackMap(), CONFIG_WITH_TRACK_CRITERIA_FILE_PATH, SVTestUtils.hg38Dict);
+        final SVCallRecord record = SVTestUtils.newCallRecordWithCoordinatesAndType(
+            "record", "chr1", 750, "chr1", 1750,
+            GATKSVVCFConstants.StructuralVariantAnnotationType.DEL);
+        final List<String> result = engine.getMatches(record, 0.9, 0, 2).stream()
+            .map(SVStratificationEngine.Stratum::getName)
+            .collect(Collectors.toList());
+        Assert.assertEquals(result, Collections.singletonList("DEL_overlap_override"));
+        }
+
+        @Test
+        public void testGetMatchVariantsUsesGlobalsWhenConfigTrackCriteriaMissing() {
+        final SVStratificationEngine engine = SVStratificationEngine.create(makeDefaultTrackMap(), CONFIG_WITH_TRACK_CRITERIA_FILE_PATH, SVTestUtils.hg38Dict);
+        final SVCallRecord record = SVTestUtils.newCallRecordWithCoordinatesAndType(
+            "record", "chr1", 500, "chr1", 1500,
+            GATKSVVCFConstants.StructuralVariantAnnotationType.DEL);
+        final List<String> result = engine.getMatches(record, 0.5, 0, 2).stream()
+            .map(SVStratificationEngine.Stratum::getName)
+            .collect(Collectors.toList());
+        Assert.assertEquals(result, Collections.singletonList("DEL_defaults"));
+        }
+
+        @Test
+        public void testGetMatchVariantsUsesConfigTrackBreakpointOverride() {
+        final SVStratificationEngine engine = SVStratificationEngine.create(makeDefaultTrackMap(), CONFIG_WITH_TRACK_CRITERIA_FILE_PATH, SVTestUtils.hg38Dict);
+        final SVCallRecord oneBreakpointRecord = SVTestUtils.newCallRecordWithCoordinatesAndType(
+            "record", "chr1", 1000, "chr2", 500,
+            GATKSVVCFConstants.StructuralVariantAnnotationType.BND);
+        Assert.assertTrue(engine.getMatches(oneBreakpointRecord, 0.5, 0, 1).isEmpty());
+
+        final SVCallRecord twoBreakpointRecord = SVTestUtils.newCallRecordWithCoordinatesAndType(
+            "record", "chr1", 1000, "chr1", 1100,
+            GATKSVVCFConstants.StructuralVariantAnnotationType.BND);
+        final List<String> result = engine.getMatches(twoBreakpointRecord, 0.5, 0, 1).stream()
+            .map(SVStratificationEngine.Stratum::getName)
+            .collect(Collectors.toList());
+        Assert.assertEquals(result, Collections.singletonList("BND_breakpoint_override"));
+        }
 
     @DataProvider(name="testGetMatchVariantsData")
     public Object[][] testGetMatchVariantsData() {
@@ -260,6 +335,38 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
         final List<String> names = result.stream().map(SVStratificationEngine.Stratum::getName).collect(Collectors.toList());
         Assert.assertEquals(names.size(), 1);
         Assert.assertEquals(names.get(0), "strat1");
+    }
+
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testAddStratificationBadTrackOverlapFraction() {
+        final SVStratificationEngine engine = makeDefaultEngine();
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        engine.addStratification("strat", GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                50, 500, Collections.singleton(CONTEXT_1_NAME), 1.1, null);
+    }
+
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testAddStratificationBadTrackNumBreakpoints() {
+        final SVStratificationEngine engine = makeDefaultEngine();
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        engine.addStratification("strat", GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                50, 500, Collections.singleton(CONTEXT_1_NAME), null, 3);
+    }
+
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testAddStratificationBadTrackNumBreakpointsInterchrom() {
+        final SVStratificationEngine engine = makeDefaultEngine();
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        engine.addStratification("strat", GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
+                null, null, Collections.singleton(CONTEXT_1_NAME), null, 0);
+    }
+
+    @Test(expectedExceptions = IllegalStateException.class)
+    public void testAddStratificationTrackThresholdsBothZero() {
+        final SVStratificationEngine engine = makeDefaultEngine();
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        engine.addStratification("strat", GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                50, 500, Collections.singleton(CONTEXT_1_NAME), 0.0, 0);
     }
 
     @Test
@@ -493,6 +600,40 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
                 0.5, 2, numBreakpointOverlapsInterchrom), expected);
     }
 
+        @Test
+        public void testMatchesTracksUsesPerStratumOverlapFractionOverride() {
+        final SVStratificationEngine engine = makeDefaultEngine();
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        final SVStratificationEngine.Stratum strat = engine.new Stratum(
+            "strat",
+            GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+            null, null,
+            Collections.singleton(CONTEXT_1_NAME),
+            0.75, 0
+        );
+        Assert.assertFalse(strat.matchesTracks(
+            SVTestUtils.newCallRecordWithCoordinatesAndType("record", "chr1", 500, "chr1", 1500,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL),
+            0.5, 0, 1));
+        }
+
+        @Test
+        public void testMatchesTracksUsesPerStratumInterchromBreakpointOverride() {
+        final SVStratificationEngine engine = makeDefaultEngine();
+        engine.addTrack(CONTEXT_1_NAME, CONTEXT_1_INTERVALS);
+        final SVStratificationEngine.Stratum strat = engine.new Stratum(
+            "strat",
+            GATKSVVCFConstants.StructuralVariantAnnotationType.BND,
+            null, null,
+            Collections.singleton(CONTEXT_1_NAME),
+            null, 2
+        );
+        Assert.assertFalse(strat.matchesTracks(
+            SVTestUtils.newCallRecordWithCoordinatesAndType("record", "chr1", 1000, "chr2", 500,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.BND),
+            0.5, 0, 1));
+        }
+
     @DataProvider(name="testCountAnyContextOverlapData")
     public Object[][] testCountAnyContextOverlapData() {
         return new Object[][] {
@@ -550,5 +691,7 @@ public class SVStratificationEngineUnitTest extends GATKBaseTest {
         Assert.assertEquals(strat.getMinSize(), Integer.valueOf(50));
         Assert.assertEquals(strat.getMaxSize(), Integer.valueOf(500));
         Assert.assertEquals(strat.getName(), "strat");
+        Assert.assertNull(strat.getTrackOverlapFraction());
+        Assert.assertNull(strat.getTrackNumBreakpoints());
     }
 }

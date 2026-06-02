@@ -32,7 +32,14 @@ public class SVStratificationEngine {
     public static final String MIN_SIZE_COLUMN = "MIN_SIZE";
     public static final String MAX_SIZE_COLUMN = "MAX_SIZE";
     public static final String TRACK_COLUMN = "TRACKS";
-    protected static final Set<String> COLUMN_NAMES = ImmutableSet.of(NAME_COLUMN, SVTYPE_COLUMN, MIN_SIZE_COLUMN, MAX_SIZE_COLUMN, TRACK_COLUMN);
+        public static final String TRACK_OVERLAP_FRACTION_COLUMN = "TRACK_OVERLAP_FRACTION";
+        public static final String TRACK_NUM_BREAKPOINTS_COLUMN = "TRACK_NUM_BREAKPOINTS";
+        protected static final Set<String> COLUMN_NAMES = ImmutableSet.of(NAME_COLUMN, SVTYPE_COLUMN, MIN_SIZE_COLUMN, MAX_SIZE_COLUMN, TRACK_COLUMN);
+        protected static final Set<String> OPTIONAL_COLUMN_NAMES = ImmutableSet.of(TRACK_OVERLAP_FRACTION_COLUMN, TRACK_NUM_BREAKPOINTS_COLUMN);
+        protected static final Set<String> ALLOWED_COLUMN_NAMES = ImmutableSet.<String>builder()
+            .addAll(COLUMN_NAMES)
+            .addAll(OPTIONAL_COLUMN_NAMES)
+            .build();
     public static final String TRACK_COLUMN_DELIMITER = ",";
 
     public static final Set<String> NULL_TABLE_VALUES = Set.of("-1", "", "NULL", "NA");
@@ -64,7 +71,23 @@ public class SVStratificationEngine {
      */
     public void addStratification(final String name, final GATKSVVCFConstants.StructuralVariantAnnotationType svType,
                                   final Integer minSize, final Integer maxSize, final Set<String> trackNames) {
-        addStratification(new Stratum(name, svType, minSize, maxSize, trackNames));
+        addStratification(name, svType, minSize, maxSize, trackNames, null, null);
+    }
+
+    /**
+     * Adds a new stratification group with optional per-stratum track matching thresholds.
+     * @param name a unique ID
+     * @param svType SV type, may be null
+     * @param minSize minimum size in bp (inclusive), may be null
+     * @param maxSize maximum size in bp (exclusive), may be null
+     * @param trackNames reference track names
+     * @param trackOverlapFraction minimum overlap fraction for the track match, may be null
+     * @param trackNumBreakpoints minimum number of breakpoints in the track for the match, may be null
+     */
+    public void addStratification(final String name, final GATKSVVCFConstants.StructuralVariantAnnotationType svType,
+                                  final Integer minSize, final Integer maxSize, final Set<String> trackNames,
+                                  final Double trackOverlapFraction, final Integer trackNumBreakpoints) {
+        addStratification(new Stratum(name, svType, minSize, maxSize, trackNames, trackOverlapFraction, trackNumBreakpoints));
     }
 
     protected void addStratification(final Stratum stratification) {
@@ -136,9 +159,11 @@ public class SVStratificationEngine {
                 throw exceptionFactory.apply("Missing column " + column);
             }
         }
-        // Check there are no extra columns
-        if (columns.columnCount() != COLUMN_NAMES.size()) {
-            throw exceptionFactory.apply("Expected " + columns.columnCount() + " columns but found " + columns.columnCount());
+        // Check there are no unsupported columns
+        final Set<String> unexpectedColumns = new LinkedHashSet<>(columns.names());
+        unexpectedColumns.removeAll(ALLOWED_COLUMN_NAMES);
+        if (!unexpectedColumns.isEmpty()) {
+            throw exceptionFactory.apply("Unexpected columns " + unexpectedColumns);
         }
         return this::parseTableLine;
     }
@@ -149,7 +174,13 @@ public class SVStratificationEngine {
         final Integer minSize = parseIntegerMaybeNull(dataLine.get(MIN_SIZE_COLUMN));
         final Integer maxSize = parseIntegerMaybeNull(dataLine.get(MAX_SIZE_COLUMN));
         final Set<String> trackNames = parseTrackString(dataLine.get(TRACK_COLUMN));
-        return new Stratum(name, svType, minSize, maxSize, trackNames);
+        final Double trackOverlapFraction = dataLine.columns().contains(TRACK_OVERLAP_FRACTION_COLUMN)
+            ? parseDoubleMaybeNull(dataLine.get(TRACK_OVERLAP_FRACTION_COLUMN))
+            : null;
+        final Integer trackNumBreakpoints = dataLine.columns().contains(TRACK_NUM_BREAKPOINTS_COLUMN)
+            ? parseIntegerMaybeNull(dataLine.get(TRACK_NUM_BREAKPOINTS_COLUMN))
+            : null;
+        return new Stratum(name, svType, minSize, maxSize, trackNames, trackOverlapFraction, trackNumBreakpoints);
     }
 
     protected Set<String> parseTrackString(final String val) {
@@ -174,6 +205,37 @@ public class SVStratificationEngine {
         }
     }
 
+    protected Double parseDoubleMaybeNull(final String val) {
+        if (NULL_TABLE_VALUES.contains(val)) {
+            return null;
+        } else {
+            return Double.valueOf(val);
+        }
+    }
+
+    protected static void validateOverlapFraction(final double overlapFraction) {
+        Utils.validate(overlapFraction >= 0 && overlapFraction <= 1,
+                "Overlap fraction threshold " + overlapFraction + " must be on [0, 1]");
+    }
+
+    protected static void validateBreakpointThreshold(final int numBreakpointOverlaps) {
+        Utils.validate(numBreakpointOverlaps >= 0 && numBreakpointOverlaps <= 2,
+                "Breakpoint overlaps threshold " + numBreakpointOverlaps + " must be 0, 1, or 2");
+    }
+
+    protected static void validateInterchromBreakpointThreshold(final int numBreakpointOverlapsInterchrom) {
+        Utils.validate(numBreakpointOverlapsInterchrom == 1 || numBreakpointOverlapsInterchrom == 2,
+                "Interchromosomal breakpoint overlaps threshold " + numBreakpointOverlapsInterchrom + " must be 1 or 2");
+    }
+
+    protected static void validateIntrachromTrackThresholds(final double overlapFraction,
+                                final int numBreakpointOverlaps) {
+        validateOverlapFraction(overlapFraction);
+        validateBreakpointThreshold(numBreakpointOverlaps);
+        Utils.validate(!(overlapFraction == 0 && numBreakpointOverlaps == 0),
+                "Overlap fraction and overlapping breakpoints thresholds cannot both be 0");
+    }
+
     public Collection<Stratum> getStrata() {
         return strata.values();
     }
@@ -185,9 +247,17 @@ public class SVStratificationEngine {
         final int maxSize;  // exclusive
         final List<String> trackNames;
         final String name;
+        final Double trackOverlapFraction;
+        final Integer trackNumBreakpoints;
 
         Stratum(final String name, final GATKSVVCFConstants.StructuralVariantAnnotationType svType,
                 final Integer minSize, final Integer maxSize, final Set<String> trackNames) {
+            this(name, svType, minSize, maxSize, trackNames, null, null);
+        }
+
+        Stratum(final String name, final GATKSVVCFConstants.StructuralVariantAnnotationType svType,
+                final Integer minSize, final Integer maxSize, final Set<String> trackNames,
+                final Double trackOverlapFraction, final Integer trackNumBreakpoints) {
             this.name = Utils.nonNull(name);
             for (final String trackName : trackNames) {
                 if (trackName != null && !trackMap.containsKey(trackName)) {
@@ -209,6 +279,21 @@ public class SVStratificationEngine {
             if ((svType == GATKSVVCFConstants.StructuralVariantAnnotationType.BND || svType == GATKSVVCFConstants.StructuralVariantAnnotationType.CTX) && (minSize != null || maxSize != null)) {
                 throw new IllegalArgumentException("BND/CTX categories cannot have min or max size (" + name + ")");
             }
+            if (trackOverlapFraction != null) {
+                validateOverlapFraction(trackOverlapFraction);
+            }
+            if (trackNumBreakpoints != null) {
+                if (svType == GATKSVVCFConstants.StructuralVariantAnnotationType.BND || svType == GATKSVVCFConstants.StructuralVariantAnnotationType.CTX) {
+                    validateInterchromBreakpointThreshold(trackNumBreakpoints);
+                } else {
+                    validateBreakpointThreshold(trackNumBreakpoints);
+                }
+            }
+            if (trackOverlapFraction != null && trackNumBreakpoints != null
+                    && svType != GATKSVVCFConstants.StructuralVariantAnnotationType.BND
+                    && svType != GATKSVVCFConstants.StructuralVariantAnnotationType.CTX) {
+                validateIntrachromTrackThresholds(trackOverlapFraction, trackNumBreakpoints);
+            }
             this.svType = svType;
             // Map min from any negative number to negative infinity
             if (minSize == null) {
@@ -223,6 +308,8 @@ public class SVStratificationEngine {
                 this.maxSize = maxSize;
             }
             this.trackNames = trackNames.stream().sorted().collect(Collectors.toList());
+            this.trackOverlapFraction = trackOverlapFraction;
+            this.trackNumBreakpoints = trackNumBreakpoints;
         }
 
         protected boolean matches(final SVCallRecord record, final double overlapFraction,
@@ -257,22 +344,22 @@ public class SVStratificationEngine {
                                      final int numBreakpointOverlaps,
                                      final int numBreakpointOverlapsInterchrom) {
             Utils.nonNull(record);
-            Utils.validate(overlapFraction >= 0 && overlapFraction <= 1,
-                    "Overlap fraction threshold " + overlapFraction + " must be on [0, 1]");
-            Utils.validate(numBreakpointOverlaps >= 0 && numBreakpointOverlaps <= 2,
-                    "Breakpoint overlaps threshold " + numBreakpointOverlaps + " must be 0, 1, or 2");
-            Utils.validate(numBreakpointOverlapsInterchrom == 1 || numBreakpointOverlapsInterchrom == 2,
-                    "Interchromosomal breakpoint overlaps threshold " + numBreakpointOverlapsInterchrom + " must be 1 or 2");
-            Utils.validate(!(overlapFraction == 0 && numBreakpointOverlaps == 0),
-                    "Overlap fraction and overlapping breakpoints thresholds cannot both be 0");
             if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.INS) {
                 // Just require the insertion locus to fall in an interval
                 return matchesTrackBreakpointOverlap(record, 1);
-            } else if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.BND || record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CTX) {
+            }
+
+            final double effectiveOverlapFraction = trackOverlapFraction == null ? overlapFraction : trackOverlapFraction;
+            final int effectiveNumBreakpointOverlaps = trackNumBreakpoints == null ? numBreakpointOverlaps : trackNumBreakpoints;
+
+            if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.BND || record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CTX) {
                 // Interchromosomal variants
-                return matchesTrackBreakpointOverlap(record, numBreakpointOverlapsInterchrom);
+                final int effectiveNumBreakpointOverlapsInterchrom = trackNumBreakpoints == null ? numBreakpointOverlapsInterchrom : trackNumBreakpoints;
+                validateInterchromBreakpointThreshold(effectiveNumBreakpointOverlapsInterchrom);
+                return matchesTrackBreakpointOverlap(record, effectiveNumBreakpointOverlapsInterchrom);
             } else {
-                return matchesTrackIntrachromosomal(record, overlapFraction, numBreakpointOverlaps);
+                validateIntrachromTrackThresholds(effectiveOverlapFraction, effectiveNumBreakpointOverlaps);
+                return matchesTrackIntrachromosomal(record, effectiveOverlapFraction, effectiveNumBreakpointOverlaps);
             }
         }
 
@@ -344,6 +431,14 @@ public class SVStratificationEngine {
 
         public String getName() {
             return name;
+        }
+
+        public Double getTrackOverlapFraction() {
+            return trackOverlapFraction;
+        }
+
+        public Integer getTrackNumBreakpoints() {
+            return trackNumBreakpoints;
         }
     }
 }

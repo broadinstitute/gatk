@@ -626,6 +626,40 @@ public class CanonicalSVLinkageTest extends GATKBaseTest {
         Assert.assertEquals(linkage.areClusterable(cpx1, cpx2).getResult(), expected);
     }
 
+    @Test
+    public void testComplexIntervals() {
+        final SVCallRecord left = new SVCallRecord("cpx1", "chr1", 1000, null,
+                "chr1", 2000, null,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                GATKSVVCFConstants.ComplexVariantSubtype.delINV,
+                Arrays.asList(
+                        new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 1100, 1500)),
+                        new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.INV, new SimpleInterval("chr1", 1600, 1900))
+                ),
+                1000, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+        final SVCallRecord right = new SVCallRecord("cpx2", "chr1", 1100, null,
+                "chr1", 1900, null,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.CPX,
+                GATKSVVCFConstants.ComplexVariantSubtype.delINV,
+                Arrays.asList(
+                        new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, new SimpleInterval("chr1", 1150, 1550)),
+                        new SVCallRecord.ComplexEventInterval(GATKSVVCFConstants.StructuralVariantAnnotationType.INV, new SimpleInterval("chr1", 1650, 1800))
+                ),
+                801, Collections.emptyList(), Collections.singletonList(SVTestUtils.PESR_ALGORITHM),
+                Lists.newArrayList(Allele.REF_N, SVTestUtils.CPX_ALLELE),
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict);
+
+        final CanonicalSVLinkage.CanonicalLinkageResult result = CanonicalSVLinkage.testComplexIntervals(left, right, 0.5, 0.5, 500, 0);
+
+        Assert.assertTrue(result.getResult());
+        Assert.assertEquals(result.getIntervalReciprocalOverlap().length, 2);
+        Assert.assertEquals(result.getIntervalSizeSimilarity().length, 2);
+        Assert.assertEquals(result.getIntervalFirstBreakpointDistance(), new Integer[]{50, 50});
+        Assert.assertEquals(result.getIntervalSecondBreakpointDistance(), new Integer[]{50, 100});
+    }
+
     @DataProvider(name = "testClusterTogetherInsertedComplexData")
     public Object[][] testClusterTogetherInsertedComplexData() {
         return new Object[][]{

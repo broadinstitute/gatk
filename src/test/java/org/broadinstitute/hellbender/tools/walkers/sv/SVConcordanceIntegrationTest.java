@@ -380,9 +380,6 @@ public class SVConcordanceIntegrationTest extends CommandLineProgramTest {
             if (svtype.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.BND.name()) && !outputVariant.getContig().equals(outputVariant.getAttribute(GATKSVVCFConstants.CONTIG2_ATTRIBUTE))) {
                 // interchromosomal BNDs do not have reciprocal overlap or size similarity
                 checkVariantOverlapMetrics(outputVariant, null, null, 0, 0);
-            } else if (svtype.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.CPX.name())) {
-                // Unassigned for CPX types
-                checkVariantOverlapMetrics(outputVariant, null, null, null, null);
             } else {
                 // otherwise we expect a perfect match
                 checkVariantOverlapMetrics(outputVariant, 1., 1., 0, 0);

@@ -658,6 +658,11 @@ public class SVCallRecordUtilsUnitTest {
         SVTestUtils.assertEqualsExceptExcludedAttributes(resultDropAttr, expected, excludedAttributes);
         Assert.assertTrue(resultDropAttr.getAttributes().isEmpty());
 
+                final SVCallRecord resultDropGenotypes = SVCallRecordUtils.create(variant, true, false, SVTestUtils.hg38Dict);
+                final SVCallRecord expectedDropGenotypes = SVCallRecordUtils.copyCallWithNewGenotypes(expected, GenotypesContext.create());
+                SVTestUtils.assertEqualsExceptExcludedAttributes(resultDropGenotypes, expectedDropGenotypes, Collections.emptyList());
+                Assert.assertTrue(resultDropGenotypes.getGenotypes().isEmpty());
+
         final SVCallRecord resultKeepAttr = SVCallRecordUtils.create(variant, true, true, SVTestUtils.hg38Dict);
         SVTestUtils.assertEqualsExceptExcludedAttributes(resultKeepAttr, expected, Collections.emptyList());
     }
