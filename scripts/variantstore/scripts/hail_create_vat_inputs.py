@@ -12,8 +12,8 @@ import create_vat_inputs
 # hard filter bad sites: hard_filter_non_passing_sites()
 # hard filter based on FT flag:
 # get GT, replace_lgt_with_gt(), swap to no-calls: failing_gts_to_no_call()
-# track how many sites have more than 50 alt alleles TODO: we currently aren't tracking this, are we?
-# drop 50+ alternate alleles
+# track how many sites have 100 or more alt alleles TODO: we currently aren't tracking this, are we?
+# drop 100+ alternate alleles
 # calculate the AC, AN, AF, SC, for the full population and for the subpopulations
 # split multi allelic sites to be one variant per row (note that we want to do this after the above calculations)
 # drop all spanning deletions
@@ -64,7 +64,7 @@ def failing_gts_to_no_call(vds):
 
 def remove_too_many_alt_allele_sites(vds):
     """
-     Remove sites with more than 100 alternate alleles
+     Remove sites with 100 or more alternate alleles
     """
     vd = vds.variant_data
     vd_100_aa_cutoff = vd.filter_rows(hl.len(vd.alleles) <= 100)
