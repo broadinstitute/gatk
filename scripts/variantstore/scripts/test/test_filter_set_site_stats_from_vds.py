@@ -1,7 +1,7 @@
 """
 Unit tests for filter_set_site_stats_from_vds.py.
 
-Covers the three behaviours called out by code review:
+Covers the three behaviors called out by code review:
   1. Empty filter sets are rendered as "PASS".
   2. Non-empty filter sets are sorted alphabetically before being joined,
      so the grouping key is canonical regardless of set-iteration order.
@@ -26,7 +26,7 @@ if HAIL_AVAILABLE:
 
 
 def _collect_as_dict(stats_table: 'hl.Table') -> dict:
-    """Materialise a stats Table to a {filter_string: count} Python dict."""
+    """Materialize a stats Table to a {filter_string: count} Python dict."""
     return {row.filters: row.n_sites for row in stats_table.collect()}
 
 
