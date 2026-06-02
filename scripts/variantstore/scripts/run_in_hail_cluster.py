@@ -13,7 +13,7 @@ DEFAULT_MAX_SECONDARY = 200
 
 
 def autoscaling_policy_name(num_workers, max_secondary):
-    """Return a policy name that encodes its configuration, e.g. gvs-spark-autoscaling-w8-s500."""
+    """Return a policy name that encodes its configuration, e.g. gvs-spark-autoscaling-w2-s200."""
     return f"gvs-spark-autoscaling-w{num_workers}-s{max_secondary}"
 
 
@@ -73,7 +73,7 @@ def create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, regi
     for integration tests).  Otherwise the caller-supplied num_primary_workers
     and max_secondary_workers values are used.
 
-    Policy names encode their configuration (e.g. gvs-spark-autoscaling-w8-s500)
+    Policy names encode their configuration (e.g. gvs-spark-autoscaling-w2-s200)
     so that a policy with a given name is written at most once and never
     overwritten with different content.
 
