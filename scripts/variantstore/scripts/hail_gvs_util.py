@@ -1,13 +1,14 @@
 from __future__ import annotations
 
-from google.cloud import storage
+import os
 import re
+
+from google.cloud import storage
 
 try:
     import hail as hl
 except ModuleNotFoundError:
     hl = None
-
 gcs_pattern = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
 
 def gcs_generate_avro_args(bucket, blob_prefix, key):
