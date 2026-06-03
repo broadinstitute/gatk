@@ -1353,7 +1353,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     @Test ( dataProvider = "provideTestForMANESelectMode" )
         void testMANESelectTranscriptSelectionCriteria(final VariantContext variant, final List<GencodeGtfTranscriptFeature> inputTranscripts, final List<GencodeGtfTranscriptFeature> expectedTranscripts) {
-        final List<GencodeGtfTranscriptFeature> selectedTranscripts = GencodeFuncotationFactory.retrieveMANESelectModeTranscriptsCriteria(variant, inputTranscripts);
+        final List<GencodeGtfTranscriptFeature> selectedTranscripts = GencodeFuncotationFactory.retrieveMANEAndBasicTranscripts(variant, inputTranscripts);
         Assert.assertEquals(selectedTranscripts.size(), expectedTranscripts.size());
         for (int i = 0; i < selectedTranscripts.size(); i++) {
             Assert.assertEquals(selectedTranscripts.get(i), expectedTranscripts.get(i));

@@ -638,7 +638,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
      * @return List of MANE and/or basic transcripts
      */
     @VisibleForTesting
-    static List<GencodeGtfTranscriptFeature> retrieveMANESelectModeTranscriptsCriteria(final VariantContext variant, final List<GencodeGtfTranscriptFeature> transcripts) {
+    static List<GencodeGtfTranscriptFeature> retrieveMANEAndBasicTranscripts(final VariantContext variant, final List<GencodeGtfTranscriptFeature> transcripts) {
         final List<GencodeGtfTranscriptFeature> maneSelectAndPlusClinical = transcripts.stream().filter(g -> (hasTag(g, MANE_SELECT) || hasTag(g, MANE_PLUS_CLINICAL)) && g.contains(variant)).toList();
 
         List<GencodeGtfTranscriptFeature> transcriptsToReturn = transcripts.stream().filter(GencodeFuncotationFactory::isBasic).collect(Collectors.toList());
@@ -885,7 +885,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
 
         if(gtfFeature.getGtfSourceFileType().equals(GencodeGtfCodec.GTF_FILE_TYPE_STRING)) {
             if(preferMANETranscripts) {
-                transcriptList = retrieveMANESelectModeTranscriptsCriteria(variant, gtfFeature.getTranscripts());
+                transcriptList = retrieveMANEAndBasicTranscripts(variant, gtfFeature.getTranscripts());
             }
             else {
                 transcriptList = retrieveBasicTranscripts(gtfFeature);
@@ -896,7 +896,7 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
             // We still want to be able to use MANE transcripts with the hg19 data source, hence the condition below
             if(preferMANETranscripts && gtfFeature.getGtfSourceFileType().equals(EnsemblGtfCodec.GTF_FILE_TYPE_STRING))
             {
-                transcriptList = retrieveMANESelectModeTranscriptsCriteria(variant, gtfFeature.getTranscripts());
+                transcriptList = retrieveMANEAndBasicTranscripts(variant, gtfFeature.getTranscripts());
             }
             else {
                 transcriptList = gtfFeature.getTranscripts();
