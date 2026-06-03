@@ -677,7 +677,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         rm sites_only.bcf
 
         echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
-        ## note that normalization may create sites with more than 50 alt alleles
+        ## note that normalization may create sites with 100 or more alt alleles
         bcftools norm --threads 4 -m- --check-ref w -f ~{ref} filtered_sites_only.bcf -O b -o normalized.bcf
         rm filtered_sites_only.bcf
 
