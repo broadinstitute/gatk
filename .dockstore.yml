@@ -203,6 +203,14 @@ workflows:
          - FoxtrotRelease_20260603_01
        tags:
          - /.*/
+   - name: ClinVarExtractCallsetPgen
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgen.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - FoxtrotRelease_20260603_01
    - name: GvsExtractCallsetShard30603
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
