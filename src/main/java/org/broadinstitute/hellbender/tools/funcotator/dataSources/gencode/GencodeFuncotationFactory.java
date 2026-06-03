@@ -631,11 +631,11 @@ public class GencodeFuncotationFactory extends DataSourceFuncotationFactory {
     }
 
     /**
-     * It is observed that for some variants, MANE_Plus_Clinical transcript(s) are non-coding while the MANE_Select transcript is coding.
-     * Reverse might also be true, therefore we've decided to return all MANE transcripts that contain the variant and let the base Funcotator selection criteria do the rest.
-     * If there are no MANE transcripts covering the current variant, then we default to basic transcripts.
-     * @param transcripts of gencode transcripts to possibly filter
-     * @return
+     * Return all MANE transcripts (Select and Plus Clinical) that contain the variant along with the basic transcripts.
+     * Let base Funcotator transcript selection do the rest based on whether MANE is preferred or not.
+     * If there are no MANE transcripts covering the current variant, this would still return the basic transcripts.
+     * @param transcripts of GENCODE transcripts to possibly filter
+     * @return List of MANE and/or basic transcripts
      */
     @VisibleForTesting
     static List<GencodeGtfTranscriptFeature> retrieveMANESelectModeTranscriptsCriteria(final VariantContext variant, final List<GencodeGtfTranscriptFeature> transcripts) {
