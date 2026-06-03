@@ -236,7 +236,10 @@ def main(vds, ancestry_file_location, sites_only_vcf_path):
     final_ht = ht_list[0].union(*ht_list[1:])
 
     # Now that the lineage is broken and the heavy lifting is done, naive_coalesce is safe!
-    final_ht = final_ht.naive_coalesce(25000)
+    # naive_coalesce is documented as a no-op when max_partitions exceeds the current partition
+    # count, but guard explicitly to make the intent clear for small datasets (e.g. integration tests).
+    if final_ht.n_partitions() > 25000:
+        final_ht = final_ht.naive_coalesce(25000)
     write_sites_only_vcf(final_ht, sites_only_vcf_path)
 
 
