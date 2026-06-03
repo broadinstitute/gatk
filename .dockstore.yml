@@ -193,6 +193,16 @@ workflows:
              - ah_var_store
          tags:
              - /.*/
+   - name: ClinVarExtractCallsetVCF
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - FoxtrotRelease_20260603_01
+       tags:
+         - /.*/
    - name: GvsExtractCallsetShard30603
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallset.wdl
