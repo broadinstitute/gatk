@@ -17,11 +17,16 @@ optional Apple-GPU (Metal) acceleration for the deep-learning tools.
 
 ## Status
 
-- [x] **Track A — foundation** (aarch64 detection, build scaffolding, snappy, netlib): builds
-      and unit-tests pass on native arm64 JDK 17 (`os.arch=aarch64`, no Rosetta).
-- [ ] Track B — native library rebuilds (GKL, bwa, fermi-lite, HDF5, GenomicsDB, MUMmer)
-- [ ] Track C — osx-arm64 conda env
-- [ ] Track D — PyTorch MPS for the deep-learning tools
+- [x] **Track A — foundation** (aarch64 detection, build scaffolding, snappy, netlib):
+      `./gradlew installDist` builds and `NativeUtilsUnitTest` passes on native arm64 JDK 17
+      (`os.arch=aarch64`, `sysctl.proc_translated=0`). End-to-end verified: `gatk PrintReads`
+      produced a valid BGZF BAM natively (pure-Java `JdkDeflater` path, no Rosetta).
+- [ ] Track B — native library rebuilds (GKL, bwa, fermi-lite, HDF5, GenomicsDB, MUMmer).
+      *Not started — requires building/forking the upstream native repos (see native-libs.md).*
+- [~] Track C — osx-arm64 conda env: arm64 template added; gradle auto-selects it and generates
+      the arm64 yml. *Not yet created/run end-to-end (requires a full conda solve).*
+- [~] Track D — PyTorch MPS: device auto-selection (CUDA→MPS→CPU) added to nvscorevariants.py
+      and syntax-checked. *Not yet run (requires the conda env + model).*
 
 ## What blocks native arm64 today
 
