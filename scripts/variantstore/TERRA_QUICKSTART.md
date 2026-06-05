@@ -56,6 +56,7 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 
 | Parameter                         | Description |
 | --------------------------------- | ----------- |
+| call_set_identifier               | the unique name used to identify this callset, this should be the same as the `call_set_identifier` from step 2 |
 | dataset_name                      | the name of the dataset you created above  |
 | filter_set_name                   | a unique name to identify this filter set (e.g. `my_demo_filters`); you will want to make note of this for use in step 5 |
 | project_id                        | the name of the google project containing the dataset |
@@ -88,4 +89,4 @@ This is done by running the `GvsExtractCallset` workflow with the following para
 
 ## 1. Your VCF files are ready!
 
-The sharded VCF output files are listed in the `ExtractTask.output_vcf` workflow output, and the associated index files are listed in `ExtractTask.output_vcf_index`.
+The sharded VCF output files are listed in the `output_vcfs` workflow output, and the associated index files are listed in `output_vcf_indexes`.
