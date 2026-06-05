@@ -58,17 +58,28 @@ and the JNI loader to recognize `aarch64`.
 Verify: `BwaMemIndexImageCreator` on a small fasta; an SV smoke test (`FindBreakpointEvidenceSpark`)
 or `FilterAlignmentArtifacts` for fermi-lite.
 
-## GenomicsDB — `org.genomicsdb:genomicsdb`
-**Try a version bump first** — recent releases ship osx-arm64 natives. Only build from source
-(CMake; htslib/protobuf/openssl arm64; protobuf ABI must match `protobuf-java:3.25.5`) if no
-released jar has the arm64 native.
+## GenomicsDB — `org.genomicsdb:genomicsdb:1.5.5` — ALREADY NATIVE (no action)
+The published `1.5.5` jar bundles `libtiledbgenomicsdb.dylib` as a **universal binary
+(x86_64 + arm64)** (`lipo -archs` → `x86_64 arm64`). So GenomicsDB runs natively on Apple
+Silicon with the existing dependency — no rebuild, no version change.
 
-Verify: `GenomicsDBImport` of small GVCFs → `GenotypeGVCFs`.
+Verified on arm64: `GenomicsDBIntegrationTest` — the native lib loads and `GenomicsDBImport`
+runs; the 2 LFS-independent tests pass. (The other 5 fail only because the git-lfs reference
+`human_g1k_v37.20.21.fasta` wasn't pulled — environmental, not a data difference.)
 
-## HDF5 jhdf5 — `org.broadinstitute:hdf5-java-bindings`
-Rebuild `libjhdf5.dylib` + HDF5 C lib for arm64 against a brew/conda arm64 HDF5; pin the HDF5
-version to the `_2.11.0` suffix.
+## HDF5 jhdf5 — `org.broadinstitute:hdf5-java-bindings` — REMAINING GAP (x86-only)
+This is the one native lib not yet rebuilt. The bindings jar bundles a **prebuilt** x86
+`libjhdf5.2.11.0.dylib` (SIS/CISD jhdf5 2.11.0) — the repo has no C sources to recompile, so an
+arm64 build means building **SIS jhdf5 2.11.0 from upstream** against an arm64 HDF5 C library and
+repackaging. Risk: jhdf5 2.11.0 targets an HDF5 1.10/1.12-era C API, while Homebrew's current
+`hdf5` is a much newer 2.x — likely API/ABI mismatch, so a matching older HDF5 (1.10.x/1.12.x)
+must be built for arm64 first. Held at x86 for now (`hdf5Bindings.version` default), so on arm64
+the native fails to load and the **CNV/HDF5 tools** (`CollectReadCounts`, `DenoiseReadCounts`,
+`CreateReadCountPanelOfNormals`, GermlineCNV read-count I/O) do not run natively yet.
 
+Recipe (future): build HDF5 1.10.x/1.12.x for arm64 → build SIS jhdf5 2.11.0 JNI against it →
+replace `org/broadinstitute/hdf5/libjhdf5.2.11.0.dylib` in the jar → install as
+`1.2.0-hdf5_2.11.0-arm64` → `-Dhdf5Bindings.version=1.2.0-hdf5_2.11.0-arm64`.
 Verify: `CollectReadCounts` (writes `.hdf5`) → `DenoiseReadCounts`.
 
 ## MUMmer 4.0.0rc1 (bundled in GATK, not a jar)
