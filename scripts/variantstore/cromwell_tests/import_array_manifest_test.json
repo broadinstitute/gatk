@@ -1,8 +1,0 @@
-{
-  "ImportArrayManifest.extended_manifest_csv":"/home/travis/build/broadinstitute/gatk/src/test/resources/org/broadinstitute/hellbender/tools/variantdb/arrays/tiny_manifest.csv",
-  "ImportArrayManifest.manifest_schema_json":"/home/travis/build/broadinstitute/gatk/scripts/variantstore_wdl/schemas/manifest_schema.json",
-  "ImportArrayManifest.project_id":"broad-dsde-dev",
-  "ImportArrayManifest.dataset_name":"temp_tables",
-  "ImportArrayManifest.table_name": "__TABLE_NAME___probe_id",
-  "ImportArrayManifest.LoadManifest.for_testing_only": "gcloud auth activate-service-account --key-file $GOOGLE_APPLICATION_CREDENTIALS"
-}
