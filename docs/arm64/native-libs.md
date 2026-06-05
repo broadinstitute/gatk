@@ -67,7 +67,20 @@ Verified on arm64: `GenomicsDBIntegrationTest` — the native lib loads and `Gen
 runs; the 2 LFS-independent tests pass. (The other 5 fail only because the git-lfs reference
 `human_g1k_v37.20.21.fasta` wasn't pulled — environmental, not a data difference.)
 
-## HDF5 jhdf5 — `org.broadinstitute:hdf5-java-bindings` — REMAINING GAP (x86-only)
+## HDF5 jhdf5 — `org.broadinstitute:hdf5-java-bindings` — REMAINING GAP (arm64 build attempted, not validated)
+
+**Attempt result (`scripts/arm64/build-hdf5-jni-arm64.sh`):** an arm64 `libjhdf5.2.11.0.dylib` was
+built — HDF5 1.10.11 JNI sources renamed to the `ncsa.hdf.hdf5lib` namespace, compiled against
+arm64 `hdf5@1.10` + `libaec`, with 3 legacy constants (`H5D_CHUNK_BTREE`, `H5F_ACC_DEBUG`,
+`H5F_SCOPE_DOWN`) added. It **loads, resolves all 1249 `ncsa` JNI symbols, and creates HDF5
+files**, but `HDF5LibraryUnitTest` still **fails 10/12**: group-create + flush raise "Inappropriate
+type". Cause: the bundled `jarhdf5-2.11.0.jar` (CISD jhdf5 2.11.0) Java classes were built against
+an **older HDF5 than 1.10.11**, so deprecated-API/enum behavior differs at runtime. So it is NOT
+shipped; default stays x86. **Correct fix:** build the **CISD jhdf5 2.11.0 source against its
+matching HDF5 version** (emits exactly these `ncsa` symbols) and repackage, then validate with
+`HDF5LibraryUnitTest`.
+
+
 This is the one native lib not yet rebuilt. The bindings jar bundles a **prebuilt** x86
 `libjhdf5.2.11.0.dylib` (SIS/CISD jhdf5 2.11.0) — the repo has no C sources to recompile, so an
 arm64 build means building **SIS jhdf5 2.11.0 from upstream** against an arm64 HDF5 C library and
@@ -77,10 +90,36 @@ must be built for arm64 first. Held at x86 for now (`hdf5Bindings.version` defau
 the native fails to load and the **CNV/HDF5 tools** (`CollectReadCounts`, `DenoiseReadCounts`,
 `CreateReadCountPanelOfNormals`, GermlineCNV read-count I/O) do not run natively yet.
 
-Recipe (future): build HDF5 1.10.x/1.12.x for arm64 → build SIS jhdf5 2.11.0 JNI against it →
-replace `org/broadinstitute/hdf5/libjhdf5.2.11.0.dylib` in the jar → install as
-`1.2.0-hdf5_2.11.0-arm64` → `-Dhdf5Bindings.version=1.2.0-hdf5_2.11.0-arm64`.
-Verify: `CollectReadCounts` (writes `.hdf5`) → `DenoiseReadCounts`.
+### Groundwork done + precise blocker
+- The x86 `libjhdf5.2.11.0.dylib` exports **1041 `Java_ncsa_hdf_hdf5lib_*` JNI symbols** with HDF5
+  **statically embedded** (`otool -L` shows no external HDF5 dep). Namespace is the pre-1.10
+  `ncsa.hdf.hdf5lib` (classes live in the bundled `jarhdf5-2.11.0.jar`).
+- An **arm64 HDF5 1.10 is available**: `brew install hdf5@1.10` →
+  `/opt/homebrew/opt/hdf5@1.10/lib/libhdf5.dylib` (arm64).
+- The HDF5 **1.10.11 source ships the JNI implementations** (`java/src/jni/*.c`, **1253**
+  `Java_hdf_hdf5lib_*` functions — a *superset* of the 1041 needed).
+
+### Why it's not a quick swap (the real risk)
+The 1.10.11 JNI uses the **`hdf.hdf5lib`** namespace, not `ncsa.hdf.hdf5lib`, and is a newer API
+than CISD jhdf5 2.11.0. A build therefore needs (a) renaming `hdf_hdf5lib`→`ncsa_hdf_hdf5lib` in
+the JNI function names, and (b) **matching each function's JNI signature** to what
+`jarhdf5-2.11.0.jar` declares — any drift surfaces only at runtime (UnsatisfiedLinkError or a
+crash) when a CNV tool calls that specific `H5*` function. So it must be built signature-matched
+(generate headers via `javac -h` from the jar's `ncsa.hdf.hdf5lib` classes, map to the 1.10.11
+`.c` bodies) and **validated** before shipping.
+
+### Recipe (to complete + validate)
+1. `brew install hdf5@1.10` (done).
+2. `javac -h` the `ncsa.hdf.hdf5lib.*` classes from `jarhdf5-2.11.0.jar` → exact JNI headers.
+3. Take HDF5 1.10.11 `java/src/jni/*.c`, rename `hdf_hdf5lib`→`ncsa_hdf_hdf5lib`, compile against
+   `hdf5@1.10` + the generated headers → `libjhdf5.2.11.0.dylib` (arm64, statically linking
+   `libhdf5.a`). Resolve any missing/mismatched signatures against the jar.
+4. Replace `org/broadinstitute/hdf5/libjhdf5.2.11.0.dylib` in the jar → install as
+   `1.2.0-hdf5_2.11.0-arm64` → `-Dhdf5Bindings.version=1.2.0-hdf5_2.11.0-arm64`.
+5. **Validate:** `CollectReadCounts` (writes `.hdf5`) → `DenoiseReadCounts`; diff vs x86 output.
+
+Robust alternative: build the **CISD jhdf5 2.11.0** source directly (it produces exactly these
+`ncsa` symbols), then repackage — heavier build but no signature-matching guesswork.
 
 ## MUMmer 4.0.0rc1 (bundled in GATK, not a jar)
 Compile from source on arm64-mac, zip `nucmer`/`delta-filter`/`show-snps` with the same layout
