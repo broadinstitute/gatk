@@ -8,6 +8,26 @@ miniconda and rely on Rosetta. The goal of this effort is to remove that require
 native arm64 JVM, native osx-arm64 Conda environment, NEON-accelerated native libraries, and
 optional Apple-GPU (Metal) acceleration for the deep-learning tools.
 
+## Correctness principle: bit-equivalence is the acceptance gate
+
+Native arm64 results **must be bit-identical to the current (x86) version**. This gives one
+decision rule for every accelerated path:
+
+> Keep a native acceleration (NEON, GPU/MPS) **only if it is bit-identical** to the reference
+> path. Otherwise use the deterministic path — the pure-Java PairHMM / Smith-Waterman, which
+> run natively on arm64 and are architecture-independent, hence inherently bit-equivalent.
+
+Implications:
+- **Deterministic / integer / exact libraries** (bwa-mem, fermi-lite, MUMmer, GenomicsDB, HDF5):
+  bit-equivalence is achievable — same algorithms; `sse2neon` maps the integer SSE ops to NEON.
+  Validated by diffing arm64 output against x86 output on identical input.
+- **Floating-point PairHMM** (Intel GKL AVX): a NEON/SIMDe build is unlikely to be bit-identical
+  to x86 AVX (FMA/reduction ordering). So PairHMM defaults to the bit-equivalent **pure-Java**
+  path; the NEON build is enabled only if it passes a bit-exact check.
+- **Compression** (deflate): compressed *bytes* differ per codec, but decompressed content is
+  identical; bit-equivalence is defined on logical content (reads/variants), not the gzip stream.
+- **GPU/MPS**: enabled only after confirming its output equals the CPU output.
+
 ## Prerequisites (macOS Apple Silicon)
 
 - A **native arm64 JDK 17** (GATK/Gradle require Java 17; the build fails under Java 18+).
