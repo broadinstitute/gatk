@@ -97,10 +97,10 @@ final googleCloudNioVersion = System.getProperty('googleCloudNioVersion','0.127.
 final gklVersion = System.getProperty('gklVersion', useArm64Natives ? '0.9.1-arm64' : '0.9.1')
 final bwaMemJniVersion = System.getProperty('bwaMemJni.version', useArm64Natives ? '1.0.4-arm64' : '1.0.4')
 final fermiLiteJniVersion = System.getProperty('fermiLiteJni.version', useArm64Natives ? '1.2.0-arm64' : '1.2.0')
-// hdf5-java-bindings: holds at the upstream x86 jar for now (the arm64 jhdf5 rebuild, B4, is not
-// yet wired in). On aarch64 the x86 native fails to load; CNV/HDF5 tools need the -arm64 jar once
-// built. Override with -Dhdf5Bindings.version=1.2.0-hdf5_2.11.0-arm64 once it exists in mavenLocal.
-final hdf5BindingsVersion = System.getProperty('hdf5Bindings.version', '1.2.0-hdf5_2.11.0')
+// hdf5-java-bindings: arm64 jhdf5 rebuilt against HDF5 1.8.14 (the version the upstream jar's Java
+// was compiled against) + a variable-length-string H5DwriteString, by scripts/arm64/build-hdf5-jni-arm64.sh.
+// Validated bit-for-bit behavior: HDF5LibraryUnitTest 12/12 + HDF5SimpleCountCollectionUnitTest pass on arm64.
+final hdf5BindingsVersion = System.getProperty('hdf5Bindings.version', useArm64Natives ? '1.2.0-hdf5_2.11.0-arm64' : '1.2.0-hdf5_2.11.0')
 
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'

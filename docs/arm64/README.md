@@ -49,8 +49,9 @@ Implications:
   - [x] **GKL** `0.9.1-arm64` — NEON PairHMM (SIMDe). **Default = speed** (per user); matches x86
         within 1e-5 (NOT bit-identical). Bit-identical Java path via `-DgklVersion=0.9.1`.
   - [x] **GenomicsDB** `1.5.5` — already a universal x86_64+arm64 binary; runs natively, no rebuild.
-  - [ ] **hdf5-java-bindings** (jhdf5) — REMAINING GAP: prebuilt x86-only, needs SIS jhdf5 2.11.0
-        rebuilt against an arm64 HDF5 1.10/1.12 lib. CNV/HDF5 tools not native until then.
+  - [x] **hdf5-java-bindings** `1.2.0-hdf5_2.11.0-arm64` — jhdf5 rebuilt against HDF5 1.8.14 (+ VL
+        `H5DwriteString`); `HDF5LibraryUnitTest` 12/12 + `HDF5SimpleCountCollectionUnitTest` pass.
+        CNV/HDF5 tools now native. **All native deps done.**
   Full native arm64 GATK assembles with `installDist -DuseArm64Natives=true`.
 - [~] Track C — osx-arm64 conda env: arm64 template added; gradle auto-selects it and generates
       the arm64 yml. *Not yet created/run end-to-end (requires a full conda solve).*

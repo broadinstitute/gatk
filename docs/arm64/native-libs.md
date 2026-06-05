@@ -67,18 +67,25 @@ Verified on arm64: `GenomicsDBIntegrationTest` — the native lib loads and `Gen
 runs; the 2 LFS-independent tests pass. (The other 5 fail only because the git-lfs reference
 `human_g1k_v37.20.21.fasta` wasn't pulled — environmental, not a data difference.)
 
-## HDF5 jhdf5 — `org.broadinstitute:hdf5-java-bindings` — REMAINING GAP (arm64 build attempted, not validated)
+## HDF5 jhdf5 — `org.broadinstitute:hdf5-java-bindings` — DONE (`1.2.0-hdf5_2.11.0-arm64`)
 
-**Attempt result (`scripts/arm64/build-hdf5-jni-arm64.sh`):** an arm64 `libjhdf5.2.11.0.dylib` was
-built — HDF5 1.10.11 JNI sources renamed to the `ncsa.hdf.hdf5lib` namespace, compiled against
-arm64 `hdf5@1.10` + `libaec`, with 3 legacy constants (`H5D_CHUNK_BTREE`, `H5F_ACC_DEBUG`,
-`H5F_SCOPE_DOWN`) added. It **loads, resolves all 1249 `ncsa` JNI symbols, and creates HDF5
-files**, but `HDF5LibraryUnitTest` still **fails 10/12**: group-create + flush raise "Inappropriate
-type". Cause: the bundled `jarhdf5-2.11.0.jar` (CISD jhdf5 2.11.0) Java classes were built against
-an **older HDF5 than 1.10.11**, so deprecated-API/enum behavior differs at runtime. So it is NOT
-shipped; default stays x86. **Correct fix:** build the **CISD jhdf5 2.11.0 source against its
-matching HDF5 version** (emits exactly these `ncsa` symbols) and repackage, then validate with
-`HDF5LibraryUnitTest`.
+**Fixed and validated** (`scripts/arm64/build-hdf5-jni-arm64.sh`). The key was the HDF5 version:
+the upstream jar's `ncsa.hdf.hdf5lib` Java was built against **HDF5 1.8.14** (read from the x86
+dylib: `strings ... | grep "HDF5 Version"` → `1.8.14`). Building against 1.10.x produced runtime
+"Bad value"/"Inappropriate type" errors (the 1.8→1.10 API/enum drift). The working build:
+
+1. compile **HDF5 1.8.14** as a static arm64 C lib;
+2. take the HDF5 1.10.11 Java JNI `.c` (only modern copy), rename `hdf.hdf5lib`→`ncsa.hdf.hdf5lib`;
+3. add HD* macros and map the 1.10 `*2` object/reference APIs to their 1.8 forms;
+4. keep ONLY the JNI functions the x86 jar exports (drop 1.10-only extras);
+5. add a **variable-length-string `H5DwriteString`** (GATK writes VL strings via
+   `H5Tset_size(type, H5T_VARIABLE)`; it's the one jar function the 1.10 source lacks — a flat
+   buffer segfaults in `H5T_convert`, so it must build a `char**` pointer array);
+6. compile against 1.8.14 and link statically → self-contained `libjhdf5.2.11.0.dylib` (arm64).
+
+Validated on arm64: **`HDF5LibraryUnitTest` 12/12** and **`HDF5SimpleCountCollectionUnitTest`**
+pass (also via `-DuseArm64Natives`). CNV/HDF5 tools (`CollectReadCounts`, `DenoiseReadCounts`,
+`CreateReadCountPanelOfNormals`, germline-CNV read-count I/O) now run natively on Apple Silicon.
 
 
 This is the one native lib not yet rebuilt. The bindings jar bundles a **prebuilt** x86
