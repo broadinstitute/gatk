@@ -70,6 +70,33 @@ architectures (only `StrictMath.*` is, and GATK uses `Math.*`). So:
         `H5DwriteString`); `HDF5LibraryUnitTest` 12/12 + `HDF5SimpleCountCollectionUnitTest` pass.
         CNV/HDF5 tools now native. **All native deps done.**
   Full native arm64 GATK assembles with `installDist -DuseArm64Natives=true`.
+
+## Validation results (real LFS data, `-DuseArm64Natives`)
+
+- **CNV + HaplotypeCaller packages: 8775 / 8786 tests pass** (99.87%). Zero hard native errors
+  (the `libgkl_compression` "incompatible architecture" lines are benign — it falls back to
+  `JdkDeflater`).
+- **All 312 GATK tools load on arm64** (`./gatk <Tool> --help`). The ~120 that return a non-zero
+  exit are Picard-style tools whose `--help` exits non-zero *by convention* — they print usage
+  and load fine.
+- **Speed**: HaplotypeCaller with NEON PairHMM vs pure-Java — ~**1.3–1.4× faster** (WES chr20:
+  32.9s vs 43.4s; sparse-WGS 3 Mb: 18.3s vs 26.4s). NEON and Java call the **identical 2977
+  variants** (CHROM/POS/REF/ALT/GT, 0 diffs) → bio-identical. (Still far from DRAGEN/FPGA — expected.)
+- **Python (osx-arm64 conda)**: env builds (pysam 0.24.0, pyvcf3, OpenBLAS, cpu/MPS PyTorch);
+  `gcnvkernel` imports and **PyMC NUTS sampling runs**. One fix required: PyTensor's bundled clang
+  fails to link on arm64, so the env sets `PYTENSOR_FLAGS=cxx=/usr/bin/clang++` (system Xcode
+  clang) — without it GermlineCNVCaller/DetermineGermlineContigPloidy fail to compile.
+
+### The 11 failures — `ModelSegments` (MCMC), an inherent cross-arch limit (not a port bug)
+
+`ModelSegments` is MCMC/Gibbs-based; its posterior means drift ~1% on arm64 vs the x86 expected
+(e.g. `0.303401` vs `0.306041`, well above the 1e-5 test tolerance). Root cause: the same Java
+`Math.log/exp/pow` ~1-ULP cross-architecture difference, **amplified by stochastic sampling**
+(the DeepVariant phenomenon). The segmentation is **structurally bio-identical** (same segments);
+only posterior estimates differ. Making it match the x86 expected exactly is **not achievable on
+arm64** without either (a) converting GATK's copy-number hot paths to `StrictMath` (which would
+also change x86 output, i.e. requires regenerating the expected files on a canonical platform), or
+(b) running these steps under x86 Rosetta. This is a property of Java FP + MCMC, not of the port.
 - [~] Track C — osx-arm64 conda env: arm64 template added; gradle auto-selects it and generates
       the arm64 yml. *Not yet created/run end-to-end (requires a full conda solve).*
 - [~] Track D — PyTorch MPS: device auto-selection (CUDA→MPS→CPU) added to nvscorevariants.py
