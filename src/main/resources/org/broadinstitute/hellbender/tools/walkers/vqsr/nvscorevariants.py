@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import argparse
+import os
 import torch
 import sys
 import pytorch_lightning as pl
@@ -10,6 +11,26 @@ from scorevariants.dataset import ReferenceDataset
 from scorevariants.readers import TensorReader, ReferenceTensorReader
 from scorevariants.models.wrapper import LightningWrapper
 from scorevariants.create_output_vcf import create_output_vcf
+
+def resolve_accelerator(requested):
+    """Resolve the hardware accelerator to use for inference.
+
+    With the default 'auto', prefer an NVIDIA GPU (cuda), then the Apple GPU via Metal (mps,
+    available on Apple Silicon), then fall back to cpu. An explicitly requested accelerator is
+    honored as-is. When mps is selected we enable PYTORCH_ENABLE_MPS_FALLBACK so the few ops not
+    yet implemented in the Metal backend transparently fall back to the CPU instead of erroring.
+    """
+    accelerator = requested
+    if requested == 'auto':
+        if torch.cuda.is_available():
+            accelerator = 'cuda'
+        elif getattr(torch.backends, 'mps', None) is not None and torch.backends.mps.is_available():
+            accelerator = 'mps'
+        else:
+            accelerator = 'cpu'
+    if accelerator == 'mps':
+        os.environ.setdefault('PYTORCH_ENABLE_MPS_FALLBACK', '1')
+    return accelerator
 
 def get_model(args, model_file):
     """
@@ -54,7 +75,9 @@ def main():
     else:
         sys.exit('Unknown tensor type!')
     model = get_model(args, model_file)
-    trainer = pl.Trainer(gradient_clip_val=1.0, accelerator=args.accelerator)
+    accelerator = resolve_accelerator(args.accelerator)
+    print('Using hardware accelerator: {}'.format(accelerator), file=sys.stderr)
+    trainer = pl.Trainer(gradient_clip_val=1.0, accelerator=accelerator)
 
     test_dataset = ReferenceDataset(tensor_reader)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size)
