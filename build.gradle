@@ -95,7 +95,9 @@ final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
 final docBuildDir = "$buildDir/docs"
 final pythonPackageArchiveName = 'gatkPythonPackageArchive.zip'
-final gatkCondaTemplate = "gatkcondaenv.yml.template"
+// On aarch64 (Apple Silicon) use the osx-arm64 conda template (no Intel MKL; arm64 PyTorch with
+// Metal/MPS support). The x86 template is unchanged so Docker/linux builds are unaffected.
+final gatkCondaTemplate = System.getProperty('condaTemplate', isAarch64 ? "gatkcondaenv.aarch64.yml.template" : "gatkcondaenv.yml.template")
 final gatkCondaYML = "gatkcondaenv.yml"
 final largeResourcesFolder = "src/main/resources/large"
 final buildPrerequisitesMessage = "See https://github.com/broadinstitute/gatk#building for information on how to build GATK."
