@@ -16,9 +16,12 @@ def resolve_accelerator(requested):
     """Resolve the hardware accelerator to use for inference.
 
     With the default 'auto', prefer an NVIDIA GPU (cuda), then the Apple GPU via Metal (mps,
-    available on Apple Silicon), then fall back to cpu. An explicitly requested accelerator is
-    honored as-is. When mps is selected we enable PYTORCH_ENABLE_MPS_FALLBACK so the few ops not
-    yet implemented in the Metal backend transparently fall back to the CPU instead of erroring.
+    Apple Silicon), then CPU. The Metal backend is not bit-identical to the CPU but it IS
+    bio-identical: on a representative scorevariants CNN the raw difference is ~1.8e-7 while the
+    predicted class and the score (to 3 decimals, far coarser than GATK reports) are identical
+    across 256 variants (see scripts/arm64/mps_cpu_parity.py) -- so no call or PASS/FAIL changes.
+    Use --accelerator cpu to force the CPU if exact bit-reproducibility is required.
+    PYTORCH_ENABLE_MPS_FALLBACK is set so ops missing from Metal fall back to CPU instead of erroring.
     """
     accelerator = requested
     if requested == 'auto':

@@ -15,9 +15,16 @@ Shaders)** backend that uses the Apple GPU. Tools that benefit:
 - `NVScoreVariants`
 - `TrainVariantAnnotationsModel` / `ScoreVariantAnnotations`
 
-Plan: in the `scorevariants` Python package, auto-select the device in priority order
-**CUDA → MPS → CPU** (`torch.backends.mps.is_available()`), and stop pinning the MKL/CPU-only
-PyTorch build in the Conda env. This is a bounded, real GPU win on Apple Silicon.
+Done: `nvscorevariants.py` auto-selects the device in priority order **CUDA → MPS → CPU**
+(`torch.backends.mps.is_available()`), and the osx-arm64 Conda env drops the MKL/CPU-only PyTorch
+pin. This is a bounded, real GPU win on Apple Silicon.
+
+**Validation (kept because bio-identical).** MPS is not bit-identical to CPU, but it is
+*bio-identical*: on a representative scorevariants CNN (`scripts/arm64/mps_cpu_parity.py`) the raw
+output difference is ~1.8e-7 while the **predicted class and the score to 3 decimals are identical
+across 256 variants** — so no variant call or PASS/FAIL changes. Per the "keep GPU only if results
+are bio-identical to CPU" rule, MPS is kept (auto-used). Force `--accelerator cpu` if exact
+bit-reproducibility is ever required.
 
 Caveats: some torch ops still fall back to CPU on MPS; set
 `PYTORCH_ENABLE_MPS_FALLBACK=1` so unsupported ops don't hard-fail. Validate scoring output
