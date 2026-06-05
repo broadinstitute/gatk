@@ -8,6 +8,21 @@ miniconda and rely on Rosetta. The goal of this effort is to remove that require
 native arm64 JVM, native osx-arm64 Conda environment, NEON-accelerated native libraries, and
 optional Apple-GPU (Metal) acceleration for the deep-learning tools.
 
+## Prerequisites (macOS Apple Silicon)
+
+- A **native arm64 JDK 17** (GATK/Gradle require Java 17; the build fails under Java 18+).
+  e.g. `brew install openjdk@17`, then point Gradle at it:
+  `export JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home`.
+  Confirm `java -XshowSettings:properties 2>&1 | grep os.arch` → `aarch64`.
+
+## Status
+
+- [x] **Track A — foundation** (aarch64 detection, build scaffolding, snappy, netlib): builds
+      and unit-tests pass on native arm64 JDK 17 (`os.arch=aarch64`, no Rosetta).
+- [ ] Track B — native library rebuilds (GKL, bwa, fermi-lite, HDF5, GenomicsDB, MUMmer)
+- [ ] Track C — osx-arm64 conda env
+- [ ] Track D — PyTorch MPS for the deep-learning tools
+
 ## What blocks native arm64 today
 
 | Dependency | Kind | arm64 status | Has Java fallback? |
