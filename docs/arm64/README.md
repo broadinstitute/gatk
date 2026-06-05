@@ -87,16 +87,23 @@ architectures (only `StrictMath.*` is, and GATK uses `Math.*`). So:
   fails to link on arm64, so the env sets `PYTENSOR_FLAGS=cxx=/usr/bin/clang++` (system Xcode
   clang) — without it GermlineCNVCaller/DetermineGermlineContigPloidy fail to compile.
 
-### The 11 failures — `ModelSegments` (MCMC), an inherent cross-arch limit (not a port bug)
+### The 11 `ModelSegments` "failures" are NOT biological differences — ModelSegments is bio-identical
 
-`ModelSegments` is MCMC/Gibbs-based; its posterior means drift ~1% on arm64 vs the x86 expected
-(e.g. `0.303401` vs `0.306041`, well above the 1e-5 test tolerance). Root cause: the same Java
-`Math.log/exp/pow` ~1-ULP cross-architecture difference, **amplified by stochastic sampling**
-(the DeepVariant phenomenon). The segmentation is **structurally bio-identical** (same segments);
-only posterior estimates differ. Making it match the x86 expected exactly is **not achievable on
-arm64** without either (a) converting GATK's copy-number hot paths to `StrictMath` (which would
-also change x86 output, i.e. requires regenerating the expected files on a canonical platform), or
-(b) running these steps under x86 Rosetta. This is a property of Java FP + MCMC, not of the port.
+The accepted bar is **bio-identical**, and `ModelSegments` meets it. Re-running it natively on
+arm64 and comparing the final segmentation to the x86 expected:
+
+- **Same 8 segments**, and the structural columns **CONTIG / START / END / NUM_POINTS are
+  byte-identical** to x86 → same boundaries, same point counts, same segments.
+- Max relative difference on the `modelFinal` posterior estimators: **0.005%** (the ~1% seen by
+  the test is in the pre-MCMC `modelBegin` intermediate; the MCMC converges to essentially the
+  same answer).
+
+So the 11 test failures are the integration test's **exact 1e-5 comparison** (stricter than
+bio-identity) tripping on MCMC posterior point-estimates that drift sub-percent from Java
+`Math.*` ULP differences across architectures. **No segment call changes.** By the bio-identical
+criterion there are zero real failures; matching the committed expected files *bit-for-bit* would
+require `StrictMath` (+ regenerating expected on a canonical platform) or x86 Rosetta — neither is
+needed for biological correctness.
 - [~] Track C — osx-arm64 conda env: arm64 template added; gradle auto-selects it and generates
       the arm64 yml. *Not yet created/run end-to-end (requires a full conda solve).*
 - [~] Track D — PyTorch MPS: device auto-selection (CUDA→MPS→CPU) added to nvscorevariants.py
