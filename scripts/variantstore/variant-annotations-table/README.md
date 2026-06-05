@@ -42,7 +42,7 @@ There are several temporary tables that are created in addition to the main VAT 
 Variants may be filtered out of the VAT (that were in the VDS) for the following reasons:
 
 - they are hard-filtered out based on the initial soft filtering from the GVS extract (site- and GT-level filtering)
-- they have excess alternate alleles, currently that cut off is 50 alternate alleles
+- they have excess alternate alleles, currently this filters out sites with >= 100 alternate alleles
 - they are spanning deletions
 - they are duplicate variants; they are tracked via the `GvsCreateVATfromVDS` workflow's scattered `RemoveDuplicatesFromSitesOnlyVCF` task and then merged into one file by the `MergeTsvs` task
 
