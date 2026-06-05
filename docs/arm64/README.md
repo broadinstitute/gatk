@@ -41,8 +41,16 @@ Implications:
       `./gradlew installDist` builds and `NativeUtilsUnitTest` passes on native arm64 JDK 17
       (`os.arch=aarch64`, `sysctl.proc_translated=0`). End-to-end verified: `gatk PrintReads`
       produced a valid BGZF BAM natively (pure-Java `JdkDeflater` path, no Rosetta).
-- [ ] Track B — native library rebuilds (GKL, bwa, fermi-lite, HDF5, GenomicsDB, MUMmer).
-      *Not started — requires building/forking the upstream native repos (see native-libs.md).*
+- [~] **Track B — native library rebuilds** (scripts in `scripts/arm64/`, jars in mavenLocal,
+      enabled with `-DuseArm64Natives=true`):
+  - [x] **MUMmer** — bundled arm64 binaries, bit-identical (`MummerExecutorUnitTest` 4/4).
+  - [x] **gatk-bwamem-jni** `1.0.4-arm64` (sse2neon) — bit-identical alignments (7/7).
+  - [x] **gatk-fermilite-jni** `1.2.0-arm64` (sse2neon) — bit-identical assembly (2/2).
+  - [x] **GKL** `0.9.1-arm64` — NEON PairHMM (SIMDe). **Default = speed** (per user); matches x86
+        within 1e-5 (NOT bit-identical). Bit-identical Java path via `-DgklVersion=0.9.1`.
+  - [ ] **hdf5-java-bindings** (jhdf5) — pending (held at x86).
+  - [ ] **GenomicsDB** — pending (held at x86).
+  Full native arm64 GATK assembles with `installDist -DuseArm64Natives=true`.
 - [~] Track C — osx-arm64 conda env: arm64 template added; gradle auto-selects it and generates
       the arm64 yml. *Not yet created/run end-to-end (requires a full conda solve).*
 - [~] Track D — PyTorch MPS: device auto-selection (CUDA→MPS→CPU) added to nvscorevariants.py

@@ -86,10 +86,21 @@ final testNGVersion = System.getProperty('testNGVersion', '7.7.0')
 final googleCloudNioVersion = System.getProperty('googleCloudNioVersion','0.127.8')
 // Native (JNI) library versions. On aarch64 with -DuseArm64Natives=true these resolve to the
 // locally-rebuilt "-arm64" fat jars from mavenLocal(); otherwise they use the upstream x86 jars.
+//
+// GKL on aarch64: gkl:0.9.1-arm64 is the NEON PairHMM (AVX kernel lowered to NEON via SIMDe,
+// built by scripts/arm64/build-gkl-arm64.sh). Under -DuseArm64Natives it is the default, for
+// SPEED. NOTE: the vectorized PairHMM (NEON, like x86 AVX) matches the reference within ~1e-5 and
+// is NOT bit-identical to the pure-Java PairHMM. For bit-identical scores, build without
+// -DuseArm64Natives, or force the upstream jar + Java path with -DgklVersion=0.9.1 (then GKL's
+// x86 native fails to load and GATK falls back to the bit-identical Java PairHMM, verified
+// PairHMMUnitTest 25928/25928 on arm64). See docs/arm64/native-libs.md.
 final gklVersion = System.getProperty('gklVersion', useArm64Natives ? '0.9.1-arm64' : '0.9.1')
 final bwaMemJniVersion = System.getProperty('bwaMemJni.version', useArm64Natives ? '1.0.4-arm64' : '1.0.4')
 final fermiLiteJniVersion = System.getProperty('fermiLiteJni.version', useArm64Natives ? '1.2.0-arm64' : '1.2.0')
-final hdf5BindingsVersion = System.getProperty('hdf5Bindings.version', useArm64Natives ? '1.2.0-hdf5_2.11.0-arm64' : '1.2.0-hdf5_2.11.0')
+// hdf5-java-bindings: holds at the upstream x86 jar for now (the arm64 jhdf5 rebuild, B4, is not
+// yet wired in). On aarch64 the x86 native fails to load; CNV/HDF5 tools need the -arm64 jar once
+// built. Override with -Dhdf5Bindings.version=1.2.0-hdf5_2.11.0-arm64 once it exists in mavenLocal.
+final hdf5BindingsVersion = System.getProperty('hdf5Bindings.version', '1.2.0-hdf5_2.11.0')
 
 final baseJarName = 'gatk'
 final secondaryBaseJarName = 'hellbender'
