@@ -22,11 +22,28 @@ Implications:
   bit-equivalence is achievable — same algorithms; `sse2neon` maps the integer SSE ops to NEON.
   Validated by diffing arm64 output against x86 output on identical input.
 - **Floating-point PairHMM** (Intel GKL AVX): a NEON/SIMDe build is unlikely to be bit-identical
-  to x86 AVX (FMA/reduction ordering). So PairHMM defaults to the bit-equivalent **pure-Java**
-  path; the NEON build is enabled only if it passes a bit-exact check.
+  to x86 AVX (FMA/reduction ordering). NEON is enabled by default for SPEED; the bit-equivalent
+  pure-Java path is available via `-DgklVersion=0.9.1`.
 - **Compression** (deflate): compressed *bytes* differ per codec, but decompressed content is
   identical; bit-equivalence is defined on logical content (reads/variants), not the gzip stream.
-- **GPU/MPS**: enabled only after confirming its output equals the CPU output.
+- **GPU/MPS**: enabled only after confirming its output is bio-identical to the CPU output.
+
+### IMPORTANT empirical correction: bit-identical floating-point scores are NOT fully achievable arm64↔x86
+
+Measured on real data (`RampedHaplotypeCallerIntegrationTest`, which compares raw likelihood
+matrices **exactly, no tolerance**): the arm64 output differs from the committed x86 expected at
+the **last ULP** of a double — e.g. `-3.450078543453124` (x86) vs `-3.4500785434531234` (arm64),
+~6e-16. **This happens even with the pure-Java PairHMM** (`-DgklVersion=0.9.1`), so it is **not**
+a NEON artifact. Root cause: Java's `strictfp` only governs `+ - * /`; the transcendental
+`Math.log/exp/pow` GATK uses in its likelihood code are **not** guaranteed identical across CPU
+architectures (only `StrictMath.*` is, and GATK uses `Math.*`). So:
+- **Bio-identical: YES** — these ~1e-16 differences never change a variant call or filter. All CNV
+  tools (CollectReadCounts 6/6, DenoiseReadCounts 48/48, CreateReadCountPanelOfNormals 36/36) pass
+  exactly on arm64; HaplotypeCaller VCF-level tests pass; only the internal exact-likelihood-dump
+  ramp tests (2) show the ULP difference.
+- **Bit-identical to x86: NOT achievable** for the FP caller on arm64 (independent of NEON vs Java)
+  without rewriting GATK's hot paths to `StrictMath` — which would also change x86 output, i.e.
+  redefine the reference. The realistic, correct bar for cross-architecture is **bio-identical**.
 
 ## Prerequisites (macOS Apple Silicon)
 
