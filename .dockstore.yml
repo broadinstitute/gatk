@@ -205,7 +205,7 @@ workflows:
          - /.*/
    - name: ClinVarExtractCallsetPgen
      subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgen.wdl
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsExtractCallsetPgenMerged.wdl
      filters:
        branches:
          - master
