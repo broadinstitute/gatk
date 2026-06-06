@@ -2,7 +2,9 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.NativeUtils;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.Test;
 import org.broadinstitute.hellbender.tools.walkers.variantrecalling.FlowTestConstants;
 
@@ -20,6 +22,12 @@ public class FlowBasedAlignmentIntegrationTest extends CommandLineProgramTest {
     }
     @Test
     public void testMatrix() throws IOException {
+        // Compares the flow-based likelihood matrix exactly; these doubles differ by ~1 ULP across
+        // CPU architectures (Java Math.* is not bit-identical across platforms), so the x86-generated
+        // reference does not bit-match on other architectures. Run on x86 only.
+        if (!NativeUtils.runningOn64BitX86Architecture()) {
+            throw new SkipException("Flow-based likelihood matrix is x86-reference-specific (Java Math.* FP differs ~1 ULP across architectures).");
+        }
 
         final File outputDir = createTempDir("testMatrix");
         final File expectedFile = new File(publicTestDir + "/" + FlowTestConstants.FLOW_BASED_ALIGNMENT_DATA_DIR + "/input_jukebox_for_test.expected.alm");
