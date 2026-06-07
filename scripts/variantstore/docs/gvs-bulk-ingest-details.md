@@ -21,7 +21,7 @@ The table below describes the GVS ingest variables:
 | call_set_identifier         | Used to track costs and name the filter model, BigQuery extract tables, and final joint VCF shards. Should begin with a letter, valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String |
 
 
-If the user does not supply all 4 optional inputs, GVS uses a mix of default values and heuristics to determine these parameters.
+If the user does not supply all of the optional inputs, GVS uses a mix of default values and heuristics to determine these parameters.
 The first parameter, `data_table_name`, is the name of the main data table and is usually "sample," which is the default value for the input.
 The second parameter, `sample_id_column_name`, corresponds to the `sample_name` value in the GVS database. Some advanced users prefer to use a custom column. This defaults to the value of `data_table_name` + "_id" which is most likely "sample_id".
 

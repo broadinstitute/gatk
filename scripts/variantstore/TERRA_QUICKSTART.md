@@ -56,7 +56,7 @@ This is done by running the `GvsCreateFilterSet` workflow with the following par
 
 | Parameter                         | Description |
 | --------------------------------- | ----------- |
-| call_set_identifier               | the unique name used to identify this callset, this should be the same as the `call_set_identifier` from step 2 |
+| call_set_identifier               | the unique name used to identify this callset, this should be the same as the `call_set_identifier` from the `GvsPopulateAltAllele` step above |
 | dataset_name                      | the name of the dataset you created above  |
 | filter_set_name                   | a unique name to identify this filter set (e.g. `my_demo_filters`); you will want to make note of this for use in step 5 |
 | project_id                        | the name of the google project containing the dataset |
@@ -68,9 +68,9 @@ This is done by running the `GvsPrepareRangesCallset` workflow with the followin
 
 | Parameter            | Description |
 |--------------------- | ----------- |
-| call_set_identifier      | a unique, descriptive name for the callset, this should be the same as the `call_set_identifier` from step 2  |
+| call_set_identifier      | a unique, descriptive name for the callset, this should be the same as the `call_set_identifier` from the `GvsPopulateAltAllele` step above  |
 | dataset_name         | the name of the dataset you created above  |
-| extract_table_prefix | A unique, descriptive name for the tables containing the callset (for simplicity, you can use the same name you used for `filter_set_name` in step 3); you will want to make note of this for use in the next step |
+| extract_table_prefix | A unique, descriptive name for the tables containing the callset (for simplicity, you can use the same name you used for `filter_set_name` in the `GvsCreateFilterSet` step above); you will want to make note of this for use in the next step |
 | project_id           | the name of the google project containing the dataset |
 
 ## 1. Extract Cohort
@@ -83,8 +83,8 @@ This is done by running the `GvsExtractCallset` workflow with the following para
 | Parameter            | Description              |
 | -------------------- | -------------------------|
 | dataset_name         | the name of the dataset you created above  |
-| extract_table_prefix | the unique, descriptive name for the tables containing the callset you chose in step 4  |
-| filter_set_name      | the name of the filter set created in step 3  |
+| extract_table_prefix | the unique, descriptive name for the tables containing the callset you chose in the `GvsPrepareRangesCallset` step above  |
+| filter_set_name      | the name of the filter set created in the `GvsCreateFilterSet` step above  |
 | project_id           | the name of the google project containing the dataset |
 
 ## 1. Your VCF files are ready!
