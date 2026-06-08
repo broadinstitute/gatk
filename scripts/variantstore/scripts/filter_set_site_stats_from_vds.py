@@ -80,8 +80,6 @@ def compute_filter_set_site_stats(
 
     if output_path is not None:
         stats.export(output_path)
-        print(f"Filter-set site statistics written to: {output_path}")
-
     return stats
 
 
