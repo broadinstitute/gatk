@@ -187,6 +187,7 @@ task CountVariantsNewToFoxtrot {
             args = parser.parse_args()
 
             hl.init(tmp_dir=f'{args.temp_path}/hail_tmp_general')
+            hl.default_reference('GRCh38')
 
             new_vds = hl.vds.read_vds(args.new_vds_path)
             old_vds = hl.vds.read_vds(args.old_vds_path)
