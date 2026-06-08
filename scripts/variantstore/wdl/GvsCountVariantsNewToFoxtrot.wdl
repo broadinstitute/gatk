@@ -1,6 +1,6 @@
 version 1.0
 
-# This WDL counts variants present in a "new" VDS but absent from an "old" VDS, running
+# This WDL counts loci present in a "new" VDS but absent from an "old" VDS, running
 # the comparison in Hail on an autoscaling Dataproc cluster.
 import "GvsUtils.wdl" as Utils
 
@@ -31,10 +31,10 @@ workflow GvsCountVariantsNewToFoxtrot {
 
     parameter_meta {
         new_vds_path: {
-            help: "Path to the newer VDS whose novel variants will be counted (e.g. the v9 VDS)."
+            help: "Path to the newer VDS whose novel loci will be counted (e.g. the v9 VDS)."
         }
         old_vds_path: {
-            help: "Path to the older VDS used as the reference set of variants (e.g. the v8 VDS)."
+            help: "Path to the older VDS used as the reference set of loci (e.g. the v8 VDS)."
         }
         cluster_prefix: {
             help: "Prefix of the Dataproc cluster name."
@@ -169,18 +169,18 @@ task CountVariantsNewToFoxtrot {
         fi
 
         # Write the Hail analysis script inline.
-        cat > compare_vds_variants.py << 'PYTHON_SCRIPT'
+        cat > compare_vds_loci.py << 'PYTHON_SCRIPT'
         import argparse
         import hail as hl
 
 
         if __name__ == '__main__':
             parser = argparse.ArgumentParser(allow_abbrev=False,
-                                             description='Count variants present in a "new" VDS but absent from an "old" VDS.')
+                                             description='Count loci present in a "new" VDS but absent from an "old" VDS.')
             parser.add_argument('--new-vds-path', type=str, required=True,
-                                help='Path to the newer VDS whose novel variants will be counted.')
+                                help='Path to the newer VDS whose novel loci will be counted.')
             parser.add_argument('--old-vds-path', type=str, required=True,
-                                help='Path to the older VDS used as the reference set of variants.')
+                                help='Path to the older VDS used as the reference set of loci.')
             parser.add_argument('--temp-path', type=str, required=True,
                                 help='Path to a GCS directory for Hail temporary files.')
 
@@ -192,13 +192,13 @@ task CountVariantsNewToFoxtrot {
             new_vds = hl.vds.read_vds(args.new_vds_path)
             old_vds = hl.vds.read_vds(args.old_vds_path)
 
-            new_variants = new_vds.variant_data.rows().select().key_by('locus')
-            old_variants = old_vds.variant_data.rows().select().key_by('locus')
+            new_loci = new_vds.variant_data.rows().select().key_by('locus')
+            old_loci = old_vds.variant_data.rows().select().key_by('locus')
 
-            new_only = new_variants.anti_join(old_variants)
+            new_only = new_loci.anti_join(old_loci)
             count = new_only.count()
 
-            print(f'Variants in new VDS ({args.new_vds_path}) but not in old VDS ({args.old_vds_path}): {count}')
+            print(f'Loci in new VDS ({args.new_vds_path}) but not in old VDS ({args.old_vds_path}): {count}')
         PYTHON_SCRIPT
 
         # Construct a JSON of arguments for the Python script to be run in the Hail cluster.
@@ -210,10 +210,10 @@ task CountVariantsNewToFoxtrot {
         }
         FIN
 
-        # Run the Hail Python script to compare variants between the two VDSes.
-        # The variant count is printed to the Dataproc job log.
+        # Run the Hail Python script to compare loci between the two VDSes.
+        # The locus count is printed to the Dataproc job log.
         python3 ~{run_in_hail_cluster_script} \
-            --script-path compare_vds_variants.py \
+            --script-path compare_vds_loci.py \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             --region ~{region} \
