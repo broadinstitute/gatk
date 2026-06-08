@@ -25,8 +25,8 @@ public class RefineComplexVariantsIntegrationTest extends CommandLineProgramTest
                 .addVCF(new File(TEST_DIR + "input.subset.vcf.gz"))
                 .add(RefineComplexVariants.BATCH_SAMPLE_LISTS_LONG_NAME, TEST_DIR + "batch_samples.txt")
                 .add(RefineComplexVariants.DISCORDANT_PAIR_FILES_LONG_NAME, TEST_DIR + "evidence.pe.txt.gz")
-                .add(RefineComplexVariants.DEPTH_DEL_BEDS_LONG_NAME, TEST_DIR + "depth.DEL.bed")
-                .add(RefineComplexVariants.DEPTH_DUP_BEDS_LONG_NAME, TEST_DIR + "depth.DUP.bed")
+                .add(RefineComplexVariants.DEPTH_DEL_BEDS_LONG_NAME, TEST_DIR + "depth.DEL.bed.gz")
+                .add(RefineComplexVariants.DEPTH_DUP_BEDS_LONG_NAME, TEST_DIR + "depth.DUP.bed.gz")
                 .addOutput(output);
 
         runCommandLine(args, RefineComplexVariants.class.getSimpleName());

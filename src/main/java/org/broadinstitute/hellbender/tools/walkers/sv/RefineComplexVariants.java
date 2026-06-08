@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
+import htsjdk.tribble.readers.TabixReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
@@ -12,7 +13,6 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFFilterHeaderLine;
 import htsjdk.variant.vcf.VCFHeader;
-import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.BetaFeature;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -52,7 +52,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * Refines complex structural variants and translocations using discordant pair and raw depth evidence.
+ * Refines complex structural variants and translocations using PE and RD evidence
  */
 @CommandLineProgramProperties(
         summary = "Reassess PE and RD support for complex structural variants and translocations",
@@ -148,8 +148,8 @@ public final class RefineComplexVariants extends VariantWalker {
     private SAMSequenceDictionary dictionary;
     private Map<String, Integer> sampleToBatchIndex;
     private List<FeatureDataSource<DiscordantPairEvidence>> discordantPairSources;
-    private List<DepthBatchIndex> delDepthIndexes;
-    private List<DepthBatchIndex> dupDepthIndexes;
+    private List<TabixReader> delDepthReaders;
+    private List<TabixReader> dupDepthReaders;
 
     @Override
     public void onTraversalStart() {
@@ -162,10 +162,10 @@ public final class RefineComplexVariants extends VariantWalker {
         sampleToBatchIndex = loadSampleToBatchIndex(batchSampleLists);
         discordantPairSources = discordantPairFiles.stream()
             .map(path -> new FeatureDataSource<DiscordantPairEvidence>(path.toString(), null,
-                        FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, DiscordantPairEvidence.class))
+                0, DiscordantPairEvidence.class))
                 .collect(Collectors.toList());
-        delDepthIndexes = loadDepthIndexes(depthDelBeds);
-        dupDepthIndexes = loadDepthIndexes(depthDupBeds);
+        delDepthReaders = createEmptyDepthReaderList(depthDelBeds.size());
+        dupDepthReaders = createEmptyDepthReaderList(depthDupBeds.size());
 
         writer = createVCFWriter(outputVcf);
         writer.writeHeader(createHeader(inputHeader));
@@ -253,6 +253,12 @@ public final class RefineComplexVariants extends VariantWalker {
         if (discordantPairSources != null) {
             discordantPairSources.forEach(FeatureDataSource::close);
         }
+        if (delDepthReaders != null) {
+            delDepthReaders.stream().filter(reader -> reader != null).forEach(TabixReader::close);
+        }
+        if (dupDepthReaders != null) {
+            dupDepthReaders.stream().filter(reader -> reader != null).forEach(TabixReader::close);
+        }
     }
 
     private void validateInputs() {
@@ -303,33 +309,76 @@ public final class RefineComplexVariants extends VariantWalker {
         return mapping;
     }
 
-    private List<DepthBatchIndex> loadDepthIndexes(final List<GATKPath> paths) {
-        final List<DepthBatchIndex> indexes = new ArrayList<>(paths.size());
-        for (final GATKPath path : paths) {
-            indexes.add(loadDepthIndex(path));
-        }
-        return indexes;
+    private List<TabixReader> createEmptyDepthReaderList(final int batchCount) {
+        return new ArrayList<>(Collections.nCopies(batchCount, null));
     }
 
-    private DepthBatchIndex loadDepthIndex(final GATKPath path) {
-        final DepthBatchIndex index = new DepthBatchIndex();
-        try (BufferedReader reader = openBufferedReader(path.toString())) {
+    private TabixReader getOrOpenDepthReader(final List<TabixReader> readers,
+                                             final List<GATKPath> paths,
+                                             final int batchIndex,
+                                             final String label) {
+        TabixReader reader = readers.get(batchIndex);
+        if (reader != null) {
+            return reader;
+        }
+
+        final String path = paths.get(batchIndex).toString();
+        try {
+            reader = new TabixReader(path);
+        } catch (final IOException e) {
+            throw new UserException.CouldNotReadInputFile(
+                    path,
+                    "Could not open indexed " + label + " BED file (expected bgzip + .tbi): " + path,
+                    e);
+        }
+        readers.set(batchIndex, reader);
+        return reader;
+    }
+
+    private double queryDepthCoverage(final TabixReader reader,
+                                      final String sample,
+                                      final String contig,
+                                      final int queryStart,
+                                      final int queryEnd,
+                                      final String pathForError) {
+        final int regionStart = Math.max(1, queryStart);
+        final int regionEnd = Math.max(regionStart, queryEnd);
+        final String region = contig + ":" + regionStart + "-" + regionEnd;
+
+        final List<DepthInterval> intervals = new ArrayList<>();
+        try {
+            final TabixReader.Iterator iterator = reader.query(region);
+            if (iterator == null) {
+                return 0.0;
+            }
+
             String line;
-            while ((line = reader.readLine()) != null) {
+            while ((line = iterator.next()) != null) {
                 if (line.isEmpty() || line.charAt(0) == '#') {
                     continue;
                 }
-                final String[] fields = line.split("\t");
+                final String[] fields = line.split("\t", -1);
                 if (fields.length < 5) {
-                    throw new UserException.BadInput("Malformed raw depth BED line in " + path + ": " + line);
+                    throw new UserException.BadInput("Malformed raw depth BED line in " + pathForError + ": " + line);
                 }
-                index.add(fields[4], fields[0], Integer.parseInt(fields[1]), Integer.parseInt(fields[2]));
+                if (!sample.equals(fields[4])) {
+                    continue;
+                }
+
+                final int start = Integer.parseInt(fields[1]);
+                final int end = Integer.parseInt(fields[2]);
+                if (end > queryStart && start < queryEnd) {
+                    intervals.add(new DepthInterval(start, end));
+                }
             }
         } catch (final IOException e) {
-            throw new UserException.CouldNotReadInputFile(path.toString(), e);
+            throw new UserException.CouldNotReadInputFile(pathForError, e);
+        } catch (final NumberFormatException e) {
+            throw new UserException.BadInput("Malformed coordinate in raw depth BED line from " + pathForError, e);
         }
-        index.finish();
-        return index;
+
+        intervals.sort(Comparator.comparingInt(interval -> interval.start));
+        return computeCoverageFraction(intervals, queryStart, queryEnd);
     }
 
     private static BufferedReader openBufferedReader(final String path) throws IOException {
@@ -381,9 +430,7 @@ public final class RefineComplexVariants extends VariantWalker {
             if (evidence.getStart() < query.startMin || evidence.getStart() > query.startMax) {
                 return;
             }
-            // Query bounds were derived from the workflow's awk filters, which compare against
-            // the raw 0-based mate coordinate in the PE table ($5). The codec stores end as
-            // 1-based, so convert back before applying exclusive bounds.
+            // The PE codec stores end as 1-based, so convert back before applying exclusive bounds.
             final int endPositionZeroBased = evidence.getEndPosition() - 1;
             if (endPositionZeroBased <= query.endLowerExclusive || endPositionZeroBased >= query.endUpperExclusive) {
                 return;
@@ -421,14 +468,17 @@ public final class RefineComplexVariants extends VariantWalker {
 
             final List<Boolean> intervalSupport = new ArrayList<>(depthIntervals.size());
             for (final SVSegment interval : depthIntervals) {
-                final DepthBatchIndex index = interval.getIntervalSVType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL
-                        ? delDepthIndexes.get(batchIndex)
-                        : dupDepthIndexes.get(batchIndex);
-                final double coverage = index.coverageFraction(
+                final boolean isDeletion = interval.getIntervalSVType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL;
+                final List<TabixReader> readers = isDeletion ? delDepthReaders : dupDepthReaders;
+                final List<GATKPath> paths = isDeletion ? depthDelBeds : depthDupBeds;
+                final TabixReader reader = getOrOpenDepthReader(readers, paths, batchIndex, isDeletion ? "DEL" : "DUP");
+                final double coverage = queryDepthCoverage(
+                    reader,
                         sample,
                         interval.getContig(),
                         interval.getStart(),
-                        interval.getEnd());
+                    interval.getEnd(),
+                    paths.get(batchIndex).toString());
                 intervalSupport.add(coverage > MIN_DEPTH_COVERAGE);
             }
             support.put(sample, intervalSupport);
@@ -437,7 +487,7 @@ public final class RefineComplexVariants extends VariantWalker {
     }
 
     /**
-     * Collects only the large DEL and DUP intervals that can contribute raw-depth rescue or rejection.
+     * Collects large DEL and DUP intervals from complex events to be evaluated for depth support
      */
     static List<SVSegment> collectLargeDepthIntervals(final VariantContext variant) {
         final List<SVSegment> intervals = new ArrayList<>();
@@ -451,7 +501,7 @@ public final class RefineComplexVariants extends VariantWalker {
     }
 
     private static void addLargeDepthIntervals(final List<String> encodedIntervals, final List<SVSegment> intervals) {
-        for (final SVSegment segment : parseOrderedSegments(encodedIntervals)) {
+        for (final SVSegment segment : SVAnnotateEngine.parseComplexIntervals(encodedIntervals)) {
             final GATKSVVCFConstants.StructuralVariantAnnotationType intervalType = segment.getIntervalSVType();
             if ((intervalType == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL
                     || intervalType == GATKSVVCFConstants.StructuralVariantAnnotationType.DUP)
@@ -462,7 +512,7 @@ public final class RefineComplexVariants extends VariantWalker {
     }
 
     /**
-     * Applies the workflow's carrier decision table using the two PE breakpoints and any large depth intervals.
+     * Adjudicates carrier support based on PE and depth evidence
      */
     static CarrierRefinement evaluateCarrierSupport(final int firstBreakpointCount,
                                                     final int secondBreakpointCount,
@@ -487,7 +537,7 @@ public final class RefineComplexVariants extends VariantWalker {
     }
 
     /**
-     * Rewrites insertion-like records into the CPX representation expected from the original workflow output.
+     * Converts insertions with inverted source to dDUP
      */
     static Allele applyFormattingTransform(final VariantContext variant, final Map<String, Object> attributes) {
         final GATKSVVCFConstants.StructuralVariantAnnotationType variantType =
@@ -512,7 +562,7 @@ public final class RefineComplexVariants extends VariantWalker {
             return null;
         }
 
-        final List<SVSegment> sourceSegments = parseOrderedSegments(source);
+        final List<SVSegment> sourceSegments = SVAnnotateEngine.parseComplexIntervals(Arrays.asList(source));
         final SVSegment inversionSegment = getRequiredSegment(
                 sourceSegments,
                 GATKSVVCFConstants.StructuralVariantAnnotationType.INV,
@@ -543,7 +593,7 @@ public final class RefineComplexVariants extends VariantWalker {
     }
 
     /**
-     * Builds the per-record evidence plan that the workflow uses to re-evaluate carrier genotypes.
+     * Builds the per-record evidence plan to re-evaluate carrier genotypes
      */
     static EvaluationPlan createEvaluationPlan(final VariantContext variant, final SAMSequenceDictionary dictionary) {
         final GATKSVVCFConstants.StructuralVariantAnnotationType svType =
@@ -559,7 +609,7 @@ public final class RefineComplexVariants extends VariantWalker {
         if (svType == GATKSVVCFConstants.StructuralVariantAnnotationType.INS) {
             final String source = variant.getAttributeAsString(SOURCE_ATTRIBUTE, null);
             if (source != null && source.contains("INV")) {
-                return createInsertionWithInversionEvaluationPlan(variant, dictionary, parseOrderedSegments(source));
+                return createInsertionWithInversionEvaluationPlan(variant, dictionary, SVAnnotateEngine.parseComplexIntervals(Arrays.asList(source)));
             }
         }
         return EvaluationPlan.noEvaluation();
@@ -575,7 +625,7 @@ public final class RefineComplexVariants extends VariantWalker {
             return EvaluationPlan.structuralUnresolved(EvaluatedVariantType.CPX);
         }
 
-        final List<SVSegment> complexIntervals = parseOrderedSegments(
+        final List<SVSegment> complexIntervals = SVAnnotateEngine.parseComplexIntervals(
                 variant.getAttributeAsStringList(GATKSVVCFConstants.CPX_INTERVALS, null));
         switch (complexSubtype) {
             case dDUP:
@@ -625,7 +675,7 @@ public final class RefineComplexVariants extends VariantWalker {
     private static EvaluationPlan createInsertionDeletionPlan(final VariantContext variant,
                                                               final List<SVSegment> complexIntervals,
                                                               final SAMSequenceDictionary dictionary) {
-        final List<SVSegment> sourceSegments = parseOrderedSegments(variant.getAttributeAsString(SOURCE_ATTRIBUTE, null));
+        final List<SVSegment> sourceSegments = SVAnnotateEngine.parseComplexIntervals(Arrays.asList(variant.getAttributeAsString(SOURCE_ATTRIBUTE, null)));
         final SVSegment insertedSegment = getRequiredSegment(
                 sourceSegments,
                 GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
@@ -676,8 +726,6 @@ public final class RefineComplexVariants extends VariantWalker {
     private static EvaluationPlan createInversionCnvPlan(final VariantContext variant,
                                                          final GATKSVVCFConstants.ComplexVariantSubtype complexSubtype,
                                                          final List<SVSegment> complexIntervals) {
-        // These CPX subtypes are encoded as an ordered sequence of deletion/duplication/inversion
-        // intervals. The workflow expects two PE signatures derived from that ordered breakpoint list.
         final int[] breakpoints = getInversionCnvBreakpoints(complexIntervals, complexSubtype);
         final String contig = variant.getContig();
         final List<DiscordantPairQuery> queries = new ArrayList<>(2);
@@ -824,9 +872,6 @@ public final class RefineComplexVariants extends VariantWalker {
         final boolean largeSinkInterval = sinkEnd - sinkStart > SMALL_SV_SIZE_THRESHOLD;
         final List<DiscordantPairQuery> queries = new ArrayList<>(2);
 
-        // The workflow distinguishes whether the copied source lies to the right, to the left, or overlaps
-        // the sink interval, and whether the source is inverted. Each topology implies a different pair of
-        // discordant-pair signatures that should support the event.
         if (sinkEnd < sourceStart) {
             if (hasInversion && largeSinkInterval) {
                 queries.add(new DiscordantPairQuery(contig, sinkStart - PE_FLANK_BACK, sinkStart + PE_FLANK_FRONT, true,
@@ -846,9 +891,6 @@ public final class RefineComplexVariants extends VariantWalker {
             } else {
                 queries.add(new DiscordantPairQuery(contig, sinkStart - PE_FLANK_BACK, sinkStart + PE_FLANK_FRONT, true,
                         contig, sinkEnd - PE_FLANK_FRONT, sinkEnd + PE_FLANK_BACK, false));
-                // For small source-right dDUPs, the workflow treats the sink interval as a two-breakpoint
-                // insertion site. The first signature links into the sink itself, while the second links
-                // back out to the duplicated source start.
                 queries.add(new DiscordantPairQuery(contig, sinkStart - PE_FLANK_FRONT, sinkStart + PE_FLANK_BACK, false,
                         contig, sourceStart - PE_FLANK_BACK, sourceStart + PE_FLANK_FRONT, true));
             }
@@ -906,9 +948,6 @@ public final class RefineComplexVariants extends VariantWalker {
         breakpoints.add(firstSegment.getStart());
         breakpoints.add(firstSegment.getEnd());
 
-        // Keep the original interval order from CPX_INTERVALS. The inversion-CNV subtype determines which
-        // later endpoints extend the ordered breakpoint list and whether a duplicated terminal segment adds
-        // an extra start/end pair.
         if (complexSubtype != GATKSVVCFConstants.ComplexVariantSubtype.INVdup) {
             for (int i = 1; i < complexIntervals.size(); i++) {
                 breakpoints.add(complexIntervals.get(i).getEnd());
@@ -986,35 +1025,6 @@ public final class RefineComplexVariants extends VariantWalker {
                                       final String right,
                                       final SAMSequenceDictionary dictionary) {
         return Integer.compare(dictionary.getSequenceIndex(left), dictionary.getSequenceIndex(right));
-    }
-
-    /**
-     * Parses CPX or SOURCE interval strings without reordering them.
-     * SVAnnotateEngine.parseComplexIntervals sorts segments, but the refinement workflow relies on the
-     * original order to derive breakpoint layouts for several complex-subtype templates.
-     */
-    private static List<SVSegment> parseOrderedSegments(final String encodedSegments) {
-        if (StringUtils.isBlank(encodedSegments) || VCFConstants.MISSING_VALUE_v4.equals(encodedSegments)) {
-            return Collections.emptyList();
-        }
-        return parseOrderedSegments(Arrays.asList(encodedSegments.split(",")));
-    }
-
-    private static List<SVSegment> parseOrderedSegments(final List<String> encodedSegments) {
-        final List<SVSegment> segments = new ArrayList<>();
-        for (final String encoded : encodedSegments) {
-            if (StringUtils.isBlank(encoded) || VCFConstants.MISSING_VALUE_v4.equals(encoded)) {
-                continue;
-            }
-            final String[] parsed = encoded.split("_", 2);
-            if (parsed.length != 2) {
-                throw new UserException.BadInput("Malformed complex interval: " + encoded);
-            }
-            final GATKSVVCFConstants.StructuralVariantAnnotationType intervalType =
-                    GATKSVVCFConstants.StructuralVariantAnnotationType.valueOf(parsed[0]);
-            segments.add(new SVSegment(intervalType, new SimpleInterval(parsed[1])));
-        }
-        return segments;
     }
 
     private static SVSegment findFirstSegment(final List<SVSegment> segments,
@@ -1104,36 +1114,6 @@ public final class RefineComplexVariants extends VariantWalker {
         CarrierRefinement(final boolean reviseGenotype, final boolean countTowardsUnresolved) {
             this.reviseGenotype = reviseGenotype;
             this.countTowardsUnresolved = countTowardsUnresolved;
-        }
-    }
-
-    static final class DepthBatchIndex {
-        private final Map<String, Map<String, List<DepthInterval>>> intervalsBySample = new HashMap<>();
-
-        void add(final String sample, final String contig, final int start, final int end) {
-            intervalsBySample
-                    .computeIfAbsent(sample, ignored -> new HashMap<>())
-                    .computeIfAbsent(contig, ignored -> new ArrayList<>())
-                    .add(new DepthInterval(start, end));
-        }
-
-        void finish() {
-            intervalsBySample.values().forEach(byContig ->
-                    byContig.values().forEach(list ->
-                            list.sort(Comparator.comparingInt(interval -> interval.start))));
-        }
-
-        double coverageFraction(final String sample,
-                                final String contig,
-                                final int queryStart,
-                                final int queryEnd) {
-            if (queryEnd <= queryStart) {
-                return 0.0;
-            }
-            final List<DepthInterval> intervals = intervalsBySample
-                    .getOrDefault(sample, Collections.emptyMap())
-                    .getOrDefault(contig, Collections.emptyList());
-            return computeCoverageFraction(intervals, queryStart, queryEnd);
         }
     }
 
