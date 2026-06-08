@@ -65,10 +65,10 @@ of the data here is quite large (gnomAD 4.1 VCFs are ~800 GiB) and could benefit
 1. Download the gnomAD sites-only VCFs (all chromosomes) from: `gs://gcp-public-data--gnomad/release/<version>/vcf/joint/`.
 1. For each file (chromosome) do something like
     ```
-    gunzip $file | grep -v ‘^#' | cut -f 1,2,4,5 | tr $'\t' '-' | sed 's/chr//g'
+    gunzip $file | grep -v '^#' | cut -f 1,2,4,5 | tr $'\t' '-' | sed 's/chr//g'
     ```
-    and put that output into a new file, one per chromosome. This is then a list of the 'vids’ (corresponding to the vids
+    and put that output into a new file, one per chromosome. This is then a list of the 'vids' (corresponding to the vids
     in our VAT) from gnomAD.
 1. Concatenate all the chromosome-specific files together into one large file and load that into BigQuery as a table
-of vids. e.g. `gnomad_vids_<new_version>`.
+    of vids. e.g. `gnomad_vids_<new_version>`.
 1. Execute the above query, replacing `aou-genomics-curation-prod.foxtrot.gnomad_vids` with the new table name.
