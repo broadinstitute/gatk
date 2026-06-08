@@ -1,1 +1,0 @@
-cat $1 | jq -r '.calls["GvsExtractCallset.SplitIntervals"] | .[] | .outputs.interval_files[]'

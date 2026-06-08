@@ -66,6 +66,8 @@ workflow GvsQuickstartVATIntegration {
     call CreateVATFromVDS.GvsCreateVATfromVDS as CreateVATFromVDS {
         input:
             project_id = project_id,
+            use_tiny_dataproc_cluster = true,
+            use_tiny_vep_annotation_load_runtime = true,
             dataset_name = CreateDatasetForTest.dataset_name,
             reference_name = reference_name,
             ancestry_file = ancestry_path,
