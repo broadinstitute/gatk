@@ -1,6 +1,9 @@
 """
 Compute filter-set site statistics from a GVS Hail VDS.
 
+If run with `--skip-non-ref-filter` this should be efficient enough to run in Terra Hail cluster
+with two workers even for AoU-scale VDSes, no massive autoscaling cluster required.
+
 This produces a table equivalent to the following BigQuery query run against
 the filter_set_sites table:
 
@@ -22,7 +25,6 @@ Usage (standalone, e.g. on a Dataproc cluster):
         --vds-path  gs://bucket/path/to/foxtrot_v9_r2.vds \
         --output-path gs://bucket/path/to/filter_site_stats.tsv
 
-Or import and call compute_filter_set_site_stats() directly from a notebook.
 """
 
 import argparse
