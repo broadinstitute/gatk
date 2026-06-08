@@ -116,7 +116,7 @@ If your data is already stored in the cloud, you’ll need to upload a TSV file 
 ---
 
 **Warning:**
-The workflow in the GVS beta workspace assumes the table with samples is called `sample`. If this is not the case for your data, set the `samples_table_name` variable in the inputs to your table name as a string in the format "*TABLE_NAME*".
+The workflow in the GVS beta workspace assumes the table with samples is called `sample`. When running `GvsJointVariantCalling`, the data table must be named `sample`. If you are running `GvsBulkIngestGenomes` directly, you can override this by setting the `data_table_name` parameter to your table name as a string in the format "*TABLE_NAME*".
 
 ---
 
@@ -134,7 +134,7 @@ If your data is living in one or more Terra workspaces, your data can stay in th
 ---
 
 **Warning:**
-The workflow in the GVS beta workspace assumes the table with samples is called `sample`. If this is not the case for your data, set the `samples_table_name` variable in the inputs to your table name as a string in the format "*TABLE_NAME*".
+The workflow in the GVS beta workspace assumes the table with samples is called `sample`. When running `GvsJointVariantCalling`, the data table must be named `sample`. If you are running `GvsBulkIngestGenomes` directly, you can override this by setting the `data_table_name` parameter to your table name as a string in the format "*TABLE_NAME*".
 
 ---
 
@@ -151,7 +151,7 @@ If your data is not stored in the cloud, you’ll need to upload it to your work
 ---
 
 **Warning:**        
-The workflow in the GVS beta workspace assumes the table with samples is called `sample`. If this is not the case for your data, set the `samples_table_name` variable in the inputs to your table name as a string in the format "*TABLE_NAME*".
+The workflow in the GVS beta workspace assumes the table with samples is called `sample`. When running `GvsJointVariantCalling`, the data table must be named `sample`. If you are running `GvsBulkIngestGenomes` directly, you can override this by setting the `data_table_name` parameter to your table name as a string in the format "*TABLE_NAME*".
 
 ---
 4. Follow the steps in [How to use the Data Uploader](https://support.terra.bio/hc/en-us/articles/4419428208411) to **upload your data and TSV file** to Terra.
@@ -175,10 +175,10 @@ You will need to delete the example sample data from your workspace so that it i
    1. **Warning: The workflows will fail without selecting this.**
 4. Choose the workspace created in Step 7 of the Setup instructions in [gvs-quickstart](./gvs-quickstart.md)
 
---- 
+---
 
 **Warning:**        
-The workflow in the GVS beta workspace assumes the table with samples is called `sample`. If this is not the case for your data, set the `samples_table_name` variable in the inputs to your table name as a string in the format "*TABLE_NAME*".
+The workflow in the GVS beta workspace assumes the table with samples is called `sample`. When running `GvsJointVariantCalling`, the data table must be named `sample`. If you are running `GvsBulkIngestGenomes` directly, you can override this by setting the `data_table_name` parameter to your table name as a string in the format "*TABLE_NAME*".
 
 ---
 ## Run the workflow

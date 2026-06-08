@@ -208,8 +208,8 @@ The pipeline takes in the VDS and outputs a variant annotations table in BigQuer
     - Specify the same `call_set_identifier`, `dataset_name`, `project_id`, `extract_table_prefix`, and `interval_list` that were used in the `GvsPrepareRangesCallset` run documented above.
     - Specify the `interval_weights_bed` appropriate for the PGEN / VCF extraction run you are performing. `gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed` is the interval weights BED used for Quickstart.
     - For both `GvsExtractCallset` and `GvsExtractCallsetPgenMerged`, select the workflow option "Retry with more memory" and choose a "Memory retry factor" of 1.5
-    - `GvsExtractCallset` currently defaults to 1000 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped. Specify a `maximum_alternate_alleles` value of 100.
-    - `GvsExtractCallsetPgenMerged` currently defaults to 100 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped. Specify a `max_alt_alleles` value of 100.
+    - `GvsExtractCallset` currently defaults to 100 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped. If a different value is needed, specify it via the `maximum_alternate_alleles` input.
+    - `GvsExtractCallsetPgenMerged` currently defaults to 100 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped. If a different value is needed, specify it via the `max_alt_alleles` input.
     - For both `GvsExtractCallset` and `GvsExtractCallsetPgenMerged`, be sure to set the `output_gcs_dir` to the proper path in the AoU delivery bucket so you don't need to copy them there yourself once the workflows have finished.
     - For `GvsExtractCallset`, you will probably (check the requirements to confirm) want to set the input `bgzip_output_vcfs` to `true`.
     - For `GvsExtractCallset`, make sure to set the `ploidy_table_name` to 'sample_chromosome_ploidy' (the default ploidy table name created during ingest)
