@@ -168,24 +168,7 @@ task CountVariantsNewToFoxtrot {
             hail_temp_path="~{hail_temp_path}"
         fi
 
-        # Set up the autoscaling policy
-        cat > auto-scale-policy.yaml <<FIN
-        workerConfig:
-            minInstances: 2
-            maxInstances: 2
-        secondaryWorkerConfig:
-            maxInstances: 200
-        basicAlgorithm:
-            cooldownPeriod: 120s
-            yarnConfig:
-                scaleUpFactor: 1.0
-                scaleDownFactor: 1.0
-                gracefulDecommissionTimeout: 120s
-        FIN
-        gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{workspace_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
-
-        # Write the Hail analysis script inline. This script is also maintained at
-        # scripts/variantstore/scripts/compare_vds_loci.py in the GVS repository.
+        # Write the Hail analysis script inline.
         cat > compare_vds_loci.py << 'PYTHON_SCRIPT'
         import argparse
         import hail as hl
@@ -232,9 +215,8 @@ task CountVariantsNewToFoxtrot {
             --script-path compare_vds_loci.py \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
-            --autoscaling-policy gvs-autoscaling-policy \
             --region ~{region} \
-            --gcs-project ~{workspace_project} \
+            --workspace-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
