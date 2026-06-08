@@ -102,6 +102,7 @@ workflow GvsCountVariantsNewToFoxtrot {
 
     output {
         String cluster_name = CountVariantsNewToFoxtrot.cluster_name
+        Int novel_variants_count = CountVariantsNewToFoxtrot.novel_variants_count
         Boolean done = true
     }
 }
@@ -183,6 +184,8 @@ task CountVariantsNewToFoxtrot {
                                 help='Path to the older VDS used as the reference set of loci.')
             parser.add_argument('--temp-path', type=str, required=True,
                                 help='Path to a GCS directory for Hail temporary files.')
+            parser.add_argument('--output-count-path', type=str, required=True,
+                                help='Path to a GCS file to write the novel locus count to.')
 
             args = parser.parse_args()
 
@@ -199,6 +202,9 @@ task CountVariantsNewToFoxtrot {
             count = new_only.count()
 
             print(f'Loci in new VDS ({args.new_vds_path}) but not in old VDS ({args.old_vds_path}): {count}')
+
+            with hl.hadoop_open(args.output_count_path, 'w') as out:
+                out.write(str(count) + '\n')
         PYTHON_SCRIPT
 
         # Construct a JSON of arguments for the Python script to be run in the Hail cluster.
@@ -206,7 +212,8 @@ task CountVariantsNewToFoxtrot {
         {
             "new-vds-path": "~{new_vds_path}",
             "old-vds-path": "~{old_vds_path}",
-            "temp-path": "${hail_temp_path}"
+            "temp-path": "${hail_temp_path}",
+            "output-count-path": "${hail_temp_path}/novel_count.txt"
         }
         FIN
 
@@ -223,6 +230,8 @@ task CountVariantsNewToFoxtrot {
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
             ~{'--master-memory-fraction ' + master_memory_fraction} \
             ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
+
+        gsutil cp ${hail_temp_path}/novel_count.txt .
     >>>
 
     runtime {
@@ -236,6 +245,7 @@ task CountVariantsNewToFoxtrot {
 
     output {
         String cluster_name = read_string("cluster_name.txt")
+        Int novel_variants_count = read_int("novel_count.txt")
         Boolean done = true
     }
 }
