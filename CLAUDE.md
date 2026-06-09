@@ -75,6 +75,37 @@ quality scores, while "soft filtered" artifacts include all variants along with
 their quality scores, leaving it to the user's discretion how to handle these
 variants in downstream analysis.
 
+### Rare variant mode
+
+Rare variant mode is an optional operational mode designed to support research
+on rare variants, where reference block depth information is needed to
+distinguish true low-confidence reference calls from missing data. It is
+controlled by a single `rare_variant_mode` boolean flag in the top-level GVS
+workflows, which enables three coordinated behaviors across the pipeline:
+
+1. **Ingest**: The DP (read depth) value from each reference block genotype is
+   stored in the `ref_ranges_%` tables as an optional `dp` column.
+2. **Prepare**: The `dp` column is propagated into the cohort extract tables
+   during `GvsPrepareRangesCallset.wdl`.
+3. **Extract**: DP is emitted in the output VCF for reference genotypes.
+   Additionally, GQ0 reference blocks are emitted as low-confidence reference
+   genotypes rather than as `./. ` no-calls — but only when DP is present (see
+   GQ0 disambiguation below).
+
+**GQ0 disambiguation**: GVS represents true no-calls (positions with missing
+genotype data) as GQ0 reference blocks during ingest. This means that at
+extract time, GQ0 entries can represent either a true low-confidence reference
+block or a no-call. In rare variant mode, the presence of a stored DP value
+disambiguates the two cases: entries with non-null DP are emitted as GQ0
+reference genotypes, while entries with null DP remain as `./. ` no-calls.
+Downstream analyses can use DP presence as a reliable proxy for whether a GQ0
+entry represents a real call. Because of this dependency, `--emit-gq0-ref-blocks`
+is only meaningful on callsets that were ingested with `--include-ref-ranges-dp`;
+the composite `rare_variant_mode` flag ensures both are always enabled together.
+
+See `scripts/variantstore/docs/rare_variant_mode.md` for full operational
+details including caveats and constraints.
+
 # High-Level Architecture (WDLs, BigQuery, Terra)
 
 ## Java Artifacts
@@ -106,11 +137,18 @@ to GVS as documented below.
 
 ### GATK Docker Image
 
-This builds a GATK Docker image based on the GVS branch of the GATK codebase.
-Instructions for building this image can be found in the
-`scripts/variantstore/docs/Build Docker from VM/building_gatk_docker_on_a_vm.md`
-file. An x86 cloud-based VM is used to build this x86 Docker image, which is
-then pushed to the Broad's GAR (Google Artifact Registry) repository.
+GVS uses two GATK Docker images built from the GVS branch of the GATK codebase.
+Instructions for building both images can be found in
+`scripts/variantstore/docs/Build Docker from VM/building_gatk_docker_on_a_vm.md`.
+An x86 cloud-based VM is used to build these x86 Docker images, which are then
+pushed to the Broad's GAR (Google Artifact Registry) repository.
+
+- **`gatk_docker` (lite)**: A minimal image without the Conda/ML stack. Used
+  for the majority of GVS tasks where scientific Python libraries are not needed.
+- **`gatk_heavy_docker` (heavy)**: The full gatkbase image including the
+  Conda/ML stack. Required for VETS scoring and VQSR, which are run by
+  `GvsCreateFilterSet.wdl`. Both images should be kept in sync and are built
+  together by the build script.
 
 ### Variants Docker Image
 
