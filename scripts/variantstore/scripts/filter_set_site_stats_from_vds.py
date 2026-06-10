@@ -46,24 +46,9 @@ def compute_filter_set_site_stats(
     """
     Read a GVS VDS and return a Hail Table with filter-set site statistics.
 
-    Parameters
-    ----------
-    vds_path : str
-        Path to the input VDS (GCS or local).
-    output_path : str, optional
-        If provided, the result table is exported as a TSV to this path.
-    require_non_ref : bool
-        When True (default), restrict counting to sites where at least one
-        sample carries a non-reference genotype.  Set to False only if you
-        know the VDS has already had monomorphic rows stripped (e.g. by
-        remove_samples_from_vds.py).
-
-    Returns
-    -------
-    hl.Table
-        A table with columns ``filters`` (str) and ``n_sites`` (int64),
-        ordered by ``filters``.  Delegates to
-        :func:`filter_stats_from_rows_table` for the core aggregation.
+    When require_non_ref=True (default), only sites carried by at least one
+    non-ref sample are counted — a safety net for sites made monomorphic by
+    withdrawals but not yet pruned from the VDS.
     """
     vds = hl.vds.read_vds(vds_path)
     mt = vds.variant_data
@@ -85,22 +70,10 @@ def compute_filter_set_site_stats(
 
 def filter_stats_from_rows_table(rows: hl.Table) -> hl.Table:
     """
-    Core aggregation logic: given a rows Table with a ``filters: set<str>``
-    field, return a Table of (filters_string, site_count) pairs.
+    Core aggregation: rows Table with a ``filters: set<str>`` field →
+    Table of (filters_string, site_count) pairs.
 
-    This function is separated from the VDS I/O so it can be unit-tested
-    against synthetic Tables without needing a real VDS on disk.
-
-    Parameters
-    ----------
-    rows : hl.Table
-        Must contain a field ``filters`` of type ``set<str>``.
-
-    Returns
-    -------
-    hl.Table
-        Columns ``filters`` (str) and ``n_sites`` (int64), ordered by
-        ``filters``.
+    Separated from VDS I/O so it can be unit-tested without a real VDS on disk.
     """
     # -----------------------------------------------------------------
     # Convert the filters set<str> to a canonical, human-readable string
@@ -130,15 +103,7 @@ def filter_stats_from_rows_table(rows: hl.Table) -> hl.Table:
 
 
 def _print_stats(stats: hl.Table) -> None:
-    """
-    Collect *all* rows of the stats Table and print them to stdout.
-
-    Using collect() instead of show(n) avoids any silent truncation if the
-    number of distinct filter combinations ever grows beyond an expected limit.
-    A warning is emitted to stderr if the count exceeds
-    _FILTER_COMBO_WARN_THRESHOLD, turning a future silent problem into a
-    loud one.
-    """
+    """Print all rows to stdout. Uses collect() over show(n) to avoid silent truncation."""
     rows = stats.collect()
     n = len(rows)
 
@@ -150,8 +115,7 @@ def _print_stats(stats: hl.Table) -> None:
             file=sys.stderr,
         )
 
-    col_width = max((len(row.filters) for row in rows), default=len('filters'))
-    col_width = max(col_width, len('filters'))
+    col_width = max(max((len(row.filters) for row in rows), default=0), len('filters'))
     header = f"{'filters':<{col_width}}  {'n_sites':>12}"
     print(header)
     print('-' * len(header))

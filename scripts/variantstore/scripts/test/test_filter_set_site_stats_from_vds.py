@@ -44,14 +44,7 @@ class TestFilterStatsFromRowsTable(unittest.TestCase):
 
     @staticmethod
     def _make_rows_table(filter_sets: list) -> 'hl.Table':
-        """
-        Build a minimal Hail Table with a single ``filters: set<str>`` field.
-
-        Parameters
-        ----------
-        filter_sets : list[set[str]]
-            One entry per synthetic site.
-        """
+        """Build a minimal Hail Table with a single ``filters: set<str>`` field."""
         return hl.Table.parallelize(
             [{'filters': fs} for fs in filter_sets],
             schema=hl.tstruct(filters=hl.tset(hl.tstr)),
@@ -131,9 +124,11 @@ class TestMonomorphicRowFiltering(unittest.TestCase):
     Tests for the require_non_ref guard that drops rows where no sample
     carries a non-reference genotype.
 
-    Uses hl.utils.range_matrix_table to build a synthetic MatrixTable with
-    an LGT entry field, mirroring the structure of a real GVS VDS variant
-    data MatrixTable.
+    These tests apply the filter expression directly against a synthetic
+    MatrixTable rather than calling compute_filter_set_site_stats(), because
+    that function requires a real VDS on disk.  The filter logic inside
+    compute_filter_set_site_stats() is a single hl.agg.any(mt.LGT.is_non_ref())
+    call — the same expression exercised here — so the coverage gap is minimal.
     """
 
     @classmethod
