@@ -40,8 +40,10 @@ v9_exomeMT = hl.read_matrix_table("<path to split Exome MT>")
 v9_exomeMT.count_rows()
 ```
 
-## Total number of loci new to the All of Us dataset (compared to the previous dataset)
+## Total number of variants new to the All of Us dataset (compared to the previous dataset)
 
+This is another statistic that purports to count variants but is really counting variant *sites* (loci) that are not
+found in the previous dataset.
 This is a fairly simple bit of Hail code but it processes a *lot* of data, so it has been wrapped up in a WDL that will
 summon an autoscaling Hail cluster. See `scripts/variantstore/wdl/GvsCountVdsNovelLoci.wdl` for details. The
 only required inputs are the paths to the previous and current VDSes.
