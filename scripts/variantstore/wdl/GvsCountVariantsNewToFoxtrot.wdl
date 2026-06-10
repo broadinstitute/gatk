@@ -198,6 +198,8 @@ task CountVariantsNewToFoxtrot {
             new_loci = new_vds.variant_data.rows().select().key_by('locus')
             old_loci = old_vds.variant_data.rows().select().key_by('locus')
 
+            # Note that all GVS-produced VDSes will be unsplit, with all alleles for a locus on a single row. Thus we
+            # can determine which loci are new with this anti-join.
             new_only = new_loci.anti_join(old_loci)
             count = new_only.count()
 
