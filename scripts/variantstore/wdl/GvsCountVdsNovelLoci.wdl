@@ -220,7 +220,7 @@ task CountVdsNovelLoci {
         FIN
 
         # Run the Hail Python script to compare loci between the two VDSes.
-        # The locus count is printed to the Dataproc job log.
+        # The locus count is written to the path specified by `output-count-path`.
         python3 ~{run_in_hail_cluster_script} \
             --script-path compare_vds_loci.py \
             --script-arguments-json-path script-arguments.json \
