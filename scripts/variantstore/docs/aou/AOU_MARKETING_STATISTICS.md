@@ -65,12 +65,13 @@ If this is *not* the current version of gnomAD, then the following *conceptual* 
 of the data here is quite large (gnomAD 4.1 VCFs are ~800 GiB) and could benefit from a scatter in a WDL:
 
 1. Download the gnomAD sites-only VCFs (all chromosomes) from: `gs://gcp-public-data--gnomad/release/<version>/vcf/joint/`.
-1. For each file (chromosome) do something like
+1. For each file (chromosome) do something like the following to convert gnomAD VCF data into the same VID format as
+   used in the VAT:
     ```
-    gunzip $file | grep -v '^#' | cut -f 1,2,4,5 | tr $'\t' '-' | sed 's/chr//g'
+    zcat $file | grep -v '^#' | cut -f 1,2,4,5 | tr $'\t' '-' | sed 's/chr//g' > ${file%.vcf.gz}.tsv
     ```
-    and put that output into a new file, one per chromosome. This is then a list of the 'vids' (corresponding to the vids
-    in our VAT) from gnomAD.
+    Note that the current version of this logic assumes that multi-allelics are split in the input VCF, which is true
+    for gnomAD 4.1.
 1. Stage all of these TSV files in a GCS bucket.
 1. Create a new BigQuery table to hold the VID-formatted gnomAD data:
    ```bigquery
