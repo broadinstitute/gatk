@@ -4,7 +4,7 @@ version 1.0
 # the comparison in Hail on an autoscaling Dataproc cluster.
 import "GvsUtils.wdl" as Utils
 
-workflow GvsCountLociNewToFoxtrot {
+workflow GvsCountVdsNovelLoci {
     input {
         # Paths to the two VDSes to compare.
         String new_vds_path
@@ -81,7 +81,7 @@ workflow GvsCountLociNewToFoxtrot {
             variants_docker = effective_variants_docker,
     }
 
-    call CountLociNewToFoxtrot {
+    call CountVdsNovelLoci {
         input:
             prefix = cluster_prefix,
             new_vds_path = new_vds_path,
@@ -101,13 +101,13 @@ workflow GvsCountLociNewToFoxtrot {
     }
 
     output {
-        String cluster_name = CountLociNewToFoxtrot.cluster_name
-        Int novel_loci_count = CountLociNewToFoxtrot.novel_loci_count
+        String cluster_name = CountVdsNovelLoci.cluster_name
+        Int novel_loci_count = CountVdsNovelLoci.novel_loci_count
         Boolean done = true
     }
 }
 
-task CountLociNewToFoxtrot {
+task CountVdsNovelLoci {
     input {
         String prefix
         String new_vds_path
@@ -233,7 +233,7 @@ task CountLociNewToFoxtrot {
             ~{'--master-memory-fraction ' + master_memory_fraction} \
             ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
 
-        gsutil cp ${hail_temp_path}/novel_count.txt .
+        gsutil cp "${hail_temp_path}/novel_count.txt" .
     >>>
 
     runtime {

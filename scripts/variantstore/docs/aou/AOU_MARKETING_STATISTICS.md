@@ -43,7 +43,7 @@ v9_exomeMT.count_rows()
 ## Total number of loci new to the All of Us dataset (compared to the previous dataset)
 
 This is a fairly simple bit of Hail code but it processes a *lot* of data, so it has been wrapped up in a WDL that will
-summon an autoscaling Hail cluster. See `scripts/variantstore/wdl/GvsCountLociNewToFoxtrot.wdl` for details. The
+summon an autoscaling Hail cluster. See `scripts/variantstore/wdl/GvsCountVdsNovelLoci.wdl` for details. The
 only required inputs are the paths to the previous and current VDSes.
 
 ## Total number of variants only found in the All of Us dataset over time (compared to gnomAD)
