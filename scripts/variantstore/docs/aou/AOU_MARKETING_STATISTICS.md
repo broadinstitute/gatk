@@ -1,8 +1,8 @@
 # Introduction
 
-For the AoU v9 srWGS callsets (aka Foxtrot), the Variants team was asked to provide some specific statistics that were
-intended for use in the marketing materials for the release. In the event that the Variants team is required to generate
-any of these statistics in the future, this document serves as a reference for how to do that.
+For the AoU v9 srWGS callset (aka Foxtrot), the Variants team was asked to provide some specific statistics for use in
+the marketing materials for the release. In the event that the Variants team is required to generate any of these
+statistics in the future, this document serves as a reference for how to do that.
 
 # Statistics
 
@@ -10,6 +10,7 @@ Much of the material here is drawn from [this JIRA ticket](https://broadworkbenc
 
 ## Total number of genetic variants from the VDS
 
+This statistic isn't actually counting "genetic variants", but rather counting variant *sites* grouped by their filters.
 This is conceptually similar to the following in BigQuery:
 
 ```bigquery
@@ -39,10 +40,10 @@ v9_exomeMT = hl.read_matrix_table("<path to split Exome MT>")
 v9_exomeMT.count_rows()
 ```
 
-## Total number of variants new to the All of Us dataset (compared to the previous dataset)
+## Total number of loci new to the All of Us dataset (compared to the previous dataset)
 
 This is a fairly simple bit of Hail code but it processes a *lot* of data, so it has been wrapped up in a WDL that will
-summon an autoscaling Hail cluster. See `scripts/variantstore/wdl/GvsCountVariantsNewToFoxtrot.wdl` for details. The
+summon an autoscaling Hail cluster. See `scripts/variantstore/wdl/GvsCountLociNewToFoxtrot.wdl` for details. The
 only required inputs are the paths to the previous and current VDSes.
 
 ## Total number of variants only found in the All of Us dataset over time (compared to gnomAD)
@@ -86,3 +87,4 @@ of the data here is quite large (gnomAD 4.1 VCFs are ~800 GiB) and could benefit
        "gs://bucket/path/to/vid/formatted/gnomad/data/*.tsv" \
        vid:STRING
    ```
+1. Run the query above joining the VAT table to this new gnomAD VID table.
