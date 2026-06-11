@@ -75,6 +75,25 @@ quality scores, while "soft filtered" artifacts include all variants along with
 their quality scores, leaving it to the user's discretion how to handle these
 variants in downstream analysis.
 
+### Split versus unsplit multi-allelics
+
+A multi-allelic site is a genomic location where more than one alternate allele is observed.
+For example, at a given position the reference allele might be "A", and there could be two
+alternate alleles "C" and "G". In an unsplit multi-allelic representation, this would be
+represented as a single conceptual row with the alternate alleles listed together (e.g., A -> C,G).
+In a split multi-allelic representation, this would be represented as two separate rows
+(e.g., A -> C and A -> G).
+
+GVS contains examples of both split and unsplit multi-allelic representations. Knowing which representation is
+used where is critical for a correct understanding of the data and for writing code that interacts with GVS.
+For example the `alt_allele` table uses a split multi-allelic representation to support efficient
+querying and filtering, while the `vet_%` tables use an unsplit multi-allelic representation like
+the input gVCFs from which they are derived. While Hail VDSes in general can use either split or unsplit
+multi-allelic representations, the VDSes created, read, and modified by GVS are exclusively unsplit.
+
+Some of the GVS code in this repo does interact with split multi-allelic non-VDS Hail artifacts; see
+`AOU_MARKETING_STATISTICS.md` for an example that takes a split Exome MatrixTable as input.
+
 # High-Level Architecture (WDLs, BigQuery, Terra)
 
 ## Java Artifacts
