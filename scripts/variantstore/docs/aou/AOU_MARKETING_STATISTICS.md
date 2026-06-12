@@ -8,7 +8,7 @@ statistics in the future, this document serves as a reference for how to do that
 
 Much of the material here is drawn from [this JIRA ticket](https://broadworkbench.atlassian.net/browse/VS-1565).
 
-## Total number of genetic variants from the VDS
+## Total number of genetic variants - from the VDS
 
 This statistic isn't actually counting "genetic variants", but rather counting variant *sites* grouped by their filters.
 This is conceptually similar to the following in BigQuery:
@@ -91,3 +91,28 @@ of the data here is quite large (gnomAD 4.1 VCFs are ~800 GiB) and could benefit
        vid:STRING
    ```
 1. Run the query above joining the VAT table to this new gnomAD VID table.
+
+# Notes
+
+## Total number of genetic variants - from the VDS
+
+This is counting loci, not variants. That appears to be the intent given the “number of sites” terminology in the
+"Genomics counts" spreadsheet, but the description “total number of genetic variants” is misleading. Note this does not
+identify or filter loci that are present only due to alleles with failing allele filters.
+
+## Number of variants within coding regions
+
+This counts variants by counting the rows in the split exome MT. This MT may include all variants within the exome
+intervals, including those with failing allele or site filters.
+
+## Total number of variants new to the All of Us dataset (compared to the previous dataset)
+
+This is counting novel loci, not novel variants. Given a lack of context it’s not clear if this was intentional or not.
+This code could be modified to count novel variants if that’s actually what’s wanted here, as well as filtering on
+failing allele or site filters.
+
+## Total number of variants only found in the All of Us dataset over time (compared to gnomAD)
+
+This is comparing the count of hard-filtered variants seen in at least 3 samples (gvs_all_sc >= 3) found uniquely in the
+VAT with respect to gnomAD. This is in contrast with the previous statistics that made no attempt to exclude variants
+or loci on the basis of failing allele or site filters, or on the number of samples carrying an allele.
