@@ -32,6 +32,7 @@ workflow GvsPrepareCallset {
     String? git_hash
     File? interval_list
     Int interval_list_padding = 1000
+    Float skip_filter_coverage_threshold = 0.5
   }
 
   String full_extract_prefix = if (control_samples) then "~{extract_table_prefix}_controls" else extract_table_prefix
@@ -85,18 +86,6 @@ workflow GvsPrepareCallset {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
-  if (defined(interval_list) && interval_list_padding > 0) {
-    call Utils.PadIntervalList {
-      input:
-        interval_list_file = select_first([interval_list]),
-        padding_size = interval_list_padding,
-        output_basename = "padded_intervals",
-        gatk_docker = effective_gatk_docker,
-    }
-  }
-
-  File? effective_interval_list = if (defined(interval_list) && interval_list_padding > 0) then PadIntervalList.padded_interval_list_file else interval_list
-
   call PrepareRangesCallsetTask {
     input:
       call_set_identifier             = call_set_identifier,
@@ -115,8 +104,10 @@ workflow GvsPrepareCallset {
       variants_docker                 = effective_variants_docker,
       use_compressed_references       = IsUsingCompressedReferences.is_using_compressed_references,
       vet_extract_table_version       = GetExtractVetTableVersion.version,
-      enable_extract_table_ttl        = enable_extract_table_ttl,
-      interval_list                   = effective_interval_list,
+      enable_extract_table_ttl            = enable_extract_table_ttl,
+      interval_list                       = interval_list,
+      interval_list_padding               = interval_list_padding,
+      skip_filter_coverage_threshold      = skip_filter_coverage_threshold,
   }
 
   output {
@@ -147,6 +138,8 @@ task PrepareRangesCallsetTask {
     String variants_docker
     Boolean enable_extract_table_ttl
     File? interval_list
+    Int interval_list_padding
+    Float skip_filter_coverage_threshold
   }
   meta {
     # All kinds of BQ reading happening in the referenced Python script.
@@ -192,7 +185,9 @@ task PrepareRangesCallsetTask {
           ~{true="--use_compressed_references True" false='' use_compressed_references} \
           ~{"--vet-ranges-extract-table-version " + vet_extract_table_version} \
           ~{true="--enable_extract_table_ttl True" false='' enable_extract_table_ttl} \
-          ~{"--interval_list " + interval_list}
+          ~{"--interval_list " + interval_list} \
+          --interval_list_padding ~{interval_list_padding} \
+          --skip_filter_coverage_threshold ~{skip_filter_coverage_threshold}
 
   >>>
   output {

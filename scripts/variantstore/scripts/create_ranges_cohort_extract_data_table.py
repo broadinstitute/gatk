@@ -31,6 +31,9 @@ INTERVAL_TABLE_NAME = f"{output_table_prefix}_intervals"
 # and filtered via an EXISTS subquery, removing the effective query-size limit.
 INTERVAL_TEMP_TABLE_THRESHOLD = 5000
 
+# Total bases in hg38 chromosomes 1-22, X (23), Y (24) — the chromosomes GVS encodes.
+HG38_GENOME_SIZE = 3_088_269_832
+
 REF_VET_TABLE_COUNT = -1
 # noinspection PyTypeChecker
 client: bigquery.Client = None
@@ -199,20 +202,16 @@ def load_intervals_to_temp_table(intervals, fq_temp_table_dataset):
     return fq_interval_table
 
 
-def get_location_filters(interval_list, fq_temp_table_dataset, maximum_merge_distance=0):
+def get_location_filters(interval_list, fq_temp_table_dataset, padding=1000, skip_filter_threshold=0.5):
     """Return a SQL WHERE clause fragment for filtering by genomic location.
 
-    For interval lists with <= INTERVAL_TEMP_TABLE_THRESHOLD intervals the
-    filter is built inline in the SQL text (original behaviour).
+    Applies `padding` bp of padding to each interval (equivalent to merging intervals
+    within a gap of 2*padding) then chooses a strategy based on merged interval count
+    and genome coverage:
 
-    For larger interval lists the intervals are loaded into a temporary
-    BigQuery table and an EXISTS subquery is returned instead.  This removes
-    the practical limit on how many intervals can be used as a filter.
-
-    In both cases overlapping and adjacent intervals are merged first, which
-    reduces the number of ranges that need to be evaluated and is particularly
-    valuable for dense interval lists such as ClinVar or ACAF where many
-    adjacent single-base positions can collapse into far fewer contiguous runs.
+    * merged count <= INTERVAL_TEMP_TABLE_THRESHOLD: inline SQL WHERE clause
+    * merged count > threshold, coverage < skip_filter_threshold: temp-table EXISTS subquery
+    * coverage >= skip_filter_threshold: return "" (no filtering; caller does a full prepare)
 
     Returns "" when no interval list is provided (no location filtering).
     """
@@ -225,28 +224,41 @@ def get_location_filters(interval_list, fq_temp_table_dataset, maximum_merge_dis
     if raw_count == 0:
         return ""
 
-    # Merge overlapping / adjacent intervals.  This is semantically equivalent
-    # to the original list (a location passes the filter iff it falls within at
-    # least one input interval) but can dramatically reduce the number of ranges
-    # — especially for dense lists like ACAF where adjacent 1-bp positions
-    # collapse into long contiguous runs.
-    intervals = raw_intervals.merge(d=maximum_merge_distance)
-    interval_count = len(intervals)
+    # Padding each side by N bp is equivalent to merging intervals within a gap of 2*N.
+    intervals = raw_intervals.merge(d=padding * 2)
+
+    # Single pass: count merged intervals and sum bases covered (on known chromosomes only).
+    interval_count = 0
+    bases_covered = 0
+    for i in intervals:
+        if i.chrom not in CHROM_MAP:
+            continue
+        interval_count += 1
+        bases_covered += int(i.end) - int(i.start)
+
     if interval_count < raw_count:
-        print(f"Merged {raw_count:,} intervals into {interval_count:,} non-overlapping ranges.")
+        print(f"Merged {raw_count:,} raw intervals into {interval_count:,} non-overlapping ranges "
+              f"using {padding:,} bp padding.")
+
+    pct_covered = bases_covered / HG38_GENOME_SIZE
+    print(f"Merged intervals cover {pct_covered:.1%} of the genome "
+          f"({bases_covered:,} / {HG38_GENOME_SIZE:,} bases, {interval_count:,} intervals).")
+
+    if pct_covered >= skip_filter_threshold:
+        print(f"Coverage {pct_covered:.1%} >= {skip_filter_threshold:.0%} threshold; "
+              f"skipping location filtering.")
+        return ""
 
     if interval_count <= INTERVAL_TEMP_TABLE_THRESHOLD:
-        # Small list: inline every interval directly into the SQL WHERE clause.
+        print(f"Using inline SQL filter for {interval_count:,} intervals.")
         location_clause_list = [
-            f"""(location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} 
-            AND location <= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.end)))}{interval.end})"""
-            for interval in intervals
+            f"""(location >= {CHROM_MAP[i.chrom]}{'0' * (12 - len(str(i.start)))}{i.start}
+            AND location <= {CHROM_MAP[i.chrom]}{'0' * (12 - len(str(i.end)))}{i.end})"""
+            for i in intervals
+            if i.chrom in CHROM_MAP
         ]
         return "WHERE (" + " OR ".join(location_clause_list) + ")"
     else:
-        # Large list: load into a temp table and use an EXISTS subquery so that
-        # BigQuery can plan an efficient join rather than evaluating a massive
-        # OR chain — and so we don't hit query-text size limits.
         print(f"Interval list has {interval_count:,} intervals (> {INTERVAL_TEMP_TABLE_THRESHOLD}); "
               f"loading into a temporary BigQuery table for efficient filtering.")
         fq_interval_table = load_intervals_to_temp_table(intervals, fq_temp_table_dataset)
@@ -412,7 +424,8 @@ def make_extract_table(call_set_identifier,
                        vet_ranges_extract_table_version,
                        enable_extract_table_ttl,
                        interval_list,
-                       maximum_merge_distance=0):
+                       interval_list_padding=1000,
+                       skip_filter_threshold=0.5):
     try:
         fq_destination_table_ref_data = f"{fq_destination_dataset}.{destination_table_prefix}__REF_DATA"
         fq_destination_table_vet_data = f"{fq_destination_dataset}.{destination_table_prefix}__VET_DATA"
@@ -463,7 +476,7 @@ def make_extract_table(call_set_identifier,
 
         # Compute the location filter string once; for large interval lists this will also
         # create and populate a temporary BigQuery table with the encoded interval bounds.
-        location_string = get_location_filters(interval_list, fq_temp_table_dataset, maximum_merge_distance)
+        location_string = get_location_filters(interval_list, fq_temp_table_dataset, interval_list_padding, skip_filter_threshold)
 
         # if we have a file of sample names, load it into a temporary table
         if sample_names_to_extract:
@@ -533,12 +546,15 @@ if __name__ == '__main__':
                         help='Add a TTL to the extract tables', required=False, default=False)
     parser.add_argument('--interval_list', type=str,
                         help='interval list or BAM file to limit the locations', required=False)
-    parser.add_argument('--maximum_merge_distance', type=int,
-                        help='Maximum distance between intervals to merge; passed as the -d argument to bedtools merge. '
-                             'Intervals within this distance will be merged into a single interval, which may cover '
-                             'positions not in the original interval list. Default is 0 (only merge overlapping / '
-                             'directly adjacent intervals).',
-                        required=False, default=0)
+    parser.add_argument('--interval_list_padding', type=int,
+                        help='Padding in base pairs applied to each side of every interval before merging. '
+                             'Equivalent to merging intervals within a gap of 2 * padding bp. Default is 1000.',
+                        required=False, default=1000)
+    parser.add_argument('--skip_filter_coverage_threshold', type=float,
+                        help='If the padded and merged intervals cover at least this fraction of the hg38 genome '
+                             '(chromosomes 1-22, X, Y), location filtering is skipped and a full prepare is performed. '
+                             'Default is 0.5 (50%%).',
+                        required=False, default=0.5)
 
     sample_args = parser.add_mutually_exclusive_group(required=True)
     sample_args.add_argument('--sample_names_to_extract', type=str,
@@ -575,4 +591,5 @@ if __name__ == '__main__':
                        args.vet_ranges_extract_table_version,
                        args.enable_extract_table_ttl,
                        args.interval_list,
-                       args.maximum_merge_distance)
+                       args.interval_list_padding,
+                       args.skip_filter_coverage_threshold)
