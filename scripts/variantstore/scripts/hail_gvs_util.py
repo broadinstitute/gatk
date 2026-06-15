@@ -1,6 +1,14 @@
-from google.cloud import storage
+from __future__ import annotations
+
+import os
 import re
 
+from google.cloud import storage
+
+try:
+    import hail as hl
+except ModuleNotFoundError:
+    hl = None
 gcs_pattern = re.compile("^gs://(?P<bucket_name>[^/]+)/(?P<object_prefix>.*)$")
 
 def gcs_generate_avro_args(bucket, blob_prefix, key):
@@ -74,6 +82,81 @@ def local_generate_avro_args(avro_prefix, key):
             if file.endswith('avro'):
                 entry_handler()
     return ret
+
+
+def load_samples_to_remove(samples_to_remove_path: str) -> hl.Table:
+    """Load and validate the samples-to-remove file, returning a Hail Table keyed by ``s``.
+
+    The file must be a CSV with a ``research_id`` header column. A :class:`ValueError` is raised
+    if the file contains duplicate ``research_id`` values.
+
+    Parameters
+    ----------
+    samples_to_remove_path : str
+        Path to a CSV file with a ``research_id`` header, one research ID per line.
+
+    Returns
+    -------
+    hl.Table
+        A Hail Table keyed by ``s`` (the Hail sample-column key), containing one row per
+        unique research ID to remove.
+    """
+    samples_to_remove_table = hl.import_table(samples_to_remove_path, delimiter=',')
+
+    # Fail fast if the removal file contains duplicate research_ids.
+    research_ids = samples_to_remove_table.select('research_id')
+    n_to_remove = research_ids.count()
+    n_distinct = research_ids.key_by('research_id').distinct().count()
+    if n_to_remove != n_distinct:
+        raise ValueError(
+            f"samples_to_remove file contains {n_to_remove - n_distinct} duplicate research_id(s). "
+            "Please deduplicate before proceeding."
+        )
+
+    return samples_to_remove_table.key_by(s=samples_to_remove_table.research_id)
+
+
+def filter_samples_and_remove_monomorphic_rows(
+        vds: hl.vds.VariantDataset,
+        samples_to_remove_table: hl.Table,
+) -> hl.vds.VariantDataset:
+    """Remove samples from a VDS and drop variant-data rows that become monomorphic reference.
+
+    Steps performed:
+
+    1. Filter out the specified samples and remove dead alleles (``remove_dead_alleles=True``).
+    2. Drop variant-data rows that no longer carry any alternate alleles (monomorphic reference
+       rows left behind when only the removed samples carried an alt allele at those sites).
+
+    Parameters
+    ----------
+    vds : hl.vds.VariantDataset
+        The input VDS from which samples will be removed.
+    samples_to_remove_table : hl.Table
+        A Hail Table keyed by ``s`` listing the samples to remove, as returned by
+        :func:`load_samples_to_remove`.
+
+    Returns
+    -------
+    hl.vds.VariantDataset
+        A new VDS with the specified samples removed and monomorphic reference rows dropped.
+    """
+    filtered_vds = hl.vds.filter_samples(
+        vds,
+        samples_to_remove_table,
+        keep=False,
+        remove_dead_alleles=True,
+    )
+
+    # Drop rows that no longer have any non-reference calls after sample removal.
+    filtered_vds = hl.vds.VariantDataset(
+        filtered_vds.reference_data,
+        filtered_vds.variant_data.filter_rows(
+            hl.agg.any(filtered_vds.variant_data.LGT.is_non_ref())
+        ),
+    )
+
+    return filtered_vds
 
 
 def remove_trailing_slashes(*paths):
