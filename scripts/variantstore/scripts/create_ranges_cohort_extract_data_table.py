@@ -205,9 +205,8 @@ def load_intervals_to_temp_table(intervals, fq_temp_table_dataset):
 def get_location_filters(interval_list, fq_temp_table_dataset, padding=1000, skip_filter_threshold=0.5):
     """Return a SQL WHERE clause fragment for filtering by genomic location.
 
-    Applies `padding` bp of padding to each interval (equivalent to merging intervals
-    within a gap of 2*padding) then chooses a strategy based on merged interval count
-    and genome coverage:
+    Expands every interval by `padding` bp on each side and merges overlaps, then chooses
+    a strategy based on merged interval count and genome coverage:
 
     * merged count <= INTERVAL_TEMP_TABLE_THRESHOLD: inline SQL WHERE clause
     * merged count > threshold, coverage < skip_filter_threshold: temp-table EXISTS subquery
@@ -224,8 +223,18 @@ def get_location_filters(interval_list, fq_temp_table_dataset, padding=1000, ski
     if raw_count == 0:
         return ""
 
-    # Padding each side by N bp is equivalent to merging intervals within a gap of 2*N.
-    intervals = raw_intervals.merge(d=padding * 2)
+    # Expand every interval by `padding` bp on each side, then merge overlapping results.
+    # This is the correct equivalent of GATK's IntervalListTools --PADDING: isolated intervals
+    # get their outer boundaries expanded, not just the gaps between adjacent intervals.
+    # Start is clamped to 0; end is not clamped since out-of-range BQ locations match nothing.
+    if padding > 0:
+        def _pad(interval):
+            interval.start = max(0, interval.start - padding)
+            interval.end = interval.end + padding
+            return interval
+        intervals = raw_intervals.each(_pad).saveas().merge()
+    else:
+        intervals = raw_intervals.merge()
 
     # Single pass: count merged intervals and sum bases covered (on known chromosomes only).
     interval_count = 0
