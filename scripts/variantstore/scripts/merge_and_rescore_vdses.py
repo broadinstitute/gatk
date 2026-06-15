@@ -5,6 +5,7 @@ from typing import Sequence
 
 import hail as hl
 from hail.utils.java import info
+from hail_gvs_util import filter_samples_and_remove_monomorphic_rows, load_samples_to_remove
 from vds_validation import validate
 
 
@@ -102,10 +103,16 @@ def patch_variant_data(vd: hl.MatrixTable, site_filters: hl.Table, vets_filters:
         filters=hl.coalesce(site_filters[vd.locus].filters, hl.empty_set(hl.tstr))
     )
 
-    # vets ref/alt come in normalized individually, so need to renormalize to the dataset ref allele
+    # vets ref/alt come in normalized individually, so need to renormalize to the dataset ref allele.
+    # Filter out records whose ref is longer than the dataset ref allele — these correspond to alleles from samples
+    # not present in this VDS (e.g. control or withdrawn samples). Without this filter, the renormalization formula
+    # produces a truncated key that can collide with a legitimate allele, silently replacing its
+    # calibration_sensitivity value in the dict.
     vd = vd.annotate_rows(
         as_vets=hl.dict(
-            vets_filters.index(vd.locus, all_matches=True).map(
+            vets_filters.index(vd.locus, all_matches=True)
+            .filter(lambda record: hl.len(record.ref) <= hl.len(vd.alleles[0]))
+            .map(
                 lambda record: (
                     record.alt + vd.alleles[0][hl.len(record.ref) :],
                     record.drop("ref", "alt"),
@@ -213,10 +220,9 @@ if __name__ == '__main__':
     hl.default_reference('GRCh38')
     samples_to_remove_table = None
 
-    # Do this first to fail fast if there's a problem.
+    # Do this first to fail fast if there's a problem with the removal file.
     if args.samples_to_remove_path:
-        samples_to_remove_table = hl.import_table(args.samples_to_remove_path, delimiter=',')
-        samples_to_remove_table = samples_to_remove_table.key_by(s=samples_to_remove_table.research_id)
+        samples_to_remove_table = load_samples_to_remove(args.samples_to_remove_path)
 
     site_path = os.path.join(tmp_dir, "site_filters.ht")
     vets_path = os.path.join(tmp_dir, "vets_filters.ht")
@@ -234,10 +240,9 @@ if __name__ == '__main__':
                 args.input_echo_vds, args.input_unmerged_foxtrot_vds)
 
     tmp_merged_vds = hl.vds.read_vds(tmp_merged_vds_path)
-    # Drop any samples that need dropping before patching.
+    # Drop any samples that need dropping before patching, also removing monomorphic reference rows.
     if samples_to_remove_table:
-        tmp_merged_vds = hl.vds.filter_samples(tmp_merged_vds, samples_to_remove_table, keep=False,
-                                               remove_dead_alleles=True)
+        tmp_merged_vds = filter_samples_and_remove_monomorphic_rows(tmp_merged_vds, samples_to_remove_table)
 
     # These globals seem to get dropped after the merge. Add them back as they are required for rescoring.
     vd = tmp_merged_vds.variant_data
