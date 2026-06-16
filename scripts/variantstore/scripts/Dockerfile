@@ -29,7 +29,6 @@ RUN mkdir /fiss-build && \
     . /localvenv/bin/activate && \
     python setup.py install
 
-
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-alpine AS main
 
@@ -46,6 +45,8 @@ COPY --from=build /htslib /htslib
 COPY --from=build /bcftools /bcftools
 # Copy vcftools artifacts
 COPY --from=build /vcftools /vcftools
+# Copy bedtools artifacts
+COPY --from=build /bedtools /bedtools
 
 # Copy the application source code.
 RUN mkdir /app
@@ -58,7 +59,7 @@ RUN mkdir -p /data/variant_annotation_table/schema
 COPY ./variant_annotation_table/schema/*.json /data/variant_annotation_table/schema/
 
 ENV PERL5LIB=/vcftools/share/perl5/site_perl/
-ENV PATH=/bcftools/bin:/vcftools/bin:$PATH
+ENV PATH=/bcftools/bin:/vcftools/bin:/bedtools/bin:$PATH
 ENV LD_LIBRARY_PATH=/htslib/lib
 
 # Have the bash shell of the command script automatically activate the Python virtual environment.

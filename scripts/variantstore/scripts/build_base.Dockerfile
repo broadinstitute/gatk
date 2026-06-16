@@ -30,7 +30,7 @@ RUN python3 -m venv /localvenv && . /localvenv/bin/activate && python3 -m ensure
 # including the numpy Python module. The main stage will then use the same base image and copy over the artifacts
 # produced by the build stage without having to install development tools or clean up after a build.
 
-ARG ARROW_VERSION=20.0.0
+ARG ARROW_VERSION=24.0.0
 RUN cd / && \
     curl -O https://archive.apache.org/dist/arrow/arrow-$ARROW_VERSION/apache-arrow-$ARROW_VERSION.tar.gz && \
     tar xfz apache-arrow-$ARROW_VERSION.tar.gz
@@ -62,7 +62,7 @@ RUN cd $ARROW_SRC_DIR/python && \
     pip3 install /apache-arrow-$ARROW_VERSION/python/dist/pyarrow-$ARROW_VERSION-*.whl
 
 
-ARG HTSLIB_VERSION=1.22
+ARG HTSLIB_VERSION=1.23.1
 RUN mkdir /htslib /htslib-build && \
     cd /htslib-build && \
     curl -L -O https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2 && \
@@ -76,7 +76,7 @@ RUN mkdir /htslib /htslib-build && \
     rm -rf /htslib-build
 
 
-ARG BCFTOOLS_VERSION=1.22
+ARG BCFTOOLS_VERSION=1.23.1
 RUN mkdir /bcftools /bcftools-build && \
     cd /bcftools-build && \
     curl -L -O https://github.com/samtools/bcftools/releases/download/${BCFTOOLS_VERSION}/bcftools-${BCFTOOLS_VERSION}.tar.bz2 && \
@@ -102,5 +102,16 @@ RUN mkdir /vcftools /vcftools-build && \
     make install && \
     cd / && \
     rm -rf /vcftools-build
+
+ARG BEDTOOLS_VERSION=2.31.1
+RUN mkdir /bedtools /bedtools-build && \
+    cd /bedtools-build && \
+    curl -L -O https://github.com/arq5x/bedtools2/releases/download/v${BEDTOOLS_VERSION}/bedtools-${BEDTOOLS_VERSION}.tar.gz && \
+    tar -xzf bedtools-${BEDTOOLS_VERSION}.tar.gz && \
+    cd bedtools2-${BEDTOOLS_VERSION} && \
+    make && \
+    make prefix=/bedtools install && \
+    cd / && \
+    rm -rf /bedtools-build
 
 ENV PERL5LIB /vcftools/share/perl5/site_perl/:$PERL5LIB
