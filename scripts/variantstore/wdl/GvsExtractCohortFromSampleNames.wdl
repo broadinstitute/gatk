@@ -99,6 +99,13 @@ workflow GvsExtractCohortFromSampleNames {
   # allow an interval list to be passed in, but default it to the reference-standard one if no args are here
   File effective_interval_list = select_first([interval_list, GetHG38Reference.reference.wgs_calling_interval_list])
 
+  call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
+    input:
+      project_id = query_project,
+      fq_table = "~{gvs_project}.~{gvs_dataset}.sample_info",
+      cloud_sdk_docker = effective_cloud_sdk_docker
+  }
+
   call Utils.GetNumSamplesLoaded {
     input:
       fq_sample_table = "~{gvs_project}.~{gvs_dataset}.sample_info",

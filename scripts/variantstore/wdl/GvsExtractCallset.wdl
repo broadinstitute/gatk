@@ -117,6 +117,13 @@ workflow GvsExtractCallset {
       variants_docker = effective_variants_docker,
   }
 
+  call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
+    input:
+      project_id = query_project,
+      fq_table = fq_sample_table,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
   call Utils.GetNumSamplesLoaded {
     input:
       fq_sample_table = fq_sample_table,
@@ -406,6 +413,8 @@ task ExtractTask {
     File? target_interval_list
 
     # for call-caching -- check if DB tables haven't been updated since the last run
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String max_last_modified_timestamp
   }
   meta {
@@ -652,6 +661,8 @@ task SumBytes {
 task GenerateSampleListFile {
   input {
     String fq_samples_to_extract_table
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String samples_to_extract_table_timestamp
     String query_project
 

@@ -418,6 +418,8 @@ task GetBQTableLastModifiedDatetime {
   >>>
 
   output {
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String last_modified_timestamp = read_string(stdout())
     File monitoring_log = "monitoring.log"
   }
@@ -465,6 +467,8 @@ task GetBQTablesMaxLastModifiedTimestamp {
   >>>
 
   output {
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String max_last_modified_timestamp = read_string("max_last_modified_timestamp.txt")
     File monitoring_log = "monitoring.log"
   }
@@ -1068,6 +1072,8 @@ task IsUsingCompressedReferences {
     String query_project_id
     String dest_project_id
     String dataset_name
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String ref_table_timestamp
     String cloud_sdk_docker
   }

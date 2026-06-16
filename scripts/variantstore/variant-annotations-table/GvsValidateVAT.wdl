@@ -320,6 +320,8 @@ task EnsureVatTableHasVariants {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -375,6 +377,8 @@ task SpotCheckForExpectedTranscripts {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -442,6 +446,8 @@ task SchemaNoNullRequiredFields {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -525,6 +531,8 @@ task SchemaOnlyOneRowPerNullTranscript {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -585,6 +593,8 @@ task SchemaPrimaryKey {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -645,6 +655,8 @@ task SchemaEnsemblTranscripts {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -706,6 +718,8 @@ task SchemaNonzeroAcAn {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -770,6 +784,8 @@ task SchemaNullTranscriptsExist {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -825,6 +841,8 @@ task SubpopulationMax {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -888,6 +906,8 @@ task SubpopulationAlleleCount {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -945,6 +965,8 @@ task SubpopulationAlleleNumber {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -1002,6 +1024,8 @@ task DuplicateAnnotations {
     input {
         String query_project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -1074,6 +1098,8 @@ task ClinvarSignificance {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -1158,6 +1184,8 @@ task SchemaAAChangeAndExonNumberConsistent {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -1254,6 +1282,8 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -1369,6 +1399,8 @@ task SpotCheckForManeSelectTranscript {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -1437,6 +1469,8 @@ task CheckForNullColumns {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String variants_docker
     }
