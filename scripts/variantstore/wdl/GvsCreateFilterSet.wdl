@@ -69,13 +69,6 @@ workflow GvsCreateFilterSet {
 
   String effective_interval_list = select_first([interval_list, GetHG38Reference.reference.wgs_calling_interval_list])
 
-  call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
-    input:
-      project_id = project_id,
-      fq_table = fq_sample_table,
-      cloud_sdk_docker = effective_cloud_sdk_docker,
-  }
-
   call CheckIfFilterSetNameIsInUse {
     input:
       filter_set_name = filter_set_name,
@@ -106,23 +99,14 @@ workflow GvsCreateFilterSet {
       gatk_override = gatk_override,
   }
 
-  call Utils.GetBQTableLastModifiedDatetime as AltAlleleTableDatetimeCheck {
-    input:
-      project_id = project_id,
-      fq_table = fq_alt_allele_table,
-      cloud_sdk_docker = effective_cloud_sdk_docker,
-  }
-
   scatter(i in range(length(SplitIntervals.interval_files))) {
     call ExtractFilterTask {
       input:
         go                         = CheckIfFilterSetNameIsInUse.done,
         reference                  = GetHG38Reference.reference.reference_fasta,
         fq_sample_table            = fq_sample_table,
-        sample_table_timestamp     = SamplesTableDatetimeCheck.last_modified_timestamp,
         intervals                  = SplitIntervals.interval_files[i],
         fq_alt_allele_table        = fq_alt_allele_table,
-        alt_allele_table_timestamp = AltAlleleTableDatetimeCheck.last_modified_timestamp,
         excess_alleles_threshold   = 100,
         add_additional_annotations = add_additional_annotations_to_sites_only_vcf,
         output_file                = "${filter_set_name}_${i}.vcf.gz",
@@ -259,10 +243,8 @@ workflow GvsCreateFilterSet {
       inputs = select_all(
                flatten(
                [
-               [SamplesTableDatetimeCheck.monitoring_log],
                [GetNumSamplesLoaded.monitoring_log],
                [SplitIntervals.monitoring_log],
-               [AltAlleleTableDatetimeCheck.monitoring_log],
                ExtractFilterTask.monitoring_log,
                [MergeVCFs.monitoring_log],
                select_first([JointVcfFiltering.monitoring_logs, []]),
@@ -378,12 +360,10 @@ task ExtractFilterTask {
     File reference
 
     String fq_sample_table
-    String sample_table_timestamp
 
     File intervals
 
     String fq_alt_allele_table
-    String alt_allele_table_timestamp
 
     String cost_observability_tablename = "cost_observability"
 
