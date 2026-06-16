@@ -248,6 +248,8 @@ def get_location_filters(interval_list, fq_temp_table_dataset, padding=1000, ski
     if interval_count < raw_count:
         print(f"Merged {raw_count:,} raw intervals into {interval_count:,} non-overlapping ranges "
               f"using {padding:,} bp padding.")
+    else:
+        print(f"Padding and merging with {padding:,} bp did not reduce the {interval_count:,} intervals.")
 
     pct_covered = bases_covered / HG38_GENOME_SIZE
     print(f"Merged intervals cover {pct_covered:.1%} of the genome "

@@ -219,6 +219,7 @@ workflow GvsJointVariantCalling {
             variants_docker = effective_variants_docker,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             enable_extract_table_ttl = true,
+            interval_list = interval_list_to_use,
     }
 
     call ExtractCallset.GvsExtractCallset {
