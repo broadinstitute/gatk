@@ -70,7 +70,7 @@ RUN mkdir -p /bedtools /bedtools-build/src && \
     curl -L -O https://github.com/arq5x/bedtools2/releases/download/v${BEDTOOLS_VERSION}/bedtools-${BEDTOOLS_VERSION}.tar.gz && \
     tar -xzf bedtools-${BEDTOOLS_VERSION}.tar.gz -C src --strip-components=1 && \
     cd src && \
-    make && \
+    make CXXFLAGS="-g -Wall -O2 -std=c++11 -include cstdint" && \
     make prefix=/bedtools install && \
     cd / && \
     rm -rf /bedtools-build
