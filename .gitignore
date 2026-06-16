@@ -47,3 +47,4 @@ test*.dot
 .vscode/
 
 venv
+.headroom_data

@@ -117,13 +117,6 @@ workflow GvsExtractCallset {
       variants_docker = effective_variants_docker,
   }
 
-  call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
-    input:
-      project_id = query_project,
-      fq_table = fq_sample_table,
-      cloud_sdk_docker = effective_cloud_sdk_docker,
-  }
-
   call Utils.GetNumSamplesLoaded {
     input:
       fq_sample_table = fq_sample_table,
