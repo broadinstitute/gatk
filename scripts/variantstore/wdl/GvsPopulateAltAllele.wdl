@@ -4,6 +4,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsPopulateAltAllele {
   input {
+    #@ except: UnusedInput
     Boolean go = true
     String dataset_name
     String project_id
@@ -90,6 +91,7 @@ workflow GvsPopulateAltAllele {
 
 task GetMaxSampleId {
   input {
+    #@ except: UnusedInput
     Boolean go = true
     String dataset_name
     String project_id
@@ -195,6 +197,7 @@ task GetVetTableNames {
 
 task CreateAltAlleleTable {
   input {
+    #@ except: UnusedInput
     Boolean go = true
     String dataset_name
     String project_id
@@ -307,6 +310,7 @@ task PopulateAltAlleleTable {
 
 task VerifySampleCount {
   input {
+    #@ except: UnusedInput
     Boolean go = true
     String dataset_name
     String project_id

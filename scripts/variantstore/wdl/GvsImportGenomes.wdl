@@ -5,6 +5,7 @@ import "GvsUtils.wdl" as Utils
 workflow GvsImportGenomes {
 
   input {
+    #@ except: UnusedInput
     Boolean go = true
     String? git_branch_or_tag
     String? git_hash
@@ -611,6 +612,7 @@ task ProcessVCFHeaders {
   input {
     String dataset_name
     String project_id
+    #@ except: UnusedInput
     Array[Boolean] go
     String variants_docker
   }
@@ -639,6 +641,7 @@ task SetIsLoadedColumn {
     String dataset_name
     String project_id
 
+    #@ except: UnusedInput
     Array[Boolean] go
     String cloud_sdk_docker
   }
@@ -688,6 +691,7 @@ task SetIsLoadedColumn {
 
 task GetUningestedSampleIds {
   input {
+    #@ except: UnusedInput
     Boolean go
     String dataset_name
     String project_id
@@ -1162,6 +1166,7 @@ task DiscoverParquetFiles {
     String dataset_name
     Array[String] regular_table_prefixes
     Array[String] superpartitioned_table_prefixes
+    #@ except: UnusedInput
     Array[Boolean] go
     String? billing_project_id
     String variants_docker
@@ -1255,6 +1260,7 @@ task VerifyParquetLoading {
     String project_id
     String dataset_name
     File gcs_files_list
+    #@ except: UnusedInput
     Array[Boolean] go
     String variants_docker
   }

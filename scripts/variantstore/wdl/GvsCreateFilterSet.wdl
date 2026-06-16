@@ -6,6 +6,7 @@ import "../../vcf_site_level_filtering_wdl/JointVcfFiltering.wdl" as VETS
 
 workflow GvsCreateFilterSet {
   input {
+    #@ except: UnusedInput
     Boolean go = true
     String dataset_name
     String project_id
@@ -372,6 +373,7 @@ task CheckIfFilterSetNameIsInUse {
 
 task ExtractFilterTask {
   input {
+    #@ except: UnusedInput
     Boolean go = true
     String project_id
     String dataset_id

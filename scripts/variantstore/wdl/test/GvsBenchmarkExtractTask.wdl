@@ -199,7 +199,7 @@ task ExtractTask {
         bootDiskSizeGb: 15
         preemptible: select_first([extract_preemptible_override, "2"])
         maxRetries: select_first([extract_maxretries_override, "3"])
-        cpu: select_first([extract_cpu_override, "2"])
+        cpu: select_first([extract_cpu_override, 2])
     }
 
     output {

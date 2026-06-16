@@ -371,6 +371,7 @@ task AssertCostIsTrackedAndExpected {
     }
 
     input {
+        #@ except: UnusedInput
         Boolean go = true
         String dataset_name
         String project_id
@@ -480,6 +481,7 @@ task AssertTableSizesAreExpected {
     }
 
     input {
+        #@ except: UnusedInput
         Boolean go = true
         String dataset_name
         String project_id

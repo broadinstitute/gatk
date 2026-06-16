@@ -73,6 +73,7 @@ task CreateTables {
   input {
     String project_id
     String dataset_name
+    #@ except: UnusedInput
     Boolean go
     String datatype
     Int max_table_id

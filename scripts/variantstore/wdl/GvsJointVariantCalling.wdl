@@ -9,6 +9,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsJointVariantCalling {
     input {
+        #@ except: UnusedInput
         Boolean go = true
         String call_set_identifier
         String dataset_name

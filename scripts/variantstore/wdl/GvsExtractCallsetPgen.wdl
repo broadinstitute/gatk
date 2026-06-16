@@ -4,6 +4,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractCallsetPgen {
     input {
+        #@ except: UnusedInput
         Boolean go = true
         # The name of the bigquery dataset containing the GVS data we are extracting
         String dataset_name
@@ -314,6 +315,7 @@ workflow GvsExtractCallsetPgen {
 
 task PgenExtractTask {
     input {
+        #@ except: UnusedInput
         Boolean go
 
         String dataset_name

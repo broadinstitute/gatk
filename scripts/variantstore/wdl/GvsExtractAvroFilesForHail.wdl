@@ -26,6 +26,7 @@ workflow GvsExtractAvroFilesForHail {
         String sample_table_or_view_name = "sample_info"
         String? git_branch_or_tag
         String? git_hash
+        #@ except: UnusedInput
         Boolean go = true
         String project_id
         String dataset_name
@@ -154,6 +155,7 @@ task OutputPath {
         volatile: true
     }
     input {
+        #@ except: UnusedInput
         Boolean go = true
         String basic_docker
     }

@@ -4,6 +4,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsPrepareCallset {
   input {
+    #@ except: UnusedInput
     Boolean go = true
     String project_id
     String dataset_name

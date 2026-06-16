@@ -4,6 +4,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractCallset {
   input {
+    #@ except: UnusedInput
     Boolean go = true
     String dataset_name
     String project_id
@@ -363,6 +364,7 @@ workflow GvsExtractCallset {
 
 task ExtractTask {
   input {
+    #@ except: UnusedInput
     Boolean go
 
     String dataset_name

@@ -116,6 +116,7 @@ workflow GvsCallsetStatistics {
 
 task CreateTables {
     input {
+        #@ except: UnusedInput
         Boolean go = true
         String project_id
         String dataset_name
@@ -313,6 +314,7 @@ task CreateTables {
 
 task CollectMetricsForChromosome {
     input {
+        #@ except: UnusedInput
         Boolean go = true
         String project_id
         String dataset_name
@@ -480,6 +482,7 @@ task CollectMetricsForChromosome {
 
 task AggregateMetricsAcrossChromosomes {
     input {
+        #@ except: UnusedInput
         Boolean go
         String project_id
         String dataset_name
@@ -556,6 +559,7 @@ task AggregateMetricsAcrossChromosomes {
 
 task CollectStatistics {
     input {
+        #@ except: UnusedInput
         Boolean go
         String project_id
         String dataset_name
@@ -636,6 +640,7 @@ task ExportToCSV {
         String project_id
         String dataset_name
         String statistics_table
+        #@ except: UnusedInput
         Boolean go
         String cloud_sdk_docker
     }

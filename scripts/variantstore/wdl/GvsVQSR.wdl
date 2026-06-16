@@ -357,7 +357,7 @@ task SNPsVariantRecalibratorCreateModel {
 
   runtime {
     memory: "~{machine_mem} GiB"
-    cpu: "2"
+    cpu: 2
     bootDiskSizeGb: 15
     disks: "local-disk " + disk_size + " HDD"
     preemptible: 1
@@ -430,7 +430,7 @@ task GatherTranches {
 
   runtime {
     memory: "7.5 GiB"
-    cpu: "2"
+    cpu: 2
     bootDiskSizeGb: 15
     disks: "local-disk " + disk_size + " HDD"
     preemptible: 1
@@ -522,7 +522,7 @@ task IndelsVariantRecalibrator {
 
   runtime {
     memory: "~{machine_mem} GiB"
-    cpu: "2"
+    cpu: 2
     disks: "local-disk " + disk_size + " HDD"
     preemptible: 1
     docker: gatk_docker

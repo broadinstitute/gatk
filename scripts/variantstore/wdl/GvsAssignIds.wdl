@@ -6,6 +6,7 @@ import "GvsUtils.wdl" as Utils
 workflow GvsAssignIds {
 
   input {
+    #@ except: UnusedInput
     Boolean go = true
     String? git_branch_or_tag
     String? git_hash
@@ -266,6 +267,7 @@ task CreateCostObservabilityTable {
   input {
     String project_id
     String dataset_name
+    #@ except: UnusedInput
     Boolean go
     String cloud_sdk_docker
   }
@@ -342,7 +344,7 @@ task ValidateSamples {
   runtime {
     docker: cloud_sdk_docker
     memory: "3 GB"
-    cpu: "1"
+    cpu: 1
     preemptible: 1
     maxRetries: 0
     disks: "local-disk 100 HDD"

@@ -384,6 +384,7 @@ task SplitIntervalsTarred {
 
 task GetBQTableLastModifiedDatetime {
   input {
+    #@ except: UnusedInput
     Boolean go = true
     String project_id
     String fq_table
@@ -686,6 +687,7 @@ task BuildGATKJarAndCreateDataset {
 
 task TerminateWorkflow {
   input {
+    #@ except: UnusedInput
     Boolean go = true
     String message
     String basic_docker
@@ -725,6 +727,7 @@ task TerminateWorkflow {
 
 task ScaleXYBedValues {
     input {
+        #@ except: UnusedInput
         Boolean go = true
         File interval_weights_bed
         Float x_bed_weight_scaling
@@ -761,7 +764,7 @@ task ScaleXYBedValues {
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
-        cpu: "2"
+        cpu: 2
         disks: "local-disk 500 HDD"
     }
 }
@@ -944,6 +947,7 @@ task CountSuperpartitions {
 
 task ValidateFilterSetName {
     input {
+        #@ except: UnusedInput
         Boolean go = true
         String project_id
         String fq_filter_set_info_table
@@ -1504,7 +1508,7 @@ task SummarizeTaskMonitorLogs {
         docker: variants_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {

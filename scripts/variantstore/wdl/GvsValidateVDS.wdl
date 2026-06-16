@@ -6,6 +6,7 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsValidateVDS {
     input {
+        #@ except: UnusedInput
         Boolean go = true
         Boolean use_tiny_dataproc_cluster = false
         Int num_primary_workers = 4
@@ -120,6 +121,7 @@ workflow GvsValidateVDS {
 
 task ValidateVds {
     input {
+        #@ except: UnusedInput
         Boolean go = true
         File run_in_hail_cluster_script
         File vds_validation_script

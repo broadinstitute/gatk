@@ -38,6 +38,7 @@ workflow GvsTieOutVds {
 
 task TieOutVDS {
     input {
+        #@ except: UnusedInput
         Boolean go
         String git_branch_or_tag
         String vds_path
