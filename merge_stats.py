@@ -155,7 +155,13 @@ def main():
         mn, mx, step = args.range
         paddings = list(range(mn, mx + 1, step))
     else:
-        paddings = [1000]
+        # Default: 0, 100 bp steps to 1 kb, 1 kb steps to 10 kb, 10 kb steps to 100 kb
+        paddings = (
+            [0] +
+            list(range(100, 1_000, 100)) +
+            list(range(1_000, 10_001, 1_000)) +
+            list(range(20_000, 100_001, 10_000))
+        )
 
     print(f"# Input: {args.input}", file=sys.stderr)
     print("# Preparing BED file...", file=sys.stderr, flush=True)
