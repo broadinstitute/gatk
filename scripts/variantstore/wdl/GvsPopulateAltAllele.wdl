@@ -16,8 +16,6 @@ workflow GvsPopulateAltAllele {
     String? git_hash
   }
 
-  String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
-
   if (!defined(git_hash) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
     call Utils.GetToolVersions {
       input:
@@ -53,23 +51,14 @@ workflow GvsPopulateAltAllele {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
-  call Utils.GetBQTableLastModifiedDatetime {
-    input:
-      go = CreateAltAlleleTable.done,
-      project_id = project_id,
-      fq_table = fq_alt_allele_table,
-      cloud_sdk_docker = effective_cloud_sdk_docker,
-  }
-
   scatter (vet_table_names_file in GetVetTableNames.vet_table_names_files) {
     call PopulateAltAlleleTable {
       input:
         call_set_identifier = call_set_identifier,
         dataset_name = dataset_name,
         project_id = project_id,
-        create_table_done = CreateAltAlleleTable.done,
+        go = CreateAltAlleleTable.done,
         vet_table_names_file = vet_table_names_file,
-        last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
         max_sample_id = GetMaxSampleId.max_sample_id,
         variants_docker = effective_variants_docker,
     }
@@ -262,15 +251,16 @@ task CreateAltAlleleTable {
 
 task PopulateAltAlleleTable {
   input {
+    #@ except: UnusedInput
+    Boolean go
+
     String dataset_name
     String project_id
 
-    String create_table_done
     File vet_table_names_file
     String call_set_identifier
     Int max_sample_id
 
-    String last_modified_timestamp
     String variants_docker
   }
   meta {
