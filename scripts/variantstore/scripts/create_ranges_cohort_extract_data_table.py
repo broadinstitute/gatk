@@ -273,9 +273,11 @@ def get_location_filters(interval_list, fq_temp_table_dataset, padding=1000, ski
         print(f"Interval list has {interval_count:,} intervals (> {INTERVAL_TEMP_TABLE_THRESHOLD}); "
               f"loading into a temporary BigQuery table for efficient filtering.")
         fq_interval_table = load_intervals_to_temp_table(intervals, fq_temp_table_dataset)
-        return (f"WHERE EXISTS "
-                f"(SELECT 1 FROM `{fq_interval_table}` "
-                f"WHERE location BETWEEN location_start AND location_end)")
+        # BigQuery does not support WHERE EXISTS with a non-equality (range) correlated subquery —
+        # it translates EXISTS to a LEFT SEMI JOIN and requires an equality condition.
+        # An INNER JOIN with BETWEEN is equivalent here because the intervals are merged
+        # (non-overlapping), so any location matches at most one interval row.
+        return f"INNER JOIN `{fq_interval_table}` ON location BETWEEN location_start AND location_end"
 
 
 def create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract_table_ttl, vet_ranges_extract_table_version):
@@ -372,7 +374,7 @@ def populate_final_extract_table_with_ref(fq_ranges_dataset, fq_destination_tabl
 
             sql = helper_function_definitions + insert + ("\n".join(subs.values())) + "\n" + \
                   "q_all AS (" + (" union all ".join([f"(SELECT * FROM q_{id})" for id in subs.keys()])) + ")\n" + \
-                  f" (SELECT * FROM q_all {location_string})"
+                  f" (SELECT q_all.* FROM q_all {location_string})"
             print(sql)
             print(f"{fq_ref_table} query is {utils.utf8len(sql) / (1024 * 1024)} MB in length")
             query_return = utils.execute_with_retry(client, "populate destination table with reference data", sql)
@@ -408,7 +410,7 @@ def populate_final_extract_table_with_vet(fq_ranges_dataset, fq_destination_tabl
 
             sql = insert + ("\n".join(subs.values())) + "\n" + \
                   "q_all AS (" + (" union all ".join([f"(SELECT * FROM q_{id})" for id in subs.keys()])) + ")\n" + \
-                  f" (SELECT * FROM q_all {location_string})"
+                  f" (SELECT q_all.* FROM q_all {location_string})"
             print(sql)
             print(f"{fq_vet_table} query is {utils.utf8len(sql) / (1024 * 1024)} MB in length")
             query_return = utils.execute_with_retry(client, "populate destination table with variant data", sql)
