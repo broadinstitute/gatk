@@ -14,7 +14,6 @@ workflow GvsCreateFilterSet {
 
     String filter_set_name
 
-    String reference_name = "hg38"
     String? interval_list
 
     String? basic_docker
@@ -63,13 +62,12 @@ workflow GvsCreateFilterSet {
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
 
-  call Utils.GetReference {
+  call Utils.GetHG38Reference {
     input:
-      reference_name = reference_name,
       basic_docker = effective_basic_docker,
   }
 
-  String effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
+  String effective_interval_list = select_first([interval_list, GetHG38Reference.reference.wgs_calling_interval_list])
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:
@@ -103,7 +101,7 @@ workflow GvsCreateFilterSet {
   call Utils.SplitIntervals {
     input:
       intervals = effective_interval_list,
-      ref_fasta = GetReference.reference.reference_fasta,
+      ref_fasta = GetHG38Reference.reference.reference_fasta,
       scatter_count = scatter_count,
       gatk_docker = effective_gatk_docker,
       gatk_override = gatk_override,
@@ -120,7 +118,7 @@ workflow GvsCreateFilterSet {
     call ExtractFilterTask {
       input:
         go                         = CheckIfFilterSetNameIsInUse.done,
-        reference                  = GetReference.reference.reference_fasta,
+        reference                  = GetHG38Reference.reference.reference_fasta,
         fq_sample_table            = fq_sample_table,
         sample_table_timestamp     = SamplesTableDatetimeCheck.last_modified_timestamp,
         intervals                  = SplitIntervals.interval_files[i],
@@ -156,7 +154,7 @@ workflow GvsCreateFilterSet {
         sites_only_vcf_idx = MergeVCFs.output_vcf_index,
         output_prefix = filter_set_name,
         annotations = ["AS_QD", "AS_MQRankSum", "AS_ReadPosRankSum", "AS_FS", "AS_MQ", "AS_SOR"],
-        resource_args = "--resource:hapmap,training=true,calibration=true ${GetReference.reference.hapmap_resource_vcf} --resource:omni,training=true,calibration=true ${GetReference.reference.omni_resource_vcf} --resource:1000G,training=true,calibration=false ${GetReference.reference.one_thousand_genomes_resource_vcf} --resource:mills,training=true,calibration=true ${GetReference.reference.mills_resource_vcf} --resource:axiom,training=true,calibration=false ${GetReference.reference.axiomPoly_resource_vcf}",
+        resource_args = "--resource:hapmap,training=true,calibration=true ${GetHG38Reference.reference.hapmap_resource_vcf} --resource:omni,training=true,calibration=true ${GetHG38Reference.reference.omni_resource_vcf} --resource:1000G,training=true,calibration=false ${GetHG38Reference.reference.one_thousand_genomes_resource_vcf} --resource:mills,training=true,calibration=true ${GetHG38Reference.reference.mills_resource_vcf} --resource:axiom,training=true,calibration=false ${GetHG38Reference.reference.axiomPoly_resource_vcf}",
         extract_extra_args = "-L ${effective_interval_list}",
         score_extra_args = "-L ${effective_interval_list}",
         extract_runtime_attributes = vets_extract_runtime_attributes,
@@ -228,7 +226,6 @@ workflow GvsCreateFilterSet {
         dataset_name = dataset_name,
         project_id = project_id,
         base_name = filter_set_name,
-        reference_name = reference_name,
         filter_set_name = filter_set_name,
         filter_set_info_schema = filter_set_info_destination_table_schema,
         fq_filter_set_info_destination_table = fq_filter_set_info_destination_table,

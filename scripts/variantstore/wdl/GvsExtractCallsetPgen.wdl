@@ -48,7 +48,6 @@ workflow GvsExtractCallsetPgen {
         # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
         String drop_state = "NONE"
 
-        String reference_name = "hg38"
         File? interval_list
         File interval_weights_bed = "gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed"
 
@@ -108,13 +107,12 @@ workflow GvsExtractCallsetPgen {
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
-    call Utils.GetReference {
+    call Utils.GetHG38Reference {
         input:
-            reference_name = reference_name,
             basic_docker = effective_basic_docker,
     }
 
-    File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
+    File effective_interval_list = select_first([interval_list, GetHG38Reference.reference.wgs_calling_interval_list])
 
     call Utils.ScaleXYBedValues {
         input:
@@ -163,7 +161,7 @@ workflow GvsExtractCallsetPgen {
     call Utils.SplitIntervalsTarred {
         input:
             intervals = effective_interval_list,
-            ref_fasta = GetReference.reference.reference_fasta,
+            ref_fasta = GetHG38Reference.reference.reference_fasta,
             interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
             intervals_file_extension = intervals_file_extension,
             scatter_count = effective_scatter_count,
@@ -235,7 +233,7 @@ workflow GvsExtractCallsetPgen {
                 use_VETS                           = use_VETS,
                 gatk_docker                        = effective_gatk_docker,
                 gatk_override                      = gatk_override,
-                reference                          = GetReference.reference.reference_fasta,
+                reference                          = GetHG38Reference.reference.reference_fasta,
                 fq_samples_to_extract_table        = fq_samples_to_extract_table,
                 interval_index                     = i,
                 interval_files_tar                 = SplitIntervalsTarred.interval_files_tar,

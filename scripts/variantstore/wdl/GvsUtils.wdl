@@ -2,9 +2,8 @@ version 1.0
 
 import "../structs/Reference.wdl" as Reference
 
-task GetReference {
+task GetHG38Reference {
   input {
-    String reference_name
     String basic_docker
   }
 
@@ -65,8 +64,6 @@ task GetToolVersions {
   String effective_version = select_first([git_branch_or_tag, version])
 
   String workspace_id_output = "workspace_id.txt"
-  String workspace_name_output = "workspace_name.txt"
-  String workspace_namespace_output = "workspace_namespace.txt"
   String workspace_bucket_output = "workspace_bucket.txt"
   String submission_id_output = "submission_id.txt"
   String workflow_id_output = "workflow_id.txt"
@@ -1569,7 +1566,7 @@ task PopulateFilterSetInfo {
         -V ~{snp_recal_file} \
         -O ~{filter_set_name}.snps.recal.tsv
 
-    echo "Creating INDELs racalibration file"
+    echo "Creating INDELs recalibration file"
     gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
       CreateFilteringFiles \
         --ref-version 38 \

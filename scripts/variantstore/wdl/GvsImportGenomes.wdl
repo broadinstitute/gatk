@@ -33,7 +33,6 @@ workflow GvsImportGenomes {
     # without going over
     Int beta_customer_max_scatter = 200
 
-    String reference_name = "hg38"
     File? interval_list
 
     Int? load_data_scatter_width
@@ -100,13 +99,12 @@ workflow GvsImportGenomes {
     }
   }
 
-  call Utils.GetReference {
+  call Utils.GetHG38Reference {
     input:
-      reference_name = reference_name,
       basic_docker = effective_basic_docker,
   }
 
-  File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
+  File effective_interval_list = select_first([interval_list, GetHG38Reference.reference.wgs_calling_interval_list])
 
   if (!load_vcf_headers && !load_vet_and_ref_ranges) {
     call Utils.TerminateWorkflow as MustLoadAtLeastOneThing {

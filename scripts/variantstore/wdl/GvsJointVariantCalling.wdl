@@ -58,7 +58,6 @@ workflow GvsJointVariantCalling {
         # runs and feature development.
         File? gatk_override
 
-        String reference_name = "hg38"
         Boolean is_wgs = true
         File? interval_list
 
@@ -120,16 +119,15 @@ workflow GvsJointVariantCalling {
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
 
-    call Utils.GetReference {
+    call Utils.GetHG38Reference {
         input:
-            reference_name = reference_name,
             basic_docker = effective_basic_docker,
     }
 
     # If `is_wgs` is true we'll use the WGS interval list else, otherwise we'll use the Exome interval list.
     # However if `interval_list` is defined, we'll use that instead of choosing based on `is_wgs`.
-    File default_interval_list = if (is_wgs) then GetReference.reference.wgs_calling_interval_list
-                                 else GetReference.reference.exome_calling_interval_list
+    File default_interval_list = if (is_wgs) then GetHG38Reference.reference.wgs_calling_interval_list
+                                 else GetHG38Reference.reference.exome_calling_interval_list
     File interval_list_to_use = select_first([interval_list, default_interval_list])
 
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {
@@ -143,7 +141,6 @@ workflow GvsJointVariantCalling {
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
             gatk_override = gatk_override,
-            reference_name = reference_name,
             interval_list = interval_list_to_use,
             drop_state = drop_state,
             sample_id_column_name = sample_id_column_name,
@@ -188,7 +185,6 @@ workflow GvsJointVariantCalling {
             filter_set_name = effective_filter_set_name,
             use_VETS = !use_VQSR,
             add_additional_annotations_to_sites_only_vcf = add_additional_annotations_to_sites_only_vcf,
-            reference_name = reference_name,
             interval_list = interval_list_to_use,
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
@@ -234,7 +230,6 @@ workflow GvsJointVariantCalling {
             filter_set_name = effective_filter_set_name,
             query_project = query_project,
             scatter_count = extract_scatter_count,
-            reference_name = reference_name,
             interval_list = interval_list_to_use,
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,

@@ -16,7 +16,6 @@ workflow GvsQuickstartVcfIntegration {
         String drop_state = "FORTY"
         Boolean bgzip_output_vcfs = false
         String dataset_suffix
-        String reference_name = "hg38"
         Boolean is_wgs = true
         File? interval_list
         Boolean use_default_dockers = false
@@ -62,9 +61,8 @@ workflow GvsQuickstartVcfIntegration {
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
     String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
-    call Utils.GetReference {
+    call Utils.GetHG38Reference {
         input:
-            reference_name = reference_name,
             basic_docker = effective_basic_docker,
     }
 
@@ -105,7 +103,6 @@ workflow GvsQuickstartVcfIntegration {
             extract_do_not_filter_override = extract_do_not_filter_override,
             drop_state = drop_state,
             bgzip_output_vcfs = bgzip_output_vcfs,
-            reference_name = reference_name,
             is_wgs = is_wgs,
             interval_list = interval_list,
             sample_id_column_name = sample_id_column_name,
@@ -176,7 +173,7 @@ workflow GvsQuickstartVcfIntegration {
             input:
                 input_vcf = JointVariantCalling.output_vcfs[i],
                 input_vcf_index = JointVariantCalling.output_vcf_indexes[i],
-                ref_fasta = GetReference.reference.reference_fasta,
+                ref_fasta = GetHG38Reference.reference.reference_fasta,
                 gatk_docker = effective_gatk_docker,
         }
         call ValidateVcf {

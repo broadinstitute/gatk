@@ -8,7 +8,6 @@ workflow JointVcfFiltering {
     String project_id
     String base_name
 
-    String reference_name = "hg38"
 
     String filter_set_name
     String filter_set_info_schema
@@ -60,36 +59,35 @@ workflow JointVcfFiltering {
   String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
 
-  call Utils.GetReference {
+  call Utils.GetHG38Reference {
     input:
-      reference_name = reference_name,
       basic_docker = effective_basic_docker,
   }
 
   # reference files
   # Axiom - Used only for indels
-  String axiomPoly_resource_vcf = GetReference.reference.axiomPoly_resource_vcf
-  String axiomPoly_resource_vcf_index = GetReference.reference.axiomPoly_resource_vcf_index
+  String axiomPoly_resource_vcf = GetHG38Reference.reference.axiomPoly_resource_vcf
+  String axiomPoly_resource_vcf_index = GetHG38Reference.reference.axiomPoly_resource_vcf_index
 
   # DbSNP - BOTH SNPs and INDELs.
-  String dbsnp_vcf = GetReference.reference.dbsnp_vcf
-  String dbsnp_vcf_index = GetReference.reference.dbsnp_vcf_index
+  String dbsnp_vcf = GetHG38Reference.reference.dbsnp_vcf
+  String dbsnp_vcf_index = GetHG38Reference.reference.dbsnp_vcf_index
 
   # HapMap - SNPs
-  String hapmap_resource_vcf = GetReference.reference.hapmap_resource_vcf
-  String hapmap_resource_vcf_index = GetReference.reference.hapmap_resource_vcf_index
+  String hapmap_resource_vcf = GetHG38Reference.reference.hapmap_resource_vcf
+  String hapmap_resource_vcf_index = GetHG38Reference.reference.hapmap_resource_vcf_index
 
   # Mills - Indels
-  String mills_resource_vcf = GetReference.reference.mills_resource_vcf
-  String mills_resource_vcf_index = GetReference.reference.mills_resource_vcf_index
+  String mills_resource_vcf = GetHG38Reference.reference.mills_resource_vcf
+  String mills_resource_vcf_index = GetHG38Reference.reference.mills_resource_vcf_index
 
   # Omni - SNPs
-  String omni_resource_vcf = GetReference.reference.omni_resource_vcf
-  String omni_resource_vcf_index = GetReference.reference.omni_resource_vcf_index
+  String omni_resource_vcf = GetHG38Reference.reference.omni_resource_vcf
+  String omni_resource_vcf_index = GetHG38Reference.reference.omni_resource_vcf_index
 
   # 1000G - SNPs
-  String one_thousand_genomes_resource_vcf = GetReference.reference.one_thousand_genomes_resource_vcf
-  String one_thousand_genomes_resource_vcf_index = GetReference.reference.one_thousand_genomes_resource_vcf_index
+  String one_thousand_genomes_resource_vcf = GetHG38Reference.reference.one_thousand_genomes_resource_vcf
+  String one_thousand_genomes_resource_vcf_index = GetHG38Reference.reference.one_thousand_genomes_resource_vcf_index
 
   call IndelsVariantRecalibrator {
     input:
