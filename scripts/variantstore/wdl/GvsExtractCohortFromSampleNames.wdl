@@ -110,7 +110,6 @@ workflow GvsExtractCohortFromSampleNames {
     input:
       fq_sample_table = "~{gvs_project}.~{gvs_dataset}.sample_info",
       project_id = query_project,
-      sample_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
       cloud_sdk_docker = effective_cloud_sdk_docker
   }
 

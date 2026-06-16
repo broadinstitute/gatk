@@ -129,7 +129,6 @@ workflow GvsExtractCallset {
       fq_sample_table = fq_sample_table,
       project_id = query_project,
       control_samples = control_samples,
-      sample_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 

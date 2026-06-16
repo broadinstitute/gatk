@@ -89,7 +89,6 @@ workflow GvsCreateFilterSet {
     input:
       fq_sample_table = fq_sample_table,
       project_id = project_id,
-      sample_table_timestamp = SamplesTableDatetimeCheck.last_modified_timestamp,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
