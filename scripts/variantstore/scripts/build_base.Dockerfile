@@ -65,14 +65,14 @@ RUN mkdir /vcftools /vcftools-build && \
     rm -rf /vcftools-build
 
 ARG BEDTOOLS_VERSION=2.31.1
-RUN mkdir /bedtools /bedtools-build && \
+RUN mkdir -p /bedtools /bedtools-build/src && \
     cd /bedtools-build && \
     curl -L -O https://github.com/arq5x/bedtools2/releases/download/v${BEDTOOLS_VERSION}/bedtools-${BEDTOOLS_VERSION}.tar.gz && \
-    tar -xzf bedtools-${BEDTOOLS_VERSION}.tar.gz && \
-    cd bedtools2-${BEDTOOLS_VERSION} && \
+    tar -xzf bedtools-${BEDTOOLS_VERSION}.tar.gz -C src --strip-components=1 && \
+    cd src && \
     make && \
     make prefix=/bedtools install && \
     cd / && \
     rm -rf /bedtools-build
 
-ENV PERL5LIB /vcftools/share/perl5/site_perl/:$PERL5LIB
+ENV PERL5LIB="/vcftools/share/perl5/site_perl/"
