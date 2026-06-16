@@ -191,6 +191,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1771_prepare_oh_so_many_intervals
          tags:
              - /.*/
    - name: GvsExtractCallsetShard30603
@@ -229,6 +230,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1771_prepare_oh_so_many_intervals
          tags:
              - /.*/
    - name: GvsCreateVATfromVDS
