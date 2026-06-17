@@ -2,7 +2,6 @@ version 1.0
 
 # This WDL will create a VDS in Hail running in a Dataproc cluster.
 import "GvsUtils.wdl" as Utils
-import "GvsValidateVDS.wdl" as ValidateVDS
 
 workflow GvsCreateVDS {
     input {
