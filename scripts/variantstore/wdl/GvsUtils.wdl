@@ -782,6 +782,9 @@ task GetNumSamplesLoaded {
   input {
     String fq_sample_table
     String project_id
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
+    String sample_table_timestamp
     Boolean control_samples = false
     String cloud_sdk_docker
   }
