@@ -314,6 +314,8 @@ workflow GvsImportGenomes {
         # `GenerateParquetFilesFromInputGVCFs`, the `go` trigger for setting the `is_loaded` column is the `done` output
         # of the last task in that chain, `VerifyParquetLoading`. The other component of the `go` trigger is the
         # `LoadDataViaBigQueryWriteAPI.done` corresponding to the Write API flow.
+        # Intentionally using select_first to pick whichever of the two mutually exclusive code paths (Parquet vs WriteAPI) ran.
+        #@ except: UnnecessaryFunctionCall
         go = select_all(select_first([[VerifyParquetLoading.done], LoadDataViaBigQueryWriteAPI.done])),
         project_id = project_id,
         dataset_name = dataset_name,
@@ -325,6 +327,8 @@ workflow GvsImportGenomes {
     Boolean done = true
     Boolean used_tighter_gcp_quotas = is_rate_limited_beta_customer
     String recorded_git_hash = effective_git_hash
+    # Intentionally using select_first to pick the stderr files from whichever of the two mutually exclusive code paths (Parquet vs WriteAPI) ran.
+    #@ except: UnnecessaryFunctionCall
     Array[File] load_data_stderrs = select_first([select_all(GenerateParquetFilesFromInputGVCFs.stderr), select_all(LoadDataViaBigQueryWriteAPI.stderr)])
     Boolean? parquet_loading_verified = VerifyParquetLoading.all_loaded
     Int? parquet_files_loaded = VerifyParquetLoading.loaded_files
@@ -418,7 +422,6 @@ task ProcessInputGVCFs {
     }
   }
 
-  Int samples_per_table = 4000
   Int num_samples = length(sample_names)
   String temp_table = "~{dataset_name}.sample_names_to_load_~{index}"
   # add labels for DSP Cloud Cost Control Labeling and Reporting
@@ -903,7 +906,7 @@ task CreateSampleDataViews {
       -- determine load status. Conversely, data written with the BigQuery Write API seems to result in very delayed
       -- population of INFORMATION_SCHEMA, often lagging writes by several hours, which makes reading INFORMATION_SCHEMA
       -- unreliable with the Write API. The following vet and ref ranges queries UNION DISTINCT the sample_load_status
-      -- table with INFORMATION_SCHEMA to reliably detect sample data regarless of how it was loaded into GVS.
+      -- table with INFORMATION_SCHEMA to reliably detect sample data regardless of how it was loaded into GVS.
       --
       -- This code also provides for a header row existence view if headers are being loaded.
 
