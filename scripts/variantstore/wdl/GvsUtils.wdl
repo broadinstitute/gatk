@@ -381,7 +381,7 @@ task SplitIntervalsTarred {
 
 task GetBQTableLastModifiedDatetime {
   input {
-    # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
     # is passed here to prevent this task from running until the upstream task has completed.
     #@ except: UnusedInput
     Boolean go = true
@@ -690,7 +690,7 @@ task BuildGATKJarAndCreateDataset {
 
 task TerminateWorkflow {
   input {
-    # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
     # is passed here to prevent this task from running until the upstream task has completed.
     #@ except: UnusedInput
     Boolean go = true
@@ -732,7 +732,7 @@ task TerminateWorkflow {
 
 task ScaleXYBedValues {
     input {
-        # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
         # is passed here to prevent this task from running until the upstream task has completed.
         #@ except: UnusedInput
         Boolean go = true
@@ -953,7 +953,7 @@ task CountSuperpartitions {
 
 task ValidateFilterSetName {
     input {
-        # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
         # is passed here to prevent this task from running until the upstream task has completed.
         #@ except: UnusedInput
         Boolean go = true

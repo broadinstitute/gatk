@@ -6,7 +6,7 @@ import "../../vcf_site_level_filtering_wdl/JointVcfFiltering.wdl" as VETS
 
 workflow GvsCreateFilterSet {
   input {
-    # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
     # is passed here to prevent this task from running until the upstream task has completed.
     #@ except: UnusedInput
     Boolean go = true
@@ -371,7 +371,7 @@ task CheckIfFilterSetNameIsInUse {
 
 task ExtractFilterTask {
   input {
-    # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
     # is passed here to prevent this task from running until the upstream task has completed.
     #@ except: UnusedInput
     Boolean go = true
