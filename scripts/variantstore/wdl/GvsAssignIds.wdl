@@ -62,6 +62,8 @@ workflow GvsAssignIds {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  # Intentionally unused: runs for its side effect of creating the BQ table; its output is not consumed downstream.
+  #@ except: UnusedCall
   call GvsCreateTables.CreateTables as CreateSampleLoadStatusTable {
     input:
       project_id = project_id,
@@ -75,6 +77,8 @@ workflow GvsAssignIds {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  # Intentionally unused: runs for its side effect of creating the BQ table; its output is not consumed downstream.
+  #@ except: UnusedCall
   call GvsCreateTables.CreateTables as CreateSamplePloidyMapTable {
     input:
       project_id = project_id,
@@ -130,6 +134,8 @@ workflow GvsAssignIds {
     }
   }
 
+  # Intentionally unused: runs for its side effect of creating the BQ table; its output is not consumed downstream.
+  #@ except: UnusedCall
   call CreateCostObservabilityTable {
     input:
       project_id = project_id,

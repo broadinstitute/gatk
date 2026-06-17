@@ -71,6 +71,8 @@ workflow GvsExtractAvroFilesForHail {
             basic_docker = effective_basic_docker,
     }
 
+    # Intentionally unused: this task runs for its side effect of extracting data to Avro files; its output is not consumed downstream.
+    #@ except: UnusedCall
     call ExtractFromSampleTable {
         input:
             sample_table_or_view_name = sample_table_or_view_name,
@@ -92,6 +94,8 @@ workflow GvsExtractAvroFilesForHail {
             variants_docker = effective_variants_docker,
     }
 
+    # Intentionally unused: this task runs for its side effect of extracting data to Avro files; its output is not consumed downstream.
+    #@ except: UnusedCall
     call ExtractFromPloidyTable {
         input:
             sample_table_or_view_name = sample_table_or_view_name,
