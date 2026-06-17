@@ -499,7 +499,7 @@ def make_extract_table(call_set_identifier,
 
         # Compute the location filter string once; for large interval lists this will also
         # create and populate a temporary BigQuery table with the encoded interval bounds.
-        location_string = get_location_filters(interval_list, fq_temp_table_dataset, destination_cohort_table_prefix, interval_list_padding, skip_filter_threshold)
+        location_string = get_location_filters(interval_list, fq_temp_table_dataset, destination_table_prefix, interval_list_padding, skip_filter_threshold)
 
         # if we have a file of sample names, load it into a temporary table
         if sample_names_to_extract:
