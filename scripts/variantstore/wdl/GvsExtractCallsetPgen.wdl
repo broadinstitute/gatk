@@ -83,7 +83,6 @@ workflow GvsExtractCallsetPgen {
     String fq_filter_set_site_table = "~{fq_gvs_dataset}.filter_set_sites"
     String fq_filter_set_tranches_table = "~{fq_gvs_dataset}.filter_set_tranches"
     String fq_sample_table = "~{fq_gvs_dataset}.sample_info"
-    String fq_cohort_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__DATA"
     String fq_ranges_cohort_ref_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__REF_DATA"
     String fq_ranges_cohort_vet_extract_table_name = "~{full_extract_prefix}__VET_DATA"
     String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{fq_ranges_cohort_vet_extract_table_name}"
@@ -240,7 +239,6 @@ workflow GvsExtractCallsetPgen {
                 interval_index                     = i,
                 interval_files_tar                 = SplitIntervalsTarred.interval_files_tar,
                 interval_filename                  = interval_filename,
-                fq_cohort_extract_table            = fq_cohort_extract_table,
                 fq_ranges_cohort_ref_extract_table = fq_ranges_cohort_ref_extract_table,
                 fq_ranges_cohort_vet_extract_table = fq_ranges_cohort_vet_extract_table,
                 vet_extract_table_version          = GetExtractVetTableVersion.version,
@@ -343,7 +341,6 @@ task PgenExtractTask {
         String interval_filename
         String drop_state
 
-        String fq_cohort_extract_table
         String fq_ranges_cohort_ref_extract_table
         String fq_ranges_cohort_vet_extract_table
         String? vet_extract_table_version
@@ -489,8 +486,8 @@ task PgenExtractTask {
         memory: memory_gib + " GB"
         disks: "local-disk " + select_first([disk_override, 150]) + " HDD"
         bootDiskSizeGb: 15
-        preemptible: select_first([extract_preemptible_override, "2"])
-        maxRetries: select_first([extract_maxretries_override, "3"])
+        preemptible: select_first([extract_preemptible_override, 2])
+        maxRetries: select_first([extract_maxretries_override, 3])
         cpu: 2
         noAddress: true
     }

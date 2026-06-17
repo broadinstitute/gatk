@@ -75,7 +75,6 @@ workflow GvsExtractCallset {
   String fq_filter_set_site_table = "~{fq_gvs_dataset}.filter_set_sites"
   String fq_filter_set_tranches_table = "~{fq_gvs_dataset}.filter_set_tranches"
   String fq_sample_table = "~{fq_gvs_dataset}.sample_info"
-  String fq_cohort_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__DATA"
   String fq_ranges_cohort_ref_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__REF_DATA"
   String fq_ranges_cohort_vet_extract_table_name = "~{full_extract_prefix}__VET_DATA"
   String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{fq_ranges_cohort_vet_extract_table_name}"
@@ -247,7 +246,6 @@ workflow GvsExtractCallset {
         fq_samples_to_extract_table           = fq_samples_to_extract_table,
         interval_index                        = i,
         intervals                             = SplitIntervals.interval_files[i],
-        fq_cohort_extract_table               = fq_cohort_extract_table,
         fq_ranges_cohort_ref_extract_table    = fq_ranges_cohort_ref_extract_table,
         fq_ranges_cohort_vet_extract_table    = fq_ranges_cohort_vet_extract_table,
         vet_extract_table_version             = GetExtractVetTableVersion.version,
@@ -382,7 +380,6 @@ task ExtractTask {
     File intervals
     String drop_state
 
-    String fq_cohort_extract_table
     String fq_ranges_cohort_ref_extract_table
     String fq_ranges_cohort_vet_extract_table
     String? fq_ploidy_mapping_table
@@ -529,8 +526,8 @@ task ExtractTask {
     memory: memory_gib + " GB"
     disks: "local-disk " + select_first([disk_override, 150]) + " HDD"
     bootDiskSizeGb: 15
-    preemptible: select_first([extract_preemptible_override, "2"])
-    maxRetries: select_first([extract_maxretries_override, "3"])
+    preemptible: select_first([extract_preemptible_override, 2])
+    maxRetries: select_first([extract_maxretries_override, 3])
     cpu: 2
     noAddress: true
   }
