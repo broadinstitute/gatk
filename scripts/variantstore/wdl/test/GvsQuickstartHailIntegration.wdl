@@ -132,6 +132,8 @@ workflow GvsQuickstartHailIntegration {
             cluster_max_idle_minutes = 60,
     }
 
+    # Intentionally unused: runs for its side effect of validating VDS tieout; its output is not consumed downstream.
+    #@ except: UnusedCall
     call TieOutVDS.TieOutVDS {
         input:
             go = GvsCreateVDS.done,
