@@ -268,7 +268,6 @@ workflow GvsExtractCallsetPgen {
     call SumBytes {
         input:
             file_sizes_bytes = flatten([PgenExtractTask.output_pgen_bytes, PgenExtractTask.output_pvar_bytes, PgenExtractTask.output_psam_bytes]),
-            output_gcs_dir = output_gcs_dir,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -516,7 +515,6 @@ task SumBytes {
     input {
         Array[Float] file_sizes_bytes
         String cloud_sdk_docker
-        String? output_gcs_dir
     }
     meta {
         # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.

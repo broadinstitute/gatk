@@ -19,7 +19,6 @@ workflow GvsRescatterCallsetInterval {
     Int? extract_preemptible_override
     Int? maximum_alternate_alleles
     String? final_output_gcs_dir
-    File? gatk_override
     Int? merge_disk_override
     String? variants_docker
     String? cloud_sdk_docker
