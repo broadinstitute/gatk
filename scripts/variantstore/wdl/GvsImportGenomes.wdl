@@ -1065,6 +1065,7 @@ task CreateSampleDataViews {
 task ConfigureParquetLifecycle {
   input {
     String output_gcs_dir
+    # TODO: billing_project_id is declared but not passed to load_parquet_to_bq.py - see VS-1955.
     String? billing_project_id
     String variants_docker
   }
@@ -1235,6 +1236,7 @@ task LoadParquetFilesToBQ {
     String dataset_name
     File fofn_file
     Int batch_size
+    # TODO: billing_project_id is declared but not passed to load_parquet_to_bq.py - see VS-1955.
     String? billing_project_id
     String variants_docker
   }

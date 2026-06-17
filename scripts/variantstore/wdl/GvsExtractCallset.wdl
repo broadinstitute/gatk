@@ -170,7 +170,7 @@ workflow GvsExtractCallset {
       gatk_override = gatk_override,
   }
 
-  # TODO: FilterSetInfoTimestamp.last_modified_timestamp is never wired to any downstream task — see VS-1954.
+  # TODO: FilterSetInfoTimestamp.last_modified_timestamp is never wired to any downstream task - see VS-1954.
   call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
     input:
       project_id = project_id,
