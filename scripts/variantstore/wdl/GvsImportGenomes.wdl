@@ -1304,6 +1304,7 @@ task VerifyParquetLoading {
   }
 
   output {
+    # TODO: Sprocket flags read_json indexing as invalid on Union type; fix by upgrading to WDL 1.1 and using struct coercion — see VS-1957.
     File results_json = "verification_output/verification_results.json"
     Boolean all_loaded = read_json(results_json)["all_loaded"]
     Int total_files = read_json(results_json)["total_files"]
