@@ -37,9 +37,7 @@ workflow GvsRescatterCallsetInterval {
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
   scatter(i in range(length(intervals_to_scatter))) {
-    # take out leading 0s from interval file name number for VCF and index
-    Int shard_num = intervals_to_scatter[i]
-    String vcf_basename = "${output_file_base_name}_${shard_num}"
+    String vcf_basename = "${output_file_base_name}_${intervals_to_scatter[i]}"
 
     call CallsetInterval.GvsExtractCallset as ExtractInterval {
       input:
