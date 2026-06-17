@@ -16,7 +16,6 @@ workflow GvsCreateVDS {
 
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
-        Boolean leave_cluster_running_at_end = false
         Float? master_memory_fraction
 
         String? git_branch_or_tag
@@ -114,7 +113,6 @@ workflow GvsCreateVDS {
             hail_wheel = hail_wheel,
             hail_temp_path = hail_temp_path,
             run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
-            run_in_existing_hail_cluster_script = GetHailScripts.run_in_existing_hail_cluster_script,
             gvs_import_script = GetHailScripts.gvs_import_script,
             gvs_import_ploidy_script = GetHailScripts.gvs_import_ploidy_script,
             hail_gvs_import_script = GetHailScripts.hail_gvs_import_script,
@@ -125,7 +123,6 @@ workflow GvsCreateVDS {
             region = region,
             workspace_bucket = effective_workspace_bucket,
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
-            leave_cluster_running_at_end = leave_cluster_running_at_end,
             cluster_max_idle_minutes = cluster_max_idle_minutes,
             cluster_max_age_minutes = cluster_max_age_minutes,
             master_memory_fraction = master_memory_fraction,
@@ -143,10 +140,8 @@ task CreateVds {
         Boolean use_tiny_dataproc_cluster
         String vds_path
         String avro_path
-        Boolean leave_cluster_running_at_end
         Boolean run_validation = true
         File run_in_hail_cluster_script
-        File run_in_existing_hail_cluster_script
         File hail_gvs_import_script
         File hail_gvs_util_script
         File gvs_import_script
