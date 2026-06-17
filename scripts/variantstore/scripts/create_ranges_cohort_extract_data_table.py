@@ -144,7 +144,7 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
     return query_return['results']
 
 
-def load_intervals_to_temp_table(intervals, fq_temp_table_dataset):
+def load_intervals_to_temp_table(intervals, fq_temp_table_dataset, table_prefix):
     """Load a pybedtools BedTool of intervals into a temporary BigQuery table.
 
     Each interval is stored as (location_start INT64, location_end INT64, chrom_index INT64) using
@@ -162,7 +162,7 @@ def load_intervals_to_temp_table(intervals, fq_temp_table_dataset):
 
     Returns the fully-qualified name of the created table.
     """
-    fq_interval_table = f"{fq_temp_table_dataset}.{INTERVAL_TABLE_NAME}"
+    fq_interval_table = f"{fq_temp_table_dataset}.{table_prefix}__{INTERVAL_TABLE_NAME}"
     schema = [
         bigquery.SchemaField("location_start", "INT64", mode="REQUIRED"),
         bigquery.SchemaField("location_end", "INT64", mode="REQUIRED"),
@@ -208,7 +208,7 @@ def load_intervals_to_temp_table(intervals, fq_temp_table_dataset):
     return fq_interval_table
 
 
-def get_location_filters(interval_list, fq_temp_table_dataset, padding=1000, skip_filter_threshold=0.5):
+def get_location_filters(interval_list, fq_temp_table_dataset, table_prefix, padding=1000, skip_filter_threshold=0.5):
     """Return a SQL WHERE clause fragment for filtering by genomic location.
 
     Expands every interval by `padding` bp on each side and merges overlaps, then chooses
@@ -278,7 +278,7 @@ def get_location_filters(interval_list, fq_temp_table_dataset, padding=1000, ski
     else:
         print(f"Interval list has {interval_count:,} intervals (> {INTERVAL_TEMP_TABLE_THRESHOLD}); "
               f"loading into a temporary BigQuery table for efficient filtering.")
-        fq_interval_table = load_intervals_to_temp_table(intervals, fq_temp_table_dataset)
+        fq_interval_table = load_intervals_to_temp_table(intervals, fq_temp_table_dataset, table_prefix)
         # BigQuery does not support WHERE EXISTS with a non-equality (range) correlated subquery —
         # it translates EXISTS to a LEFT SEMI JOIN and requires an equality condition.
         # An INNER JOIN with BETWEEN is equivalent here because the intervals are merged
@@ -499,7 +499,7 @@ def make_extract_table(call_set_identifier,
 
         # Compute the location filter string once; for large interval lists this will also
         # create and populate a temporary BigQuery table with the encoded interval bounds.
-        location_string = get_location_filters(interval_list, fq_temp_table_dataset, interval_list_padding, skip_filter_threshold)
+        location_string = get_location_filters(interval_list, fq_temp_table_dataset, destination_cohort_table_prefix, interval_list_padding, skip_filter_threshold)
 
         # if we have a file of sample names, load it into a temporary table
         if sample_names_to_extract:
