@@ -61,6 +61,7 @@ workflow GvsPopulateAltAllele {
         project_id = project_id,
         go = CreateAltAlleleTable.done,
         vet_table_names_file = vet_table_names_file,
+        last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
         max_sample_id = GetMaxSampleId.max_sample_id,
         variants_docker = effective_variants_docker,
     }
@@ -268,6 +269,9 @@ task PopulateAltAlleleTable {
     File vet_table_names_file
     String call_set_identifier
     Int max_sample_id
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
+    String last_modified_timestamp
 
     String variants_docker
   }
