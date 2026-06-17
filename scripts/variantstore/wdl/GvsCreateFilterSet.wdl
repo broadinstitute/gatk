@@ -35,6 +35,7 @@ workflow GvsCreateFilterSet {
     Int? SNP_VQSR_max_gaussians_override = 6
     Int? SNP_VQSR_mem_gb_override
 
+    # TODO: Sprocket rejects map literals as struct initializers in WDL 1.0; fix by upgrading to WDL 1.1 struct literal syntax — see VS-1957.
     RuntimeAttributes? vets_extract_runtime_attributes = {"command_mem_gb": 27}
     RuntimeAttributes? vets_train_runtime_attributes = {"command_mem_gb": 27}
     RuntimeAttributes? vets_score_runtime_attributes = {"command_mem_gb": 15}
