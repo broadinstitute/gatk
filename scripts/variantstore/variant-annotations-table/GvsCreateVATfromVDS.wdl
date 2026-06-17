@@ -378,8 +378,7 @@ workflow GvsCreateVATfromVDS {
                 variant_transcripts_path = variant_transcripts_output_path,
                 genes_path = genes_output_path,
                 base_vat_table_name = effective_vat_table_name,
-                prep_vt_json_done = PrepVtAnnotationJson.done,
-                prep_genes_json_done = PrepGenesAnnotationJson.done,
+                go = flatten([PrepVtAnnotationJson.done, PrepGenesAnnotationJson.done]),
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
@@ -1014,6 +1013,9 @@ task BigQueryCookVepAndLofteeRawAnnotations {
     # - Splitting and castng a nested GERP field into an array of floating point numbers.
     # - Squashing any duplicate rows resulting from deletions spanning shards.
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go
         String variants_docker
         String project_id
@@ -1469,8 +1471,10 @@ task BigQueryLoadJson {
         String dataset_name
         String variant_transcripts_path
         String genes_path
-        Array[Boolean] prep_vt_json_done
-        Array[Boolean] prep_genes_json_done
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
+        Array[Boolean] go
         String cloud_sdk_docker
     }
 

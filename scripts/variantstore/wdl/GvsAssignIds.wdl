@@ -145,7 +145,7 @@ workflow GvsAssignIds {
       dataset_name = dataset_name,
       sample_info_table = sample_info_table,
       samples_are_controls = samples_are_controls,
-      table_creation_done = CreateSampleInfoTable.done,
+      go = CreateSampleInfoTable.done,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -177,7 +177,10 @@ task AssignIds {
     String sample_info_table
     File sample_names
     Boolean samples_are_controls
-    Boolean table_creation_done
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
+    Boolean go
     String cloud_sdk_docker
   }
   meta {
