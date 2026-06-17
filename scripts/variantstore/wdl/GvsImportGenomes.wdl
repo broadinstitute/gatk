@@ -5,6 +5,8 @@ import "GvsUtils.wdl" as Utils
 workflow GvsImportGenomes {
 
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
     #@ except: UnusedInput
     Boolean go = true
     String? git_branch_or_tag
@@ -610,6 +612,8 @@ task ProcessVCFHeaders {
   input {
     String dataset_name
     String project_id
+    # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
     #@ except: UnusedInput
     Array[Boolean] go
     String variants_docker
@@ -639,6 +643,8 @@ task SetIsLoadedColumn {
     String dataset_name
     String project_id
 
+    # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
     #@ except: UnusedInput
     Array[Boolean] go
     String cloud_sdk_docker
@@ -689,6 +695,8 @@ task SetIsLoadedColumn {
 
 task GetUningestedSampleIds {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
     #@ except: UnusedInput
     Boolean go
     String dataset_name
@@ -1164,6 +1172,8 @@ task DiscoverParquetFiles {
     String dataset_name
     Array[String] regular_table_prefixes
     Array[String] superpartitioned_table_prefixes
+    # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
     #@ except: UnusedInput
     Array[Boolean] go
     String? billing_project_id
@@ -1258,6 +1268,8 @@ task VerifyParquetLoading {
     String project_id
     String dataset_name
     File gcs_files_list
+    # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
     #@ except: UnusedInput
     Array[Boolean] go
     String variants_docker

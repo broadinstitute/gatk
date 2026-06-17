@@ -4,6 +4,8 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractCallsetPgen {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
         #@ except: UnusedInput
         Boolean go = true
         # The name of the bigquery dataset containing the GVS data we are extracting
@@ -312,6 +314,8 @@ workflow GvsExtractCallsetPgen {
 
 task PgenExtractTask {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
         #@ except: UnusedInput
         Boolean go
 

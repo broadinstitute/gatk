@@ -116,6 +116,8 @@ workflow GvsCallsetStatistics {
 
 task CreateTables {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
         #@ except: UnusedInput
         Boolean go = true
         String project_id
@@ -314,6 +316,8 @@ task CreateTables {
 
 task CollectMetricsForChromosome {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
         #@ except: UnusedInput
         Boolean go = true
         String project_id
@@ -482,6 +486,8 @@ task CollectMetricsForChromosome {
 
 task AggregateMetricsAcrossChromosomes {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
         #@ except: UnusedInput
         Boolean go
         String project_id
@@ -559,6 +565,8 @@ task AggregateMetricsAcrossChromosomes {
 
 task CollectStatistics {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
         #@ except: UnusedInput
         Boolean go
         String project_id
@@ -640,6 +648,8 @@ task ExportToCSV {
         String project_id
         String dataset_name
         String statistics_table
+        # Intentionally unused: this input exists solely to enforce task ordering — the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
         #@ except: UnusedInput
         Boolean go
         String cloud_sdk_docker
