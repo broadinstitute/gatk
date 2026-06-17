@@ -147,8 +147,13 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
 def load_intervals_to_temp_table(intervals, fq_temp_table_dataset):
     """Load a pybedtools BedTool of intervals into a temporary BigQuery table.
 
-    Each interval is stored as (location_start INT64, location_end INT64) using
+    Each interval is stored as (location_start INT64, location_end INT64, chrom_index INT64) using
     the GVS location encoding: chrom_index * 1_000_000_000_000 + position.
+
+    chrom_index is stored as a separate column so it can be used as an equality join key,
+    allowing BigQuery to hash-partition the join on chromosome before applying the BETWEEN
+    range filter. Without the equality key, BQ falls back to a nested loop join against
+    all interval rows, which times out on large datasets.
 
     Intervals are written row-by-row to a CSV buffer and uploaded via a BQ load
     job rather than the streaming insert API.  This avoids accumulating a large
@@ -161,6 +166,7 @@ def load_intervals_to_temp_table(intervals, fq_temp_table_dataset):
     schema = [
         bigquery.SchemaField("location_start", "INT64", mode="REQUIRED"),
         bigquery.SchemaField("location_end", "INT64", mode="REQUIRED"),
+        bigquery.SchemaField("chrom_index", "INT64", mode="REQUIRED"),
     ]
 
     # Write intervals as CSV directly into a buffer — avoids building a large
@@ -176,7 +182,7 @@ def load_intervals_to_temp_table(intervals, fq_temp_table_dataset):
         chrom_num = int(CHROM_MAP[interval.chrom])
         loc_start = chrom_num * 1_000_000_000_000 + int(interval.start)
         loc_end   = chrom_num * 1_000_000_000_000 + int(interval.end)
-        buf.write(f"{loc_start},{loc_end}\n".encode())
+        buf.write(f"{loc_start},{loc_end},{chrom_num}\n".encode())
         rows_written += 1
 
     if skipped > 0:
@@ -277,7 +283,11 @@ def get_location_filters(interval_list, fq_temp_table_dataset, padding=1000, ski
         # it translates EXISTS to a LEFT SEMI JOIN and requires an equality condition.
         # An INNER JOIN with BETWEEN is equivalent here because the intervals are merged
         # (non-overlapping), so any location matches at most one interval row.
-        return f"INNER JOIN `{fq_interval_table}` ON location BETWEEN location_start AND location_end"
+        # The equality condition on chrom_index lets BigQuery hash-partition the join by chromosome
+        # before applying the BETWEEN range filter, avoiding a full nested loop across all intervals.
+        return (f"INNER JOIN `{fq_interval_table}` "
+                f"ON CAST(FLOOR(location / 1000000000000) AS INT64) = chrom_index "
+                f"AND location BETWEEN location_start AND location_end")
 
 
 def create_final_extract_vet_table(fq_destination_table_vet_data, enable_extract_table_ttl, vet_ranges_extract_table_version):
