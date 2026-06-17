@@ -158,6 +158,8 @@ task ExtractVariantAnnotations {
         input_vcf_idx: {localization_optional: true}
     }
 
+    Int effective_command_mem_gb = select_first([runtime_attributes.command_mem_gb, 6])
+
     command {
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
@@ -166,7 +168,7 @@ task ExtractVariantAnnotations {
           bash ~{monitoring_script} > monitoring.log &
         fi
 
-        gatk --java-options "-Xmx~{default=6 runtime_attributes.command_mem_gb}G" \
+        gatk --java-options "-Xmx~{effective_command_mem_gb}G" \
             ExtractVariantAnnotations \
                 -V ~{input_vcf} \
                 -O ~{output_prefix}.extract \
@@ -211,6 +213,8 @@ task TrainVariantAnnotationsModel {
         RuntimeAttributes runtime_attributes = {}
     }
 
+    Int effective_command_mem_gb = select_first([runtime_attributes.command_mem_gb, 6])
+
     command {
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
@@ -219,7 +223,7 @@ task TrainVariantAnnotationsModel {
           bash ~{monitoring_script} > monitoring.log &
         fi
 
-        gatk --java-options "-Xmx~{default=6 runtime_attributes.command_mem_gb}G" \
+        gatk --java-options "-Xmx~{effective_command_mem_gb}G" \
             TrainVariantAnnotationsModel \
                 --annotations-hdf5 ~{annotations_hdf5} \
                 ~{"--unlabeled-annotations-hdf5 " + unlabeled_annotations_hdf5} \
@@ -281,6 +285,8 @@ task ScoreVariantAnnotations {
         extracted_vcf_idx: {localization_optional: true}
     }
 
+    Int effective_command_mem_gb = select_first([runtime_attributes.command_mem_gb, 2])
+
     command {
         set -e
 
@@ -293,7 +299,7 @@ task ScoreVariantAnnotations {
         mkdir model-files
         ln -s ~{sep=" model-files && ln -s " model_files} model-files
 
-        gatk --java-options "-Xmx~{default=2 runtime_attributes.command_mem_gb}G" \
+        gatk --java-options "-Xmx~{effective_command_mem_gb}G" \
             ScoreVariantAnnotations \
                 -V ~{input_vcf} \
                 -O ~{output_prefix}.score \
