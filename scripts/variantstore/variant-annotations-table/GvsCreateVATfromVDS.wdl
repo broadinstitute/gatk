@@ -1189,7 +1189,7 @@ task AnnotateVCF {
 
         if [ ! -s content_check_file.txt ]; then
             echo "Found NO custom annotations in ~{custom_annotations_file} skipping annotation of input VCF"
-            echo "Creating empty ennotation jsons for subsequent tasks"
+            echo "Creating empty annotation jsons for subsequent tasks"
             touch ~{gene_annotation_json_name}
             touch ~{positions_annotation_json_name}
             exit 0

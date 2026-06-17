@@ -12,7 +12,6 @@ workflow CreateBQTables {
     Int max_table_id
     Boolean use_compressed_references = false
 
-    Int? preemptible_tries
     String? cloud_sdk_docker
   }
 

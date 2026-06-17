@@ -252,7 +252,6 @@ workflow GvsExtractCallsetPgen {
                 filter_set_name                    = filter_set_name,
                 drop_state                         = drop_state,
                 output_pgen_basename               = pgen_basename,
-                zero_pad_output_pgen_filenames     = zero_pad_output_pgen_filenames,
                 max_last_modified_timestamp        = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
                 extract_preemptible_override       = extract_preemptible_override,
                 extract_maxretries_override        = extract_maxretries_override,
@@ -350,7 +349,6 @@ task PgenExtractTask {
         String? vet_extract_table_version
         String read_project_id
         String output_pgen_basename
-        Boolean zero_pad_output_pgen_filenames
 
         String cost_observability_tablename = "cost_observability"
 
