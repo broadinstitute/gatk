@@ -121,15 +121,15 @@ workflow GvsJointVariantCalling {
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
 
-    call Utils.GetHG38Reference {
+    call Utils.GetReference {
         input:
             basic_docker = effective_basic_docker,
     }
 
     # If `is_wgs` is true we'll use the WGS interval list else, otherwise we'll use the Exome interval list.
     # However if `interval_list` is defined, we'll use that instead of choosing based on `is_wgs`.
-    File default_interval_list = if (is_wgs) then GetHG38Reference.reference.wgs_calling_interval_list
-                                 else GetHG38Reference.reference.exome_calling_interval_list
+    File default_interval_list = if (is_wgs) then GetReference.reference.wgs_calling_interval_list
+                                 else GetReference.reference.exome_calling_interval_list
     File interval_list_to_use = select_first([interval_list, default_interval_list])
 
     call BulkIngestGenomes.GvsBulkIngestGenomes as BulkIngestGenomes {

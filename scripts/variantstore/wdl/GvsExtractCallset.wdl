@@ -104,12 +104,12 @@ workflow GvsExtractCallset {
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
-  call Utils.GetHG38Reference {
+  call Utils.GetReference {
     input:
       basic_docker = effective_basic_docker,
   }
 
-  File effective_interval_list = select_first([interval_list, GetHG38Reference.reference.wgs_calling_interval_list])
+  File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
 
   call Utils.ScaleXYBedValues {
     input:
@@ -159,7 +159,7 @@ workflow GvsExtractCallset {
   call Utils.SplitIntervals {
     input:
       intervals = effective_interval_list,
-      ref_fasta = GetHG38Reference.reference.reference_fasta,
+      ref_fasta = GetReference.reference.reference_fasta,
       interval_weights_bed = ScaleXYBedValues.xy_scaled_bed,
       intervals_file_extension = intervals_file_extension,
       scatter_count = effective_scatter_count,
@@ -242,7 +242,7 @@ workflow GvsExtractCallset {
         use_VETS                              = use_VETS,
         gatk_docker                           = effective_gatk_docker,
         gatk_override                         = gatk_override,
-        reference                             = GetHG38Reference.reference.reference_fasta,
+        reference                             = GetReference.reference.reference_fasta,
         fq_samples_to_extract_table           = fq_samples_to_extract_table,
         interval_index                        = i,
         intervals                             = SplitIntervals.interval_files[i],
@@ -279,10 +279,10 @@ workflow GvsExtractCallset {
           input_vcf = ExtractTask.output_vcf,
           input_vcf_index = ExtractTask.output_vcf_index,
           metrics_filename_prefix = call_set_identifier + "." + i,
-          dbsnp_vcf = GetHG38Reference.reference.dbsnp_vcf,
-          dbsnp_vcf_index = GetHG38Reference.reference.dbsnp_vcf_index,
+          dbsnp_vcf = GetReference.reference.dbsnp_vcf,
+          dbsnp_vcf_index = GetReference.reference.dbsnp_vcf_index,
           interval_list = SplitIntervals.interval_files[i],
-          ref_dict = GetHG38Reference.reference.reference_dict,
+          ref_dict = GetReference.reference.reference_dict,
           gatk_docker = effective_gatk_docker
       }
     }

@@ -61,7 +61,7 @@ workflow GvsQuickstartIntegration {
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
-    call Utils.GetHG38Reference {
+    call Utils.GetReference {
         input:
             basic_docker = effective_basic_docker,
     }
@@ -69,7 +69,7 @@ workflow GvsQuickstartIntegration {
     if (chr20_X_Y_only && (run_hail_integration || run_vcf_integration)) {
         call FilterIntervalListChromosomes {
             input:
-                full_interval_list = GetHG38Reference.reference.wgs_calling_interval_list,
+                full_interval_list = GetReference.reference.wgs_calling_interval_list,
                 chromosomes = ["chrX", "chrY", "chr20"],
                 variants_docker = effective_variants_docker,
         }
@@ -113,7 +113,7 @@ workflow GvsQuickstartIntegration {
                 use_default_dockers = use_default_dockers,
                 gatk_override = effective_gatk_override,
                 is_wgs = true,
-                interval_list = select_first([FilterIntervalListChromosomes.out, GetHG38Reference.reference.wgs_calling_interval_list]),
+                interval_list = select_first([FilterIntervalListChromosomes.out, GetReference.reference.wgs_calling_interval_list]),
                 expected_output_prefix = expected_output_prefix,
                 sample_id_column_name = sample_id_column_name,
                 vcf_files_column_name = vcf_files_column_name,
@@ -229,7 +229,7 @@ workflow GvsQuickstartIntegration {
                 use_default_dockers = use_default_dockers,
                 gatk_override = effective_gatk_override,
                 is_wgs = false,
-                interval_list = GetHG38Reference.reference.exome_calling_interval_list,
+                interval_list = GetReference.reference.exome_calling_interval_list,
                 expected_output_prefix = expected_output_prefix,
                 sample_id_column_name = sample_id_column_name,
                 vcf_files_column_name = vcf_files_column_name,
@@ -269,7 +269,7 @@ workflow GvsQuickstartIntegration {
                 use_default_dockers = use_default_dockers,
                 gatk_override = effective_gatk_override,
                 is_wgs = false,
-                interval_list = GetHG38Reference.reference.exome_calling_interval_list,
+                interval_list = GetReference.reference.exome_calling_interval_list,
                 expected_output_prefix = expected_output_prefix,
                 sample_id_column_name = sample_id_column_name,
                 vcf_files_column_name = vcf_files_column_name,

@@ -73,7 +73,7 @@ workflow GvsExtractCohortFromSampleNames {
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
-  call Utils.GetHG38Reference {
+  call Utils.GetReference {
     input:
       basic_docker = effective_basic_docker,
   }
@@ -97,7 +97,7 @@ workflow GvsExtractCohortFromSampleNames {
   }
 
   # allow an interval list to be passed in, but default it to the reference-standard one if no args are here
-  File effective_interval_list = select_first([interval_list, GetHG38Reference.reference.wgs_calling_interval_list])
+  File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
 
   call Utils.GetBQTableLastModifiedDatetime as SamplesTableDatetimeCheck {
     input:

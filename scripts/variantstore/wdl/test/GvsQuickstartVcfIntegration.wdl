@@ -61,7 +61,7 @@ workflow GvsQuickstartVcfIntegration {
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
     String effective_submission_id = select_first([submission_id, GetToolVersions.submission_id])
 
-    call Utils.GetHG38Reference {
+    call Utils.GetReference {
         input:
             basic_docker = effective_basic_docker,
     }
@@ -173,7 +173,7 @@ workflow GvsQuickstartVcfIntegration {
             input:
                 input_vcf = JointVariantCalling.output_vcfs[i],
                 input_vcf_index = JointVariantCalling.output_vcf_indexes[i],
-                ref_fasta = GetHG38Reference.reference.reference_fasta,
+                ref_fasta = GetReference.reference.reference_fasta,
                 gatk_docker = effective_gatk_docker,
         }
         call ValidateVcf {

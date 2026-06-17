@@ -101,12 +101,12 @@ workflow GvsImportGenomes {
     }
   }
 
-  call Utils.GetHG38Reference {
+  call Utils.GetReference {
     input:
       basic_docker = effective_basic_docker,
   }
 
-  File effective_interval_list = select_first([interval_list, GetHG38Reference.reference.wgs_calling_interval_list])
+  File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
 
   if (!load_vcf_headers && !load_vet_and_ref_ranges) {
     call Utils.TerminateWorkflow as MustLoadAtLeastOneThing {

@@ -73,13 +73,13 @@ workflow GvsCalculatePrecisionAndSensitivity {
     }
   }
 
-  call Utils.GetHG38Reference {
+  call Utils.GetReference {
     input:
       basic_docker = effective_basic_docker,
   }
 
-  File effective_interval_list = select_first([interval_list, GetHG38Reference.reference.wgs_calling_interval_list])
-  File effective_reference_fasta = select_first([reference_fasta, GetHG38Reference.reference.reference_fasta])
+  File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
+  File effective_reference_fasta = select_first([reference_fasta, GetReference.reference.reference_fasta])
 
   call GvsExtractSubCohortVCFs.GvsExtractCohortFromSampleNames as GenerateControlVCFs {
     input:

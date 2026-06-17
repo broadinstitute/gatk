@@ -2,7 +2,9 @@ version 1.0
 
 import "../structs/Reference.wdl" as Reference
 
-task GetHG38Reference {
+# NOTE: Despite the generic name, this task ALWAYS returns hg38 reference paths. It does not support
+# any other reference genome.
+task GetReference {
   input {
     String basic_docker
   }
