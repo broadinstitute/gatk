@@ -362,7 +362,7 @@ task EnsureVatTableHasVariants {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -431,7 +431,7 @@ task SpotCheckForExpectedTranscripts {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 
@@ -517,7 +517,7 @@ task SchemaNoNullRequiredFields {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -579,7 +579,7 @@ task SchemaOnlyOneRowPerNullTranscript {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -641,7 +641,7 @@ task SchemaPrimaryKey {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -704,7 +704,7 @@ task SchemaEnsemblTranscripts {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -770,7 +770,7 @@ task SchemaNonzeroAcAn {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -827,7 +827,7 @@ task SchemaNullTranscriptsExist {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -892,7 +892,7 @@ task SubpopulationMax {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -951,7 +951,7 @@ task SubpopulationAlleleCount {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -1010,7 +1010,7 @@ task SubpopulationAlleleNumber {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -1083,7 +1083,7 @@ task DuplicateAnnotations {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -1170,7 +1170,7 @@ task ClinvarSignificance {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -1268,7 +1268,7 @@ task SchemaAAChangeAndExonNumberConsistent {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -1384,7 +1384,7 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 
@@ -1454,7 +1454,7 @@ task SpotCheckForManeSelectTranscript {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 

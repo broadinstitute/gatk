@@ -42,18 +42,11 @@ workflow GvsBenchmarkExtractTask {
 
         Int? extract_preemptible_override
         Int? extract_maxretries_override
-        Int? split_intervals_disk_size_override
-
-        String mode = "RANGES"
-
         String output_file_base_name
-        String? output_gcs_dir
         File? gatk_override
         Int local_disk_for_extract = 150
 
         String fq_samples_to_extract_table = "~{data_project}.~{dataset_name}.~{extract_table_prefix}__SAMPLES"
-        String fq_cohort_extract_table  = "~{data_project}.~{dataset_name}.~{extract_table_prefix}__DATA"
-
         String? gatk_docker
     }
 
@@ -66,6 +59,8 @@ workflow GvsBenchmarkExtractTask {
 
     String effective_cloud_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
 
+    # Intentionally unused: this workflow exists to benchmark ExtractTask; its outputs are external data written to GCS, not consumed downstream.
+    #@ except: UnusedCall
     call ExtractTask {
         input:
             gatk_override                   = gatk_override,
@@ -74,7 +69,6 @@ workflow GvsBenchmarkExtractTask {
             reference_dict                  = reference_dict,
             fq_samples_to_extract_table     = fq_samples_to_extract_table,
             intervals                       = wgs_intervals,
-            fq_cohort_extract_table         = fq_cohort_extract_table,
             read_project_id                 = query_project,
             do_not_filter_override          = do_not_filter_override,
             fq_ranges_dataset               = fq_ranges_dataset,
@@ -127,7 +121,6 @@ task ExtractTask {
         File intervals
         String? drop_state
 
-        String fq_cohort_extract_table
         String read_project_id
         String output_file
 
@@ -203,8 +196,8 @@ task ExtractTask {
         memory: select_first([extract_memory_override, "12 GB"])
         disks: "local-disk ~{local_disk} HDD"
         bootDiskSizeGb: 15
-        preemptible: select_first([extract_preemptible_override, "2"])
-        maxRetries: select_first([extract_maxretries_override, "3"])
+        preemptible: select_first([extract_preemptible_override, 2])
+        maxRetries: select_first([extract_maxretries_override, 3])
         cpu: select_first([extract_cpu_override, 2])
     }
 
