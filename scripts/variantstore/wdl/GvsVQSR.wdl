@@ -267,15 +267,33 @@ task SNPsVariantRecalibratorCreateModel {
     Array[String] recalibration_annotation_values
 
     File sites_only_variant_filtered_vcf
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File sites_only_variant_filtered_vcf_index
 
     File hapmap_resource_vcf
     File omni_resource_vcf
     File one_thousand_genomes_resource_vcf
     File dbsnp_resource_vcf
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File hapmap_resource_vcf_index
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File omni_resource_vcf_index
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File one_thousand_genomes_resource_vcf_index
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File dbsnp_resource_vcf_index
     Boolean use_allele_specific_annotations
     Int max_gaussians = 6
@@ -451,13 +469,28 @@ task IndelsVariantRecalibrator {
     Array[String] recalibration_annotation_values
 
     File sites_only_variant_filtered_vcf
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File sites_only_variant_filtered_vcf_index
 
     File mills_resource_vcf
     File axiomPoly_resource_vcf
     File dbsnp_resource_vcf
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File mills_resource_vcf_index
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File axiomPoly_resource_vcf_index
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File dbsnp_resource_vcf_index
     Boolean use_allele_specific_annotations
     Int max_gaussians = 4
@@ -545,15 +578,33 @@ task SNPsVariantRecalibrator {
     Array[String] recalibration_annotation_values
 
     File sites_only_variant_filtered_vcf
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File sites_only_variant_filtered_vcf_index
 
     File hapmap_resource_vcf
     File omni_resource_vcf
     File one_thousand_genomes_resource_vcf
     File dbsnp_resource_vcf
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File hapmap_resource_vcf_index
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File omni_resource_vcf_index
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File one_thousand_genomes_resource_vcf_index
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File dbsnp_resource_vcf_index
     Boolean use_allele_specific_annotations
     Int max_gaussians = 6

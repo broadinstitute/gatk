@@ -7,7 +7,6 @@ workflow GvsCreateVATfromVDS {
     input {
         String project_id
         String dataset_name
-        String reference_name = "hg38"
         File ancestry_file
         String filter_set_name
         File? sites_only_vcf
@@ -144,7 +143,6 @@ workflow GvsCreateVATfromVDS {
 
     call Utils.GetReference {
         input:
-            reference_name = reference_name,
             basic_docker = effective_basic_docker,
     }
 
@@ -443,7 +441,7 @@ task ExcludeSitesFromSitesOnlyVcf {
         docker: variants_docker
         memory: "4 GB"
         preemptible: 2
-        cpu: "1"
+        cpu: 1
         disks: "local-disk ${disk_size_gb} HDD"
     }
 
@@ -589,7 +587,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
         docker: variants_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 
@@ -637,7 +635,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     runtime {
         docker: variants_docker
         memory: "7 GiB"
-        cpu: "2"
+        cpu: 2
         preemptible: 3
         disks: "local-disk " + disk_size + " HDD"
     }
@@ -780,7 +778,7 @@ for line in sys.stdin:
         maxRetries: 3
         memory: "16 GB"
         preemptible: 3
-        cpu: "8"
+        cpu: 8
         disks: "local-disk " + disk_size + " HDD"
     }
 
@@ -1290,7 +1288,7 @@ task AnnotateVCF {
     runtime {
         docker: variants_nirvana_docker
         memory: "128 GB"
-        cpu: "4"
+        cpu: 4
         preemptible: 1
         maxRetries: 1
         disks: "local-disk 2000 HDD"
@@ -1342,7 +1340,7 @@ task PrepVtAnnotationJson {
         docker: variants_docker
         memory: "16 GB"
         preemptible: 2
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 500 HDD"
     }
 
@@ -1390,7 +1388,7 @@ task PrepGenesAnnotationJson {
         docker: variants_docker
         memory: "7 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 500 HDD"
     }
 
@@ -1443,7 +1441,7 @@ task LoadManeDataIntoBigQuery {
         docker: cloud_sdk_docker
         memory: "3 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 
@@ -1722,7 +1720,7 @@ task BigQueryLoadJson {
         docker: cloud_sdk_docker
         memory: "3 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 1000 HDD"
     }
 
@@ -1791,7 +1789,7 @@ task DeduplicateVatInBigQuery {
         docker: cloud_sdk_docker
         memory: "3 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 

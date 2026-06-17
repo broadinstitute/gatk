@@ -257,6 +257,9 @@ task GatherVcfs {
 task SelectVariants {
   input {
     File input_vcf
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File input_vcf_index
     String sample_name
 
@@ -401,8 +404,14 @@ task BgzipAndTabix {
 task EvaluateVcf {
   input {
     File input_vcf
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File input_vcf_index
     File truth_vcf
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File truth_vcf_index
     File truth_bed
     File? vcf_eval_bed_file

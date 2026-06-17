@@ -153,7 +153,7 @@ task BigQueryExportVat {
         docker: cloud_sdk_docker
         memory: "2 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     # ------------------------------------------------
@@ -249,7 +249,7 @@ task MergeVatTSVs {
         docker: cloud_sdk_slim_docker
         memory: "4 GB"
         preemptible: 3
-        cpu: "2"
+        cpu: 2
         disks: "local-disk ~{disk_size} HDD"
     }
     # ------------------------------------------------

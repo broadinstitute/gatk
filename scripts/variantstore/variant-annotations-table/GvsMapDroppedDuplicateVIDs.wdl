@@ -11,7 +11,6 @@ workflow GvsMapDroppedDuplicateVIDs {
         String dataset
         String participant_mapping_table_name
         String duplicate_mapping_table_name
-        String reference_name = "hg38"
         Range? range_filter
     }
 
@@ -19,7 +18,6 @@ workflow GvsMapDroppedDuplicateVIDs {
 
     call Utils.GetReference {
         input:
-            reference_name = reference_name,
             basic_docker = GetToolVersions.basic_docker,
     }
 

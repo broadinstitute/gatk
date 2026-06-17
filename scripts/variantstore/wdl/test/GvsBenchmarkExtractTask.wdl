@@ -113,7 +113,13 @@ task ExtractTask {
         # ------------------------------------------------
         # Input args:
         File reference
+        # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+        # tools require the index to be co-located with the data file and will fail if it is absent.
+        #@ except: UnusedInput
         File reference_index
+        # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+        # tools require the index to be co-located with the data file and will fail if it is absent.
+        #@ except: UnusedInput
         File reference_dict
 
         String fq_samples_to_extract_table

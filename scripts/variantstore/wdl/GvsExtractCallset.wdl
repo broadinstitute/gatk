@@ -715,8 +715,14 @@ task GenerateSampleListFile {
 task CollectVariantCallingMetrics {
   input {
     File input_vcf
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File input_vcf_index
     File dbsnp_vcf
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File dbsnp_vcf_index
     File interval_list
     File ref_dict

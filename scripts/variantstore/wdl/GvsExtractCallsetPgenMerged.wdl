@@ -121,7 +121,6 @@ workflow GvsExtractCallsetPgenMerged {
             x_bed_weight_scaling = x_bed_weight_scaling,
             y_bed_weight_scaling = y_bed_weight_scaling,
             write_cost_to_db = write_cost_to_db,
-            output_gcs_dir = output_gcs_dir,
     }
 
     call SplitFilesByChromosome {
