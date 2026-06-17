@@ -233,6 +233,54 @@ workflows:
              - vs_1771_prepare_oh_so_many_intervals
          tags:
              - /.*/
+   - name: IntervalsPrepareWGS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsPrepareRangesCallset.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1771_prepare_oh_so_many_intervals
+       tags:
+         - /.*/
+   - name: IntervalsPrepareExome
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsPrepareRangesCallset.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1771_prepare_oh_so_many_intervals
+       tags:
+         - /.*/
+   - name: IntervalsPrepareClinVar
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsPrepareRangesCallset.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1771_prepare_oh_so_many_intervals
+       tags:
+         - /.*/
+   - name: IntervalsPrepareACAF
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsPrepareRangesCallset.wdl
+     testParameterFiles:
+       - /scripts/variantstore/wdl/GvsPrepareRangesCallset.example.inputs.json
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1771_prepare_oh_so_many_intervals
+       tags:
+         - /.*/
    - name: GvsCreateVATfromVDS
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsCreateVATfromVDS.wdl
