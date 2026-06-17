@@ -18,6 +18,8 @@ workflow GvsPopulateAltAllele {
     String? git_hash
   }
 
+  String fq_alt_allele_table = "~{project_id}.~{dataset_name}.alt_allele"
+
   if (!defined(git_hash) || !defined(cloud_sdk_docker) || !defined(variants_docker)) {
     call Utils.GetToolVersions {
       input:
@@ -50,6 +52,14 @@ workflow GvsPopulateAltAllele {
       project_id = project_id,
       max_sample_id = GetMaxSampleId.max_sample_id,
       max_alt_allele_shards = max_alt_allele_shards,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
+  call Utils.GetBQTableLastModifiedDatetime {
+    input:
+      go = CreateAltAlleleTable.done,
+      project_id = project_id,
+      fq_table = fq_alt_allele_table,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
