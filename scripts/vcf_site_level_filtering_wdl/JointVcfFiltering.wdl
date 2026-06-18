@@ -160,7 +160,7 @@ task ExtractVariantAnnotations {
 
     Int effective_command_mem_gb = select_first([runtime_attributes.command_mem_gb, 6])
 
-    command {
+    command <<<
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -175,7 +175,7 @@ task ExtractVariantAnnotations {
                 -A ~{sep=" -A " annotations} \
                 ~{resource_args} \
                 ~{extra_args}
-    }
+    >>>
 
     runtime {
         docker: gatk_docker
@@ -215,7 +215,7 @@ task TrainVariantAnnotationsModel {
 
     Int effective_command_mem_gb = select_first([runtime_attributes.command_mem_gb, 6])
 
-    command {
+    command <<<
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -232,7 +232,7 @@ task TrainVariantAnnotationsModel {
                 ~{"--hyperparameters-json " + hyperparameters_json} \
                 -O ~{output_prefix}.train \
                 ~{extra_args}
-    }
+    >>>
 
     runtime {
         docker: gatk_docker
@@ -287,7 +287,7 @@ task ScoreVariantAnnotations {
 
     Int effective_command_mem_gb = select_first([runtime_attributes.command_mem_gb, 2])
 
-    command {
+    command <<<
         set -e
 
         if [ -s ~{monitoring_script} ]; then
@@ -310,7 +310,7 @@ task ScoreVariantAnnotations {
                 ~{"--model-backend " + model_backend} \
                 ~{"--python-script " + python_script} \
                 ~{extra_args}
-    }
+    >>>
 
     runtime {
         docker: gatk_docker
