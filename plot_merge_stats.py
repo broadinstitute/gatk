@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-plot_merge_stats.py — Plot interval count and % genome coverage vs. merge
-distance for one or more *_merge.tsv files produced by merge_stats.py.
+plot_merge_stats.py — Plot interval count and % genome coverage vs. per-side
+padding for one or more TSV files produced by merge_stats.py.
 
 Usage:
     python plot_merge_stats.py [FILE ...] [-o OUTPUT]
@@ -31,7 +31,7 @@ def parse_args():
                    help="Output image file (default: merge_stats_plot.png)")
     p.add_argument("--dpi", type=int, default=150,
                    help="Output DPI (default: 150)")
-    p.add_argument("--title", default="Interval merge distance analysis",
+    p.add_argument("--title", default="Interval padding + merge analysis",
                    help="Figure title")
     return p.parse_args()
 
@@ -80,7 +80,7 @@ def main():
 
     for i, (label, df) in enumerate(datasets):
         color = colors[i % len(colors)]
-        x = df["merge_distance"]
+        x = df["padding"]
         ax_top.plot(x, df["interval_count"], marker="o", markersize=3,
                     linewidth=1.5, color=color, label=label)
         ax_bot.plot(x, df["pct_genome_covered"], marker="o", markersize=3,
@@ -90,7 +90,7 @@ def main():
     linthresh = 100  # linear below 100 bp, log above
     ax_bot.set_xscale("symlog", linthresh=linthresh, linscale=0.3)
     ax_bot.xaxis.set_major_formatter(ticker.FuncFormatter(bp_formatter))
-    ax_bot.set_xlabel("Merge distance (bp)", fontsize=11)
+    ax_bot.set_xlabel("Left-side padding (bp)", fontsize=11)
 
     # Pick sensible major ticks manually
     major_ticks = [0, 100, 500, 1_000, 5_000, 10_000, 50_000, 100_000]

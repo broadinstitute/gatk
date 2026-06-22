@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 """
 merge_stats.py — Compute interval count and % genome coverage after
-applying per-side padding + merge, mirroring the processing done by
+applying left-side padding + merge, mirroring the processing done by
 create_ranges_cohort_extract_data_table.py.
 
+Only left-side (start) padding is applied; see that script for the rationale.
+
 For each padding value tested, reports:
-  padding              per-side padding in bp applied to every interval
+  padding              left-side padding in bp applied to every interval's start
   interval_count       merged interval count (GVS chromosomes only)
   bases_covered        total bp covered (GVS chromosomes only)
   pct_genome_covered   bases_covered / HG38_GENOME_SIZE * 100
@@ -95,8 +97,12 @@ def prepare_bed_file(input_path):
 
 def pad_and_merge(bed_path, padding, bedtools_bin):
     """
-    Pad every interval by `padding` bp on each side (start clamped to 0),
+    Pad every interval's start by `padding` bp to the left (start clamped to 0),
     write to a temp file, then run `bedtools merge`.
+
+    Only left-side padding is applied: GVS filters on `location` (the leftmost
+    position of a variant), so only variants whose POS falls left of the interval
+    boundary need to be captured by padding.
 
     Counts only intervals on GVS-encoded chromosomes (1-22, X, Y).
     Returns (interval_count, bases_covered).
@@ -111,7 +117,7 @@ def pad_and_merge(bed_path, padding, bedtools_bin):
                     continue
                 chrom = parts[0]
                 start = max(0, int(parts[1]) - padding)
-                end = int(parts[2]) + padding
+                end = int(parts[2])
                 padded_tmp.write(f"{chrom}\t{start}\t{end}\n")
         padded_tmp.close()
 

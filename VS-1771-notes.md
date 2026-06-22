@@ -9,10 +9,14 @@ based on post-padding genome coverage, without any user intervention.
 
 ## Strategy logic (in `get_location_filters()`)
 
-1. Pad every interval by `interval_list_padding` bp per side (default 1000),
-   merge overlapping results — using `pybedtools.each(_pad).saveas().merge()`.
-   This is equivalent to GATK IntervalListTools `--PADDING`, NOT `merge -d 2000`
-   (which only closes gaps, doesn't expand outer boundaries).
+1. Pad every interval's **start** by `interval_list_padding` bp to the left
+   (default 1000), merge overlapping results —
+   `pybedtools.each(_pad).saveas().merge()`.
+   Only left-side padding is needed: GVS filters on `location` (the leftmost
+   VCF POS of a variant). A deletion or ref block whose POS falls just left of
+   an interval boundary needs left padding to be captured; there is no analogous
+   case on the right (a variant whose POS is right of the interval end starts
+   beyond the interval regardless of its length).
 2. Count merged intervals and bases covered on GVS chromosomes (1-22, X, Y).
 3. Pick a strategy:
    - **skip** (return `""`): coverage ≥ `skip_filter_coverage_threshold` (default 50%)

@@ -229,14 +229,15 @@ def get_location_filters(interval_list, fq_temp_table_dataset, table_prefix, pad
     if raw_count == 0:
         return ""
 
-    # Expand every interval by `padding` bp on each side, then merge overlapping results.
-    # This is the correct equivalent of GATK's IntervalListTools --PADDING: isolated intervals
-    # get their outer boundaries expanded, not just the gaps between adjacent intervals.
-    # Start is clamped to 0; end is not clamped since out-of-range BQ locations match nothing.
+    # Expand every interval's start by `padding` bp to the left, then merge overlapping results.
+    # Only left-side padding is needed: GVS filters on `location` (the leftmost position of a
+    # variant). A deletion or ref block that starts just left of an interval boundary has its
+    # POS outside the interval; left padding captures it. There is no analogous case on the
+    # right — a variant whose POS is right of the interval end starts beyond the interval.
+    # Start is clamped to 0.
     if padding > 0:
         def _pad(interval):
             interval.start = max(0, interval.start - padding)
-            interval.end = interval.end + padding
             return interval
         intervals = raw_intervals.each(_pad).saveas().merge()
     else:
@@ -570,8 +571,9 @@ if __name__ == '__main__':
     parser.add_argument('--interval_list', type=str,
                         help='interval list or BAM file to limit the locations', required=False)
     parser.add_argument('--interval_list_padding', type=int,
-                        help='Padding in base pairs applied to each side of every interval before merging. '
-                             'Equivalent to merging intervals within a gap of 2 * padding bp. Default is 1000.',
+                        help='Padding in base pairs applied to the left (start) side of every interval before merging. '
+                             'Captures variants (deletions, ref blocks) whose POS falls left of the interval boundary. '
+                             'Default is 1000.',
                         required=False, default=1000)
     parser.add_argument('--skip_filter_coverage_threshold', type=float,
                         help='If the padded and merged intervals cover at least this fraction of the hg38 genome '
