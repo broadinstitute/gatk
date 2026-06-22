@@ -91,13 +91,144 @@ Changes vs. the prior build-base (`2025-06-08-alpine-build-base`):
 ### `scripts/variantstore/scripts/requirements.txt`
 - Added `pyarrow==24.0.0` (replaces the from-source Arrow build)
 
-## Current status
+## Outcome of integration testing
 
-Both Docker images are built and pushed. Short integration tests with WGS and
-Exome/BGE data looked reasonable. A long-running integration test against truth
-data is now running.
+Both Docker images were built and pushed. Manual integration testing confirmed
+that the prepare tables produced by this branch are **correct** — they tie out
+to the truth data and are significantly smaller than the baseline tables for
+interval-filtered extracts (Exome, ClinVar).
 
-Next steps on return:
-1. Check integration test results — verify prepare tables tie out to truth data
-   for both WGS (skip path) and Exome/BGE (temp table path)
-2. Open PR for VS-1771
+However, two performance problems were observed that block shipping this work:
+
+### Slightly higher cost
+BigQuery charges are based on **data scanned**, not data written. The `vet_%` and
+`ref_ranges_%` tables are partitioned by **sample_id**, not by location. BigQuery
+cannot prune partitions based on a location range filter, so the branch scans
+exactly the same volume of vet/ref data as the baseline — plus the additional
+intervals temp table. Cost is therefore equal-to-or-higher-than baseline.
+
+### ~3x longer runtime for Exome and ClinVar
+The `vet_%` and `ref_ranges_%` tables are clustered by location, which does help
+for simple constant-range WHERE clause filters (e.g. `WHERE location BETWEEN
+1000000001000 AND 1000000002000` — BigQuery uses block-level min/max metadata
+to skip blocks). However, clustering **does not help** when the range bounds are
+variable inputs from a JOIN partner. In our query:
+
+```sql
+INNER JOIN intervals ON chrom_index = ... AND location BETWEEN location_start AND location_end
+```
+
+`location_start` and `location_end` vary per interval row, so the optimizer
+cannot precompute which blocks to skip — every vet/ref block must be read and
+evaluated. This is distinct from BigQuery RANGE partitioning (a separate, newer
+feature that would create discrete location-range partitions with guaranteed
+pruning at query planning time, regardless of whether bounds are constant or
+variable).
+
+The `chrom_index` equality key added to the join does help somewhat by allowing
+a hash join to be partitioned by chromosome (reducing each hash bucket to ~6K
+intervals rather than 143K), but the BETWEEN evaluation within each chromosome
+bucket is still a full scan of all vet/ref rows in that bucket. For an exome
+this is still hundreds of millions of row evaluations, a cost that dwarfs the
+baseline's simple scan-and-copy.
+
+The inline SQL path (≤5000 intervals) would likely benefit from location
+clustering because it emits literal constant BETWEEN predicates in the WHERE
+clause. But 143K intervals (exome) or ~100K intervals (ClinVar) exceed the 5000
+threshold at which that approach is feasible.
+
+### Chromosome-batched constant-BETWEEN approach (also tried, also rejected)
+
+A second approach was explored: instead of a temp table JOIN, express each
+chromosome's intervals as constant `BETWEEN` predicates in the `WHERE` clause
+and run one query per chromosome in parallel. Constant bounds allow BigQuery to
+use location clustering for block-skipping, which the variable-bound JOIN cannot.
+
+Smoke test on **chr22** (3,661 merged intervals, 100 samples, `vet_001`):
+
+```
+Bytes processed:  992 MB  (vs. 4,188 MB baseline — 76% reduction)
+Server job time:  29.3s   (vs. 0.69s baseline — 42x slower)
+
+Execution plan:
+  S00: Input   62,050,187 → 111 rows   read_ms=157   compute_ms=19,659
+```
+
+Smoke test on **chr1** (17,729 merged intervals split into 3 batches of ≤8,000,
+3,206 samples, `vet_001`):
+
+```
+batch 1/3 (8,000 intervals):  1,804,760,686 rows in →  83,901,828 out
+                               28.9 GB  191s  read_ms=105  compute_ms=55,092
+batch 2/3 (8,000 intervals):  2,283,382,330 rows in →  81,910,448 out
+                               36.5 GB  229s  read_ms=44   compute_ms=68,715
+batch 3/3 (1,729 intervals):  2,242,505,950 rows in →  20,533,112 out
+                               35.9 GB   16s  read_ms=176  compute_ms=9,520
+─────────────────────────────────────────────────────────────────────
+Total chr1 filtered:          101.3 GB  437s sequential
+Est. full-genome baseline:    ~134 GB   (scaling 100-sample/4.2 GB result)
+```
+
+**Why chr22 got 76% byte reduction but chr1 got only ~25%:**
+Clustering block-skipping only helps when data blocks fall entirely outside all
+interval conditions. Chr22's 3,661 intervals are sparse enough on a small
+chromosome that many blocks can be skipped. Chr1's 17,729 exome intervals are
+distributed densely throughout the chromosome — almost every block overlaps at
+least one interval and must be read.
+
+**The compute cost is catastrophic regardless:**
+`read_ms` is negligible (44–176 ms) — clustering reads data fast. But BQ
+evaluates every OR condition against every row that survives block-skipping:
+55,092 / 68,715 ms of compute per batch on 1.8–2.3 billion rows each. BQ
+parallelizes this internally but wall-clock is still 3–4 minutes per batch.
+
+437 seconds sequential for chr1 alone on one vet table. With ~100 vet tables
+and 23 chromosomes, even aggressive parallelism across chromosomes and batches
+would multiply total prepare time many times over baseline. Rejected.
+
+### Why there is no viable architectural fix
+
+BigQuery allows only one partition dimension per table. The `vet_%` and
+`ref_ranges_%` tables are partitioned by `sample_id`, which is the correct
+choice for the primary access pattern (scan all locations for a given sample
+set). Location-based partitioning would require abandoning `sample_id`
+partitioning, breaking all other access patterns.
+
+The `vet_%` / `ref_ranges_%` tables are already clustered by location, so
+block-level skipping is already available. Our chr22 and chr1 smoke tests
+showed exactly what clustering buys: a 76% byte reduction on chr22 (sparse
+intervals, many blocks skippable) but only ~25% on chr1 (dense intervals,
+most blocks contain at least one exome interval and cannot be skipped). More
+critically, block-skipping is irrelevant to the per-row OR-condition evaluation
+that dominates runtime. Even where clustering pruned bytes aggressively, the
+compute cost was catastrophic. RANGE partitioning by location (a coarser form
+of the same idea) would provide partition-level rather than block-level pruning,
+but would not affect per-row computation — and is structurally incompatible with
+`sample_id` partitioning for the same reason as above.
+
+### Motivating use case
+The original motivation was to reduce cost and runtime for AoU Researcher
+Workbench interval-filtered extracts (e.g., a user requesting an exome-sized
+extract from a WGS callset). Because we cannot make the prepare step cheaper,
+the per-user extract savings are outweighed by the higher prepare cost and
+runtime.
+
+## What this branch does ship (Docker + local tooling)
+
+Even though the interval-filtering approach is being set aside, the Docker image
+work in this branch is independently useful and can be pulled into a separate PR:
+
+- **htslib / bcftools**: 1.22 → 1.23.1
+- **bedtools 2.31.1** (new): required by `pybedtools`; built from source in
+  `build_base.Dockerfile` with `CXXFLAGS="-g -Wall -O2 -std=c++11 -include cstdint"`
+  to work around a missing `#include <cstdint>` in bedtools 2.31.1 (GCC ≥ 13)
+- **pyarrow 24.0.0** from PyPI musllinux wheel (eliminated the ~1 hour
+  from-source Arrow build from `build_base.Dockerfile`)
+- **`merge_stats.py` / `plot_merge_stats.py`**: local analysis scripts updated
+  to model left-side-only padding + merge, matching the revised production logic
+
+## Decision
+
+The interval-filtering changes to `create_ranges_cohort_extract_data_table.py`,
+`GvsPrepareRangesCallset.wdl`, and `GvsJointVariantCalling.wdl` will not be
+merged. The Docker image updates will be extracted into a separate ticket/PR.
