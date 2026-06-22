@@ -38,12 +38,13 @@ Three-way strategy in `get_location_filters()`:
    - **temp table INNER JOIN**: everything else
 
 Expected outcomes at default 1,000 bp padding:
+
 | Interval list | Merged intervals | Coverage | Strategy   |
-|---------------|-----------------|----------|------------|
-| WGS           | ~291            | ~89%     | skip       |
-| Exome / BGE   | ~143K           | ~18%     | temp_table |
-| ClinVar       | ~100K           | ~35%     | temp_table |
-| ACAF          | many            | ≥90%     | skip       |
+|---------------|------------------|----------|------------|
+| WGS           | ~291             | ~89%     | skip       |
+| Exome / BGE   | ~143K            | ~18%     | temp_table |
+| ClinVar       | ~100K            | ~35%     | temp_table |
+| ACAF          | many             | ≥90%     | skip       |
 
 The temp table JOIN used a `chrom_index` equality key to allow BQ to hash-partition
 the join by chromosome before applying the BETWEEN range filter, avoiding a pure
