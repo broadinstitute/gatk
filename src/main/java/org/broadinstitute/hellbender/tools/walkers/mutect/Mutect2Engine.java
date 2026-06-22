@@ -493,18 +493,20 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
             return new ActivityProfileState(ref.getInterval(), 1.0, ActivityProfileState.Type.SOMATIC, null);
         }
 
-        if (hasNormal() && !MTAC.genotypeGermlineSites) {
+        if (hasNormal()) {  // look for activity in the matched normal
             final ReadPileup normalPileup = pileup.makeFilteredPileup(pe -> isNormalSample(ReadUtils.getSampleName(pe.getRead(), header)));
             normalPileupQualBuffer.accumulateQuals(normalPileup, refBase, MTAC.pcrSnvQual);
             final Pair<Integer, ByteArrayList> bestNormalAltAllele = normalPileupQualBuffer.likeliestIndexAndQuals();
             if (bestNormalAltAllele.getLeft() == bestTumorAltAllele.getLeft()) {
                 final int normalAltCount = bestNormalAltAllele.getRight().size();
                 final double normalQualSum = normalPileupQualBuffer.qualSum(bestNormalAltAllele.getLeft());
+
+                // TODO: split this classification -- low AF in normal is probably ARTIFACT, not GERMLINE
                 if (normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM) {
                     return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.GERMLINE, null);
                 }
             }
-        } else if (!MTAC.genotypeGermlineSites) {
+        } else {    // tumor-only: guess germline variants using the germline resource
             final List<VariantContext> germline = features.getValues(MTAC.germlineResource, refInterval);
 
             for (final VariantContext germlineVC : germline) {
@@ -513,13 +515,13 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
                 for (int germlineAltIdx = 0; germlineAltIdx < germlineAlleleFrequencies.size(); germlineAltIdx++) {
                     if (germlineAlleleFrequencies.get(germlineAltIdx) < MTAC.maxPopulationAlleleFrequency) {
-                        continue;
+                        continue;   // allele is rare in population, not necessarily germline
                     }
 
                     final Allele germlineAlt = germlineVC.getAlternateAllele(germlineAltIdx);
 
                     // if it's a substitution that shares its first base with the dominant tumor allele, or if it's an
-                    // indel and the dominant tumor allele is an indel, skip
+                    // indel and the dominant tumor allele is an indel, it's probably germline
                     if (PileupQualBuffer.likeliestIndexIsIndel(bestTumorAltAllele.getLeft()) && germlineAlt.length() != germlineRef.length()) {
                             return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.GERMLINE, null);
                     } else if (PileupQualBuffer.likeliestIndexIsSubstitution(bestTumorAltAllele.getLeft()) && germlineAlt.length() == germlineRef.length()
