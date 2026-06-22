@@ -503,7 +503,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
                 // TODO: split this classification -- low AF in normal is probably ARTIFACT, not GERMLINE
                 if (normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM) {
-                    return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.GERMLINE, null);
+                    return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.GERMLINE, null);
                 }
             }
         } else {    // tumor-only: guess germline variants using the germline resource
@@ -523,10 +523,10 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
                     // if it's a substitution that shares its first base with the dominant tumor allele, or if it's an
                     // indel and the dominant tumor allele is an indel, it's probably germline
                     if (PileupQualBuffer.likeliestIndexIsIndel(bestTumorAltAllele.getLeft()) && germlineAlt.length() != germlineRef.length()) {
-                            return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.GERMLINE, null);
+                            return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.GERMLINE, null);
                     } else if (PileupQualBuffer.likeliestIndexIsSubstitution(bestTumorAltAllele.getLeft()) && germlineAlt.length() == germlineRef.length()
                             && PileupQualBuffer.getSubstitutionBase(bestTumorAltAllele.getLeft()) == germlineRef.getBases()[0]) {
-                        return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.GERMLINE, null);
+                        return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.GERMLINE, null);
                     }
 
                 }
@@ -534,7 +534,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         }
 
         if (!MTAC.genotypePonSites && !features.getValues(MTAC.pon, new SimpleInterval(context.getContig(), (int) context.getPosition(), (int) context.getPosition())).isEmpty()) {
-            return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.ARTIFACT, null);
+            return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.ARTIFACT, null);
         }
 
         // if a site is active, count it toward the total of callable sites even if its depth is below the threshold
