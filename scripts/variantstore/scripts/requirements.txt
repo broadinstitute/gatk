@@ -1,7 +1,6 @@
 google-cloud-bigquery
 ijson
 numpy
-pyarrow==24.0.0
 google-cloud-storage
 terra-notebook-utils
 biopython
