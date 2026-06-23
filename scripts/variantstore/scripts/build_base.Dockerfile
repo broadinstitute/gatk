@@ -6,7 +6,7 @@
 # Cromwell.
 #
 # Because this is an Alpine-based image it is more bare-bones than its Debian-based peers. Several tools used by GVS
-# (htslib, bcftools, vcftools, bedtools) are not available as Alpine packages and must be compiled from source.
+# (htslib, bcftools, vcftools) are not available as Alpine packages and must be compiled from source.
 # Compiling these tools makes this a moderately expensive image to create. Since this image isn't expected to change
 # often it's broken out into a separate "build-base" image that can effectively be globally cached and referenced from
 # the main Dockerfile.
@@ -64,15 +64,5 @@ RUN mkdir /vcftools /vcftools-build && \
     cd / && \
     rm -rf /vcftools-build
 
-ARG BEDTOOLS_VERSION=2.31.1
-RUN mkdir -p /bedtools /bedtools-build/src && \
-    cd /bedtools-build && \
-    curl -L -O https://github.com/arq5x/bedtools2/releases/download/v${BEDTOOLS_VERSION}/bedtools-${BEDTOOLS_VERSION}.tar.gz && \
-    tar -xzf bedtools-${BEDTOOLS_VERSION}.tar.gz -C src --strip-components=1 && \
-    cd src && \
-    make CXXFLAGS="-g -Wall -O2 -std=c++11 -include cstdint" && \
-    make prefix=/bedtools install && \
-    cd / && \
-    rm -rf /bedtools-build
 
 ENV PERL5LIB="/vcftools/share/perl5/site_perl/"

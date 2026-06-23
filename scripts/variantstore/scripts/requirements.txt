@@ -4,5 +4,4 @@ numpy
 pyarrow==24.0.0
 google-cloud-storage
 terra-notebook-utils
-pybedtools
 biopython
