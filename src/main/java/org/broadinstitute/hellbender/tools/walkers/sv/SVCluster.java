@@ -253,6 +253,18 @@ public final class SVCluster extends SVClusterWalker {
     }
 
     @Override
+    protected boolean canDropNonCarrierCnvGenotypes() {
+        // Safe only when CNV sample-overlap linkage is disabled, so computeSampleOverlap (which scans
+        // every genotyped sample's copy state for CNV records) is never invoked.
+        if (algorithm == CLUSTER_ALGORITHM.DEFRAGMENT_CNV) {
+            return defragSampleOverlapFraction == 0.0;
+        }
+        return clusterParameterArgs.getDepthParameters().getSampleOverlap() == 0.0
+                && clusterParameterArgs.getMixedParameters().getSampleOverlap() == 0.0
+                && clusterParameterArgs.getPESRParameters().getSampleOverlap() == 0.0;
+    }
+
+    @Override
     public void applyRecord(final SVCallRecord record) {
         if (lowMem) {
             final SVCallRecord stripped = lowMemStripAndRegister(record);

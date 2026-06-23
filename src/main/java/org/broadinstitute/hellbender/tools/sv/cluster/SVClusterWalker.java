@@ -222,19 +222,36 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
      */
     private final ArrayList<PlannedSite> plannedSites = new ArrayList<>();
 
-    /**
-     * Maps stripped-record object identity to its pass-1 sequential index. Uses {@link IdentityHashMap}
-     * so records sharing the same original ID ("." is common) remain distinct.
-     *
-     * <p>This map is populated during pass 1 (by {@link #lowMemStripAndRegister}) and is cleared
-     * immediately after all cluster engines are flushed and before pass 2 begins. Clearing it at that
-     * boundary means the stripped records (with carrier-only genotypes) can be GC'd during pass 2,
-     * so peak full-genotype memory in pass 2 is bounded by the active write window rather than N.</p>
-     */
-    private final IdentityHashMap<SVCallRecord, Integer> strippedRecordToPass1Index = new IdentityHashMap<>();
-
     /** Sequential counter assigned to each record processed in pass 1. */
     private int pass1RecordIdx = 0;
+
+    /**
+     * Stripped pass-1 record that carries its own pass-1 sequential index. This replaces the old
+     * {@code strippedRecordToPass1Index} {@link IdentityHashMap}, which pinned every stripped record
+     * (and its retained genotypes) for the entire traversal. By stamping the index on the record
+     * itself, the only references to a stripped record are inside the cluster engine's active window;
+     * once a cluster is finalized the engine drops the record and it becomes eligible for GC, so peak
+     * pass-1 genotype memory is bounded by the active clustering window rather than N.
+     *
+     * <p>The index is read back in {@link #lowMemCaptureCluster} / {@link #lowMemCaptureUnclustered}
+     * when the engine emits the cluster. Reading rather than removing means MAX_CLIQUE multi-membership
+     * (a record appearing in multiple emitted clusters) is handled for free.</p>
+     */
+    private static final class IndexedSVCallRecord extends SVCallRecord {
+        private final int pass1Index;
+
+        IndexedSVCallRecord(final SVCallRecord base, final GenotypesContext genotypes, final int pass1Index) {
+            super(base.getId(), base.getContigA(), base.getPositionA(), base.getStrandA(), base.getContigB(),
+                    base.getPositionB(), base.getStrandB(), base.getType(), base.getComplexSubtype(),
+                    base.getComplexEventIntervals(), base.getLength(), base.getEvidence(), base.getAlgorithms(),
+                    base.getAlleles(), genotypes, base.getAttributes(), base.getFilters(), base.getLog10PError());
+            this.pass1Index = pass1Index;
+        }
+
+        int getPass1Index() {
+            return pass1Index;
+        }
+    }
 
     /**
      * Container for a planned output site in low-memory two-pass mode. Holds the site-level record
@@ -324,6 +341,17 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
      */
     public abstract void applyRecord(final SVCallRecord record);
 
+    /**
+     * Whether it is safe to drop non-carrier genotypes from CNV records during low-mem pass 1. Only safe
+     * when CNV sample-overlap linkage is disabled (all relevant sample-overlap thresholds are 0), since
+     * {@code SVClusterLinkage.computeSampleOverlap} iterates every genotyped sample's copy state for CNV
+     * records and would otherwise observe a different sample set. Defaults to false (retain all CNV
+     * genotypes); subclasses override based on their clustering parameters.
+     */
+    protected boolean canDropNonCarrierCnvGenotypes() {
+        return false;
+    }
+
     // ===== Low-memory two-pass mode shared helpers =====
 
     /**
@@ -335,19 +363,24 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
      * <p>Stripping strategy (mirrors fastMode to preserve sample-overlap clustering):
      * <ul>
      *   <li>Non-CNV: retain only carrier genotypes (same as {@code --fast-mode}).</li>
-     *   <li>CNV: retain all genotypes, but reduce each genotype to only the CN/RD_CN/ECN attributes
-     *       needed to determine carrier status (GT is zeroed). Keeping all genotypes is necessary
-     *       because carrier status for multi-allelic CNVs is determined by CN vs. ECN, not GT.</li>
+     *   <li>CNV: reduce every genotype to the CN/RD_CN/ECN attributes needed to determine carrier
+     *       status (GT is zeroed). When {@link #canDropNonCarrierCnvGenotypes()} is true (CNV
+     *       sample-overlap linkage disabled), non-carriers are additionally dropped — selected via
+     *       {@link SVCallRecord#getCarrierGenotypeList()} on the reduced record, which uses the same
+     *       isCarrier evaluation the engine/collapser apply, so the carrier set and count are
+     *       preserved. Otherwise all reduced genotypes are kept, because
+     *       {@code SVClusterLinkage.computeSampleOverlap} iterates EVERY genotyped sample's copy state
+     *       for CNV records and would see a different sample set if non-carriers were removed.</li>
      * </ul>
      *
      * @param record full record delivered to {@code applyRecord}
-     * @return genotype-stripped copy to feed to the cluster engine in pass 1
+     * @return genotype-stripped copy, carrying its pass-1 index, to feed to the cluster engine in pass 1
      */
     protected SVCallRecord lowMemStripAndRegister(final SVCallRecord record) {
         final GenotypesContext strippedGenotypes;
         if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV) {
-            // CNV: keep CN/RD_CN/ECN per genotype so carrier status (CN != ECN) can be evaluated
-            // for sample-overlap linkage; drop GT and all other FORMAT fields to save memory.
+            // CNV: reduce every genotype to CN/RD_CN/ECN with a no-call GT (the form the engine and
+            // collapser will see). GT and all other FORMAT fields are dropped to save memory.
             final List<Genotype> cnOnly = record.getGenotypes().stream()
                     .map(g -> {
                         final GenotypeBuilder gb = new GenotypeBuilder(g.getSampleName());
@@ -361,13 +394,26 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
                         return gb.make();
                     })
                     .collect(Collectors.toList());
-            strippedGenotypes = GenotypesContext.create(new ArrayList<>(cnOnly));
+            final GenotypesContext cnReduced = GenotypesContext.create(new ArrayList<>(cnOnly));
+            if (canDropNonCarrierCnvGenotypes()) {
+                // CNV sample-overlap linkage is disabled, so computeSampleOverlap is never invoked.
+                // Keep only carriers (selected on the reduced record so the carrier set / count match
+                // exactly), dropping the non-carrier majority to bound pass-1 memory. The full CN-only
+                // list is transient and freed once carriers are extracted.
+                strippedGenotypes = GenotypesContext.copy(
+                        SVCallRecordUtils.copyCallWithNewGenotypes(record, cnReduced).getCarrierGenotypeList());
+            } else {
+                // CNV sample-overlap may run; it iterates every genotyped sample's copy state, so all
+                // reduced genotypes must be retained to preserve clustering parity.
+                strippedGenotypes = cnReduced;
+            }
         } else {
             // Non-CNV: keep only carrier genotypes, exactly like --fast-mode
             strippedGenotypes = GenotypesContext.copy(record.getCarrierGenotypeList());
         }
-        final SVCallRecord stripped = SVCallRecordUtils.copyCallWithNewGenotypes(record, strippedGenotypes);
-        strippedRecordToPass1Index.put(stripped, pass1RecordIdx++);
+        // Stamp the pass-1 index on the record itself rather than pinning it in a global map, so the
+        // record is GC-eligible as soon as the cluster engine finalizes its cluster.
+        final SVCallRecord stripped = new IndexedSVCallRecord(record, strippedGenotypes, pass1RecordIdx++);
         // Reserve a routing slot; actual site indices are filled in by lowMemCaptureCluster /
         // lowMemCaptureUnclustered when the cluster engine emits the cluster.
         routing.add(null);
@@ -393,8 +439,8 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
         plannedSites.add(site);
         int members = 0;
         for (final SVCallRecord item : cluster.getItems()) {
-            final Integer p1Idx = strippedRecordToPass1Index.get(item);
-            if (p1Idx != null) {
+            final int p1Idx = ((IndexedSVCallRecord) item).getPass1Index();
+            {
                 // Register this site with the record's routing slot.
                 final int[] existing = routing.get(p1Idx);
                 if (existing == null) {
@@ -423,11 +469,9 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
         final int siteSeq = plannedSites.size();
         final PlannedSite site = new PlannedSite(stripped, true);
         plannedSites.add(site);
-        final Integer p1Idx = strippedRecordToPass1Index.get(stripped);
-        if (p1Idx != null) {
-            routing.set(p1Idx, new int[]{siteSeq});
-            site.pendingMembers = 1;
-        }
+        final int p1Idx = ((IndexedSVCallRecord) stripped).getPass1Index();
+        routing.set(p1Idx, new int[]{siteSeq});
+        site.pendingMembers = 1;
     }
 
     /**
@@ -447,10 +491,10 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
      * flushed.</p>
      */
     protected void runLowMemFinalize() {
-        // Release all pass-1 state that is no longer needed now that the cluster engines have been
-        // fully flushed. The routing[] array contains all site-membership information as int[]; we
-        // no longer need the IdentityHashMap or the stripped-record references it pins.
-        strippedRecordToPass1Index.clear();
+        // Pass-1 stripped records are no longer reachable once the cluster engines have been flushed:
+        // each carried its own pass-1 index (IndexedSVCallRecord) and was held only by the engine's
+        // active window, so they have already become GC-eligible as their clusters were finalized.
+        // The routing[] array (int[] per record) carries all remaining site-membership information.
 
         // Pass 2: fold genotypes
         // Re-read all input VCFs in the same coordinate-merged order as pass 1. Apply the walker's
