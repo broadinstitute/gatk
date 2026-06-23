@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.sv;
 
+import htsjdk.variant.variantcontext.GenotypesContext;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.BetaFeature;
@@ -7,7 +8,10 @@ import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.programgroups.StructuralVariantDiscoveryProgramGroup;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
+import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.tools.sv.cluster.*;
+
+import java.util.*;
 
 /**
  * <p>Clusters structural variants based on coordinates, event type, and supporting algorithms. Primary use cases include:</p>
@@ -185,23 +189,61 @@ public final class SVCluster extends SVClusterWalker {
     public void onTraversalStart() {
         super.onTraversalStart();
         if (algorithm == CLUSTER_ALGORITHM.DEFRAGMENT_CNV) {
-            clusterEngine = SVClusterEngineFactory.createCNVDefragmenter(dictionary, altAlleleSummaryStrategy,
-                    reference, defragPaddingFraction, defragSampleOverlapFraction);
+            if (lowMem) {
+                lowMemCollapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy,
+                        CanonicalSVCollapser.BreakpointSummaryStrategy.MIN_START_MAX_END,
+                        CanonicalSVCollapser.FlagFieldLogic.OR);
+                clusterEngine = buildLowMemCNVDefragEngine();
+            } else {
+                clusterEngine = SVClusterEngineFactory.createCNVDefragmenter(dictionary, altAlleleSummaryStrategy,
+                        reference, defragPaddingFraction, defragSampleOverlapFraction);
+            }
         } else if (algorithm == CLUSTER_ALGORITHM.SINGLE_LINKAGE || algorithm == CLUSTER_ALGORITHM.MAX_CLIQUE) {
             final SVClusterEngine.CLUSTERING_TYPE type = algorithm == CLUSTER_ALGORITHM.SINGLE_LINKAGE ?
                     SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE : SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE;
-            clusterEngine = SVClusterEngineFactory.createCanonical(type, breakpointSummaryStrategy,
-                    altAlleleSummaryStrategy, dictionary, reference, enableCnv,
-                    clusterParameterArgs.getDepthParameters(), clusterParameterArgs.getMixedParameters(),
-                    clusterParameterArgs.getPESRParameters());
+            if (lowMem) {
+                lowMemCollapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy,
+                        breakpointSummaryStrategy, CanonicalSVCollapser.FlagFieldLogic.OR);
+                clusterEngine = buildLowMemCanonicalEngine(type);
+            } else {
+                clusterEngine = SVClusterEngineFactory.createCanonical(type, breakpointSummaryStrategy,
+                        altAlleleSummaryStrategy, dictionary, reference, enableCnv,
+                        clusterParameterArgs.getDepthParameters(), clusterParameterArgs.getMixedParameters(),
+                        clusterParameterArgs.getPESRParameters());
+            }
         } else {
             throw new IllegalArgumentException("Unsupported algorithm: " + algorithm.name());
         }
     }
 
+    /**
+     * Builds a cluster engine for CNV defragmentation mode wired to the low-mem capturing collapser.
+     */
+    private SVClusterEngine buildLowMemCNVDefragEngine() {
+        final SVClusterLinkage<SVCallRecord> linkage = new CNVLinkage(dictionary, defragPaddingFraction, defragSampleOverlapFraction);
+        return new SVClusterEngine(SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE,
+                this::lowMemCaptureCluster, linkage, dictionary);
+    }
+
+    /**
+     * Builds a canonical cluster engine wired to the low-mem capturing collapser.
+     */
+    private SVClusterEngine buildLowMemCanonicalEngine(final SVClusterEngine.CLUSTERING_TYPE type) {
+        final CanonicalSVLinkage<SVCallRecord> linkage = new CanonicalSVLinkage<>(dictionary, enableCnv);
+        linkage.setDepthOnlyParams(clusterParameterArgs.getDepthParameters());
+        linkage.setMixedParams(clusterParameterArgs.getMixedParameters());
+        linkage.setEvidenceParams(clusterParameterArgs.getPESRParameters());
+        return new SVClusterEngine(type, this::lowMemCaptureCluster, linkage, dictionary);
+    }
+
     @Override
     public Object onTraversalSuccess() {
-        clusterEngine.flush().stream().forEach(this::write);
+        if (lowMem) {
+            clusterEngine.flush();
+            runLowMemFinalize();
+        } else {
+            clusterEngine.flush().stream().forEach(this::write);
+        }
         return super.onTraversalSuccess();
     }
 
@@ -212,6 +254,11 @@ public final class SVCluster extends SVClusterWalker {
 
     @Override
     public void applyRecord(final SVCallRecord record) {
-        clusterEngine.addAndFlush(record).stream().forEach(this::write);
+        if (lowMem) {
+            final SVCallRecord stripped = lowMemStripAndRegister(record);
+            clusterEngine.addAndFlush(stripped);
+        } else {
+            clusterEngine.addAndFlush(record).stream().forEach(this::write);
+        }
     }
 }

@@ -252,6 +252,52 @@ public class CanonicalSVCollapser {
                 length, representative.getEvidence(), algorithms, alleles, genotypes, attributes, filters, quality, dictionary);
     }
 
+    /**
+     * Collapses all site-level fields (coordinates, type, algorithms, alleles, attributes, filters, quality)
+     * using the provided genotypes instead of deriving them from the cluster members. Used by the two-pass
+     * low-memory path in {@link org.broadinstitute.hellbender.tools.walkers.sv.SVCluster} where genotypes
+     * are accumulated separately during a second pass over the input VCFs.
+     *
+     * @param cluster  cluster to collapse
+     * @param precomputedGenotypes  pre-computed genotype list to use in place of collapsing from cluster members
+     * @return collapsed record with the given genotypes
+     */
+    public SVCallRecord collapseWithGenotypes(final SVClusterEngine.OutputCluster cluster,
+                                              final List<Genotype> precomputedGenotypes) {
+        final List<SVCallRecord> items = cluster.getItems();
+        validateRecords(items);
+
+        final Collection<SVCallRecord> mostPreciseCalls = getRecordsWithMostPreciseBreakpoints(items);
+        final Pair<Integer, Integer> coordinates = collapseInterval(mostPreciseCalls);
+        final int start = coordinates.getKey();
+        final int end = coordinates.getValue();
+        final SVCallRecord representative = getRepresentativeRecord(mostPreciseCalls, start, end);
+        final GATKSVVCFConstants.StructuralVariantAnnotationType type = collapseTypes(items);
+        final Integer length = collapseLength(representative, type, start, end);
+        final List<String> algorithms = collapseAlgorithms(items);
+        final Map<String, Object> attributes = collapseAttributes(representative, items);
+
+        final Boolean strandA = type == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV ? null : representative.getStrandA();
+        final Boolean strandB = type == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV ? null : representative.getStrandB();
+
+        final Allele refAllele = collapseRefAlleles(representative.getContigA(), start);
+        final List<Allele> altAlleles;
+        if (type == GATKSVVCFConstants.StructuralVariantAnnotationType.BND) {
+            altAlleles = Collections.singletonList(constructBndAllele(strandA, strandB, representative.getContigB(), end, refAllele));
+        } else {
+            altAlleles = collapseAltAlleles(items);
+        }
+        final List<Allele> alleles = collapseAlleles(altAlleles, refAllele);
+        final List<Genotype> genotypes = harmonizeAltAlleles(altAlleles, precomputedGenotypes);
+
+        final Set<String> filters = collapseFilters(items);
+        final Double quality = collapseQuality(items);
+
+        return new SVCallRecord(representative.getId(), representative.getContigA(), start, strandA, representative.getContigB(),
+                end, strandB, type, representative.getComplexSubtype(), representative.getComplexEventIntervals(),
+                length, representative.getEvidence(), algorithms, alleles, genotypes, attributes, filters, quality, dictionary);
+    }
+
     protected List<Allele> collapseAlleles(final List<Allele> altAlleles, final Allele refAllele) {
         final List<Allele> alleles = new ArrayList<>(altAlleles.size() + 1);
         alleles.add(refAllele);
@@ -285,7 +331,7 @@ public class CanonicalSVCollapser {
         }
     }
 
-    protected List<Genotype> harmonizeAltAlleles(final List<Allele> sortedAltAlleles, final List<Genotype> collapsedGenotypes) {
+    public List<Genotype> harmonizeAltAlleles(final List<Allele> sortedAltAlleles, final List<Genotype> collapsedGenotypes) {
         Utils.nonNull(sortedAltAlleles);
         Utils.nonNull(collapsedGenotypes);
         final Set<Allele> genotypeAltAlleles = collapsedGenotypes.stream()
@@ -458,7 +504,7 @@ public class CanonicalSVCollapser {
     /***
      * Collapses collection of genotypes belonging to a single sample.
      */
-    protected Genotype collapseSampleGenotypes(final Collection<Genotype> genotypes,
+    public Genotype collapseSampleGenotypes(final Collection<Genotype> genotypes,
                                                final Allele refAllele) {
 
         // Reset attributes and collapse extended attributes
@@ -477,7 +523,7 @@ public class CanonicalSVCollapser {
      * @param genotypes list of candidate genotypes
      * @return representative genotype
      */
-    protected Genotype getRepresentativeGenotype(final Collection<Genotype> genotypes) {
+    public Genotype getRepresentativeGenotype(final Collection<Genotype> genotypes) {
 
         return genotypes.stream()
                 .max(genotypeIsNonRefComparator
@@ -581,11 +627,10 @@ public class CanonicalSVCollapser {
             return Collections.singletonList(Allele.SV_SIMPLE_DUP);
         }
         // Case where we assume no multi-copy alleles or can resolve alleles
-        // TODO
-        /*if (numAlt > expectedCopyNumber) {
+        if (numAlt > expectedCopyNumber) {
             throw new IllegalArgumentException("Encountered simple DUP with copy number " + copyNumber + " but the " +
                     "ploidy is only " + expectedCopyNumber);
-        }*/
+        }
         return makeBiallelicList(Allele.SV_SIMPLE_DUP, refAllele, Math.min(numAlt, expectedCopyNumber), expectedCopyNumber);
     }
 

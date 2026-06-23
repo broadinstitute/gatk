@@ -168,6 +168,10 @@ public final class GroupedSVCluster extends SVClusterWalker {
             Utils.validate(clusterEngineMap.containsKey(stratum.getName()),
                     "Could not find group " + stratum.getName() + " in clustering configuration.");
         }
+        if (lowMem) {
+            lowMemCollapser = new CanonicalSVCollapser(reference, altAlleleSummaryStrategy,
+                    breakpointSummaryStrategy, CanonicalSVCollapser.FlagFieldLogic.OR);
+        }
     }
 
     @Override
@@ -196,9 +200,18 @@ public final class GroupedSVCluster extends SVClusterWalker {
         if (algorithm == CLUSTER_ALGORITHM.SINGLE_LINKAGE || algorithm == CLUSTER_ALGORITHM.MAX_CLIQUE) {
             final SVClusterEngine.CLUSTERING_TYPE type = algorithm == CLUSTER_ALGORITHM.SINGLE_LINKAGE ?
                     SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE : SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE;
-            return SVClusterEngineFactory.createCanonical(type, breakpointSummaryStrategy,
-                    altAlleleSummaryStrategy, dictionary, reference, enableCnv,
-                    depthParams, mixedParams, pesrParams);
+            if (lowMem) {
+                // Low-mem: build engine manually to wire in the base-class capture callback
+                final CanonicalSVLinkage<SVCallRecord> linkage = new CanonicalSVLinkage<>(dictionary, enableCnv);
+                linkage.setDepthOnlyParams(depthParams);
+                linkage.setMixedParams(mixedParams);
+                linkage.setEvidenceParams(pesrParams);
+                return new SVClusterEngine(type, this::lowMemCaptureCluster, linkage, dictionary);
+            } else {
+                return SVClusterEngineFactory.createCanonical(type, breakpointSummaryStrategy,
+                        altAlleleSummaryStrategy, dictionary, reference, enableCnv,
+                        depthParams, mixedParams, pesrParams);
+            }
         } else {
             throw new IllegalArgumentException("Unsupported algorithm: " + algorithm.name());
         }
@@ -206,8 +219,15 @@ public final class GroupedSVCluster extends SVClusterWalker {
 
     @Override
     public Object onTraversalSuccess() {
-        for (final SVClusterEngine engine : clusterEngineMap.values()) {
-            engine.flush().stream().forEach(this::write);
+        if (lowMem) {
+            for (final SVClusterEngine engine : clusterEngineMap.values()) {
+                engine.flush();
+            }
+            runLowMemFinalize();
+        } else {
+            for (final SVClusterEngine engine : clusterEngineMap.values()) {
+                engine.flush().stream().forEach(this::write);
+            }
         }
         return super.onTraversalSuccess();
     }
@@ -231,13 +251,23 @@ public final class GroupedSVCluster extends SVClusterWalker {
             // no match, don't cluster
             record.getAttributes().put(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY, Collections.singletonList(record.getId()));
             record.getAttributes().put(GATKSVVCFConstants.STRATUM_INFO_KEY, Collections.singletonList(SVStratify.DEFAULT_STRATUM));
-            write(record);
+            if (lowMem) {
+                final SVCallRecord stripped = lowMemStripAndRegister(record);
+                lowMemCaptureUnclustered(stripped);
+            } else {
+                write(record);
+            }
         } else {
             // exactly one match
             final SVStratificationEngine.Stratum stratum = stratifications.iterator().next();
             Utils.validate(clusterEngineMap.containsKey(stratum.getName()), "Group undefined: " + stratum.getName());
             record.getAttributes().put(GATKSVVCFConstants.STRATUM_INFO_KEY, Collections.singletonList(stratum.getName()));
-            clusterAndWrite(record, clusterEngineMap.get(stratum.getName()));
+            if (lowMem) {
+                final SVCallRecord stripped = lowMemStripAndRegister(record);
+                clusterEngineMap.get(stratum.getName()).addAndFlush(stripped);
+            } else {
+                clusterAndWrite(record, clusterEngineMap.get(stratum.getName()));
+            }
         }
     }
 

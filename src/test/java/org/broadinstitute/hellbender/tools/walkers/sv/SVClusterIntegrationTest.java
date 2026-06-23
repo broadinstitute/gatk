@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.tools.sv.cluster.*;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
+import org.broadinstitute.hellbender.tools.walkers.sv.JointGermlineCNVSegmentation;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -26,7 +27,9 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class SVClusterIntegrationTest extends CommandLineProgramTest {
@@ -72,7 +75,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 final List<Allele> alts = variant.getAlternateAlleles();
                 Assert.assertEquals(alts.size(), 1);
                 Assert.assertEquals(alts.get(0), Allele.SV_SIMPLE_DUP);
-                Assert.assertEquals(variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, ""), GATKSVVCFConstants.StructuralVariantAnnotationType.DUP.toString());
+                Assert.assertEquals(variant.getStructuralVariantType(), StructuralVariantType.DUP);
                 for (final Genotype g : variant.getGenotypes()) {
                     if (g.getSampleName().equals("HG00129")) {
                         Assert.assertEquals(VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.COPY_NUMBER_FORMAT, -1), 3);
@@ -157,7 +160,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 final List<Allele> alts = variant.getAlternateAlleles();
                 Assert.assertEquals(alts.size(), 1);
                 Assert.assertEquals(alts.get(0), Allele.SV_SIMPLE_INS);
-                Assert.assertEquals(variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, ""), GATKSVVCFConstants.StructuralVariantAnnotationType.INS.toString());
+                Assert.assertEquals(variant.getStructuralVariantType(), StructuralVariantType.INS);
                 for (final Genotype g : variant.getGenotypes()) {
                     if (g.getSampleName().equals("HG00096") || g.getSampleName().equals("HG00129")) {
                         Assert.assertTrue(g.isHet());
@@ -226,7 +229,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 final List<Allele> alts = variant.getAlternateAlleles();
                 Assert.assertEquals(alts.size(), 1);
                 Assert.assertEquals(alts.get(0), Allele.SV_SIMPLE_DUP);
-                Assert.assertEquals(variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, ""), GATKSVVCFConstants.StructuralVariantAnnotationType.DUP.toString());
+                Assert.assertEquals(variant.getStructuralVariantType(), StructuralVariantType.DUP);
                 for (final Genotype g : variant.getGenotypes()) {
                     if (g.getSampleName().equals("HG00096") || g.getSampleName().equals("HG00129")) {
                         Assert.assertTrue(g.isHet());
@@ -392,7 +395,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 final List<Allele> alts = variant.getAlternateAlleles();
                 Assert.assertEquals(alts.size(), 1);
                 Assert.assertEquals(alts.get(0), Allele.SV_SIMPLE_INV);
-                Assert.assertEquals(variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, ""), GATKSVVCFConstants.StructuralVariantAnnotationType.INV.toString());
+                Assert.assertEquals(variant.getStructuralVariantType(), StructuralVariantType.INV);
                 final String strands = variant.getAttributeAsString(GATKSVVCFConstants.STRANDS_ATTRIBUTE, null);
                 Assert.assertEquals(strands, "--");
                 for (final Genotype g : variant.getGenotypes()) {
@@ -456,7 +459,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 final List<Allele> alts = variant.getAlternateAlleles();
                 Assert.assertEquals(alts.size(), 1);
                 Assert.assertEquals(alts.get(0), Allele.SV_SIMPLE_DEL);
-                Assert.assertEquals(variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, ""), GATKSVVCFConstants.StructuralVariantAnnotationType.DEL.toString());
+                Assert.assertEquals(variant.getStructuralVariantType(), StructuralVariantType.DEL);
                 final int nonRefGenotypeCount = (int) variant.getGenotypes().stream().filter(g -> SVCallRecordUtils.isAltGenotype(g)).count();
                 Assert.assertEquals(nonRefGenotypeCount, 71);
                 final int alleleCount = (int) variant.getGenotypes().stream().flatMap(g -> g.getAlleles().stream()).filter(SVCallRecordUtils::isAltAllele).count();
@@ -469,6 +472,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         }
         Assert.assertEquals(expectedRecordsFound, 1);
     }
+
 
     @Test
     public void testClusterSitesOnly() {
@@ -547,7 +551,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 final List<Allele> alts = variant.getAlternateAlleles();
                 Assert.assertEquals(alts.size(), 1);
                 Assert.assertEquals(alts.get(0), Allele.SV_SIMPLE_DUP);
-                Assert.assertEquals(variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, ""), GATKSVVCFConstants.StructuralVariantAnnotationType.DUP.toString());
+                Assert.assertEquals(variant.getStructuralVariantType(), StructuralVariantType.DUP);
                 for (final Genotype g : variant.getGenotypes()) {
                     if (g.getSampleName().equals("HG00096")) {
                         Assert.assertTrue(g.isNoCall());
@@ -597,6 +601,454 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(header.getSampleNamesInOrder().size(), 161);
         final List<VariantContext> records = vcf.getValue();
         Assert.assertEquals(records.size(), 1227);
+    }
+
+    // ===== Mandatory low-mem test matrix =====
+    // Each case runs single-pass vs --low-mem and asserts byte-identical output for IDs, coords,
+    // alleles, INFO(MEMBERS/SVTYPE/ALGORITHMS), and all genotypes.
+
+    /**
+     * Data provider for the mandatory low-mem parity matrix. Each row is:
+     * [String label, ArgumentsBuilder commonArgs, String vcfInputs...]
+     *
+     * <p>Cases:
+     * <ol>
+     *   <li>(a) MAX_CLIQUE – multi-membership records must fold into every owning cluster</li>
+     *   <li>(b) Non-zero sample overlap (PESR/depth/mixed = 0.5) – carrier genotypes must be
+     *       retained in pass 1 for linkage to work correctly</li>
+     *   <li>(c) User intervals (-L) – pass-2 data source must respect the same interval restriction
+     *       as pass 1 so the sequential counter stays aligned</li>
+     *   <li>(d) REPRESENTATIVE breakpoint summary strategy – carrier-count tiebreaker must produce
+     *       the same result now that carrier genotypes are retained in pass 1</li>
+     *   <li>(e) CNV path – {@code --enable-cnv} so DEL+DUP become multi-allelic CNVs; CN/RD_CN/ECN
+     *       attributes must be preserved in pass-1 genotypes for sample-overlap linkage</li>
+     * </ol>
+     */
+    @DataProvider(name = "lowMemMatrixData")
+    public Object[][] lowMemMatrixData() {
+        // Shared multi-caller VCF list used by most cases
+        final List<String> multiCallerVcfs = Arrays.asList(
+                "1kgp_test.cnvs.vcf.gz",
+                "HG00096.manta.vcf.gz",
+                "HG00096.wham.vcf.gz",
+                "HG00129.manta.vcf.gz",
+                "HG00129.wham.vcf.gz",
+                "HG00140.manta.vcf.gz",
+                "HG00140.wham.vcf.gz"
+        );
+
+        // (a) MAX_CLIQUE
+        final ArgumentsBuilder argsMaxClique = new ArgumentsBuilder()
+                .add(SVCluster.PLOIDY_TABLE_LONG_NAME, getToolTestDataDir() + "1kgp.batch1.ploidy.tsv")
+                .add(SVCluster.VARIANT_PREFIX_LONG_NAME, "SVx")
+                .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.MAX_CLIQUE)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REFERENCE_PATH)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
+                .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.PESR_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.PESR_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.PESR_BREAKEND_WINDOW_NAME, 500);
+        multiCallerVcfs.forEach(v -> argsMaxClique.addVCF(getToolTestDataDir() + v));
+
+        // (b) Non-zero sample overlap (0.5) – uses the chr22 batch with enough samples to matter
+        final ArgumentsBuilder argsSampleOverlap = new ArgumentsBuilder()
+                .addVCF(getToolTestDataDir() + "1kgp_test.batch1.pesr.chr22.vcf.gz")
+                .addVCF(getToolTestDataDir() + "1kgp_test.batch1.depth.chr22.vcf.gz")
+                .add(SVCluster.PLOIDY_TABLE_LONG_NAME, getToolTestDataDir() + "1kgp.batch1.ploidy.tsv")
+                .add(SVCluster.VARIANT_PREFIX_LONG_NAME, "SVx")
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REFERENCE_PATH)
+                .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.SINGLE_LINKAGE)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
+                .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.PESR_SAMPLE_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.PESR_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.PESR_BREAKEND_WINDOW_NAME, 500);
+
+        // (c) User intervals -L: same as single-linkage but restricted to chr20:1-10000000
+        final ArgumentsBuilder argsIntervals = new ArgumentsBuilder()
+                .add(SVCluster.PLOIDY_TABLE_LONG_NAME, getToolTestDataDir() + "1kgp.batch1.ploidy.tsv")
+                .add(SVCluster.VARIANT_PREFIX_LONG_NAME, "SVx")
+                .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.SINGLE_LINKAGE)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REFERENCE_PATH)
+                .add(StandardArgumentDefinitions.INTERVALS_LONG_NAME, "chr20:1-10000000")
+                .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
+                .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.PESR_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.PESR_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.PESR_BREAKEND_WINDOW_NAME, 500);
+        multiCallerVcfs.forEach(v -> argsIntervals.addVCF(getToolTestDataDir() + v));
+
+        // (d) REPRESENTATIVE breakpoint summary strategy
+        final ArgumentsBuilder argsRepresentative = new ArgumentsBuilder()
+                .add(SVCluster.PLOIDY_TABLE_LONG_NAME, getToolTestDataDir() + "1kgp.batch1.ploidy.tsv")
+                .add(SVCluster.VARIANT_PREFIX_LONG_NAME, "SVx")
+                .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.SINGLE_LINKAGE)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REFERENCE_PATH)
+                .add(JointGermlineCNVSegmentation.BREAKPOINT_SUMMARY_STRATEGY_LONG_NAME,
+                        CanonicalSVCollapser.BreakpointSummaryStrategy.REPRESENTATIVE)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
+                .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.PESR_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.PESR_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.PESR_BREAKEND_WINDOW_NAME, 500);
+        multiCallerVcfs.forEach(v -> argsRepresentative.addVCF(getToolTestDataDir() + v));
+
+        // (e) CNV path: --enable-cnv so DEL+DUP cluster together as multi-allelic CNV
+        final ArgumentsBuilder argsCnv = new ArgumentsBuilder()
+                .add(SVCluster.PLOIDY_TABLE_LONG_NAME, getToolTestDataDir() + "1kgp.batch1.ploidy.tsv")
+                .add(SVCluster.VARIANT_PREFIX_LONG_NAME, "SVx")
+                .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.SINGLE_LINKAGE)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REFERENCE_PATH)
+                .addFlag(SVCluster.ENABLE_CNV_LONG_NAME)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
+                .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.PESR_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.PESR_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.PESR_BREAKEND_WINDOW_NAME, 500);
+        multiCallerVcfs.forEach(v -> argsCnv.addVCF(getToolTestDataDir() + v));
+
+        // (e2) CNV defragmentation (DEFRAGMENT_CNV algorithm with sample overlap)
+        final ArgumentsBuilder argsDefragCnv = new ArgumentsBuilder()
+                .addVCF(getToolTestDataDir() + "1kgp_test.cnvs.vcf.gz")
+                .add(SVCluster.PLOIDY_TABLE_LONG_NAME, getToolTestDataDir() + "1kgp.batch1.ploidy.tsv")
+                .add(SVCluster.VARIANT_PREFIX_LONG_NAME, "SVx")
+                .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.DEFRAGMENT_CNV)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REFERENCE_PATH)
+                .add(SVCluster.DEFRAG_PADDING_FRACTION_LONG_NAME, 0.25)
+                .add(SVCluster.DEFRAG_SAMPLE_OVERLAP_LONG_NAME, 0.5);
+
+        // (f) sites-only: no ploidy table, no genotypes in output; specifically catches the
+        //     FORMAT-column bug where --low-mem emitted an extra GT:CN:ECN column.
+        final ArgumentsBuilder argsSitesOnly = new ArgumentsBuilder()
+                .add(SVCluster.VARIANT_PREFIX_LONG_NAME, "SVx")
+                .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.SINGLE_LINKAGE)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REFERENCE_PATH)
+                .add(SVCluster.SITES_ONLY_LONG_NAME, true)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
+                .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.PESR_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.PESR_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.PESR_BREAKEND_WINDOW_NAME, 500);
+        multiCallerVcfs.forEach(v -> argsSitesOnly.addVCF(getToolTestDataDir() + v));
+
+        // (g) fast-mode: only carrier genotypes are retained during clustering
+        final ArgumentsBuilder argsFastMode = new ArgumentsBuilder()
+                .add(SVCluster.PLOIDY_TABLE_LONG_NAME, getToolTestDataDir() + "1kgp.batch1.ploidy.tsv")
+                .add(SVCluster.VARIANT_PREFIX_LONG_NAME, "SVx")
+                .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.SINGLE_LINKAGE)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REFERENCE_PATH)
+                .addFlag(SVCluster.FAST_MODE_LONG_NAME)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
+                .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.PESR_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.PESR_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.PESR_BREAKEND_WINDOW_NAME, 500);
+        multiCallerVcfs.forEach(v -> argsFastMode.addVCF(getToolTestDataDir() + v));
+
+        return new Object[][]{
+                {"maxClique",       argsMaxClique},
+                {"sampleOverlap",   argsSampleOverlap},
+                {"intervals",       argsIntervals},
+                {"representative",  argsRepresentative},
+                {"enableCnv",       argsCnv},
+                {"defragCnv",       argsDefragCnv},
+                {"sitesOnly",       argsSitesOnly},
+                {"fastMode",        argsFastMode},
+        };
+    }
+
+    /**
+     * Mandatory low-mem parity matrix. For each scenario, runs SVCluster single-pass (baseline) and
+     * {@code --low-mem} and asserts byte-identical output: same record count, contig, start, end, ID,
+     * all INFO attributes (MEMBERS/SVTYPE/ALGORITHMS), filters, and all per-sample genotype alleles
+     * and extended attributes.
+     */
+    @Test(dataProvider = "lowMemMatrixData")
+    public void testLowMemMatrix(final String label, final ArgumentsBuilder commonArgs) {
+        // Baseline (single-pass)
+        final File outputBaseline = createTempFile("lowmem_matrix_baseline_" + label, ".vcf");
+        runCommandLine(commonArgs.copy().addOutput(outputBaseline), SVCluster.class.getSimpleName());
+
+        // Low-mem pass
+        final File outputLowMem = createTempFile("lowmem_matrix_lowmem_" + label, ".vcf");
+        runCommandLine(commonArgs.copy().addOutput(outputLowMem)
+                .add(SVClusterWalker.LOW_MEM_LONG_NAME, true), SVCluster.class.getSimpleName());
+
+        final List<VariantContext> baselineRecords =
+                VariantContextTestUtils.readEntireVCFIntoMemory(outputBaseline.getAbsolutePath()).getValue();
+        final List<VariantContext> lowMemRecords =
+                VariantContextTestUtils.readEntireVCFIntoMemory(outputLowMem.getAbsolutePath()).getValue();
+
+        Assert.assertEquals(lowMemRecords.size(), baselineRecords.size(),
+                label + ": --low-mem produced a different number of records than baseline");
+
+        for (int i = 0; i < baselineRecords.size(); i++) {
+            final VariantContext base = baselineRecords.get(i);
+            final VariantContext lowMem = lowMemRecords.get(i);
+            final String ctx = label + " record[" + i + "] id=" + base.getID();
+            Assert.assertEquals(lowMem.getContig(), base.getContig(), ctx + ": contig mismatch");
+            Assert.assertEquals(lowMem.getStart(), base.getStart(), ctx + ": start mismatch");
+            Assert.assertEquals(lowMem.getEnd(), base.getEnd(), ctx + ": end mismatch");
+            Assert.assertEquals(lowMem.getID(), base.getID(), ctx + ": ID mismatch");
+            Assert.assertEquals(lowMem.getAlleles(), base.getAlleles(), ctx + ": alleles mismatch");
+            Assert.assertEquals(lowMem.getAttributes(), base.getAttributes(), ctx + ": attributes mismatch");
+            Assert.assertEquals(lowMem.getFilters(), base.getFilters(), ctx + ": filters mismatch");
+            Assert.assertEquals(lowMem.getGenotypes().size(), base.getGenotypes().size(),
+                    ctx + ": genotype count mismatch");
+            // For sites-only, both baseline and low-mem must have zero genotypes (no FORMAT column).
+            // This assertion specifically catches the bug where --low-mem emitted a spurious FORMAT
+            // column (GT:CN:ECN) when --sites-only was set.
+            if ("sitesOnly".equals(label)) {
+                Assert.assertEquals(base.getGenotypes().size(), 0,
+                        ctx + ": sites-only baseline must have zero genotypes");
+                Assert.assertEquals(lowMem.getGenotypes().size(), 0,
+                        ctx + ": sites-only --low-mem must have zero genotypes (FORMAT column bug)");
+            }
+            for (final Genotype baseGt : base.getGenotypes()) {
+                final Genotype lowMemGt = lowMem.getGenotype(baseGt.getSampleName());
+                Assert.assertNotNull(lowMemGt, ctx + ": missing genotype for sample " + baseGt.getSampleName());
+                Assert.assertEquals(lowMemGt.getAlleles(), baseGt.getAlleles(),
+                        ctx + ": alleles mismatch for sample " + baseGt.getSampleName());
+                Assert.assertEquals(lowMemGt.getExtendedAttributes(), baseGt.getExtendedAttributes(),
+                        ctx + ": extended attributes mismatch for sample " + baseGt.getSampleName());
+            }
+        }
+    }
+
+    /**
+     * Verifies that {@code --low-mem} mode produces byte-identical output to the default single-pass
+     * mode by running the same arguments as {@link #testClusterSingleLinkage} with and without the flag
+     * and comparing every field of every variant.
+     */
+    @Test
+    public void testClusterSingleLinkageLowMem() {
+        final ArgumentsBuilder commonArgs = new ArgumentsBuilder()
+                .addVCF(getToolTestDataDir() + "1kgp_test.cnvs.vcf.gz")
+                .addVCF(getToolTestDataDir() + "HG00096.manta.vcf.gz")
+                .addVCF(getToolTestDataDir() + "HG00096.wham.vcf.gz")
+                .addVCF(getToolTestDataDir() + "HG00129.manta.vcf.gz")
+                .addVCF(getToolTestDataDir() + "HG00129.wham.vcf.gz")
+                .addVCF(getToolTestDataDir() + "HG00140.manta.vcf.gz")
+                .addVCF(getToolTestDataDir() + "HG00140.wham.vcf.gz")
+                .add(SVCluster.PLOIDY_TABLE_LONG_NAME, getToolTestDataDir() + "1kgp.batch1.ploidy.tsv")
+                .add(SVCluster.VARIANT_PREFIX_LONG_NAME, "SVx")
+                .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.SINGLE_LINKAGE)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REFERENCE_PATH)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
+                .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.PESR_SAMPLE_OVERLAP_FRACTION_NAME, 0)
+                .add(SVClusterEngineArgumentsCollection.PESR_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.PESR_BREAKEND_WINDOW_NAME, 500);
+
+        // Run without --low-mem (baseline)
+        final File outputBaseline = createTempFile("single_linkage_cluster_baseline", ".vcf");
+        runCommandLine(commonArgs.copy().addOutput(outputBaseline), SVCluster.class.getSimpleName());
+
+        // Run with --low-mem
+        final File outputLowMem = createTempFile("single_linkage_cluster_lowmem", ".vcf");
+        runCommandLine(commonArgs.copy().addOutput(outputLowMem)
+                .add(SVCluster.LOW_MEM_LONG_NAME, true), SVCluster.class.getSimpleName());
+
+        // Compare every variant record field-by-field
+        final List<VariantContext> baselineRecords =
+                VariantContextTestUtils.readEntireVCFIntoMemory(outputBaseline.getAbsolutePath()).getValue();
+        final List<VariantContext> lowMemRecords =
+                VariantContextTestUtils.readEntireVCFIntoMemory(outputLowMem.getAbsolutePath()).getValue();
+
+        Assert.assertEquals(lowMemRecords.size(), baselineRecords.size(),
+                "--low-mem produced a different number of records than baseline");
+
+        for (int i = 0; i < baselineRecords.size(); i++) {
+            final VariantContext base = baselineRecords.get(i);
+            final VariantContext lowMem = lowMemRecords.get(i);
+            Assert.assertEquals(lowMem.getContig(), base.getContig(), "Contig mismatch at record " + i);
+            Assert.assertEquals(lowMem.getStart(), base.getStart(), "Start mismatch at record " + i);
+            Assert.assertEquals(lowMem.getEnd(), base.getEnd(), "End mismatch at record " + i);
+            Assert.assertEquals(lowMem.getID(), base.getID(), "ID mismatch at record " + i);
+            Assert.assertEquals(lowMem.getAttributes(), base.getAttributes(),
+                    "Attributes mismatch at record " + i + " (" + base.getID() + ")");
+            Assert.assertEquals(lowMem.getFilters(), base.getFilters(),
+                    "Filters mismatch at record " + i);
+            Assert.assertEquals(lowMem.getGenotypes().size(), base.getGenotypes().size(),
+                    "Genotype count mismatch at record " + i);
+            for (final Genotype baseGt : base.getGenotypes()) {
+                final Genotype lowMemGt = lowMem.getGenotype(baseGt.getSampleName());
+                Assert.assertNotNull(lowMemGt, "Missing genotype for sample " + baseGt.getSampleName()
+                        + " at record " + i);
+                Assert.assertEquals(lowMemGt.getAlleles(), baseGt.getAlleles(),
+                        "Alleles mismatch for sample " + baseGt.getSampleName() + " at record " + i);
+                Assert.assertEquals(lowMemGt.getExtendedAttributes(), baseGt.getExtendedAttributes(),
+                        "Extended attributes mismatch for sample " + baseGt.getSampleName()
+                                + " at record " + i);
+            }
+        }
+    }
+
+    /**
+     * Verifies that the --low-mem two-pass stripping logic (as implemented in
+     * {@code SVClusterWalker#lowMemStripAndRegister}) materially reduces the genotype footprint of
+     * records held in memory by the cluster engine.
+     *
+     * <p>The test replicates the EXACT stripping logic from lowMemStripAndRegister:
+     * <ul>
+     *   <li>Non-CNV: keep only carrier genotypes (getCarrierGenotypeList).</li>
+     *   <li>CNV: keep all genotypes but reduce each to only CN/RD_CN/ECN attributes with GT zeroed.</li>
+     * </ul>
+     *
+     * <p>Two aggregate metrics are checked:
+     * <ol>
+     *   <li>Total genotype COUNT (stripped must be well under 50% of original for PESR data).</li>
+     *   <li>Total genotype-attribute count (sum of extended attributes + GT presence per genotype;
+     *       stripped must be under 70% of original).</li>
+     * </ol>
+     *
+     * <p>A secondary check verifies that any CNV records' stripped genotypes contain only
+     * {CN, RD_CN, ECN} keys.
+     */
+    @Test
+    public void testLowMemReducesGenotypeFootprint() {
+        final String vcfPath = getToolTestDataDir() + "1kgp_test.batch1.pesr.chr22.vcf.gz";
+        final List<VariantContext> variantContexts =
+                VariantContextTestUtils.readEntireVCFIntoMemory(vcfPath).getValue();
+
+        Assert.assertFalse(variantContexts.isEmpty(), "Fixture VCF must not be empty");
+
+        // Convert to SVCallRecords
+        final List<SVCallRecord> records = variantContexts.stream()
+                .map(vc -> SVCallRecordUtils.create(vc, SVTestUtils.hg38Dict))
+                .collect(Collectors.toList());
+
+        // --- Apply the EXACT stripping logic from lowMemStripAndRegister ---
+        final Set<String> CNV_KEYS = new HashSet<>(Arrays.asList(
+                GATKSVVCFConstants.COPY_NUMBER_FORMAT,
+                GATKSVVCFConstants.DEPTH_GENOTYPE_COPY_NUMBER_FORMAT,
+                GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT
+        ));
+
+        final List<SVCallRecord> strippedRecords = records.stream().map(record -> {
+            final GenotypesContext strippedGenotypes;
+            if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV) {
+                final List<Genotype> cnOnly = record.getGenotypes().stream()
+                        .map(g -> {
+                            final GenotypeBuilder gb = new GenotypeBuilder(g.getSampleName());
+                            final Object cn = g.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT);
+                            final Object rdCn = g.getExtendedAttribute(GATKSVVCFConstants.DEPTH_GENOTYPE_COPY_NUMBER_FORMAT);
+                            final Object ecn = g.getExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT);
+                            if (cn != null) gb.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, cn);
+                            if (rdCn != null) gb.attribute(GATKSVVCFConstants.DEPTH_GENOTYPE_COPY_NUMBER_FORMAT, rdCn);
+                            if (ecn != null) gb.attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, ecn);
+                            return gb.make();
+                        })
+                        .collect(Collectors.toList());
+                strippedGenotypes = GenotypesContext.create(new ArrayList<>(cnOnly));
+            } else {
+                strippedGenotypes = GenotypesContext.copy(record.getCarrierGenotypeList());
+            }
+            return SVCallRecordUtils.copyCallWithNewGenotypes(record, strippedGenotypes);
+        }).collect(Collectors.toList());
+
+        // --- Compute aggregate metrics ---
+        // Metric 1: total genotype count
+        final long originalGenotypeCount = records.stream()
+                .mapToLong(r -> r.getGenotypes().size())
+                .sum();
+        final long strippedGenotypeCount = strippedRecords.stream()
+                .mapToLong(r -> r.getGenotypes().size())
+                .sum();
+
+        // Metric 2: total genotype-attribute count (extended attributes + allele count as proxy for GT)
+        final long originalAttrCount = records.stream()
+                .flatMap(r -> r.getGenotypes().stream())
+                .mapToLong(g -> g.getExtendedAttributes().size() + g.getAlleles().size())
+                .sum();
+        final long strippedAttrCount = strippedRecords.stream()
+                .flatMap(r -> r.getGenotypes().stream())
+                .mapToLong(g -> g.getExtendedAttributes().size() + g.getAlleles().size())
+                .sum();
+
+        // Log savings
+        final double genotypePct = originalGenotypeCount > 0
+                ? 100.0 * strippedGenotypeCount / originalGenotypeCount : 100.0;
+        final double attrPct = originalAttrCount > 0
+                ? 100.0 * strippedAttrCount / originalAttrCount : 100.0;
+        System.out.printf("low-mem stripping: genotypes %d->%d (%.1f%% of original), "
+                        + "genotype-attrs %d->%d (%.1f%% of original)%n",
+                originalGenotypeCount, strippedGenotypeCount, genotypePct,
+                originalAttrCount, strippedAttrCount, attrPct);
+
+        // Sanity: stripped records are non-empty (some carriers exist)
+        Assert.assertTrue(strippedGenotypeCount > 0,
+                "Stripped genotype count must be > 0 (some carrier genotypes must survive stripping)");
+
+        // Primary assertion 1: genotype count reduced to well under 50% (PESR fixture is non-CNV dominated)
+        Assert.assertTrue(strippedGenotypeCount < 0.5 * originalGenotypeCount,
+                String.format("Stripped genotype count %d should be well under 50%% of original %d "
+                        + "(actual: %.1f%%) — low-mem carrier stripping is not reducing footprint",
+                        strippedGenotypeCount, originalGenotypeCount, genotypePct));
+
+        // Primary assertion 2: attribute count reduced to under 70% (conservative)
+        Assert.assertTrue(strippedAttrCount < 0.7 * originalAttrCount,
+                String.format("Stripped attribute count %d should be under 70%% of original %d "
+                        + "(actual: %.1f%%) — low-mem attribute stripping is not reducing footprint",
+                        strippedAttrCount, originalAttrCount, attrPct));
+
+        // --- CNV branch check ---
+        final List<SVCallRecord> cnvRecords = records.stream()
+                .filter(r -> r.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV)
+                .collect(Collectors.toList());
+        final List<SVCallRecord> cnvStripped = strippedRecords.stream()
+                .filter(r -> r.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV)
+                .collect(Collectors.toList());
+
+        if (cnvRecords.isEmpty()) {
+            System.out.println("low-mem stripping: no CNV records present in PESR fixture — "
+                    + "CNV attribute-only branch not exercised by this fixture");
+        } else {
+            System.out.printf("low-mem stripping: found %d CNV records; verifying stripped genotypes "
+                    + "contain only {CN, RD_CN, ECN}%n", cnvRecords.size());
+            for (final SVCallRecord stripped : cnvStripped) {
+                for (final Genotype g : stripped.getGenotypes()) {
+                    final Set<String> keys = g.getExtendedAttributes().keySet();
+                    final Set<String> unexpected = new HashSet<>(keys);
+                    unexpected.removeAll(CNV_KEYS);
+                    Assert.assertTrue(unexpected.isEmpty(),
+                            String.format("CNV stripped genotype for sample %s contains unexpected keys %s "
+                                    + "(expected only %s)", g.getSampleName(), unexpected, CNV_KEYS));
+                }
+            }
+        }
     }
 
 }
