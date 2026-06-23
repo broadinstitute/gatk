@@ -2,7 +2,6 @@
 import uuid
 import datetime
 import argparse
-import pybedtools
 import re
 
 from google.cloud import bigquery
@@ -134,16 +133,31 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
     return query_return['results']
 
 
+def _parse_interval_list(interval_list):
+    """Parse an interval_list file, yielding (chrom, start_0based, end_0based_excl) tuples.
+    interval_list format is 1-based closed; we convert to 0-based half-open to match
+    the coordinate system previously used via pybedtools."""
+    with open(interval_list) as f:
+        for line in f:
+            if line.startswith('@'):
+                continue
+            parts = line.strip().split('\t')
+            if len(parts) < 3:
+                continue
+            yield parts[0], int(parts[1]) - 1, int(parts[2])
+
+
 def get_location_filters_from_interval_list(interval_list):
-    interval_test = pybedtools.BedTool(interval_list)
+    intervals = list(_parse_interval_list(interval_list))
     # check to make sure there aren't too many locations to build a SQL query from
-    if len(interval_test) > 5000:
+    if len(intervals) > 5000:
         print(f"\n\nTrying to query over the limit of 5,000 locations; {interval_list} will be discarded, and all locations will be queried.\n\n")
         return ""
 
-    location_clause_list = [f"""(location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} 
-            AND location <= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.end)))}{interval.end})"""
-                            for interval in interval_test]
+    location_clause_list = [f"""(location >= {CHROM_MAP[chrom]}{'0' * (12 - len(str(start)))}{start}
+            AND location <= {CHROM_MAP[chrom]}{'0' * (12 - len(str(end)))}{end})"""
+                            for chrom, start, end in intervals
+                            if chrom in CHROM_MAP]
     return "WHERE (" + " OR ".join(location_clause_list) + ")"
 
 
