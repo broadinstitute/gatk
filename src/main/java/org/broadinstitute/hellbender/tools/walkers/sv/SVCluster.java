@@ -265,6 +265,17 @@ public final class SVCluster extends SVClusterWalker {
     }
 
     @Override
+    protected boolean canUseGenotypeLightPass1Items() {
+        // Genotype-free pass-1 items are safe only for the canonical (non-defragment) engine with all
+        // sample-overlap thresholds at 0, where clustering is purely coordinate-based. CNV defragment
+        // (CNVLinkage) reads carrier sets / copy state regardless of sample overlap, so it must keep them.
+        return algorithm != CLUSTER_ALGORITHM.DEFRAGMENT_CNV
+                && clusterParameterArgs.getDepthParameters().getSampleOverlap() == 0.0
+                && clusterParameterArgs.getMixedParameters().getSampleOverlap() == 0.0
+                && clusterParameterArgs.getPESRParameters().getSampleOverlap() == 0.0;
+    }
+
+    @Override
     public void applyRecord(final SVCallRecord record) {
         if (lowMem) {
             final SVCallRecord stripped = lowMemStripAndRegister(record);

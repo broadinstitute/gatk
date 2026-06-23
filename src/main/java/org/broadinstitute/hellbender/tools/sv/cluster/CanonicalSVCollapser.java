@@ -798,7 +798,7 @@ public class CanonicalSVCollapser {
         }
         // Favor variant with highest quality or best evidence
         final Comparator<SVCallRecord> qualityComparator = Comparator.comparing(r -> r.getLog10PError() == null ? 0 : r.getLog10PError());
-        final Comparator<SVCallRecord> carrierCountComparator = Comparator.comparing(r -> -r.getCarrierGenotypeList().size());
+        final Comparator<SVCallRecord> carrierCountComparator = Comparator.comparing(r -> -r.getCarrierCount());
         final Comparator<SVCallRecord> distanceComparator = Comparator.comparing(r -> getDistance(r.getPositionA(), r.getPositionB(), starts, ends));
         final Comparator<SVCallRecord> idComparator = Comparator.comparing(SVCallRecord::getId); // stabilizes order
         return records.stream().min(

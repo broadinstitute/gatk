@@ -24,7 +24,15 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 
+import java.io.EOFException;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.IdentityHashMap;
@@ -226,6 +234,14 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
     private int pass1RecordIdx = 0;
 
     /**
+     * Disk-backed, siteSeq-ordered buffer of completed sites' final genotypes during pass 2. Created in
+     * {@link #runLowMemFinalize} and drained (then cleaned up) there. Holds at most
+     * {@code --max-records-in-ram} sites in memory and spills the rest to {@code tmpDir}, so the
+     * completed-site genotype memory is bounded regardless of head-of-line ordering.
+     */
+    private SortingCollection<SpilledSite> completedSiteBuffer;
+
+    /**
      * Stripped pass-1 record that carries its own pass-1 sequential index. This replaces the old
      * {@code strippedRecordToPass1Index} {@link IdentityHashMap}, which pinned every stripped record
      * (and its retained genotypes) for the entire traversal. By stamping the index on the record
@@ -236,20 +252,35 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
      * <p>The index is read back in {@link #lowMemCaptureCluster} / {@link #lowMemCaptureUnclustered}
      * when the engine emits the cluster. Reading rather than removing means MAX_CLIQUE multi-membership
      * (a record appearing in multiple emitted clusters) is handled for free.</p>
+     *
+     * <p>It also carries a precomputed {@code carrierCount} and overrides {@link #getCarrierCount()} so
+     * the record can be fed to the engine with its genotype objects dropped entirely (empty genotypes)
+     * when clustering will not touch them — see {@link #canUseGenotypeLightPass1Items()}. The collapser's
+     * REPRESENTATIVE breakpoint tiebreaker reads the count via {@code getCarrierCount()}, so it remains
+     * correct without the genotypes. This bounds the pass-1 active-window weight to O(window) instead of
+     * O(window × carriers), which matters at common-variant hotspots with 250k samples.</p>
      */
     private static final class IndexedSVCallRecord extends SVCallRecord {
         private final int pass1Index;
+        private final int carrierCount;
 
-        IndexedSVCallRecord(final SVCallRecord base, final GenotypesContext genotypes, final int pass1Index) {
+        IndexedSVCallRecord(final SVCallRecord base, final GenotypesContext genotypes, final int pass1Index,
+                            final int carrierCount) {
             super(base.getId(), base.getContigA(), base.getPositionA(), base.getStrandA(), base.getContigB(),
                     base.getPositionB(), base.getStrandB(), base.getType(), base.getComplexSubtype(),
                     base.getComplexEventIntervals(), base.getLength(), base.getEvidence(), base.getAlgorithms(),
                     base.getAlleles(), genotypes, base.getAttributes(), base.getFilters(), base.getLog10PError());
             this.pass1Index = pass1Index;
+            this.carrierCount = carrierCount;
         }
 
         int getPass1Index() {
             return pass1Index;
+        }
+
+        @Override
+        public int getCarrierCount() {
+            return carrierCount;
         }
     }
 
@@ -262,6 +293,8 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
     private static final class PlannedSite {
         /** Site-level record produced in pass 1 (genotypes list is empty / carrier-only). */
         final SVCallRecord siteRecord;
+        /** Index into {@link #plannedSites} = pass-1 emission order = single-pass write order. */
+        final int siteSeq;
         /**
          * If true, this site is an unclustered single-record passthrough (GroupedSVCluster's
          * no-stratum-match case). Its pass-2 genotypes are attached without collapse, matching
@@ -277,8 +310,9 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
          */
         int pendingMembers = 0;
 
-        PlannedSite(final SVCallRecord siteRecord, final boolean passthrough) {
+        PlannedSite(final SVCallRecord siteRecord, final int siteSeq, final boolean passthrough) {
             this.siteRecord = siteRecord;
+            this.siteSeq = siteSeq;
             this.passthrough = passthrough;
         }
     }
@@ -328,6 +362,9 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
     @Override
     public void closeTool() {
         super.closeTool();
+        if (completedSiteBuffer != null) {
+            completedSiteBuffer.cleanup();
+        }
         if (sortingBuffer != null) {
             sortingBuffer.cleanup();
         }
@@ -349,6 +386,17 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
      * genotypes); subclasses override based on their clustering parameters.
      */
     protected boolean canDropNonCarrierCnvGenotypes() {
+        return false;
+    }
+
+    /**
+     * Whether low-mem pass 1 may feed the cluster engine genotype-free items (no genotype objects, only a
+     * cached carrier count). Safe only when clustering never reads genotypes: the linkage is NOT
+     * CNV-defragment (CNVLinkage reads carrier sets / copy state unconditionally) AND all sample-overlap
+     * thresholds are 0 (so {@code computeSampleOverlap} is never invoked). Defaults to false (retain
+     * genotypes); subclasses override based on their algorithm and clustering parameters.
+     */
+    protected boolean canUseGenotypeLightPass1Items() {
         return false;
     }
 
@@ -378,6 +426,7 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
      */
     protected SVCallRecord lowMemStripAndRegister(final SVCallRecord record) {
         final GenotypesContext strippedGenotypes;
+        final int carrierCount;
         if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV) {
             // CNV: reduce every genotype to CN/RD_CN/ECN with a no-call GT (the form the engine and
             // collapser will see). GT and all other FORMAT fields are dropped to save memory.
@@ -402,18 +451,32 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
                 // list is transient and freed once carriers are extracted.
                 strippedGenotypes = GenotypesContext.copy(
                         SVCallRecordUtils.copyCallWithNewGenotypes(record, cnReduced).getCarrierGenotypeList());
+                carrierCount = strippedGenotypes.size(); // all retained genotypes are carriers
             } else {
                 // CNV sample-overlap may run; it iterates every genotyped sample's copy state, so all
                 // reduced genotypes must be retained to preserve clustering parity.
                 strippedGenotypes = cnReduced;
+                // Carrier count among the reduced (no-call GT) genotypes, matching what the engine item
+                // would report via getCarrierGenotypeList().size().
+                carrierCount = SVCallRecordUtils.copyCallWithNewGenotypes(record, cnReduced)
+                        .getCarrierGenotypeList().size();
             }
         } else {
             // Non-CNV: keep only carrier genotypes, exactly like --fast-mode
             strippedGenotypes = GenotypesContext.copy(record.getCarrierGenotypeList());
+            carrierCount = strippedGenotypes.size(); // all retained genotypes are carriers
         }
+        // When clustering will not read genotypes (non-defrag engine with sample-overlap disabled), feed
+        // the engine an item with NO genotype objects to bound the pass-1 active window to O(window)
+        // instead of O(window × carriers). The carrier count is preserved on the item for the
+        // REPRESENTATIVE collapse tiebreaker (getCarrierCount), and linkage at sample-overlap 0 is
+        // purely coordinate-based, so output is unchanged.
+        final GenotypesContext engineGenotypes = canUseGenotypeLightPass1Items()
+                ? GenotypesContext.NO_GENOTYPES : strippedGenotypes;
         // Stamp the pass-1 index on the record itself rather than pinning it in a global map, so the
         // record is GC-eligible as soon as the cluster engine finalizes its cluster.
-        final SVCallRecord stripped = new IndexedSVCallRecord(record, strippedGenotypes, pass1RecordIdx++);
+        final SVCallRecord stripped =
+                new IndexedSVCallRecord(record, engineGenotypes, pass1RecordIdx++, carrierCount);
         // Reserve a routing slot; actual site indices are filled in by lowMemCaptureCluster /
         // lowMemCaptureUnclustered when the cluster engine emits the cluster.
         routing.add(null);
@@ -435,7 +498,7 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
     protected SVCallRecord lowMemCaptureCluster(final SVClusterEngine.OutputCluster cluster) {
         final SVCallRecord siteRecord = lowMemCollapser.collapseWithGenotypes(cluster, Collections.emptyList());
         final int siteSeq = plannedSites.size();
-        final PlannedSite site = new PlannedSite(siteRecord, false);
+        final PlannedSite site = new PlannedSite(siteRecord, siteSeq, false);
         plannedSites.add(site);
         int members = 0;
         for (final SVCallRecord item : cluster.getItems()) {
@@ -467,7 +530,7 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
      */
     protected void lowMemCaptureUnclustered(final SVCallRecord stripped) {
         final int siteSeq = plannedSites.size();
-        final PlannedSite site = new PlannedSite(stripped, true);
+        final PlannedSite site = new PlannedSite(stripped, siteSeq, true);
         plannedSites.add(site);
         final int p1Idx = ((IndexedSVCallRecord) stripped).getPass1Index();
         routing.set(p1Idx, new int[]{siteSeq});
@@ -501,7 +564,14 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
         // traversal intervals so the pass-2 counter stays aligned with the pass-1 counter even when
         // the user supplied -L intervals (defect #3 fix).
         int pass2RecordIdx = 0;
-        int writeCursor = 0; // index into plannedSites[] of the next site awaiting flush
+        // Bounded, siteSeq-ordered buffer of completed sites' final genotypes; spills to disk past
+        // --max-records-in-ram so the completed-site genotype memory is hard-bounded.
+        completedSiteBuffer = SortingCollection.newInstance(
+                SpilledSite.class,
+                new SpilledSiteCodec(),
+                Comparator.comparingInt(s -> s.siteSeq),
+                maxRecordsInRam,
+                tmpDir.toPath());
         try (final MultiVariantDataSource ds = new MultiVariantDataSource(getDrivingVariantsFeatureInputs(), 0)) {
             final List<SimpleInterval> traversalIntervals = getTraversalIntervals();
             if (traversalIntervals != null) {
@@ -534,46 +604,49 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
                                     lowMemCollapser.getRepresentativeGenotype(Arrays.asList(current, g)));
                         }
                     }
-                    site.pendingMembers--;
-                }
-                // Flush the leading run of completed sites in pass-1 order, releasing and nulling
-                // each PlannedSite entry so the GC can reclaim the whole shell (fix 3b).
-                while (writeCursor < plannedSites.size()) {
-                    final PlannedSite ps = plannedSites.get(writeCursor);
-                    if (ps == null || ps.pendingMembers <= 0) {
-                        if (ps != null) {
-                            flushPlannedSite(ps);
-                        }
-                        plannedSites.set(writeCursor, null); // release the shell
-                        writeCursor++;
-                    } else {
-                        break;
+                    // Finalize the instant this site's last member is folded, spilling its genotypes to
+                    // the bounded completed-site buffer and releasing the in-RAM accumulator. Spilling
+                    // (rather than holding) caps live genotype memory to the active clustering window
+                    // plus the buffer's --max-records-in-ram window, independent of head-of-line order.
+                    if (--site.pendingMembers <= 0) {
+                        spillCompletedSite(site);
                     }
                 }
             }
         }
-        // Safety flush: drain any sites the cursor has not yet reached. With identical pass-1/pass-2
-        // traversal every site reaches pendingMembers == 0 above, so this is a no-op in practice;
-        // it guards against a site whose members were not all re-read (e.g. edge cases in -L mode).
-        while (writeCursor < plannedSites.size()) {
-            final PlannedSite ps = plannedSites.get(writeCursor);
-            if (ps != null) {
-                flushPlannedSite(ps);
+        // Spill any sites whose members were not all re-read (edge cases in -L mode); normally none.
+        for (final PlannedSite ps : plannedSites) {
+            if (ps != null && ps.pendingMembers > 0) {
+                spillCompletedSite(ps);
             }
-            plannedSites.set(writeCursor, null);
-            writeCursor++;
         }
+        // Drain the completed-site buffer in siteSeq order (== single-pass write order, so output IDs
+        // and same-coordinate tie-break ordering match the baseline) and write each finalized record.
+        // The buffer holds only --max-records-in-ram sites in RAM; the rest are on disk.
+        completedSiteBuffer.doneAdding();
+        for (final SpilledSite spilled : completedSiteBuffer) {
+            final PlannedSite site = plannedSites.get(spilled.siteSeq);
+            // Reconstruct the finalized record exactly as finalizePlannedSite produced it: the spilled
+            // genotypes are its final genotypes, recombined with the (genotype-free) site record.
+            write(SVCallRecordUtils.copyCallWithNewGenotypes(site.siteRecord,
+                    GenotypesContext.create(new ArrayList<>(spilled.genotypes))));
+            plannedSites.set(spilled.siteSeq, null); // release the shell
+        }
+        completedSiteBuffer.cleanup();
+        completedSiteBuffer = null;
         // Release the routing table; it is no longer needed after pass 2 is complete.
         routing = null;
     }
 
     /**
-     * Finalize a planned site, write it, and release its accumulated genotypes for garbage collection.
-     * The caller is responsible for nulling out the corresponding entry in {@link #plannedSites} to
-     * allow the shell to be GC'd.
+     * Finalizes a completed planned site, appends its final genotypes to the bounded, siteSeq-ordered
+     * {@link #completedSiteBuffer} (which spills to disk past {@code --max-records-in-ram}), and releases
+     * the in-RAM accumulator. The genotype-free {@link PlannedSite#siteRecord} is retained in
+     * {@link #plannedSites} and recombined with the spilled genotypes during the drain.
      */
-    private void flushPlannedSite(final PlannedSite site) {
-        write(finalizePlannedSite(site));
+    private void spillCompletedSite(final PlannedSite site) {
+        completedSiteBuffer.add(
+                new SpilledSite(site.siteSeq, new ArrayList<>(finalizePlannedSite(site).getGenotypes())));
         site.bestGenotypes.clear();
     }
 
@@ -694,6 +767,156 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
             builder.rmAttribute(GATKSVVCFConstants.CLUSTER_MEMBER_IDS_KEY);
         }
         return builder.make();
+    }
+
+    /** A completed pass-2 site's final genotypes, tagged with its siteSeq for ordered draining. */
+    private static final class SpilledSite {
+        final int siteSeq;
+        final List<Genotype> genotypes;
+
+        SpilledSite(final int siteSeq, final List<Genotype> genotypes) {
+            this.siteSeq = siteSeq;
+            this.genotypes = genotypes;
+        }
+    }
+
+    /**
+     * Compact {@link SortingCollection} codec for {@link SpilledSite}. Serializes each genotype's standard
+     * fields explicitly and its extended-attribute map via {@link ObjectOutputStream}, so arbitrary VCF
+     * FORMAT value types round-trip exactly, then rebuilds genotypes with {@link GenotypeBuilder}. Unlike
+     * a VCF-based codec this stores only the folded (sparse) genotypes, avoiding a full 250k-sample column
+     * per spilled site.
+     */
+    private static final class SpilledSiteCodec implements SortingCollection.Codec<SpilledSite> {
+        private ObjectOutputStream out;
+        private ObjectInputStream in;
+
+        @Override
+        public void setOutputStream(final OutputStream os) {
+            try {
+                out = new ObjectOutputStream(os);
+            } catch (final IOException e) {
+                throw new UncheckedIOException("Failed to open spill output stream", e);
+            }
+        }
+
+        @Override
+        public void setInputStream(final InputStream is) {
+            try {
+                in = new ObjectInputStream(is);
+            } catch (final IOException e) {
+                throw new UncheckedIOException("Failed to open spill input stream", e);
+            }
+        }
+
+        @Override
+        public void encode(final SpilledSite site) {
+            try {
+                out.writeInt(site.siteSeq);
+                out.writeInt(site.genotypes.size());
+                for (final Genotype g : site.genotypes) {
+                    out.writeObject(g.getSampleName());
+                    final List<Allele> alleles = g.getAlleles();
+                    out.writeInt(alleles.size());
+                    for (final Allele a : alleles) {
+                        out.writeBoolean(a.isNoCall());
+                        if (!a.isNoCall()) {
+                            out.writeObject(a.getDisplayString());
+                            out.writeBoolean(a.isReference());
+                        }
+                    }
+                    out.writeBoolean(g.isPhased());
+                    out.writeInt(g.getGQ());
+                    out.writeInt(g.getDP());
+                    writeIntArray(out, g.hasAD() ? g.getAD() : null);
+                    writeIntArray(out, g.hasPL() ? g.getPL() : null);
+                    out.writeObject(g.getFilters());
+                    out.writeObject(new LinkedHashMap<>(g.getExtendedAttributes()));
+                    out.reset(); // drop the back-reference table so repeated values are re-encoded, not aliased
+                }
+                out.flush();
+            } catch (final IOException e) {
+                throw new UncheckedIOException("Failed to encode spilled site", e);
+            }
+        }
+
+        @Override
+        public SpilledSite decode() {
+            final int siteSeq;
+            try {
+                siteSeq = in.readInt();
+            } catch (final EOFException e) {
+                return null; // end of stream
+            } catch (final IOException e) {
+                throw new UncheckedIOException("Failed to decode spilled site", e);
+            }
+            try {
+                final int n = in.readInt();
+                final List<Genotype> genotypes = new ArrayList<>(n);
+                for (int i = 0; i < n; i++) {
+                    final String sample = (String) in.readObject();
+                    final int nAlleles = in.readInt();
+                    final List<Allele> alleles = new ArrayList<>(nAlleles);
+                    for (int j = 0; j < nAlleles; j++) {
+                        if (in.readBoolean()) {
+                            alleles.add(Allele.NO_CALL);
+                        } else {
+                            final String bases = (String) in.readObject();
+                            alleles.add(Allele.create(bases, in.readBoolean()));
+                        }
+                    }
+                    final GenotypeBuilder gb = new GenotypeBuilder(sample, alleles);
+                    gb.phased(in.readBoolean());
+                    final int gq = in.readInt();
+                    if (gq >= 0) { gb.GQ(gq); }
+                    final int dp = in.readInt();
+                    if (dp >= 0) { gb.DP(dp); }
+                    final int[] ad = readIntArray(in);
+                    if (ad != null) { gb.AD(ad); }
+                    final int[] pl = readIntArray(in);
+                    if (pl != null) { gb.PL(pl); }
+                    final String filters = (String) in.readObject();
+                    if (filters != null) { gb.filters(filters); }
+                    @SuppressWarnings("unchecked")
+                    final Map<String, Object> attrs = (Map<String, Object>) in.readObject();
+                    gb.attributes(attrs);
+                    genotypes.add(gb.make());
+                }
+                return new SpilledSite(siteSeq, genotypes);
+            } catch (final IOException e) {
+                throw new UncheckedIOException("Failed to decode spilled site", e);
+            } catch (final ClassNotFoundException e) {
+                throw new IllegalStateException("Failed to decode spilled site", e);
+            }
+        }
+
+        @Override
+        public SortingCollection.Codec<SpilledSite> clone() {
+            return new SpilledSiteCodec();
+        }
+
+        private static void writeIntArray(final ObjectOutputStream os, final int[] arr) throws IOException {
+            if (arr == null) {
+                os.writeInt(-1);
+            } else {
+                os.writeInt(arr.length);
+                for (final int v : arr) {
+                    os.writeInt(v);
+                }
+            }
+        }
+
+        private static int[] readIntArray(final ObjectInputStream is) throws IOException {
+            final int len = is.readInt();
+            if (len < 0) {
+                return null;
+            }
+            final int[] arr = new int[len];
+            for (int i = 0; i < len; i++) {
+                arr[i] = is.readInt();
+            }
+            return arr;
+        }
     }
 
 }

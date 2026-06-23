@@ -793,14 +793,34 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
      */
     @Test(dataProvider = "lowMemMatrixData")
     public void testLowMemMatrix(final String label, final ArgumentsBuilder commonArgs) {
+        assertLowMemByteIdentical(label, commonArgs, -1);
+    }
+
+    /**
+     * Same parity matrix, but caps {@code --max-records-in-ram} so the pass-2 completed-site
+     * SortingCollection (and the output buffer) spill to disk, exercising the {@link
+     * org.broadinstitute.hellbender.tools.sv.cluster.SVClusterWalker} SpilledSite codec round-trip
+     * end to end. Output must stay byte-identical to the (default-RAM) single-pass baseline.
+     */
+    @Test(dataProvider = "lowMemMatrixData")
+    public void testLowMemMatrixForcedSpill(final String label, final ArgumentsBuilder commonArgs) {
+        assertLowMemByteIdentical(label, commonArgs, 2);
+    }
+
+    private void assertLowMemByteIdentical(final String label, final ArgumentsBuilder commonArgs,
+                                           final int maxRecordsInRam) {
         // Baseline (single-pass)
         final File outputBaseline = createTempFile("lowmem_matrix_baseline_" + label, ".vcf");
         runCommandLine(commonArgs.copy().addOutput(outputBaseline), SVCluster.class.getSimpleName());
 
-        // Low-mem pass
+        // Low-mem pass (optionally forcing a small in-RAM window to trigger disk spill)
         final File outputLowMem = createTempFile("lowmem_matrix_lowmem_" + label, ".vcf");
-        runCommandLine(commonArgs.copy().addOutput(outputLowMem)
-                .add(SVClusterWalker.LOW_MEM_LONG_NAME, true), SVCluster.class.getSimpleName());
+        final ArgumentsBuilder lowMemArgs = commonArgs.copy().addOutput(outputLowMem)
+                .add(SVClusterWalker.LOW_MEM_LONG_NAME, true);
+        if (maxRecordsInRam > 0) {
+            lowMemArgs.add(SVClusterWalker.MAX_RECORDS_IN_RAM_LONG_NAME, maxRecordsInRam);
+        }
+        runCommandLine(lowMemArgs, SVCluster.class.getSimpleName());
 
         final List<VariantContext> baselineRecords =
                 VariantContextTestUtils.readEntireVCFIntoMemory(outputBaseline.getAbsolutePath()).getValue();

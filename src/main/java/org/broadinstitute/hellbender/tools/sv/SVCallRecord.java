@@ -308,6 +308,16 @@ public class SVCallRecord implements SVLocatable {
         return getCarrierGenotypeStream().collect(Collectors.toList());
     }
 
+    /**
+     * Number of carrier genotypes. Equivalent to {@code getCarrierGenotypeList().size()} but exposed
+     * separately so callers that need only the count (e.g. the REPRESENTATIVE breakpoint tiebreaker)
+     * can be satisfied by a record that has shed its genotype objects but cached the count (see the
+     * genotype-light records used by SVCluster's low-memory pass 1).
+     */
+    public int getCarrierCount() {
+        return (int) getCarrierGenotypeStream().count();
+    }
+
     private Stream<String> getCarrierSampleStream() {
         return getCarrierGenotypeStream().map(Genotype::getSampleName);
     }
