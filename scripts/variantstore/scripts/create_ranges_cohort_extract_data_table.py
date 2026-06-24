@@ -54,6 +54,10 @@ AS (
 
 CHROM_MAP = {'chr1': '1', 'chr2': '2', 'chr3': '3', 'chr4': '4', 'chr5': '5', 'chr6': '6', 'chr7': '7', 'chr8': '8', 'chr9': '9', 'chr10': '10', 'chr11': '11', 'chr12': '12', 'chr13': '13', 'chr14': '14', 'chr15': '15', 'chr16': '16', 'chr17': '17', 'chr18': '18', 'chr19': '19', 'chr20': '20', 'chr21': '21', 'chr22': '22', 'chrX': '23', 'chrY': '24', 'chrM': '25'}
 
+# Maximum number of intervals for which an inline SQL WHERE clause is generated.
+# Larger interval lists (e.g. ACAF at ~58 M intervals) are discarded and all locations are queried.
+MAX_INLINE_INTERVAL_COUNT = 5000
+
 
 def get_partition_range(i):
     if i < 1 or i > REF_VET_TABLE_COUNT:
@@ -148,18 +152,26 @@ def _parse_interval_list(interval_list):
 
 
 def get_location_filters_from_interval_list(interval_list):
-    intervals = list(_parse_interval_list(interval_list))
+    # Stream only as many rows as needed to detect an oversized list, avoiding
+    # loading huge files (e.g. ACAF at ~58 M intervals) into memory.
+    intervals = []
+    for row in _parse_interval_list(interval_list):
+        intervals.append(row)
+        if len(intervals) > MAX_INLINE_INTERVAL_COUNT:
+            break
+
     if not intervals:
+        return ""
+
+    # Check the cap before contig validation: oversized lists are discarded
+    # without further inspection, matching prior behavior.
+    if len(intervals) > MAX_INLINE_INTERVAL_COUNT:
+        print(f"\n\nTrying to query over the limit of {MAX_INLINE_INTERVAL_COUNT:,} locations; {interval_list} will be discarded, and all locations will be queried.\n\n")
         return ""
 
     unknown_chroms = {chrom for chrom, _, _ in intervals if chrom not in CHROM_MAP}
     if unknown_chroms:
         raise ValueError(f"Interval list contains contigs not recognized by GVS: {sorted(unknown_chroms)}")
-
-    # check to make sure there aren't too many locations to build a SQL query from
-    if len(intervals) > 5000:
-        print(f"\n\nTrying to query over the limit of 5,000 locations; {interval_list} will be discarded, and all locations will be queried.\n\n")
-        return ""
 
     location_clause_list = [f"""(location >= {CHROM_MAP[chrom]}{'0' * (12 - len(str(start)))}{start}
             AND location <= {CHROM_MAP[chrom]}{'0' * (12 - len(str(end)))}{end})"""
