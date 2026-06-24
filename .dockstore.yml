@@ -337,9 +337,10 @@ workflows:
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
      filters:
-          branches:
-              - master
-              - ah_var_store
+         branches:
+             - master
+             - ah_var_store
+         tags:
              - /.*/
    - name: GvsIngestTieout
      subclass: WDL
