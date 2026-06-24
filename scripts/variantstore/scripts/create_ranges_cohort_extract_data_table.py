@@ -134,9 +134,9 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
 
 
 def _parse_interval_list(interval_list):
-    """Parse an interval_list file, yielding (chrom, start_0based, end_0based_excl) tuples.
-    interval_list format is 1-based closed; we convert to 0-based half-open to match
-    the coordinate system previously used via pybedtools."""
+    """Parse an interval_list file, yielding (chrom, start, end) tuples.
+    interval_list format is 1-based closed; GVS location encoding is also 1-based,
+    so coordinates are passed through unchanged."""
     with open(interval_list) as f:
         for line in f:
             if line.startswith('@'):
@@ -144,11 +144,18 @@ def _parse_interval_list(interval_list):
             parts = line.strip().split('\t')
             if len(parts) < 3:
                 continue
-            yield parts[0], int(parts[1]) - 1, int(parts[2])
+            yield parts[0], int(parts[1]), int(parts[2])
 
 
 def get_location_filters_from_interval_list(interval_list):
     intervals = list(_parse_interval_list(interval_list))
+    if not intervals:
+        return ""
+
+    unknown_chroms = {chrom for chrom, _, _ in intervals if chrom not in CHROM_MAP}
+    if unknown_chroms:
+        raise ValueError(f"Interval list contains contigs not recognized by GVS: {sorted(unknown_chroms)}")
+
     # check to make sure there aren't too many locations to build a SQL query from
     if len(intervals) > 5000:
         print(f"\n\nTrying to query over the limit of 5,000 locations; {interval_list} will be discarded, and all locations will be queried.\n\n")
@@ -156,8 +163,7 @@ def get_location_filters_from_interval_list(interval_list):
 
     location_clause_list = [f"""(location >= {CHROM_MAP[chrom]}{'0' * (12 - len(str(start)))}{start}
             AND location <= {CHROM_MAP[chrom]}{'0' * (12 - len(str(end)))}{end})"""
-                            for chrom, start, end in intervals
-                            if chrom in CHROM_MAP]
+                            for chrom, start, end in intervals]
     return "WHERE (" + " OR ".join(location_clause_list) + ")"
 
 
