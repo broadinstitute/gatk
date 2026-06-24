@@ -771,8 +771,11 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
         return builder.make();
     }
 
-    /** A completed pass-2 site (finalized: site fields + genotypes), tagged with its siteSeq for ordered draining. */
-    private static final class SpilledSite {
+    /**
+     * A completed pass-2 site (finalized: site fields + genotypes), tagged with its siteSeq for ordered
+     * draining. Package-private (not private) so {@code SpilledSiteCodec} round-trips can be unit-tested.
+     */
+    static final class SpilledSite {
         final int siteSeq;
         final SVCallRecord record;
 
@@ -790,8 +793,10 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
      * {@link GenotypeBuilder}, so arbitrary VCF FORMAT value types round-trip exactly. Unlike a VCF-based
      * codec this stores only the folded (sparse) genotypes, avoiding a full 250k-sample column per site.
      * The sequence dictionary is needed to reconstruct the record (coordinate validation + CPX intervals).
+     *
+     * <p>Package-private (not private) so the encode/decode round-trip can be unit-tested directly.</p>
      */
-    private static final class SpilledSiteCodec implements SortingCollection.Codec<SpilledSite> {
+    static final class SpilledSiteCodec implements SortingCollection.Codec<SpilledSite> {
         private final SAMSequenceDictionary dictionary;
         private ObjectOutputStream out;
         private ObjectInputStream in;
