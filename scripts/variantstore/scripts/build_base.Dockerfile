@@ -12,8 +12,7 @@
 # the main Dockerfile.
 #
 # Note: pyarrow was previously built from source here because Alpine's musl libc was incompatible with PyPI's
-# manylinux wheels. Apache Arrow 24+ ships musllinux wheels on PyPI, so pyarrow is now installed via pip in the
-# main Dockerfile's requirements.txt instead.
+# manylinux wheels. It has since been removed from the image entirely as no production code requires it.
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-alpine
 
 RUN apk update && apk upgrade
