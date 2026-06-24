@@ -254,25 +254,50 @@ public final class SVCluster extends SVClusterWalker {
 
     @Override
     protected boolean canDropNonCarrierCnvGenotypes() {
-        // Safe only when CNV sample-overlap linkage is disabled, so computeSampleOverlap (which scans
-        // every genotyped sample's copy state for CNV records) is never invoked.
-        if (algorithm == CLUSTER_ALGORITHM.DEFRAGMENT_CNV) {
-            return defragSampleOverlapFraction == 0.0;
+        return canDropNonCarrierCnvGenotypes(algorithm, defragSampleOverlapFraction,
+                clusterParameterArgs.getDepthParameters().getSampleOverlap(),
+                clusterParameterArgs.getMixedParameters().getSampleOverlap(),
+                clusterParameterArgs.getPESRParameters().getSampleOverlap());
+    }
+
+    /**
+     * Pure-function helper for {@link #canDropNonCarrierCnvGenotypes()} extracted for unit testing.
+     *
+     * Safe only when CNV sample-overlap linkage is disabled, so computeSampleOverlap (which scans
+     * every genotyped sample's copy state for CNV records) is never invoked.
+     */
+    static boolean canDropNonCarrierCnvGenotypes(final SVClusterWalker.CLUSTER_ALGORITHM algorithm,
+                                                  final double defragSampleOverlap,
+                                                  final double depthSampleOverlap,
+                                                  final double mixedSampleOverlap,
+                                                  final double pesrSampleOverlap) {
+        if (algorithm == SVClusterWalker.CLUSTER_ALGORITHM.DEFRAGMENT_CNV) {
+            return defragSampleOverlap == 0.0;
         }
-        return clusterParameterArgs.getDepthParameters().getSampleOverlap() == 0.0
-                && clusterParameterArgs.getMixedParameters().getSampleOverlap() == 0.0
-                && clusterParameterArgs.getPESRParameters().getSampleOverlap() == 0.0;
+        return depthSampleOverlap == 0.0 && mixedSampleOverlap == 0.0 && pesrSampleOverlap == 0.0;
     }
 
     @Override
     protected boolean canUseGenotypeLightPass1Items() {
-        // Genotype-free pass-1 items are safe only for the canonical (non-defragment) engine with all
-        // sample-overlap thresholds at 0, where clustering is purely coordinate-based. CNV defragment
-        // (CNVLinkage) reads carrier sets / copy state regardless of sample overlap, so it must keep them.
-        return algorithm != CLUSTER_ALGORITHM.DEFRAGMENT_CNV
-                && clusterParameterArgs.getDepthParameters().getSampleOverlap() == 0.0
-                && clusterParameterArgs.getMixedParameters().getSampleOverlap() == 0.0
-                && clusterParameterArgs.getPESRParameters().getSampleOverlap() == 0.0;
+        return canUseGenotypeLightPass1Items(algorithm,
+                clusterParameterArgs.getDepthParameters().getSampleOverlap(),
+                clusterParameterArgs.getMixedParameters().getSampleOverlap(),
+                clusterParameterArgs.getPESRParameters().getSampleOverlap());
+    }
+
+    /**
+     * Pure-function helper for {@link #canUseGenotypeLightPass1Items()} extracted for unit testing.
+     *
+     * Genotype-free pass-1 items are safe only for the canonical (non-defragment) engine with all
+     * sample-overlap thresholds at 0, where clustering is purely coordinate-based. CNV defragment
+     * (CNVLinkage) reads carrier sets / copy state regardless of sample overlap, so it must keep them.
+     */
+    static boolean canUseGenotypeLightPass1Items(final SVClusterWalker.CLUSTER_ALGORITHM algorithm,
+                                                  final double depthSampleOverlap,
+                                                  final double mixedSampleOverlap,
+                                                  final double pesrSampleOverlap) {
+        return algorithm != SVClusterWalker.CLUSTER_ALGORITHM.DEFRAGMENT_CNV
+                && depthSampleOverlap == 0.0 && mixedSampleOverlap == 0.0 && pesrSampleOverlap == 0.0;
     }
 
     @Override

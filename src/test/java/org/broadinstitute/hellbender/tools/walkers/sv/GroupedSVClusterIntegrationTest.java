@@ -241,14 +241,35 @@ public class GroupedSVClusterIntegrationTest extends CommandLineProgramTest {
      */
     @Test(dataProvider = "groupedLowMemMatrixData")
     public void testGroupedLowMemMatrix(final String label, final ArgumentsBuilder commonArgs) {
+        assertGroupedLowMemByteIdentical(label, commonArgs, -1);
+    }
+
+    /**
+     * Same parity matrix, but caps {@code --max-records-in-ram} so the pass-2 completed-site
+     * SortingCollection (and the output buffer) spill to disk, exercising the
+     * {@link SVClusterWalker} SpilledSite codec round-trip end to end — including
+     * {@link GroupedSVCluster}'s unclustered/passthrough-site path. Output must stay byte-identical
+     * to the (default-RAM) single-pass baseline.
+     */
+    @Test(dataProvider = "groupedLowMemMatrixData")
+    public void testGroupedLowMemMatrixForcedSpill(final String label, final ArgumentsBuilder commonArgs) {
+        assertGroupedLowMemByteIdentical(label, commonArgs, 2);
+    }
+
+    private void assertGroupedLowMemByteIdentical(final String label, final ArgumentsBuilder commonArgs,
+                                                  final int maxRecordsInRam) {
         // Baseline (single-pass)
         final File outputBaseline = createTempFile("grouped_lowmem_matrix_baseline_" + label, ".vcf");
         runCommandLine(commonArgs.copy().addOutput(outputBaseline), GroupedSVCluster.class.getSimpleName());
 
-        // Low-mem pass
+        // Low-mem pass (optionally forcing a small in-RAM window to trigger disk spill)
         final File outputLowMem = createTempFile("grouped_lowmem_matrix_lowmem_" + label, ".vcf");
-        runCommandLine(commonArgs.copy().addOutput(outputLowMem)
-                .add(SVClusterWalker.LOW_MEM_LONG_NAME, true), GroupedSVCluster.class.getSimpleName());
+        final ArgumentsBuilder lowMemArgs = commonArgs.copy().addOutput(outputLowMem)
+                .add(SVClusterWalker.LOW_MEM_LONG_NAME, true);
+        if (maxRecordsInRam > 0) {
+            lowMemArgs.add(SVClusterWalker.MAX_RECORDS_IN_RAM_LONG_NAME, maxRecordsInRam);
+        }
+        runCommandLine(lowMemArgs, GroupedSVCluster.class.getSimpleName());
 
         final List<VariantContext> baselineRecords =
                 VariantContextTestUtils.readEntireVCFIntoMemory(outputBaseline.getAbsolutePath()).getValue();
