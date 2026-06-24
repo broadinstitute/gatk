@@ -1,9 +1,6 @@
 # This Dockerfile creates a "build-base" image with tools and libraries required to build the tools and libraries used
-# in the Genomic Variant Store pipeline. The Alpine version of the Google Cloud SDK is used as the base image which is
-# not only the most compact of the Google Cloud SDK Docker images, but is also the image currently used by Cromwell for
-# (de)localization of files in Google Cloud Storage. Sharing the base image with Cromwell's GCS localization should
-# result in reuse of a cached copy of this base (and by far largest) image layer when running GVS pipelines in Terra /
-# Cromwell.
+# in the Genomic Variant Store pipeline. The Alpine version of the Google Cloud SDK is used as the base image as it is
+# the most compact of the Google Cloud SDK Docker images.
 #
 # Because this is an Alpine-based image it is more bare-bones than its Debian-based peers. Several tools used by GVS
 # (htslib, bcftools, vcftools) are not available as Alpine packages and must be compiled from source.
