@@ -380,20 +380,14 @@ public class ActivityProfile {
      */
     private int findBestCutSite(final int endOfActiveRegion, final int minRegionSize) {
         Utils.validateArg(endOfActiveRegion >= minRegionSize, "endOfActiveRegion must be >= minRegionSize");
-        Utils.validateArg(minRegionSize >= 0, "minRegionSize must be >= 0");
+        Utils.validateArg(minRegionSize >= 1, "minRegionSize must be >= 1");
 
-        int minI = endOfActiveRegion - 1;
-        double minP = Double.MAX_VALUE;
+        // find the lowest local minimum, ties favoring later cuts, defaulting to the max size if no local minima exist
+        final int bestMinimum = IntStream.range(minRegionSize - 1, endOfActiveRegion).filter(this::isLocalMinimum).boxed()
+                .sorted(Comparator.comparingDouble((Integer n) -> getProb(n)).thenComparingInt(n -> -n))
+                .findFirst().orElse(endOfActiveRegion - 1);
 
-        for ( int i = minI; i >= minRegionSize - 1; i-- ) {
-            double cur = getProb(i);
-            if ( cur < minP && isLocalMinimum(i) ) {
-                minP = cur;
-                minI = i;
-            }
-        }
-
-        return minI + 1;
+        return bestMinimum + 1;
     }
 
     /**
