@@ -417,19 +417,7 @@ public class ActivityProfile {
      * @return true if prob at state is a minimum, false otherwise
      */
     private boolean isMinimum(final int index) {
-        Utils.validIndex(index, stateList.size());
-
-        if ( index == stateList.size() - 1 ) {
-            // we cannot be at a minimum if the current position is the last in the state list
-            return false;
-        }
-        else if ( index < 1 ) {
-            // we cannot be at a minimum if the current position is the first or second
-            return false;
-        }
-        else {
-            final double indexP = getProb(index);
-            return indexP <= getProb(index+1) && indexP < getProb(index-1);
-        }
+        return index > 0 && index < stateList.size() - 1 && getProb(index) <= getProb(index + 1) &&
+                getProb(index) < getProb(index - 1);
     }
 }
