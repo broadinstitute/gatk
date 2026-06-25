@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.utils.activityprofile;
 
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -15,6 +16,15 @@ public class ActivityProfile {
 
     public enum ProfileType {
         BASE, BAND_PASS, MUTECT2
+    }
+
+    public static ActivityProfile create(final ProfileType profileType, final AssemblyRegionArgumentCollection args, final SAMFileHeader header) {
+        return switch (profileType) {
+            case BASE -> new ActivityProfile(args.maxProbPropagationDistance, args.activeProbThreshold, header);
+            case BAND_PASS -> new BandPassActivityProfile(args.maxProbPropagationDistance, args.activeProbThreshold,
+                    BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, header);
+            case MUTECT2 -> new Mutect2ActivityProfile(args, header);
+        };
     }
 
     protected final List<ActivityProfileState> stateList;
