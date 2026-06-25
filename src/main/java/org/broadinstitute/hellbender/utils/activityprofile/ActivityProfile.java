@@ -288,15 +288,20 @@ public class ActivityProfile {
 
         final List<AssemblyRegion> regions = new ArrayList<>();
 
-        while ( true ) {
+        while (readyToPopNextAssemblyRegion(maxRegionSize, forceConversion)) {
             final AssemblyRegion nextRegion = popNextReadyAssemblyRegion(assemblyRegionExtension, minRegionSize, maxRegionSize, forceConversion);
-            if ( nextRegion == null ) {
-                return regions;
-            }
-            else {
-                regions.add(nextRegion);
-            }
+            regions.add(nextRegion);
         }
+
+        return regions;
+    }
+
+    /**
+     * Is there a large enough span of states in the state list to find the next assembly region, or are we
+     * at the end of an interval and forcing conversion?
+     */
+    private boolean readyToPopNextAssemblyRegion(final int maxRegionSize, final boolean forceConversion) {
+        return !stateList.isEmpty() && (forceConversion || stateList.size() >= maxRegionSize + getMaxProbPropagationDistance());
     }
 
     /**
@@ -315,10 +320,6 @@ public class ActivityProfile {
      * @return a fully formed assembly region, or null if none can be made
      */
     private AssemblyRegion popNextReadyAssemblyRegion( final int assemblyRegionExtension, final int minRegionSize, final int maxRegionSize, final boolean forceConversion ) {
-        if ( stateList.isEmpty() ) {
-            return null;
-        }
-
         // If we are flushing the activity profile we need to trim off the excess states so that we don't create regions outside of our current processing interval
         if( forceConversion ) {
             final List<ActivityProfileState> statesToTrimAway = new ArrayList<>(stateList.subList(getSpan().size(), stateList.size()));
@@ -328,10 +329,6 @@ public class ActivityProfile {
         final ActivityProfileState first = stateList.get(0);
         final boolean isActiveRegion = first.isActiveProb() > activeProbThreshold;
         final int offsetOfNextRegionEnd = findEndOfRegion(isActiveRegion, minRegionSize, maxRegionSize, forceConversion);
-        if ( offsetOfNextRegionEnd == -1 ) {
-            // couldn't find a valid ending offset, so we return null
-            return null;
-        }
 
         // we need to create the active region, and clip out the states we're extracting from this profile
         final List<ActivityProfileState> sub = stateList.subList(0, offsetOfNextRegionEnd + 1);
@@ -368,12 +365,6 @@ public class ActivityProfile {
      * @return the index into stateList of the last element of this region, or -1 if it cannot be found
      */
     private int findEndOfRegion(final boolean isActiveRegion, final int minRegionSize, final int maxRegionSize, final boolean forceConversion) {
-        if ( ! forceConversion && stateList.size() < maxRegionSize + getMaxProbPropagationDistance() ) {
-            // we really haven't finalized at the probability mass that might affect our decision, so keep
-            // waiting until we do before we try to make any decisions
-            return -1;
-        }
-
         int endOfActiveRegion = findFirstActivityBoundary(isActiveRegion, maxRegionSize);
 
         if ( isActiveRegion && endOfActiveRegion == maxRegionSize ) {
