@@ -16,6 +16,7 @@ workflow GvsCreateFilterSet {
 
     String filter_set_name
 
+    String reference_name = "hg38"
     String? interval_list
 
     String? basic_docker
@@ -67,6 +68,7 @@ workflow GvsCreateFilterSet {
 
   call Utils.GetReference {
     input:
+      reference_name = reference_name,
       basic_docker = effective_basic_docker,
   }
 
@@ -229,6 +231,7 @@ workflow GvsCreateFilterSet {
         dataset_name = dataset_name,
         project_id = project_id,
         base_name = filter_set_name,
+        reference_name = reference_name,
         filter_set_name = filter_set_name,
         filter_set_info_schema = filter_set_info_destination_table_schema,
         fq_filter_set_info_destination_table = fq_filter_set_info_destination_table,

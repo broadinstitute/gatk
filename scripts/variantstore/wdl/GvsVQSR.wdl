@@ -8,6 +8,7 @@ workflow JointVcfFiltering {
     String project_id
     String base_name
 
+    String reference_name = "hg38"
 
     String filter_set_name
     String filter_set_info_schema
@@ -61,6 +62,7 @@ workflow JointVcfFiltering {
 
   call Utils.GetReference {
     input:
+      reference_name = reference_name,
       basic_docker = effective_basic_docker,
   }
 

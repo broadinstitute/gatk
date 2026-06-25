@@ -35,6 +35,7 @@ workflow GvsImportGenomes {
     # without going over
     Int beta_customer_max_scatter = 200
 
+    String reference_name = "hg38"
     File? interval_list
 
     Int? load_data_scatter_width
@@ -103,6 +104,7 @@ workflow GvsImportGenomes {
 
   call Utils.GetReference {
     input:
+      reference_name = reference_name,
       basic_docker = effective_basic_docker,
   }
 

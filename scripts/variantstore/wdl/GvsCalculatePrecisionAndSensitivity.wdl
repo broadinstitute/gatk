@@ -8,6 +8,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     String call_set_identifier
     String dataset_name
     String filter_set_name
+    String reference_name = "hg38"
     File? reference_fasta
     File? interval_list
     File? target_interval_list
@@ -38,6 +39,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     chromosomes: "The chromosome(s) on which to analyze precision and sensitivity. The default value for this is `['chr20']`."
     dataset_name: "The GVS BigQuery dataset name."
     filter_set_name: "The filter_set_name used to generate the callset."
+    reference_name: "The name of the reference (currently only supports hg38)"
     interval_list: "Optional - The intervals over which to extract VCFs for calculating precision and sensitivity. Defaults to WGS interval list"
     target_interval_list: "The intervals outside of which sites will be OUTSIDE_OF_TARGETS filtered."
     project_id: "The Google Project ID where the GVS lives."
@@ -45,7 +47,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
     truth_vcfs: "A list of the VCFs that contain the truth data used for analyzing the samples in `sample_names`."
     truth_vcf_indices: "A list of the VCF indices for the truth data VCFs supplied above."
     truth_beds: "A list of the bed files for the truth data used for analyzing the samples in `sample_names`."
-    reference_fasta: "Optional cloud path for the reference fasta (hg38). Defaults to the canonical hg38 reference_fasta"
+    reference_fasta: "Optional cloud path for the reference fasta sequence. Defaults to reference_fasta for reference_name"
     vcf_eval_bed_file: "Optional bed file for EvaluateVcf; if passed, will be used instead of chromosomes."
   }
 
@@ -75,6 +77,7 @@ workflow GvsCalculatePrecisionAndSensitivity {
 
   call Utils.GetReference {
     input:
+      reference_name = reference_name,
       basic_docker = effective_basic_docker,
   }
 

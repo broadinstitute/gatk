@@ -23,6 +23,7 @@ workflow GvsQuickstartIntegration {
         String wgs_sample_set_name = "wgs_integration_sample_set"
         String exome_sample_set_name = "exome_integration_sample_set"
         String bge_sample_set_name = "bge_integration_sample_set"
+        String reference_name = "hg38"
         File? target_interval_list = "gs://gcp-public-data--broad-references/hg38/v0/bge_TwistAllianceClinicalResearchExome_Covered_Targets_hg38.interval_list"
         String? basic_docker
         String? cloud_sdk_docker
@@ -63,6 +64,7 @@ workflow GvsQuickstartIntegration {
 
     call Utils.GetReference {
         input:
+            reference_name = reference_name,
             basic_docker = effective_basic_docker,
     }
 
@@ -112,6 +114,7 @@ workflow GvsQuickstartIntegration {
                 dataset_suffix = "vets_hail",
                 use_default_dockers = use_default_dockers,
                 gatk_override = effective_gatk_override,
+                reference_name = reference_name,
                 is_wgs = true,
                 interval_list = select_first([FilterIntervalListChromosomes.out, GetReference.reference.wgs_calling_interval_list]),
                 expected_output_prefix = expected_output_prefix,
@@ -358,6 +361,7 @@ workflow GvsQuickstartIntegration {
             input:
                 git_branch_or_tag = git_branch_or_tag,
                 git_hash = GetToolVersions.git_hash,
+                reference_name = reference_name,
                 use_default_dockers = use_default_dockers,
                 truth_data_prefix = truth_data_prefix,
                 expected_output_prefix = expected_output_prefix,

@@ -50,6 +50,7 @@ workflow GvsExtractCallsetPgen {
         # set to "NONE" if all the reference data was loaded into GVS in GvsImportGenomes
         String drop_state = "NONE"
 
+        String reference_name = "hg38"
         File? interval_list
         File interval_weights_bed = "gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed"
 
@@ -110,6 +111,7 @@ workflow GvsExtractCallsetPgen {
 
     call Utils.GetReference {
         input:
+            reference_name = reference_name,
             basic_docker = effective_basic_docker,
     }
 

@@ -7,6 +7,7 @@ workflow GvsCreateVATfromVDS {
     input {
         String project_id
         String dataset_name
+        String reference_name = "hg38"
         File ancestry_file
         String filter_set_name
         File? sites_only_vcf
@@ -143,6 +144,7 @@ workflow GvsCreateVATfromVDS {
 
     call Utils.GetReference {
         input:
+            reference_name = reference_name,
             basic_docker = effective_basic_docker,
     }
 

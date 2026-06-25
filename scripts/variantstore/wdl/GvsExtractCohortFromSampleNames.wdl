@@ -37,6 +37,7 @@ workflow GvsExtractCohortFromSampleNames {
     Boolean merge_output_vcfs = false
     Boolean collect_variant_calling_metrics = false
 
+    String reference_name = "hg38"
     File? interval_list
     Int? extract_preemptible_override
     Int? extract_maxretries_override
@@ -75,6 +76,7 @@ workflow GvsExtractCohortFromSampleNames {
 
   call Utils.GetReference {
     input:
+      reference_name = reference_name,
       basic_docker = effective_basic_docker,
   }
 
