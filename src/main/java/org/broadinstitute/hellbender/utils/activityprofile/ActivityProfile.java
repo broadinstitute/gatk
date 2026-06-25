@@ -329,10 +329,10 @@ public class ActivityProfile {
 
         final ActivityProfileState first = stateList.get(0);
         final boolean isActiveRegion = first.isActiveProb() > activeProbThreshold;
-        final int offsetOfNextRegionEnd = findEndOfRegion(minRegionSize, maxRegionSize);
+        final int sizeOfNextRegion = findSizeOfRegion(minRegionSize, maxRegionSize);
 
         // we need to create the active region, and clip out the states we're extracting from this profile
-        final List<ActivityProfileState> sub = stateList.subList(0, offsetOfNextRegionEnd + 1);
+        final List<ActivityProfileState> sub = stateList.subList(0, sizeOfNextRegion);
         sub.clear();
 
         // update the start and stop locations as necessary
@@ -341,21 +341,21 @@ public class ActivityProfile {
         } else {
             regionStartLoc = stateList.get(0).getLoc();
         }
-        final SimpleInterval regionLoc = new SimpleInterval(first.getLoc().getContig(), first.getLoc().getStart(), first.getLoc().getStart() + offsetOfNextRegionEnd);
+        final SimpleInterval regionLoc = new SimpleInterval(first.getLoc().getContig(), first.getLoc().getStart(), first.getLoc().getStart() + sizeOfNextRegion - 1);
         return new AssemblyRegion(regionLoc, isActiveRegion, assemblyRegionExtension, samHeader);
     }
 
     /**
-     * Find the end of the current region.  If the first element in the stateList is below the probability threshold,
-     * return the last consecutive index of the stateList that is also below the threshold i.e. the last position of the
-     * inactive region.  Otherwise return the last consecutive index above the probability threshold, unless this would
-     * yield too large an active region, in which case we split the active region at a local probability minimum.
+     * Find the size of the current region.  If the first element in the stateList is below the probability threshold,
+     * return the number of consecutive states below the threshold.  Otherwise return the number of consecutive states
+     * above the probability threshold, unless this yields too large an active region, in which case we split the active
+     * region at a local probability minimum.
      *
      * @param minRegionSize the minimum region size, in the case where we have to cut up regions that are too large
      * @param maxRegionSize the maximize size of the returned region
-     * @return the index into stateList of the last element of this region
+     * @return the size of this region
      */
-    private int findEndOfRegion(final int minRegionSize, final int maxRegionSize) {
+    private int findSizeOfRegion(final int minRegionSize, final int maxRegionSize) {
         Utils.validate(!stateList.isEmpty(), "state list is empty");
         Utils.validateArg(minRegionSize >= 1, "minRegionSize must be >= 1");
         final boolean aboveThreshold = getProb(0) > activeProbThreshold;
@@ -370,9 +370,9 @@ public class ActivityProfile {
         if (needToSplit) {
             return IntStream.range(minRegionSize - 1, contiguousSize).filter(this::isLocalMinimum).boxed()
                     .sorted(Comparator.comparingDouble((Integer n) -> getProb(n)).thenComparingInt(n -> -n))
-                    .findFirst().orElse(contiguousSize - 1);
+                    .findFirst().orElse(contiguousSize - 1) + 1;
         } else {
-            return contiguousSize - 1;
+            return contiguousSize;
         }
     }
 
