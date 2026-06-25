@@ -1,10 +1,13 @@
 package org.broadinstitute.hellbender.utils.activityprofile;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.stream.IntStream;
 
 /**
  * Somatic-specific alternative to the default BandPassActivityProfile.  It is based on the following principles:
@@ -20,6 +23,9 @@ import java.util.Collections;
  *  germline variant at 650; and the germline variant at 800 will not be in an active region.
  */
 public class Mutect2ActivityProfile extends ActivityProfile {
+
+    private static final int PADDING = 15;
+
     public Mutect2ActivityProfile(final AssemblyRegionArgumentCollection args, final SAMFileHeader header) {
         // In this class maxProbPropagationDistance is interpreted as a maximum phasing distance.
         // It doesn't "propagate" probability like the BandPassActivityFilter
@@ -34,4 +40,53 @@ public class Mutect2ActivityProfile extends ActivityProfile {
     // if two active loci are separated by this distance or less, they go in the same AssemblyRegion
     // eg if maxPhasingDistance is 10, sites 1 and 11 are assembled together but 1 and 12 are not.
     private int maxPhasingDistance() { return getMaxProbPropagationDistance(); }
+
+    /**
+     * Note: when this is called we have already checked readyToPopNextAssemblyRegion().  Therefore, either 1) we are at the
+     * end of an interval and have to form a region without knowing about potential variants past the interval's end or 2)
+     * the state list spans the maxRegionSize PLUS the maxPhasingDistance.
+     *
+     * In either case, we have enough information to make regions up to Math.min(stateList.size(), maxRegionSize) bases.
+     *
+     * Furthermore, any previous region has already checked that it's out of phasing distance with these states.
+     */
+    @Override
+    protected Pair<Integer, Boolean> findSizeAndActivityOfRegion(final int minRegionSize, final int maxRegionSize) {
+        Utils.validate(!stateList.isEmpty(), "This code should only be called when there are states with which to form a region.");
+
+        final int maxSize = Math.min(stateList.size(), maxRegionSize + PADDING);
+
+        final int numInactiveStates = IntStream.range(0, maxSize)
+                .filter(n -> getProb(n) >= activeProbThreshold)
+                .findFirst().orElse(maxSize);
+
+        final boolean inactive = numInactiveStates > PADDING;
+
+        // If inactive, extend up to the first active site or the maximum possible size
+        // If active, extend until we reach an inactive gap longer than the max phasing distance
+        if (inactive) {
+            return Pair.of(numInactiveStates - PADDING, false);
+        } else {
+            boolean isSomatic = false;
+            int lastActiveIdx = numInactiveStates;
+            int startOfLargestGap = numInactiveStates;  // the active site right before the longest inactive gap
+            int maxGapLength = 0;
+            for (int idx = numInactiveStates; idx < maxSize; idx++) {
+                final int gapLength = idx - lastActiveIdx - 1;
+                if (gapLength > maxGapLength) {
+                    startOfLargestGap = lastActiveIdx;
+                    maxGapLength = gapLength;
+                }
+
+                if (idx > lastActiveIdx + maxPhasingDistance()) {
+                    break;
+                } else if (getProb(idx) >= activeProbThreshold) {
+                    isSomatic |= stateList.get(idx).getResultState() == ActivityProfileState.Type.SOMATIC;
+                    lastActiveIdx = idx;
+                }
+            }
+
+            return Pair.of(Math.min(startOfLargestGap + 1 + PADDING, maxSize), isSomatic);
+        }
+    }
 }
