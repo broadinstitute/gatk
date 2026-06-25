@@ -12,6 +12,11 @@ import java.util.*;
  * assembly region traversal
  */
 public class ActivityProfile {
+
+    public enum ProfileType {
+        BASE, BAND_PASS, MUTECT2
+    }
+
     protected final List<ActivityProfileState> stateList;
 
     protected final int maxProbPropagationDistance;
