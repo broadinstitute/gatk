@@ -138,13 +138,22 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
 
 
 def _parse_interval_list(interval_list):
-    """Parse an interval_list file, yielding (chrom, start, end) tuples.
+    """Parse a Picard interval_list file, yielding (chrom, start, end) tuples.
     interval_list format is 1-based closed; GVS location encoding is also 1-based,
-    so coordinates are passed through unchanged."""
+    so coordinates are passed through unchanged.
+    Raises ValueError if the file has no '@' header lines (e.g. a BED file was passed)."""
+    saw_header = False
     with open(interval_list) as f:
         for line in f:
             if line.startswith('@'):
+                saw_header = True
                 continue
+            if not saw_header:
+                raise ValueError(
+                    f"{interval_list} does not appear to be a Picard interval_list file "
+                    f"(no '@' header lines found before the first data line). "
+                    f"BED files and other 0-based formats are not currently supported."
+                )
             parts = line.strip().split('\t')
             if len(parts) < 3:
                 continue
