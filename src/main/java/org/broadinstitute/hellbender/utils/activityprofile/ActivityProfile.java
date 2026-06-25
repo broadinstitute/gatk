@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.utils.activityprofile;
 
 import htsjdk.samtools.SAMFileHeader;
+import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
@@ -326,13 +327,11 @@ public class ActivityProfile {
             stateList.subList(getSpan().size(), stateList.size()).clear();
         }
 
-        final ActivityProfileState first = stateList.get(0);
-        final boolean isActiveRegion = first.isActiveProb() > activeProbThreshold;
-        final int sizeOfNextRegion = findSizeOfRegion(minRegionSize, maxRegionSize);
-
-        // we need to create the active region, and clip out the states we're extracting from this profile
-        final List<ActivityProfileState> sub = stateList.subList(0, sizeOfNextRegion);
-        sub.clear();
+        // create the active region and remove the corresponding states
+        final Pair<Integer, Boolean> sizeAndActivity = findSizeAndActivityOfRegion(minRegionSize, maxRegionSize);
+        final SimpleInterval firstLoc = stateList.get(0).getLoc();
+        final SimpleInterval regionLoc = new SimpleInterval(firstLoc.getContig(), firstLoc.getStart(), firstLoc.getStart() + sizeAndActivity.getLeft() - 1);
+        stateList.subList(0, sizeAndActivity.getLeft()).clear();
 
         // update the start and stop locations as necessary
         if ( stateList.isEmpty() ) {
@@ -340,8 +339,8 @@ public class ActivityProfile {
         } else {
             regionStartLoc = stateList.get(0).getLoc();
         }
-        final SimpleInterval regionLoc = new SimpleInterval(first.getLoc().getContig(), first.getLoc().getStart(), first.getLoc().getStart() + sizeOfNextRegion - 1);
-        return new AssemblyRegion(regionLoc, isActiveRegion, assemblyRegionExtension, samHeader);
+
+        return new AssemblyRegion(regionLoc, sizeAndActivity.getRight(), assemblyRegionExtension, samHeader);
     }
 
     /**
@@ -352,9 +351,9 @@ public class ActivityProfile {
      *
      * @param minRegionSize the minimum region size, in the case where we have to cut up regions that are too large
      * @param maxRegionSize the maximize size of the returned region
-     * @return the size of this region
+     * @return the size of this region and whether it is active
      */
-    private int findSizeOfRegion(final int minRegionSize, final int maxRegionSize) {
+    private Pair<Integer, Boolean> findSizeAndActivityOfRegion(final int minRegionSize, final int maxRegionSize) {
         Utils.validate(!stateList.isEmpty(), "state list is empty");
         Utils.validateArg(minRegionSize >= 1, "minRegionSize must be >= 1");
         final boolean aboveThreshold = getProb(0) > activeProbThreshold;
@@ -367,11 +366,12 @@ public class ActivityProfile {
         // If the active region is too big, split at the lowest local minimum, ties favoring later cuts, defaulting to
         // the max region size if no local minima exist
         if (needToSplit) {
-            return IntStream.range(minRegionSize - 1, contiguousSize).filter(this::isLocalMinimum).boxed()
+            final int size = IntStream.range(minRegionSize - 1, contiguousSize).filter(this::isLocalMinimum).boxed()
                     .sorted(Comparator.comparingDouble((Integer n) -> getProb(n)).thenComparingInt(n -> -n))
                     .findFirst().orElse(contiguousSize - 1) + 1;
+            return Pair.of(size, true);
         } else {
-            return contiguousSize;
+            return Pair.of(contiguousSize, aboveThreshold);
         }
     }
 
