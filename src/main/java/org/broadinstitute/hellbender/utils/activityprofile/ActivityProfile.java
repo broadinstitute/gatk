@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
+import java.util.stream.IntStream;
 
 /**
  * Class holding information about per-base activity scores for
@@ -328,7 +329,7 @@ public class ActivityProfile {
 
         final ActivityProfileState first = stateList.get(0);
         final boolean isActiveRegion = first.isActiveProb() > activeProbThreshold;
-        final int offsetOfNextRegionEnd = findEndOfRegion(isActiveRegion, minRegionSize, maxRegionSize, forceConversion);
+        final int offsetOfNextRegionEnd = findEndOfRegion(minRegionSize, maxRegionSize);
 
         // we need to create the active region, and clip out the states we're extracting from this profile
         final List<ActivityProfileState> sub = stateList.subList(0, offsetOfNextRegionEnd + 1);
@@ -345,35 +346,25 @@ public class ActivityProfile {
     }
 
     /**
-     * Find the end of the current region, returning the index into the element isActive element, or -1 if the region isn't done
+     * Find the end of the current region.  If the first element in the stateList is below the probability threshold,
+     * return the last consecutive index of the stateList that is also below the threshold i.e. the last position of the
+     * inactive region.  Otherwise return the last consecutive index above the probability threshold, unless this would
+     * yield too large an active region, in which case we split the active region at a local probability minimum.
      *
-     * The current region is defined from the start of the stateList, looking for elements that have the same isActiveRegion
-     * flag (i.e., if isActiveRegion is true we are looking for states with isActiveProb > threshold, or alternatively
-     * for states < threshold).  The maximize size of the returned region is maxRegionSize.  If forceConversion is
-     * true, then we'll return the region end even if this isn't safely beyond the max prob propagation distance.
-     *
-     * Note that if isActiveRegion is true, and we can construct an assembly region > maxRegionSize in bp, we
-     * find the further local minimum within that max region, and cut the region there, under the constraint
-     * that the resulting region must be at least minRegionSize in bp.
-     *
-     * @param isActiveRegion is the region we're looking for an active region or inactive region?
      * @param minRegionSize the minimum region size, in the case where we have to cut up regions that are too large
      * @param maxRegionSize the maximize size of the returned region
-     * @param forceConversion if true, we'll return a region whose end isn't sufficiently far from the end of the
-     *                        stateList.  Used to close out the assembly region when we've hit some kind of end (such
-     *                        as the end of the contig)
-     * @return the index into stateList of the last element of this region, or -1 if it cannot be found
+     * @return the index into stateList of the last element of this region
      */
-    private int findEndOfRegion(final boolean isActiveRegion, final int minRegionSize, final int maxRegionSize, final boolean forceConversion) {
-        int endOfActiveRegion = findFirstActivityBoundary(isActiveRegion, maxRegionSize);
+    private int findEndOfRegion(final int minRegionSize, final int maxRegionSize) {
+        Utils.validate(!stateList.isEmpty(), "state list is empty");
+        final boolean aboveThreshold = getProb(0) > activeProbThreshold;
+        final int maxContiguousSize = Math.min(stateList.size(), maxRegionSize);
+        final int contiguousSize = IntStream.range(0, maxContiguousSize)
+                .filter(n -> getProb(n) > activeProbThreshold != aboveThreshold)
+                .findFirst().orElse(maxContiguousSize);
 
-        if ( isActiveRegion && endOfActiveRegion == maxRegionSize ) {
-            // we've run to the end of the region, let's find a good place to cut
-            endOfActiveRegion = findBestCutSite(endOfActiveRegion, minRegionSize);
-        }
-
-        // we're one past the end, so i must be decremented
-        return endOfActiveRegion - 1;
+        final boolean needToSplit = aboveThreshold && contiguousSize == maxRegionSize;
+        return needToSplit ? findBestCutSite(contiguousSize, minRegionSize) - 1 : contiguousSize - 1;
     }
 
     /**
@@ -403,36 +394,6 @@ public class ActivityProfile {
         }
 
         return minI + 1;
-    }
-
-    /**
-     * Find the first index into the state list where the state is considered ! isActiveRegion
-     *
-     * Note that each state has a probability of being active, and this function thresholds that
-     * value on activeProbThreshold, coloring each state as active or inactive.  Finds the
-     * largest contiguous stretch of states starting at the first state (index 0) with the same isActive
-     * state as isActiveRegion.  If the entire state list has the same isActive value, then returns
-     * maxRegionSize
-     *
-     * @param isActiveRegion are we looking for a stretch of active states, or inactive ones?
-     * @param maxRegionSize don't look for a boundary that would yield a region of size > maxRegionSize
-     * @return the index of the first state in the state list with isActive value != isActiveRegion, or maxRegionSize
-     *         if no such element exists
-     */
-    private int findFirstActivityBoundary(final boolean isActiveRegion, final int maxRegionSize) {
-        Utils.validateArg(maxRegionSize > 0, "maxRegionSize must be > 0");
-
-        final int nStates = stateList.size();
-        int endOfActiveRegion = 0;
-
-        while ( endOfActiveRegion < nStates && endOfActiveRegion < maxRegionSize ) {
-            if ( getProb(endOfActiveRegion) > activeProbThreshold != isActiveRegion ) {
-                break;
-            }
-            endOfActiveRegion++;
-        }
-
-        return endOfActiveRegion;
     }
 
     /**
