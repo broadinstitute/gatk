@@ -32,16 +32,32 @@ public class SpilledSiteCodecComplexTest extends GATKBaseTest {
     /**
      * Round-trip a {@link SVClusterWalker.SpilledSite} through the codec.
      */
-    private static SVClusterWalker.SpilledSite roundTrip(final int siteSeq,
-                                                          final SVCallRecord record) throws Exception {
+    /** Test view pairing the preserved siteSeq with the record reconstructed from the spilled payload. */
+    private static final class DecodedSite {
+        final int siteSeq;
+        final SVCallRecord record;
+        DecodedSite(final int siteSeq, final SVCallRecord record) {
+            this.siteSeq = siteSeq;
+            this.record = record;
+        }
+    }
+
+    private static DecodedSite roundTrip(final int siteSeq,
+                                         final SVCallRecord record) throws Exception {
         final SVClusterWalker.SpilledSiteCodec codec = new SVClusterWalker.SpilledSiteCodec(DICT);
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         codec.setOutputStream(baos);
-        codec.encode(new SVClusterWalker.SpilledSite(siteSeq, record));
+        codec.encode(new SVClusterWalker.SpilledSite(siteSeq,
+                SVClusterWalker.SpilledSiteCodec.encodeRecord(record)));
 
         final SVClusterWalker.SpilledSiteCodec decodeCodec = new SVClusterWalker.SpilledSiteCodec(DICT);
         decodeCodec.setInputStream(new ByteArrayInputStream(baos.toByteArray()));
-        return decodeCodec.decode();
+        final SVClusterWalker.SpilledSite back = decodeCodec.decode();
+        if (back == null) {
+            return null;
+        }
+        return new DecodedSite(back.siteSeq,
+                SVClusterWalker.SpilledSiteCodec.decodeRecord(back.payload, DICT));
     }
 
     /**
@@ -98,7 +114,7 @@ public class SpilledSiteCodecComplexTest extends GATKBaseTest {
         );
 
         final int siteSeq = 42;
-        final SVClusterWalker.SpilledSite back = roundTrip(siteSeq, original);
+        final DecodedSite back = roundTrip(siteSeq, original);
 
         // Verify siteSeq preserved
         Assert.assertEquals(back.siteSeq, siteSeq);
@@ -171,7 +187,7 @@ public class SpilledSiteCodecComplexTest extends GATKBaseTest {
         );
 
         final int siteSeq = 7;
-        final SVClusterWalker.SpilledSite back = roundTrip(siteSeq, original);
+        final DecodedSite back = roundTrip(siteSeq, original);
 
         // Verify siteSeq preserved
         Assert.assertEquals(back.siteSeq, siteSeq);

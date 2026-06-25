@@ -31,15 +31,31 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
     // -------------------------------------------------------------------------
     // Helper: round-trip a SpilledSite through the codec and return the result.
     // -------------------------------------------------------------------------
-    private static SVClusterWalker.SpilledSite roundTrip(final int siteSeq, final SVCallRecord record) {
+    /** Test view pairing the preserved siteSeq with the record reconstructed from the spilled payload. */
+    private static final class DecodedSite {
+        final int siteSeq;
+        final SVCallRecord record;
+        DecodedSite(final int siteSeq, final SVCallRecord record) {
+            this.siteSeq = siteSeq;
+            this.record = record;
+        }
+    }
+
+    private static DecodedSite roundTrip(final int siteSeq, final SVCallRecord record) {
         final SVClusterWalker.SpilledSiteCodec codec = new SVClusterWalker.SpilledSiteCodec(DICT);
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         codec.setOutputStream(baos);
-        codec.encode(new SVClusterWalker.SpilledSite(siteSeq, record));
+        codec.encode(new SVClusterWalker.SpilledSite(siteSeq,
+                SVClusterWalker.SpilledSiteCodec.encodeRecord(record)));
 
         final SVClusterWalker.SpilledSiteCodec decodeCodec = new SVClusterWalker.SpilledSiteCodec(DICT);
         decodeCodec.setInputStream(new ByteArrayInputStream(baos.toByteArray()));
-        return decodeCodec.decode();
+        final SVClusterWalker.SpilledSite back = decodeCodec.decode();
+        if (back == null) {
+            return null;
+        }
+        return new DecodedSite(back.siteSeq,
+                SVClusterWalker.SpilledSiteCodec.decodeRecord(back.payload, DICT));
     }
 
     // -------------------------------------------------------------------------
@@ -67,7 +83,7 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
                 Collections.emptyMap(), Collections.emptySet(), null, DICT);
 
         final int siteSeq = 42;
-        final SVClusterWalker.SpilledSite back = roundTrip(siteSeq, record);
+        final DecodedSite back = roundTrip(siteSeq, record);
         Assert.assertNotNull(back);
         Assert.assertEquals(back.siteSeq, siteSeq);
         Assert.assertEquals(back.record.getId(), "site_seq_test");
@@ -95,7 +111,7 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
                 Collections.singletonList(g),
                 Collections.emptyMap(), Collections.emptySet(), null, DICT);
 
-        final SVClusterWalker.SpilledSite back = roundTrip(1, record);
+        final DecodedSite back = roundTrip(1, record);
         final Genotype decoded = back.record.getGenotypes().get(0);
         Assert.assertEquals(decoded.getGQ(), 35, "GQ");
         Assert.assertEquals(decoded.getDP(), 50, "DP");
@@ -125,7 +141,7 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
                 Collections.singletonList(g),
                 Collections.emptyMap(), Collections.emptySet(), null, DICT);
 
-        final SVClusterWalker.SpilledSite back = roundTrip(2, record);
+        final DecodedSite back = roundTrip(2, record);
         final Genotype decoded = back.record.getGenotypes().get(0);
         Assert.assertEquals(decoded.getAD(), ad, "AD array");
         Assert.assertEquals(decoded.getPL(), pl, "PL array");
@@ -151,7 +167,7 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
                 Collections.singletonList(g),
                 Collections.emptyMap(), Collections.emptySet(), null, DICT);
 
-        final SVClusterWalker.SpilledSite back = roundTrip(3, record);
+        final DecodedSite back = roundTrip(3, record);
         final Genotype decoded = back.record.getGenotypes().get(0);
         // Compare to the source genotype's value (htsjdk normalizes a "PASS" genotype filter to
         // unfiltered/null); the codec must reproduce whatever the original reports.
@@ -178,7 +194,7 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
                 Collections.singletonList(g),
                 Collections.emptyMap(), Collections.emptySet(), null, DICT);
 
-        final SVClusterWalker.SpilledSite back = roundTrip(4, record);
+        final DecodedSite back = roundTrip(4, record);
         Assert.assertEquals(back.record.getGenotypes().get(0).getFilters(), "LOW_GQ");
     }
 
@@ -203,7 +219,7 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
                 Collections.singletonList(g),
                 Collections.emptyMap(), Collections.emptySet(), null, DICT);
 
-        final SVClusterWalker.SpilledSite back = roundTrip(5, record);
+        final DecodedSite back = roundTrip(5, record);
         final Genotype decoded = back.record.getGenotypes().get(0);
         Assert.assertTrue(decoded.isPhased(), "Genotype should be phased");
         Assert.assertEquals(decoded.getGQ(), 40);
@@ -229,7 +245,7 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
                 Collections.singletonList(g),
                 Collections.emptyMap(), Collections.emptySet(), null, DICT);
 
-        final SVClusterWalker.SpilledSite back = roundTrip(6, record);
+        final DecodedSite back = roundTrip(6, record);
         final Genotype decoded = back.record.getGenotypes().get(0);
         Assert.assertTrue(decoded.isNoCall(), "Genotype should be NO_CALL");
     }
@@ -255,7 +271,7 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
                 Collections.singletonList(g),
                 Collections.emptyMap(), Collections.emptySet(), null, DICT);
 
-        final SVClusterWalker.SpilledSite back = roundTrip(7, record);
+        final DecodedSite back = roundTrip(7, record);
         final Genotype decoded = back.record.getGenotypes().get(0);
         Assert.assertEquals(decoded.getExtendedAttribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT), 1);
         Assert.assertEquals(decoded.getExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT), 2);
@@ -311,7 +327,7 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
                 Collections.emptyMap(), Collections.emptySet(), null, DICT);
 
         final int SEQ = 99;
-        final SVClusterWalker.SpilledSite back = roundTrip(SEQ, record);
+        final DecodedSite back = roundTrip(SEQ, record);
 
         Assert.assertNotNull(back, "decode() should not return null");
         Assert.assertEquals(back.siteSeq, SEQ, "siteSeq");
@@ -367,7 +383,8 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
         final SVClusterWalker.SpilledSiteCodec encoder = new SVClusterWalker.SpilledSiteCodec(DICT);
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         encoder.setOutputStream(baos);
-        encoder.encode(new SVClusterWalker.SpilledSite(0, record));
+        encoder.encode(new SVClusterWalker.SpilledSite(0,
+                SVClusterWalker.SpilledSiteCodec.encodeRecord(record)));
 
         final SVClusterWalker.SpilledSiteCodec decoder = new SVClusterWalker.SpilledSiteCodec(DICT);
         decoder.setInputStream(new ByteArrayInputStream(baos.toByteArray()));
@@ -377,7 +394,7 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
 
     // -------------------------------------------------------------------------
     // Test 11: multiple records encoded into the same stream decode correctly
-    //          (validates that out.reset() does not corrupt a multi-record stream
+    //          (validates that the block-data framing does not corrupt a multi-record stream
     //          and that a second round-trip is independent)
     // -------------------------------------------------------------------------
     @Test
@@ -409,8 +426,10 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
         final SVClusterWalker.SpilledSiteCodec encCodec = new SVClusterWalker.SpilledSiteCodec(DICT);
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         encCodec.setOutputStream(baos);
-        encCodec.encode(new SVClusterWalker.SpilledSite(10, rec1));
-        encCodec.encode(new SVClusterWalker.SpilledSite(20, rec2));
+        encCodec.encode(new SVClusterWalker.SpilledSite(10,
+                SVClusterWalker.SpilledSiteCodec.encodeRecord(rec1)));
+        encCodec.encode(new SVClusterWalker.SpilledSite(20,
+                SVClusterWalker.SpilledSiteCodec.encodeRecord(rec2)));
 
         final SVClusterWalker.SpilledSiteCodec decCodec = new SVClusterWalker.SpilledSiteCodec(DICT);
         decCodec.setInputStream(new ByteArrayInputStream(baos.toByteArray()));
@@ -418,17 +437,19 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
         final SVClusterWalker.SpilledSite back1 = decCodec.decode();
         Assert.assertNotNull(back1);
         Assert.assertEquals(back1.siteSeq, 10);
-        Assert.assertEquals(back1.record.getId(), "rec1");
-        Assert.assertEquals(back1.record.getGenotypes().get(0).getGQ(), 10);
-        Assert.assertEquals(back1.record.getGenotypes().get(0).getDP(), 20);
+        final SVCallRecord back1Rec = SVClusterWalker.SpilledSiteCodec.decodeRecord(back1.payload, DICT);
+        Assert.assertEquals(back1Rec.getId(), "rec1");
+        Assert.assertEquals(back1Rec.getGenotypes().get(0).getGQ(), 10);
+        Assert.assertEquals(back1Rec.getGenotypes().get(0).getDP(), 20);
 
         final SVClusterWalker.SpilledSite back2 = decCodec.decode();
         Assert.assertNotNull(back2);
         Assert.assertEquals(back2.siteSeq, 20);
-        Assert.assertEquals(back2.record.getId(), "rec2");
-        Assert.assertTrue(back2.record.getGenotypes().get(0).isPhased());
-        Assert.assertEquals(back2.record.getGenotypes().get(0).getGQ(), 30);
-        Assert.assertEquals(back2.record.getGenotypes().get(0).getDP(), 40);
+        final SVCallRecord back2Rec = SVClusterWalker.SpilledSiteCodec.decodeRecord(back2.payload, DICT);
+        Assert.assertEquals(back2Rec.getId(), "rec2");
+        Assert.assertTrue(back2Rec.getGenotypes().get(0).isPhased());
+        Assert.assertEquals(back2Rec.getGenotypes().get(0).getGQ(), 30);
+        Assert.assertEquals(back2Rec.getGenotypes().get(0).getDP(), 40);
 
         // Third decode should be null (EOF)
         Assert.assertNull(decCodec.decode(), "Third decode should be null at EOF");
