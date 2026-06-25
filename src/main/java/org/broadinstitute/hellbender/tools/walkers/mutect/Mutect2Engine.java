@@ -463,15 +463,15 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
     @Override
     public ActivityProfileState isActive(final AlignmentContext context, final ReferenceContext ref, final FeatureContext features) {
-        if ( forceCallingAllelesPresent && features.getValues(MTAC.alleles, ref).stream().anyMatch(vc -> MTAC.forceCallFiltered || vc.isNotFiltered())) {
-            return new ActivityProfileState(ref.getInterval(), 1.0);
-        }
-
         final byte refBase = ref.getBase();
         final SimpleInterval refInterval = ref.getInterval();
 
+        if ( forceCallingAllelesPresent && features.getValues(MTAC.alleles, ref).stream().anyMatch(vc -> MTAC.forceCallFiltered || vc.isNotFiltered())) {
+            return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.SOMATIC, null);
+        }
+
         if( context == null || context.getBasePileup().isEmpty() ) {
-            return new ActivityProfileState(refInterval, 0.0);
+            return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.NONE, null);
         }
 
         final ReadPileup pileup = context.getBasePileup();
@@ -488,9 +488,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         final double tumorLogOdds = logLikelihoodRatio(tumorPileup.size() - bestTumorAltAllele.getRight().size(), bestTumorAltAllele.getRight());
 
         if (tumorLogOdds < MTAC.getInitialLogOdds()) {
-            return new ActivityProfileState(refInterval, 0.0);
+            return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.NONE, null);
         } else if (MTAC.permutectTrainingDataset != null) {
-            return new ActivityProfileState(ref.getInterval(), 1.0);
+            return new ActivityProfileState(ref.getInterval(), 1.0, ActivityProfileState.Type.SOMATIC, null);
         }
 
         if (hasNormal()) {  // look for activity in the matched normal
@@ -500,8 +500,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
             if (bestNormalAltAllele.getLeft() == bestTumorAltAllele.getLeft()) {
                 final int normalAltCount = bestNormalAltAllele.getRight().size();
                 final double normalQualSum = normalPileupQualBuffer.qualSum(bestNormalAltAllele.getLeft());
+                // TODO: split this classification -- low AF in normal is probably ARTIFACT, not GERMLINE
                 if (normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM) {
-                    return new ActivityProfileState(refInterval, 0.0);
+                    return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.GERMLINE, null);
                 }
             }
         } else {    // tumor-only: guess germline variants using the germline resource
@@ -522,10 +523,10 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
                     // if it's a substitution that shares its first base with the dominant tumor allele, or if it's an
                     // indel and the dominant tumor allele is an indel, it's probably germline
                     if (PileupQualBuffer.likeliestIndexIsIndel(bestTumorAltAllele.getLeft()) && germlineAlt.length() != germlineRef.length()) {
-                            return new ActivityProfileState(refInterval, 0.0);
+                        return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.GERMLINE, null);
                     } else if (PileupQualBuffer.likeliestIndexIsSubstitution(bestTumorAltAllele.getLeft()) && germlineAlt.length() == germlineRef.length()
                             && PileupQualBuffer.getSubstitutionBase(bestTumorAltAllele.getLeft()) == germlineRef.getBases()[0]) {
-                        return new ActivityProfileState(refInterval, 0.0);
+                        return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.GERMLINE, null);
                     }
 
                 }
@@ -533,14 +534,14 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         }
 
         if (!MTAC.genotypePonSites && !features.getValues(MTAC.pon, new SimpleInterval(context.getContig(), (int) context.getPosition(), (int) context.getPosition())).isEmpty()) {
-            return new ActivityProfileState(refInterval, 0.0);
+            return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.ARTIFACT, null);
         }
 
         // if a site is active, count it toward the total of callable sites even if its depth is below the threshold
         if (pileup.size() < minCallableDepth) {
             callableSites.increment();
         }
-        return new ActivityProfileState( refInterval, 1.0, ActivityProfileState.Type.NONE, null);
+        return new ActivityProfileState( refInterval, 1.0, ActivityProfileState.Type.SOMATIC, null);
     }
 
     // NOTE: this is a hack to get around an htsjdk bug: https://github.com/samtools/htsjdk/issues/1228
