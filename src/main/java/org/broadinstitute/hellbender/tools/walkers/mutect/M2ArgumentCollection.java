@@ -295,7 +295,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * In tumor-only mode, we discard variants with population allele frequencies greater than this threshold.
      */
     @Argument(fullName = MAX_POPULATION_AF_LONG_NAME, shortName = MAX_POPULATION_AF_SHORT_NAME, optional = true, doc = "Maximum population allele frequency in tumor-only mode.")
-    public double maxPopulationAlleleFrequency = 0.01;
+    public double maxPopulationAlleleFrequency = 0.001;
 
     /**
      * Downsample a pool of reads starting within a range of one or more bases.
