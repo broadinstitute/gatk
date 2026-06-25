@@ -387,7 +387,7 @@ public class ActivityProfile {
 
         for ( int i = minI; i >= minRegionSize - 1; i-- ) {
             double cur = getProb(i);
-            if ( cur < minP && isMinimum(i) ) {
+            if ( cur < minP && isLocalMinimum(i) ) {
                 minP = cur;
                 minI = i;
             }
@@ -416,7 +416,7 @@ public class ActivityProfile {
      * @param index the index of the state we want to test
      * @return true if prob at state is a minimum, false otherwise
      */
-    private boolean isMinimum(final int index) {
+    private boolean isLocalMinimum(final int index) {
         return index > 0 && index < stateList.size() - 1 && getProb(index) <= getProb(index + 1) &&
                 getProb(index) < getProb(index - 1);
     }
