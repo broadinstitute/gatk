@@ -13,11 +13,14 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.engine.spark.Mutect2AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 import org.broadinstitute.hellbender.utils.downsampling.MutectDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 import org.broadinstitute.hellbender.cmdline.ModeArgumentUtils;
@@ -220,6 +223,11 @@ import java.util.*;
 public final class Mutect2 extends AssemblyRegionWalker {
      public static final String MUTECT_STATS_SHORT_NAME = "stats";
      public static final String DEFAULT_STATS_EXTENSION = ".stats";
+
+    @Override
+    protected AssemblyRegionArgumentCollection getAssemblyRegionArgumentCollection() {
+        return new Mutect2AssemblyRegionArgumentCollection();
+    }
 
     @ArgumentCollection
     protected M2ArgumentCollection MTAC = new M2ArgumentCollection();

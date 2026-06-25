@@ -93,7 +93,7 @@ public class FindAssemblyRegionsSpark {
                     .map(downsampledShardedRead -> {
                         final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(
                                 new ShardToMultiIntervalShardAdapter<>(downsampledShardedRead),
-                                header, reference, features, assemblyRegionEvaluator, assemblyRegionArgs, ActivityProfile.ProfileType.BAND_PASS, trackPileups);
+                                header, reference, features, assemblyRegionEvaluator, assemblyRegionArgs, trackPileups);
                         return Utils.stream(assemblyRegionIter).map(assemblyRegion ->
                                 new AssemblyRegionWalkerContext(assemblyRegion,
                                         new ReferenceContext(reference, assemblyRegion.getPaddedSpan()),

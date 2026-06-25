@@ -18,8 +18,8 @@ public class ActivityProfile {
         BASE, BAND_PASS, MUTECT2
     }
 
-    public static ActivityProfile create(final ProfileType profileType, final AssemblyRegionArgumentCollection args, final SAMFileHeader header) {
-        return switch (profileType) {
+    public static ActivityProfile create(final AssemblyRegionArgumentCollection args, final SAMFileHeader header) {
+        return switch (args.activityProfileType) {
             case BASE -> new ActivityProfile(args.maxProbPropagationDistance, args.activeProbThreshold, header);
             case BAND_PASS -> new BandPassActivityProfile(args.maxProbPropagationDistance, args.activeProbThreshold,
                     BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, header);

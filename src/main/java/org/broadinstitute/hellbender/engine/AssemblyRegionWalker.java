@@ -41,8 +41,12 @@ import java.util.List;
  */
 public abstract class AssemblyRegionWalker extends WalkerBase {
 
+    protected AssemblyRegionArgumentCollection getAssemblyRegionArgumentCollection() {
+        return new AssemblyRegionArgumentCollection();
+    }
+
     @ArgumentCollection
-    public final AssemblyRegionArgumentCollection assemblyRegionArgs = new AssemblyRegionArgumentCollection();
+    public final AssemblyRegionArgumentCollection assemblyRegionArgs = getAssemblyRegionArgumentCollection();
 
     /**
      * If provided, this walker will write out its assembly regions
@@ -186,7 +190,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
      * @param features FeatureManager
      */
     private void processReadShard(MultiIntervalLocalReadShard shard, ReferenceDataSource reference, FeatureManager features ) {
-        final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, getHeaderForReads(), reference, features, assemblyRegionEvaluator(), assemblyRegionArgs, ActivityProfile.ProfileType.BAND_PASS, shouldTrackPileupsForAssemblyRegions());
+        final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, getHeaderForReads(), reference, features, assemblyRegionEvaluator(), assemblyRegionArgs, shouldTrackPileupsForAssemblyRegions());
 
         // Call into the tool implementation to process each assembly region from this shard.
         while ( assemblyRegionIter.hasNext() ) {

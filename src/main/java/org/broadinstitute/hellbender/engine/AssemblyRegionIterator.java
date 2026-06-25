@@ -61,7 +61,6 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
      * @param reference   source of reference bases (may be null)
      * @param features    source of arbitrary features (may be null)
      * @param evaluator   evaluator used to determine whether a locus is active
-     * @param profileType type of ActivityProfile to use
      */
     public AssemblyRegionIterator(final MultiIntervalShard<GATKRead> readShard,
                                   final SAMFileHeader readHeader,
@@ -69,7 +68,6 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
                                   final FeatureManager features,
                                   final AssemblyRegionEvaluator evaluator,
                                   final AssemblyRegionArgumentCollection assemblyRegionArgs,
-                                  ActivityProfile.ProfileType profileType,
                                   final boolean trackPileups ) {
 
         Utils.nonNull(readShard);
@@ -90,7 +88,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         this.pendingRegions = new ArrayDeque<>();
         this.readCachingIterator = new ReadCachingIterator(readShard.iterator());
         this.readCache = new ArrayDeque<>();
-        this.activityProfile = ActivityProfile.create(profileType, assemblyRegionArgs, readHeader);
+        this.activityProfile = ActivityProfile.create(assemblyRegionArgs, readHeader);
         this.pendingAlignmentData = trackPileups ? new ArrayDeque<>() : null;
 
         // We wrap our LocusIteratorByState inside an IntervalAlignmentContextIterator so that we get empty loci
