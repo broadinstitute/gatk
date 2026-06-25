@@ -20,6 +20,7 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public static final String MAX_STARTS_LONG_NAME = "max-reads-per-alignment-start";
     public static final String THRESHOLD_LONG_NAME = "active-probability-threshold";
     public static final String PROPAGATION_LONG_NAME = "max-prob-propagation-distance";
+    public static final String GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME = "genotype-germline-sites-fraction";
 
     public static final int DEFAULT_MIN_ASSEMBLY_REGION_SIZE = 50;
     public static final int DEFAULT_MAX_ASSEMBLY_REGION_SIZE = 300;
@@ -115,6 +116,15 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public int strPaddingForGenotyping = 75;
 
     /**
+     * For the purposes of learning some parameters in Permutect it may be useful to genotype *some* germline variants
+     * and emit them as Permutect tensors.  When --genotypeGermlineSites is true, etting this parameter to a value less
+     * than the default of 1.0 causes only some germline sites to be genotyped.  When --genotypeGermlineSites is false
+     * this argument has no effect and no germline sites are genotyped.
+     */
+    @Argument(fullName= GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, doc="Fraction of germline sites to be genotyped randomly.", optional = true)
+    public double genotypeGermlineSitesFraction = defaultGenotypeGermlineSitesFraction();
+
+    /**
      * The maximum extent into the full active region extension that we're willing to go in genotyping our events
      * NOTE: this is only applicable to the legacy assembly region trimming currently
      */
@@ -162,6 +172,8 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      * @return Default value for the {@link #activeProbThreshold} parameter, if none is provided on the command line
      */
     protected double defaultActiveProbThreshold() { return DEFAULT_ACTIVE_PROB_THRESHOLD; }
+
+    protected double defaultGenotypeGermlineSitesFraction() { return 1.0; }
 
     /**
      * @return Default value for the {@link #maxProbPropagationDistance} parameter, if none is provided on the command line

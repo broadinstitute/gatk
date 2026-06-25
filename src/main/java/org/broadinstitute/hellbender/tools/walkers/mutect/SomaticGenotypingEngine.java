@@ -172,10 +172,11 @@ public class SomaticGenotypingEngine implements AutoCloseable {
                     .filter(allele -> forcedAlleles.contains(allele) || tumorLogOdds.getAlt(allele) > MTAC.getEmissionLogOdds())
                     .collect(Collectors.toList());
 
-            final boolean considerGermlineActive = MTAC.genotypeGermlineSites && rng.nextDouble() < MTAC.genotypeGermlineSitesFraction;
-
+            // If MTAC.genotypeGermlineSites is true we genotype ALL germline variants at this point, regardless
+            // of the genotypeGermlineFraction.  The Mutect2ActivityProfile is responsible for choosing which
+            // germline-only regions to assemble and genotype.
             final List<Allele> allelesToGenotype = tumorAltAlleles.stream()
-                    .filter(allele -> forcedAlleles.contains(allele) || !hasNormal || considerGermlineActive || normalLogOdds.getAlt(allele) > MathUtils.log10ToLog(MTAC.normalLog10Odds))
+                    .filter(allele -> forcedAlleles.contains(allele) || !hasNormal || MTAC.genotypeGermlineSites || normalLogOdds.getAlt(allele) > MathUtils.log10ToLog(MTAC.normalLog10Odds))
                     .toList();
 
             // record somatic alleles for later use in the Event Count annotation
