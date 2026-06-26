@@ -15,7 +15,7 @@ workflow GvsQuickstartVATIntegration {
         String dataset_suffix
         Boolean use_vds_as_input = true      # If true, use a VDS, otherwise use a sites only VCF.
         String output_path
-        String split_intervals_scatter_count = 10
+        Int split_intervals_scatter_count = 10
         String? basic_docker
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
@@ -84,6 +84,8 @@ workflow GvsQuickstartVATIntegration {
             variants_nirvana_docker = effective_variants_nirvana_docker,
     }
 
+    # Intentionally unused: runs for its side effect of validating the VAT; its output is not consumed downstream.
+    #@ except: UnusedCall
     call ValidateVAT.GvsValidateVat {
         input:
             project_id = project_id,
@@ -95,6 +97,8 @@ workflow GvsQuickstartVATIntegration {
     }
 
     String expected_prefix = expected_output_prefix + dataset_suffix + "/"
+    # Intentionally unused: runs for its side effect of asserting test outputs match; its output is not consumed downstream.
+    #@ except: UnusedCall
     call AssertIdenticalOutputs {
         input:
             actual_file = select_first([CreateVATFromVDS.final_tsv_file]),
@@ -103,6 +107,8 @@ workflow GvsQuickstartVATIntegration {
     }
 
 
+    # Intentionally unused: runs for its side effect of asserting BQ table size; its output is not consumed downstream.
+    #@ except: UnusedCall
     call AssertTableSizeIsAsExpected {
         input:
             dataset_name = CreateDatasetForTest.dataset_name,

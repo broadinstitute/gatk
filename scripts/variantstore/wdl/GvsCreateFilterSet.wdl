@@ -6,6 +6,9 @@ import "../../vcf_site_level_filtering_wdl/JointVcfFiltering.wdl" as VETS
 
 workflow GvsCreateFilterSet {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String dataset_name
     String project_id
@@ -33,6 +36,7 @@ workflow GvsCreateFilterSet {
     Int? SNP_VQSR_max_gaussians_override = 6
     Int? SNP_VQSR_mem_gb_override
 
+    # TODO: Sprocket rejects map literals as struct initializers in WDL 1.0; fix by upgrading to WDL 1.1 struct literal syntax — see VS-1957.
     RuntimeAttributes? vets_extract_runtime_attributes = {"command_mem_gb": 27}
     RuntimeAttributes? vets_train_runtime_attributes = {"command_mem_gb": 27}
     RuntimeAttributes? vets_score_runtime_attributes = {"command_mem_gb": 15}
@@ -372,6 +376,9 @@ task CheckIfFilterSetNameIsInUse {
 
 task ExtractFilterTask {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String project_id
     String dataset_id
@@ -380,11 +387,15 @@ task ExtractFilterTask {
     File reference
 
     String fq_sample_table
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String sample_table_timestamp
 
     File intervals
 
     String fq_alt_allele_table
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String alt_allele_table_timestamp
 
     String cost_observability_tablename = "cost_observability"

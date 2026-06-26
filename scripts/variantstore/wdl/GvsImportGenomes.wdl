@@ -5,6 +5,9 @@ import "GvsUtils.wdl" as Utils
 workflow GvsImportGenomes {
 
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String? git_branch_or_tag
     String? git_hash
@@ -313,6 +316,8 @@ workflow GvsImportGenomes {
         # `GenerateParquetFilesFromInputGVCFs`, the `go` trigger for setting the `is_loaded` column is the `done` output
         # of the last task in that chain, `VerifyParquetLoading`. The other component of the `go` trigger is the
         # `LoadDataViaBigQueryWriteAPI.done` corresponding to the Write API flow.
+        # Intentionally using select_first to pick whichever of the two mutually exclusive code paths (Parquet vs WriteAPI) ran.
+        #@ except: UnnecessaryFunctionCall
         go = select_all(select_first([[VerifyParquetLoading.done], LoadDataViaBigQueryWriteAPI.done])),
         project_id = project_id,
         dataset_name = dataset_name,
@@ -324,6 +329,8 @@ workflow GvsImportGenomes {
     Boolean done = true
     Boolean used_tighter_gcp_quotas = is_rate_limited_beta_customer
     String recorded_git_hash = effective_git_hash
+    # Intentionally using select_first to pick the stderr files from whichever of the two mutually exclusive code paths (Parquet vs WriteAPI) ran.
+    #@ except: UnnecessaryFunctionCall
     Array[File] load_data_stderrs = select_first([select_all(GenerateParquetFilesFromInputGVCFs.stderr), select_all(LoadDataViaBigQueryWriteAPI.stderr)])
     Boolean? parquet_loading_verified = VerifyParquetLoading.all_loaded
     Int? parquet_files_loaded = VerifyParquetLoading.loaded_files
@@ -417,7 +424,6 @@ task ProcessInputGVCFs {
     }
   }
 
-  Int samples_per_table = 4000
   Int num_samples = length(sample_names)
   String temp_table = "~{dataset_name}.sample_names_to_load_~{index}"
   # add labels for DSP Cloud Cost Control Labeling and Reporting
@@ -611,6 +617,9 @@ task ProcessVCFHeaders {
   input {
     String dataset_name
     String project_id
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Array[Boolean] go
     String variants_docker
   }
@@ -639,6 +648,9 @@ task SetIsLoadedColumn {
     String dataset_name
     String project_id
 
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Array[Boolean] go
     String cloud_sdk_docker
   }
@@ -688,6 +700,9 @@ task SetIsLoadedColumn {
 
 task GetUningestedSampleIds {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go
     String dataset_name
     String project_id
@@ -893,7 +908,7 @@ task CreateSampleDataViews {
       -- determine load status. Conversely, data written with the BigQuery Write API seems to result in very delayed
       -- population of INFORMATION_SCHEMA, often lagging writes by several hours, which makes reading INFORMATION_SCHEMA
       -- unreliable with the Write API. The following vet and ref ranges queries UNION DISTINCT the sample_load_status
-      -- table with INFORMATION_SCHEMA to reliably detect sample data regarless of how it was loaded into GVS.
+      -- table with INFORMATION_SCHEMA to reliably detect sample data regardless of how it was loaded into GVS.
       --
       -- This code also provides for a header row existence view if headers are being loaded.
 
@@ -1052,6 +1067,7 @@ task CreateSampleDataViews {
 task ConfigureParquetLifecycle {
   input {
     String output_gcs_dir
+    # TODO: billing_project_id is declared but not passed to load_parquet_to_bq.py - see VS-1955.
     String? billing_project_id
     String variants_docker
   }
@@ -1162,6 +1178,9 @@ task DiscoverParquetFiles {
     String dataset_name
     Array[String] regular_table_prefixes
     Array[String] superpartitioned_table_prefixes
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Array[Boolean] go
     String? billing_project_id
     String variants_docker
@@ -1219,6 +1238,7 @@ task LoadParquetFilesToBQ {
     String dataset_name
     File fofn_file
     Int batch_size
+    # TODO: billing_project_id is declared but not passed to load_parquet_to_bq.py - see VS-1955.
     String? billing_project_id
     String variants_docker
   }
@@ -1255,6 +1275,9 @@ task VerifyParquetLoading {
     String project_id
     String dataset_name
     File gcs_files_list
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Array[Boolean] go
     String variants_docker
   }
@@ -1283,6 +1306,7 @@ task VerifyParquetLoading {
   }
 
   output {
+    # TODO: Sprocket flags read_json indexing as invalid on Union type; fix by upgrading to WDL 1.1 and using struct coercion — see VS-1957.
     File results_json = "verification_output/verification_results.json"
     Boolean all_loaded = read_json(results_json)["all_loaded"]
     Int total_files = read_json(results_json)["total_files"]

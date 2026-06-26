@@ -3,7 +3,6 @@ version 1.0
 # This WDL will merge the Echo VDS with a VDS of only samples new to Foxtrot and apply the full Foxtrot filter created
 # from all samples to the merged result.
 import "GvsUtils.wdl" as Utils
-import "GvsValidateVDS.wdl" as ValidateVDS
 
 
 workflow GvsMergeAndRescoreVDSes {

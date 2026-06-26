@@ -9,6 +9,9 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsJointVariantCalling {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go = true
         String call_set_identifier
         String dataset_name
@@ -93,9 +96,9 @@ workflow GvsJointVariantCalling {
 
     # The `call_set_identifier` string is used to name many different things throughout this workflow (BQ tables, vcfs etc).
     # To make sure nothing is broken by creative users we replace spaces and underscores with hyphens.
-    String effective_extract_output_file_base_name = select_first([extract_output_file_base_name, sub(call_set_identifier, "\\s+|\_+", "-")])
-    String effective_extract_table_prefix = select_first([extract_table_prefix, sub(call_set_identifier, "\\s+|\_+", "-")])
-    String effective_filter_set_name = select_first([filter_set_name, sub(call_set_identifier, "\\s+|\_+", "-")])
+    String effective_extract_output_file_base_name = select_first([extract_output_file_base_name, sub(call_set_identifier, "\\s+|_+", "-")])
+    String effective_extract_table_prefix = select_first([extract_table_prefix, sub(call_set_identifier, "\\s+|_+", "-")])
+    String effective_filter_set_name = select_first([filter_set_name, sub(call_set_identifier, "\\s+|_+", "-")])
 
     String query_project = project_id
     String destination_project = project_id

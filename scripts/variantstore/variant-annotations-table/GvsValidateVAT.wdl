@@ -320,6 +320,8 @@ task EnsureVatTableHasVariants {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -360,7 +362,7 @@ task EnsureVatTableHasVariants {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -375,6 +377,8 @@ task SpotCheckForExpectedTranscripts {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -427,7 +431,7 @@ task SpotCheckForExpectedTranscripts {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 
@@ -442,6 +446,8 @@ task SchemaNoNullRequiredFields {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -511,7 +517,7 @@ task SchemaNoNullRequiredFields {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -525,6 +531,8 @@ task SchemaOnlyOneRowPerNullTranscript {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -571,7 +579,7 @@ task SchemaOnlyOneRowPerNullTranscript {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -585,6 +593,8 @@ task SchemaPrimaryKey {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -631,7 +641,7 @@ task SchemaPrimaryKey {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -645,6 +655,8 @@ task SchemaEnsemblTranscripts {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -692,7 +704,7 @@ task SchemaEnsemblTranscripts {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -706,6 +718,8 @@ task SchemaNonzeroAcAn {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -756,7 +770,7 @@ task SchemaNonzeroAcAn {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -770,6 +784,8 @@ task SchemaNullTranscriptsExist {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -811,7 +827,7 @@ task SchemaNullTranscriptsExist {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -825,6 +841,8 @@ task SubpopulationMax {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -874,7 +892,7 @@ task SubpopulationMax {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -888,6 +906,8 @@ task SubpopulationAlleleCount {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -931,7 +951,7 @@ task SubpopulationAlleleCount {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -945,6 +965,8 @@ task SubpopulationAlleleNumber {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -988,7 +1010,7 @@ task SubpopulationAlleleNumber {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -1002,6 +1024,8 @@ task DuplicateAnnotations {
     input {
         String query_project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -1059,7 +1083,7 @@ task DuplicateAnnotations {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -1074,6 +1098,8 @@ task ClinvarSignificance {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -1144,7 +1170,7 @@ task ClinvarSignificance {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -1158,6 +1184,8 @@ task SchemaAAChangeAndExonNumberConsistent {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -1240,7 +1268,7 @@ task SchemaAAChangeAndExonNumberConsistent {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -1254,6 +1282,8 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -1354,7 +1384,7 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 
@@ -1369,6 +1399,8 @@ task SpotCheckForManeSelectTranscript {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -1422,7 +1454,7 @@ task SpotCheckForManeSelectTranscript {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 
@@ -1437,6 +1469,8 @@ task CheckForNullColumns {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String variants_docker
     }

@@ -371,6 +371,9 @@ task AssertCostIsTrackedAndExpected {
     }
 
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go = true
         String dataset_name
         String project_id
@@ -480,6 +483,9 @@ task AssertTableSizesAreExpected {
     }
 
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go = true
         String dataset_name
         String project_id
@@ -532,6 +538,9 @@ task AssertTableSizesAreExpected {
 task ValidateVariants {
     input {
         File input_vcf
+        # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+        # tools require the index to be co-located with the data file and will fail if it is absent.
+        #@ except: UnusedInput
         File input_vcf_index
         File ref_fasta
 
