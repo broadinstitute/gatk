@@ -45,3 +45,6 @@ funcotator_tmp
 #Test generated dot files
 test*.dot
 .vscode/
+
+venv
+.headroom_data

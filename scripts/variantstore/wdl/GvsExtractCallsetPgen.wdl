@@ -4,6 +4,9 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractCallsetPgen {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go = true
         # The name of the bigquery dataset containing the GVS data we are extracting
         String dataset_name
@@ -81,7 +84,6 @@ workflow GvsExtractCallsetPgen {
     String fq_filter_set_site_table = "~{fq_gvs_dataset}.filter_set_sites"
     String fq_filter_set_tranches_table = "~{fq_gvs_dataset}.filter_set_tranches"
     String fq_sample_table = "~{fq_gvs_dataset}.sample_info"
-    String fq_cohort_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__DATA"
     String fq_ranges_cohort_ref_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__REF_DATA"
     String fq_ranges_cohort_vet_extract_table_name = "~{full_extract_prefix}__VET_DATA"
     String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{fq_ranges_cohort_vet_extract_table_name}"
@@ -173,6 +175,7 @@ workflow GvsExtractCallsetPgen {
             gatk_override = gatk_override,
           }
 
+    # TODO: FilterSetInfoTimestamp.last_modified_timestamp is never wired to any downstream task - see VS-1954.
     call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
         input:
             project_id = project_id,
@@ -239,7 +242,6 @@ workflow GvsExtractCallsetPgen {
                 interval_index                     = i,
                 interval_files_tar                 = SplitIntervalsTarred.interval_files_tar,
                 interval_filename                  = interval_filename,
-                fq_cohort_extract_table            = fq_cohort_extract_table,
                 fq_ranges_cohort_ref_extract_table = fq_ranges_cohort_ref_extract_table,
                 fq_ranges_cohort_vet_extract_table = fq_ranges_cohort_vet_extract_table,
                 vet_extract_table_version          = GetExtractVetTableVersion.version,
@@ -251,7 +253,6 @@ workflow GvsExtractCallsetPgen {
                 filter_set_name                    = filter_set_name,
                 drop_state                         = drop_state,
                 output_pgen_basename               = pgen_basename,
-                zero_pad_output_pgen_filenames     = zero_pad_output_pgen_filenames,
                 max_last_modified_timestamp        = GetBQTablesMaxLastModifiedTimestamp.max_last_modified_timestamp,
                 extract_preemptible_override       = extract_preemptible_override,
                 extract_maxretries_override        = extract_maxretries_override,
@@ -267,7 +268,6 @@ workflow GvsExtractCallsetPgen {
     call SumBytes {
         input:
             file_sizes_bytes = flatten([PgenExtractTask.output_pgen_bytes, PgenExtractTask.output_pvar_bytes, PgenExtractTask.output_psam_bytes]),
-            output_gcs_dir = output_gcs_dir,
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
@@ -314,6 +314,9 @@ workflow GvsExtractCallsetPgen {
 
 task PgenExtractTask {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go
 
         String dataset_name
@@ -341,13 +344,11 @@ task PgenExtractTask {
         String interval_filename
         String drop_state
 
-        String fq_cohort_extract_table
         String fq_ranges_cohort_ref_extract_table
         String fq_ranges_cohort_vet_extract_table
         String? vet_extract_table_version
         String read_project_id
         String output_pgen_basename
-        Boolean zero_pad_output_pgen_filenames
 
         String cost_observability_tablename = "cost_observability"
 
@@ -373,6 +374,8 @@ task PgenExtractTask {
         Int? local_sort_max_records_in_ram = 10000000
 
         # for call-caching -- check if DB tables haven't been updated since the last run
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String max_last_modified_timestamp
     }
     meta {
@@ -486,8 +489,8 @@ task PgenExtractTask {
         memory: memory_gib + " GB"
         disks: "local-disk " + select_first([disk_override, 150]) + " HDD"
         bootDiskSizeGb: 15
-        preemptible: select_first([extract_preemptible_override, "2"])
-        maxRetries: select_first([extract_maxretries_override, "3"])
+        preemptible: select_first([extract_preemptible_override, 2])
+        maxRetries: select_first([extract_maxretries_override, 3])
         cpu: 2
         noAddress: true
     }
@@ -510,7 +513,6 @@ task SumBytes {
     input {
         Array[Float] file_sizes_bytes
         String cloud_sdk_docker
-        String? output_gcs_dir
     }
     meta {
         # Not `volatile: true` since there shouldn't be a need to re-run this if there has already been a successful execution.
@@ -581,6 +583,8 @@ task CreateManifest {
 task GenerateSampleListFile {
     input {
         String fq_samples_to_extract_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String samples_to_extract_table_timestamp
         String query_project
 

@@ -378,8 +378,7 @@ workflow GvsCreateVATfromVDS {
                 variant_transcripts_path = variant_transcripts_output_path,
                 genes_path = genes_output_path,
                 base_vat_table_name = effective_vat_table_name,
-                prep_vt_json_done = PrepVtAnnotationJson.done,
-                prep_genes_json_done = PrepGenesAnnotationJson.done,
+                go = flatten([PrepVtAnnotationJson.done, PrepGenesAnnotationJson.done]),
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
@@ -444,7 +443,7 @@ task ExcludeSitesFromSitesOnlyVcf {
         docker: variants_docker
         memory: "4 GB"
         preemptible: 2
-        cpu: "1"
+        cpu: 1
         disks: "local-disk ${disk_size_gb} HDD"
     }
 
@@ -590,7 +589,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
         docker: variants_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 
@@ -638,7 +637,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     runtime {
         docker: variants_docker
         memory: "7 GiB"
-        cpu: "2"
+        cpu: 2
         preemptible: 3
         disks: "local-disk " + disk_size + " HDD"
     }
@@ -781,7 +780,7 @@ for line in sys.stdin:
         maxRetries: 3
         memory: "16 GB"
         preemptible: 3
-        cpu: "8"
+        cpu: 8
         disks: "local-disk " + disk_size + " HDD"
     }
 
@@ -1014,6 +1013,9 @@ task BigQueryCookVepAndLofteeRawAnnotations {
     # - Splitting and castng a nested GERP field into an array of floating point numbers.
     # - Squashing any duplicate rows resulting from deletions spanning shards.
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go
         String variants_docker
         String project_id
@@ -1149,6 +1151,7 @@ task AnnotateVCF {
 
         # Mentioning this path in the inputs section of the task combined with checking the 'Use reference disks' option
         # in Terra UI tells Cromwell to arrange for the Nirvana reference disk to be attached to this VM.
+        #@ except: UnusedInput
         File summon_reference_disk =
             "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/MITOMAP_20200819.nsa.idx"
 
@@ -1188,7 +1191,7 @@ task AnnotateVCF {
 
         if [ ! -s content_check_file.txt ]; then
             echo "Found NO custom annotations in ~{custom_annotations_file} skipping annotation of input VCF"
-            echo "Creating empty ennotation jsons for subsequent tasks"
+            echo "Creating empty annotation jsons for subsequent tasks"
             touch ~{gene_annotation_json_name}
             touch ~{positions_annotation_json_name}
             exit 0
@@ -1288,7 +1291,7 @@ task AnnotateVCF {
     runtime {
         docker: variants_nirvana_docker
         memory: "128 GB"
-        cpu: "4"
+        cpu: 4
         preemptible: 1
         maxRetries: 1
         disks: "local-disk 2000 HDD"
@@ -1340,7 +1343,7 @@ task PrepVtAnnotationJson {
         docker: variants_docker
         memory: "16 GB"
         preemptible: 2
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 500 HDD"
     }
 
@@ -1388,7 +1391,7 @@ task PrepGenesAnnotationJson {
         docker: variants_docker
         memory: "7 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 500 HDD"
     }
 
@@ -1441,7 +1444,7 @@ task LoadManeDataIntoBigQuery {
         docker: cloud_sdk_docker
         memory: "3 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 
@@ -1469,8 +1472,10 @@ task BigQueryLoadJson {
         String dataset_name
         String variant_transcripts_path
         String genes_path
-        Array[Boolean] prep_vt_json_done
-        Array[Boolean] prep_genes_json_done
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
+        Array[Boolean] go
         String cloud_sdk_docker
     }
 
@@ -1718,7 +1723,7 @@ task BigQueryLoadJson {
         docker: cloud_sdk_docker
         memory: "3 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 1000 HDD"
     }
 
@@ -1787,7 +1792,7 @@ task DeduplicateVatInBigQuery {
         docker: cloud_sdk_docker
         memory: "3 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 

@@ -26,6 +26,9 @@ workflow GvsExtractAvroFilesForHail {
         String sample_table_or_view_name = "sample_info"
         String? git_branch_or_tag
         String? git_hash
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go = true
         String project_id
         String dataset_name
@@ -68,6 +71,8 @@ workflow GvsExtractAvroFilesForHail {
             basic_docker = effective_basic_docker,
     }
 
+    # Intentionally unused: this task runs for its side effect of extracting data to Avro files; its output is not consumed downstream.
+    #@ except: UnusedCall
     call ExtractFromSampleTable {
         input:
             sample_table_or_view_name = sample_table_or_view_name,
@@ -89,6 +94,8 @@ workflow GvsExtractAvroFilesForHail {
             variants_docker = effective_variants_docker,
     }
 
+    # Intentionally unused: this task runs for its side effect of extracting data to Avro files; its output is not consumed downstream.
+    #@ except: UnusedCall
     call ExtractFromPloidyTable {
         input:
             sample_table_or_view_name = sample_table_or_view_name,
@@ -154,6 +161,9 @@ task OutputPath {
         volatile: true
     }
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go = true
         String basic_docker
     }

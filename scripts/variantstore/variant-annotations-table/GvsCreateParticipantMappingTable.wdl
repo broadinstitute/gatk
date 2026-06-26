@@ -14,6 +14,8 @@ workflow GvsCreateParticipantMappingTable {
 
     call Utils.GetToolVersions
 
+    # Intentionally unused: this workflow exists solely to run this task as a side effect; there are no outputs to consume.
+    #@ except: UnusedCall
     call CreateParticipantMappingTable {
         input:
         variants_docker = GetToolVersions.variants_docker,

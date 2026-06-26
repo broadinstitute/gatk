@@ -23,6 +23,8 @@ workflow GvsMapUnmappedVIDs {
             basic_docker = GetToolVersions.basic_docker,
     }
 
+    # Intentionally unused: this workflow exists solely to run this task as a side effect; there are no outputs to consume.
+    #@ except: UnusedCall
     call MapUnmappedVIDs {
         input:
             project_id = project_id,
