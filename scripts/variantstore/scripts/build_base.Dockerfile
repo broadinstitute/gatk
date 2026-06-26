@@ -1,68 +1,25 @@
 # This Dockerfile creates a "build-base" image with tools and libraries required to build the tools and libraries used
-# in the Genomic Variant Store pipeline. The Alpine version of the Google Cloud SDK is used as the base image which is
-# not only the most compact of the Google Cloud SDK Docker images, but is also the image currently used by Cromwell for
-# (de)localization of files in Google Cloud Storage. Sharing the base image with Cromwell's GCS localization should
-# result in reuse of a cached copy of this base (and by far largest) image layer when running GVS pipelines in Terra /
-# Cromwell.
+# in the Genomic Variant Store pipeline. The Alpine version of the Google Cloud SDK is used as the base image as it is
+# the most compact of the Google Cloud SDK Docker images.
 #
-# Because this is an Alpine-based image it is more bare-bones than its Debian-based peers. Key components missing here
-# are the Apache Arrow library (a requirement for pyarrow which in turn is a requirement for the google-cloud-bigquery
-# Python module) and bcftools. Compiling all these tools makes this a fairly expensive image to create (an hour or so
-# under ideal circumstances, potentially much longer on low memory and/or non-x86 build hosts). Since this image isn't
-# expected to change often it's broken out into a separate "build-base" image that can effectively be globally cached
-# and referenced from the main Dockerfile.
+# Because this is an Alpine-based image it is more bare-bones than its Debian-based peers. Several tools used by GVS
+# (htslib, bcftools, vcftools) are not available as Alpine packages and must be compiled from source.
+# Compiling these tools makes this a moderately expensive image to create. Since this image isn't expected to change
+# often it's broken out into a separate "build-base" image that can effectively be globally cached and referenced from
+# the main Dockerfile.
+#
+# Note: pyarrow was previously built from source here because Alpine's musl libc was incompatible with PyPI's
+# manylinux wheels. It has since been removed from the image entirely as no production code requires it.
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-alpine
 
 RUN apk update && apk upgrade
 
-# Add all required build tools. These will not be added to the main stage as they are only required to build PyArrow
-# and bcftools but not to use them.
-RUN apk add autoconf bash cmake g++ gcc make ninja python3-dev git openssl-dev zlib-dev xz-dev bzip2-dev curl-dev re2 re2-dev
+# Add all required build tools. These are not added to the main stage as they are only needed at compile time.
+RUN apk add autoconf bash g++ gcc make python3-dev git openssl-dev zlib-dev xz-dev bzip2-dev curl-dev
 RUN python3 -m venv /localvenv && . /localvenv/bin/activate && python3 -m ensurepip --upgrade
 
-# Unfortunately neither pyarrow nor google-cloud-bigquery will fetch or build Apache Arrow when `pip install`ed from
-# this base image. Therefore we do the Apache Arrow build ourselves. In order to keep the final image size small this
-# Dockerfile is set up to do a multi-stage build following the usual pattern of "build" stage / "main" stage.
-# https://docs.docker.com/build/building/multi-stage/#use-multi-stage-builds
-#
-# The build stage installs the required development tools, downloads the Apache Arrow source bundle and builds all
-# required components including Apache Arrow C++ libraries, pyarrow Python module, and all pyarrow dependencies
-# including the numpy Python module. The main stage will then use the same base image and copy over the artifacts
-# produced by the build stage without having to install development tools or clean up after a build.
 
-ARG ARROW_VERSION=20.0.0
-RUN cd / && \
-    curl -O https://archive.apache.org/dist/arrow/arrow-$ARROW_VERSION/apache-arrow-$ARROW_VERSION.tar.gz && \
-    tar xfz apache-arrow-$ARROW_VERSION.tar.gz
-
-# Pyarrow build instructions from https://arrow.apache.org/docs/developers/python.html#python-development
-# Modified slightly for the requirements of this installation:
-# - Download a static source tarball rather than cloning the git repo.
-# - Use `ninja` to build the C++ libraries as the `make` system doesn't seem to work as of Arrow 10.0.0.
-# - Install PyArrow and its dependencies
-ARG ARROW_SRC_DIR=/apache-arrow-$ARROW_VERSION
-RUN . /localvenv/bin/activate && pip3 install -r $ARROW_SRC_DIR/python/requirements-build.txt
-
-RUN mkdir $ARROW_SRC_DIR/cpp/build && \
-    cd $ARROW_SRC_DIR/cpp/build && \
-    cmake .. --preset ninja-release-python && \
-    cmake --build . && \
-    cmake --install . && \
-    rm /apache-arrow-$ARROW_VERSION.tar.gz
-
-ARG PYARROW_WITH_PARQUET=1
-ARG PYARROW_WITH_DATASET=1
-ARG PYARROW_PARALLEL=4
-RUN cd $ARROW_SRC_DIR/python && \
-    . /localvenv/bin/activate && \
-    python3 setup.py build_ext --inplace && \
-    pip3 install wheel && \
-    python3 setup.py build_ext --build-type=release \
-              --bundle-arrow-cpp bdist_wheel && \
-    pip3 install /apache-arrow-$ARROW_VERSION/python/dist/pyarrow-$ARROW_VERSION-*.whl
-
-
-ARG HTSLIB_VERSION=1.22
+ARG HTSLIB_VERSION=1.23.1
 RUN mkdir /htslib /htslib-build && \
     cd /htslib-build && \
     curl -L -O https://github.com/samtools/htslib/releases/download/${HTSLIB_VERSION}/htslib-${HTSLIB_VERSION}.tar.bz2 && \
@@ -76,7 +33,7 @@ RUN mkdir /htslib /htslib-build && \
     rm -rf /htslib-build
 
 
-ARG BCFTOOLS_VERSION=1.22
+ARG BCFTOOLS_VERSION=1.23.1
 RUN mkdir /bcftools /bcftools-build && \
     cd /bcftools-build && \
     curl -L -O https://github.com/samtools/bcftools/releases/download/${BCFTOOLS_VERSION}/bcftools-${BCFTOOLS_VERSION}.tar.bz2 && \
@@ -103,4 +60,5 @@ RUN mkdir /vcftools /vcftools-build && \
     cd / && \
     rm -rf /vcftools-build
 
-ENV PERL5LIB /vcftools/share/perl5/site_perl/:$PERL5LIB
+
+ENV PERL5LIB="/vcftools/share/perl5/site_perl/"

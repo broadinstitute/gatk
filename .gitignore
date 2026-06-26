@@ -46,5 +46,10 @@ funcotator_tmp
 test*.dot
 .vscode/
 
+# To support headroom proxy caching and token compression
+# python -m venv venv
+# . ./venv/bin/activate
+# pip install "headroom-ai[all]"
+# HEADROOM_WORKSPACE_DIR=$PWD/.headroom_data headroom wrap claude --port <unique port>
 venv
 .headroom_data
