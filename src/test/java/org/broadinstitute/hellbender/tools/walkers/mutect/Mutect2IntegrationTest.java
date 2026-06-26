@@ -501,8 +501,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final String interval2 = "20:" + (position2 - 1000) + "-" + (position2 + 1000);
         final String interval3 = "20:" + (position3 - 1000) + "-" + (position3 + 1000);
         runMutect2(DREAM_4_TUMOR, unfilteredVcf, interval1, b37Reference, Optional.of(UNPARSIMONIOUS_GNOMAD_SNIPPET),
-                args -> args.addInterval(interval2).addInterval(interval3).add(M2ArgumentCollection.DEFAULT_AF_LONG_NAME, defaultAF)
-                        .addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME));
+                args -> args.addInterval(interval2).addInterval(interval3)
+                        .add(M2ArgumentCollection.DEFAULT_AF_LONG_NAME, defaultAF)
+                        .addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME)
+                        .add(AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, 1.0));
 
         // when we call on these intervals we should get variants 20:1366255 G->A, 20:1401389 G->C, and 20:2289449 TCTGGGGACAAA->T
         // In the germline resource file the alleles are represented as GT -> AT (equivalent to G->A), GT -> CA (not equivalent to G->C),
