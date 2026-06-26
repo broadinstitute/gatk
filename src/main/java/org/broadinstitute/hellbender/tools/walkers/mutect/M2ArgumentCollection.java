@@ -9,11 +9,13 @@ import org.broadinstitute.barclay.argparser.DeprecatedFeature;
 import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.FlowBasedAlignmentArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.CollectF1R2CountsArgumentCollection;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 
 import java.io.File;
 import java.io.Serializable;
@@ -172,6 +174,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
                 DEFAULT_AF_LONG_NAME, String.valueOf(DEFAULT_AF_FOR_MITO_CALLING),
                 EMISSION_LOD_LONG_NAME, String.valueOf(DEFAULT_MITO_EMISSION_LOD),
                 INITIAL_TUMOR_LOG_10_ODDS_LONG_NAME, String.valueOf(DEFAULT_MITO_INITIAL_LOG_10_ODDS),
+                AssemblyRegionArgumentCollection.ACTIVITY_PROFILE_TYPE_LONG_NAME, ActivityProfile.ProfileType.BAND_PASS.name(),
                 ReadThreadingAssemblerArgumentCollection.RECOVER_ALL_DANGLING_BRANCHES_LONG_NAME, "true",
                 ReadThreadingAssemblerArgumentCollection.PRUNING_LOD_THRESHOLD_LONG_NAME, String.valueOf(DEFAULT_MITO_PRUNING_LOG_ODDS_THRESHOLD),
                 StandardArgumentDefinitions.ANNOTATION_LONG_NAME, "OriginalAlignment"
