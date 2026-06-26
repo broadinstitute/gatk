@@ -22,10 +22,11 @@ public final class SVClusterSortBufferSizingTest {
                 {10000, 100, 10000},
                 {10000, (int) (budget / 10000) - 1, 10000}, // just below the scale-down threshold
                 // Scale-down branch: budget/n is between floor and maxRecordsInRam.
-                {10000, 250_000, (int) (budget / 250_000)}, // 160
-                {10000, 50_000, (int) (budget / 50_000)},   // 800
+                {10000, 5_000, (int) (budget / 5_000)},     // 12M/5k = 2400
+                {10000, 50_000, (int) (budget / 50_000)},   // 12M/50k = 240
                 // Floor clamp: budget/n drops below the floor.
-                {10000, 1_000_000, floor},                  // 40M/1M = 40 -> floored to 100
+                {10000, 250_000, floor},                    // 12M/250k = 48 -> floored to 50
+                {10000, 1_000_000, floor},                  // 12M/1M = 12 -> floored to 50
                 {10000, (int) (budget / floor) + 1, floor}, // just past where budget/n < floor
                 // maxRecordsInRam itself below the scaled value caps the result (the cap=2 forced-spill case).
                 {2, 250_000, 2},
