@@ -755,6 +755,28 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 .add(SVClusterEngineArgumentsCollection.PESR_BREAKEND_WINDOW_NAME, 500);
         multiCallerVcfs.forEach(v -> argsSitesOnly.addVCF(getToolTestDataDir() + v));
 
+        // (e3) Canonical CNV path WITH non-zero sample overlap — the production AoU config that exposed the
+        //      pass-1 OOM. --enable-cnv makes every record multi-allelic CNV and depth-sample-overlap > 0
+        //      forces the genotype-light compact copy-state path (CnvSampleCopyState) in low-mem. CNV-only
+        //      input means no CNV-vs-non-CNV records, so low-mem stays byte-identical to single-pass and is a
+        //      valid oracle for the compact CNV-CNV overlap computation.
+        final ArgumentsBuilder argsCnvSampleOverlap = new ArgumentsBuilder()
+                .addVCF(getToolTestDataDir() + "1kgp_test.cnvs.vcf.gz")
+                .add(SVCluster.PLOIDY_TABLE_LONG_NAME, getToolTestDataDir() + "1kgp.batch1.ploidy.tsv")
+                .add(SVCluster.VARIANT_PREFIX_LONG_NAME, "SVx")
+                .add(SVCluster.ALGORITHM_LONG_NAME, SVCluster.CLUSTER_ALGORITHM.SINGLE_LINKAGE)
+                .add(StandardArgumentDefinitions.REFERENCE_LONG_NAME, REFERENCE_PATH)
+                .addFlag(SVCluster.ENABLE_CNV_LONG_NAME)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_SAMPLE_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_INTERVAL_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.DEPTH_BREAKEND_WINDOW_NAME, 10000000)
+                .add(SVClusterEngineArgumentsCollection.MIXED_SAMPLE_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.MIXED_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.MIXED_BREAKEND_WINDOW_NAME, 2000)
+                .add(SVClusterEngineArgumentsCollection.PESR_SAMPLE_OVERLAP_FRACTION_NAME, 0.5)
+                .add(SVClusterEngineArgumentsCollection.PESR_INTERVAL_OVERLAP_FRACTION_NAME, 0.1)
+                .add(SVClusterEngineArgumentsCollection.PESR_BREAKEND_WINDOW_NAME, 500);
+
         // (g) fast-mode: only carrier genotypes are retained during clustering
         final ArgumentsBuilder argsFastMode = new ArgumentsBuilder()
                 .add(SVCluster.PLOIDY_TABLE_LONG_NAME, getToolTestDataDir() + "1kgp.batch1.ploidy.tsv")
@@ -779,6 +801,7 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
                 {"intervals",       argsIntervals},
                 {"representative",  argsRepresentative},
                 {"enableCnv",       argsCnv},
+                {"cnvSampleOverlap", argsCnvSampleOverlap},
                 {"defragCnv",       argsDefragCnv},
                 {"sitesOnly",       argsSitesOnly},
                 {"fastMode",        argsFastMode},

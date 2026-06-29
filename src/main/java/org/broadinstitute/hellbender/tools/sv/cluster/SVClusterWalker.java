@@ -218,6 +218,12 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
     protected Set<String> samples;
     /** Count of pass-2 sites spilled to the completed-site buffer; for low-mem progress logging. */
     private long lowMemCompletedSites = 0;
+    /**
+     * Shared sample->index dictionary for compact pass-1 CNV copy-state ({@link CnvSampleCopyState}).
+     * Non-null only in low-mem mode when CNV sample overlap is active (so CNV items can't be carrier-dropped
+     * and would otherwise retain a genotype per sample). Built once in {@link #onTraversalStart}.
+     */
+    private CnvSampleCopyState.Dictionary cnvCopyStateDictionary;
     protected String currentContig;
     protected int numVariantsBuilt = 0;
 
@@ -278,18 +284,21 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
      * correct without the genotypes. This bounds the pass-1 active-window weight to O(window) instead of
      * O(window × carriers), which matters at common-variant hotspots with 250k samples.</p>
      */
-    private static final class IndexedSVCallRecord extends SVCallRecord {
+    private static final class IndexedSVCallRecord extends SVCallRecord implements CnvCopyStateProvider {
         private final int pass1Index;
         private final int carrierCount;
+        /** Compact CNV copy state, for genotype-light CNV items under active sample overlap; else null. */
+        private final CnvSampleCopyState cnvCopyState;
 
         IndexedSVCallRecord(final SVCallRecord base, final GenotypesContext genotypes, final int pass1Index,
-                            final int carrierCount) {
+                            final int carrierCount, final CnvSampleCopyState cnvCopyState) {
             super(base.getId(), base.getContigA(), base.getPositionA(), base.getStrandA(), base.getContigB(),
                     base.getPositionB(), base.getStrandB(), base.getType(), base.getComplexSubtype(),
                     base.getComplexEventIntervals(), base.getLength(), base.getEvidence(), base.getAlgorithms(),
                     base.getAlleles(), genotypes, base.getAttributes(), base.getFilters(), base.getLog10PError());
             this.pass1Index = pass1Index;
             this.carrierCount = carrierCount;
+            this.cnvCopyState = cnvCopyState;
         }
 
         int getPass1Index() {
@@ -299,6 +308,11 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
         @Override
         public int getCarrierCount() {
             return carrierCount;
+        }
+
+        @Override
+        public CnvSampleCopyState getCnvCopyState() {
+            return cnvCopyState;
         }
     }
 
@@ -630,6 +644,10 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
             ploidyTable = new PloidyTable(ploidyTablePath.toPath());
         }
         samples = sitesOnly ? Collections.emptySet() : getSamplesForVariants();
+        // Shared sample->index dictionary for compact pass-1 CNV copy-state arrays (low-mem with active
+        // CNV sample overlap only; otherwise unused). Built once so every compact item is index-aligned.
+        cnvCopyStateDictionary = (lowMem && !canDropNonCarrierCnvGenotypes() && !samples.isEmpty())
+                ? new CnvSampleCopyState.Dictionary(samples) : null;
         writer = createVCFWriter(outputFile);
         header = createHeader();
         writer.writeHeader(header);
@@ -724,6 +742,7 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
     protected SVCallRecord lowMemStripAndRegister(final SVCallRecord record) {
         final GenotypesContext strippedGenotypes;
         final int carrierCount;
+        CnvSampleCopyState cnvCopyState = null;
         if (record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV) {
             // CNV: reduce every genotype to CN/RD_CN/ECN with a no-call GT (the form the engine and
             // collapser will see). GT and all other FORMAT fields are dropped to save memory.
@@ -750,13 +769,14 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
                         SVCallRecordUtils.copyCallWithNewGenotypes(record, cnReduced).getCarrierGenotypeList());
                 carrierCount = strippedGenotypes.size(); // all retained genotypes are carriers
             } else {
-                // CNV sample-overlap may run; it iterates every genotyped sample's copy state, so all
-                // reduced genotypes must be retained to preserve clustering parity.
-                strippedGenotypes = cnReduced;
-                // Carrier count among the reduced (no-call GT) genotypes, matching what the engine item
-                // would report via getCarrierGenotypeList().size().
+                // CNV sample-overlap may run; it iterates every genotyped sample's copy state. Rather than
+                // RETAIN one Genotype per sample (~240k objects per item -> OOM in dense regions), capture
+                // the per-sample copy state into compact int[] arrays and feed the engine a genotype-light
+                // item. computeSampleOverlap reads the arrays via CnvCopyStateProvider, byte-identically.
                 carrierCount = SVCallRecordUtils.copyCallWithNewGenotypes(record, cnReduced)
                         .getCarrierGenotypeList().size();
+                cnvCopyState = CnvSampleCopyState.fromGenotypes(cnReduced, cnvCopyStateDictionary);
+                strippedGenotypes = GenotypesContext.NO_GENOTYPES; // copy state now lives in cnvCopyState
             }
         } else {
             // Non-CNV: keep only carrier genotypes, exactly like --fast-mode
@@ -773,7 +793,7 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
         // Stamp the pass-1 index on the record itself rather than pinning it in a global map, so the
         // record is GC-eligible as soon as the cluster engine finalizes its cluster.
         final SVCallRecord stripped =
-                new IndexedSVCallRecord(record, engineGenotypes, pass1RecordIdx++, carrierCount);
+                new IndexedSVCallRecord(record, engineGenotypes, pass1RecordIdx++, carrierCount, cnvCopyState);
         // Reserve a routing slot; actual site indices are filled in by lowMemCaptureCluster /
         // lowMemCaptureUnclustered when the cluster engine emits the cluster.
         routing.add(null);

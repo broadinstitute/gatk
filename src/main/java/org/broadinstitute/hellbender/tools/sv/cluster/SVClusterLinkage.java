@@ -69,7 +69,19 @@ public abstract class SVClusterLinkage<T extends SVLocatable> {
      */
     protected static Double computeSampleOverlap(final SVCallRecord a, final SVCallRecord b) {
         if (a.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV || b.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CNV) {
-            // CNV sample overlap
+            // CNV sample overlap. Memory-compact pass-1 CNV items expose their per-sample copy state as
+            // primitive arrays (CnvSampleCopyState) instead of retaining a Genotype per sample; use those
+            // when present, falling back to the genotype-based computation otherwise. Both paths produce
+            // the identical fraction (locked by SVClusterLinkageCompactCopyStateTest).
+            final CnvSampleCopyState compactA = a instanceof CnvCopyStateProvider ? ((CnvCopyStateProvider) a).getCnvCopyState() : null;
+            final CnvSampleCopyState compactB = b instanceof CnvCopyStateProvider ? ((CnvCopyStateProvider) b).getCnvCopyState() : null;
+            if (compactA != null && compactB != null) {
+                return computeCompactCnvOverlap(compactA, compactB);
+            } else if (compactA != null) {
+                return computeMixedCnvOverlap(compactA, b.getGenotypes());
+            } else if (compactB != null) {
+                return computeMixedCnvOverlap(compactB, a.getGenotypes());
+            }
             final GenotypesContext genotypesA = a.getGenotypes();
             final GenotypesContext genotypesB = b.getGenotypes();
             final Set<String> samples = new HashSet<>(SVUtils.hashMapCapacity(genotypesA.size() + genotypesB.size()));
@@ -97,6 +109,66 @@ public abstract class SVClusterLinkage<T extends SVLocatable> {
             final Set<String> samplesB = b.getCarrierSampleSet();
             return getSampleSetOverlap(samplesA, samplesB);
         }
+    }
+
+    /**
+     * CNV sample overlap when both records carry compact copy state (share one {@link CnvSampleCopyState.Dictionary}).
+     * Replicates {@link #computeSampleOverlap}'s CNV loop over the union of genotyped samples: present side
+     * uses {@code copyState}, missing side uses the other record's {@code expectedCopyState} (ECN).
+     */
+    private static Double computeCompactCnvOverlap(final CnvSampleCopyState a, final CnvSampleCopyState b) {
+        final int n = a.getDictionary().size();
+        int numMatches = 0;
+        int numSamples = 0;
+        for (int i = 0; i < n; i++) {
+            final boolean pa = a.isPresent(i);
+            final boolean pb = b.isPresent(i);
+            if (!pa && !pb) {
+                continue; // sample genotyped in neither record -> not in the union
+            }
+            numSamples++;
+            final int cnA = pa ? a.copyStateAt(i) : b.expectedCopyStateAt(i);
+            final int cnB = pb ? b.copyStateAt(i) : a.expectedCopyStateAt(i);
+            if (cnA == cnB) {
+                numMatches++;
+            }
+        }
+        return numSamples == 0 ? null : numMatches / (double) numSamples;
+    }
+
+    /**
+     * CNV sample overlap when one record is compact ({@code a}) and the other carries genotypes ({@code bGenotypes},
+     * e.g. a carrier-stripped non-CNV record). Union = a's genotyped samples plus any sample present only in
+     * {@code bGenotypes}; per-sample compare matches {@link #computeSampleOverlap}'s CNV loop exactly.
+     */
+    private static Double computeMixedCnvOverlap(final CnvSampleCopyState a, final GenotypesContext bGenotypes) {
+        final CnvSampleCopyState.Dictionary dict = a.getDictionary();
+        int numMatches = 0;
+        int numSamples = 0;
+        // a's genotyped samples (present side a); b may or may not have each.
+        for (int i = a.nextPresent(0); i >= 0; i = a.nextPresent(i + 1)) {
+            final Genotype gB = bGenotypes.get(dict.sampleAt(i));
+            final int cnA = a.copyStateAt(i);
+            final int cnB = gB != null ? CnvSampleCopyState.copyStateOf(gB) : a.expectedCopyStateAt(i);
+            if (cnA == cnB) {
+                numMatches++;
+            }
+            numSamples++;
+        }
+        // Samples present only in b (not genotyped in a): a is the missing side -> a uses b's ECN.
+        for (final Genotype gB : bGenotypes) {
+            final int idx = dict.indexOf(gB.getSampleName());
+            if (idx >= 0 && a.isPresent(idx)) {
+                continue; // already counted in the a-present loop
+            }
+            final int cnA = VariantContextGetters.getAttributeAsInt(gB, GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, -1);
+            final int cnB = CnvSampleCopyState.copyStateOf(gB);
+            if (cnA == cnB) {
+                numMatches++;
+            }
+            numSamples++;
+        }
+        return numSamples == 0 ? null : numMatches / (double) numSamples;
     }
 
     /**
