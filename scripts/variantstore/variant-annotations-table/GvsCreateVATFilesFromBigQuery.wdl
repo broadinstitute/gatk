@@ -43,7 +43,7 @@ workflow GvsCreateVATFilesFromBigQuery {
 
     call MergeVatTSVs {
         input:
-            export_done = BigQueryExportVat.done,
+            go = BigQueryExportVat.done,
             contig_array = contig_array,
             output_path = output_path,
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
@@ -154,7 +154,7 @@ task BigQueryExportVat {
         docker: cloud_sdk_docker
         memory: "2 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     # ------------------------------------------------
@@ -168,7 +168,10 @@ task BigQueryExportVat {
 
 task MergeVatTSVs {
     input {
-        Array[Boolean] export_done
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
+        Array[Boolean] go
         Array[String] contig_array
         String project_id
         String dataset_name

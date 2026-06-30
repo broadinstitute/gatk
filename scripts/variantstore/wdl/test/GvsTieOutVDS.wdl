@@ -23,6 +23,8 @@ workflow GvsTieOutVds {
     String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
+    # Intentionally unused: runs for its side effect of validating VDS tieout; its output is not consumed downstream.
+    #@ except: UnusedCall
     call TieOutVDS {
         input:
             go = true,
@@ -38,6 +40,9 @@ workflow GvsTieOutVds {
 
 task TieOutVDS {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go
         String git_branch_or_tag
         String vds_path

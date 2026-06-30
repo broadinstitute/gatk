@@ -6,6 +6,9 @@ import "GvsUtils.wdl" as Utils
 workflow GvsAssignIds {
 
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String? git_branch_or_tag
     String? git_hash
@@ -59,6 +62,8 @@ workflow GvsAssignIds {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  # Intentionally unused: runs for its side effect of creating the BQ table; its output is not consumed downstream.
+  #@ except: UnusedCall
   call GvsCreateTables.CreateTables as CreateSampleLoadStatusTable {
     input:
       project_id = project_id,
@@ -72,6 +77,8 @@ workflow GvsAssignIds {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  # Intentionally unused: runs for its side effect of creating the BQ table; its output is not consumed downstream.
+  #@ except: UnusedCall
   call GvsCreateTables.CreateTables as CreateSamplePloidyMapTable {
     input:
       project_id = project_id,
@@ -127,6 +134,8 @@ workflow GvsAssignIds {
     }
   }
 
+  # Intentionally unused: runs for its side effect of creating the BQ table; its output is not consumed downstream.
+  #@ except: UnusedCall
   call CreateCostObservabilityTable {
     input:
       project_id = project_id,
@@ -142,7 +151,7 @@ workflow GvsAssignIds {
       dataset_name = dataset_name,
       sample_info_table = sample_info_table,
       samples_are_controls = samples_are_controls,
-      table_creation_done = CreateSampleInfoTable.done,
+      go = CreateSampleInfoTable.done,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -174,7 +183,10 @@ task AssignIds {
     String sample_info_table
     File sample_names
     Boolean samples_are_controls
-    Boolean table_creation_done
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
+    Boolean go
     String cloud_sdk_docker
   }
   meta {
@@ -266,6 +278,9 @@ task CreateCostObservabilityTable {
   input {
     String project_id
     String dataset_name
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go
     String cloud_sdk_docker
   }
@@ -342,7 +357,7 @@ task ValidateSamples {
   runtime {
     docker: cloud_sdk_docker
     memory: "3 GB"
-    cpu: "1"
+    cpu: 1
     preemptible: 1
     maxRetries: 0
     disks: "local-disk 100 HDD"
