@@ -340,7 +340,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1952_sprocket_cleanups
+             - vs_1963_vat_index
          tags:
              - /.*/
    - name: GvsIngestTieout
