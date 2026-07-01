@@ -71,9 +71,7 @@ public final class SVClusterLinkageCompactCopyStateTest extends GATKBaseTest {
         if (rng.nextBoolean()) {
             gb.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, rng.nextInt(5));
         }
-        if (rng.nextBoolean()) {
-            gb.attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, rng.nextInt(4));
-        }
+        gb.attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2); // required by isCarrier
         return gb.make();
     }
 
@@ -118,6 +116,83 @@ public final class SVClusterLinkageCompactCopyStateTest extends GATKBaseTest {
         public CnvSampleCopyState getCnvCopyState() {
             return compact;
         }
+    }
+
+    /** Hom-ref (non-carrier) genotype. */
+    private static Genotype refGenotype(final String sample) {
+        return new GenotypeBuilder(sample,
+                Arrays.asList(Allele.create("N", true), Allele.create("N", true)))
+                .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2) // required by isCarrier
+                .make();
+    }
+
+    /** Minimal non-CNV record carrying compact sorted carrier indices and NO genotypes, like a pass-1 item. */
+    private static final class CompactDelRecord extends SVCallRecord implements CarrierIndexProvider {
+        private final int[] carrierIndices;
+        private final CnvSampleCopyState.Dictionary dict;
+        CompactDelRecord(final SVCallRecord base, final int[] carrierIndices, final CnvSampleCopyState.Dictionary dict) {
+            super(base.getId(), base.getContigA(), base.getPositionA(), base.getStrandA(), base.getContigB(),
+                    base.getPositionB(), base.getStrandB(), base.getType(), base.getComplexSubtype(),
+                    base.getComplexEventIntervals(), base.getLength(), base.getEvidence(), base.getAlgorithms(),
+                    base.getAlleles(), GenotypesContext.NO_GENOTYPES, base.getAttributes(), base.getFilters(),
+                    base.getLog10PError());
+            this.carrierIndices = carrierIndices;
+            this.dict = dict;
+        }
+        @Override
+        public int[] getCarrierSampleIndices() {
+            return carrierIndices;
+        }
+        @Override
+        public java.util.Set<String> getCarrierSampleSet() {
+            final java.util.Set<String> s = new java.util.LinkedHashSet<>();
+            for (final int i : carrierIndices) {
+                s.add(dict.sampleAt(i));
+            }
+            return s;
+        }
+    }
+
+    private static int[] sortedCarrierIndices(final SVCallRecord del, final CnvSampleCopyState.Dictionary dict) {
+        return del.getCarrierSampleSet().stream().mapToInt(dict::indexOf).sorted().toArray();
+    }
+
+    @Test
+    public void testNonCnvCompactMatchesGenotypePath() {
+        final Random rng = new Random(20260701L);
+        final int nSamples = 300;
+        final List<String> allSamples = new ArrayList<>();
+        for (int i = 0; i < nSamples; i++) {
+            allSamples.add("S" + i);
+        }
+        final CnvSampleCopyState.Dictionary dict = new CnvSampleCopyState.Dictionary(allSamples);
+
+        int nonTrivial = 0;
+        for (int trial = 0; trial < 3000; trial++) {
+            final double freqA = rng.nextDouble();
+            final double freqB = rng.nextDouble();
+            final List<Genotype> aGts = new ArrayList<>();
+            final List<Genotype> bGts = new ArrayList<>();
+            for (final String s : allSamples) {
+                aGts.add(rng.nextDouble() < freqA ? carrierGenotype(rng, s) : refGenotype(s));
+                bGts.add(rng.nextDouble() < freqB ? carrierGenotype(rng, s) : refGenotype(s));
+            }
+            final SVCallRecord aGeno = delRecord("A" + trial, aGts);
+            final SVCallRecord bGeno = delRecord("B" + trial, bGts);
+            final SVCallRecord aCompact = new CompactDelRecord(aGeno, sortedCarrierIndices(aGeno, dict), dict);
+            final SVCallRecord bCompact = new CompactDelRecord(bGeno, sortedCarrierIndices(bGeno, dict), dict);
+
+            final Double expected = overlap(aGeno, bGeno);
+            Assert.assertEquals(overlap(aCompact, bCompact), expected, 0.0, "compact != genotype, trial " + trial);
+            Assert.assertEquals(overlap(bCompact, aCompact), expected, 0.0, "compact swapped, trial " + trial);
+            // Mixed: one compact, one genotype (falls back to getCarrierSampleSet, which CompactDelRecord overrides).
+            Assert.assertEquals(overlap(aCompact, bGeno), expected, 0.0, "mixed compact/genotype, trial " + trial);
+
+            if (expected != null && expected > 0.0 && expected < 1.0) {
+                nonTrivial++;
+            }
+        }
+        Assert.assertTrue(nonTrivial > 500, "data did not exercise partial carrier overlaps: " + nonTrivial);
     }
 
     @Test

@@ -278,6 +278,14 @@ public final class SVCluster extends SVClusterWalker {
     }
 
     @Override
+    protected boolean clusteringReadsGenotypesDirectly() {
+        // CNV defragmentation uses CNVLinkage, which reads carrier genotypes per sample directly, so the
+        // genotype-light compact pass-1 representations are unsafe there. The canonical engine (including
+        // --enable-cnv) consumes genotypes only via computeSampleOverlap / getCarrierSampleSet.
+        return algorithm == CLUSTER_ALGORITHM.DEFRAGMENT_CNV;
+    }
+
+    @Override
     protected boolean canUseGenotypeLightPass1Items() {
         return canUseGenotypeLightPass1Items(algorithm,
                 clusterParameterArgs.getDepthParameters().getSampleOverlap(),

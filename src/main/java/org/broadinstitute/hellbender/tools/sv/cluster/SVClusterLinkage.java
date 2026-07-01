@@ -104,11 +104,46 @@ public abstract class SVClusterLinkage<T extends SVLocatable> {
             final int numSamples = samples.size();
             return (numMatches / (double) numSamples);
         } else {
-            // Non-CNV
+            // Non-CNV: overlap depends only on the carrier sample sets. Memory-compact pass-1 items expose
+            // their carriers as sorted sample-index arrays (CarrierIndexProvider) instead of genotypes; use
+            // a sorted-merge intersection when both do, else the carrier-set path. Both give the identical
+            // fraction (locked by SVClusterLinkageCompactCopyStateTest).
+            final int[] idxA = a instanceof CarrierIndexProvider ? ((CarrierIndexProvider) a).getCarrierSampleIndices() : null;
+            final int[] idxB = b instanceof CarrierIndexProvider ? ((CarrierIndexProvider) b).getCarrierSampleIndices() : null;
+            if (idxA != null && idxB != null) {
+                return getSortedIndexOverlap(idxA, idxB);
+            }
             final Set<String> samplesA = a.getCarrierSampleSet();
             final Set<String> samplesB = b.getCarrierSampleSet();
             return getSampleSetOverlap(samplesA, samplesB);
         }
+    }
+
+    /**
+     * Carrier overlap for two sorted, de-duplicated sample-index arrays: {@code |intersection| / max(|a|,|b|)},
+     * or 1.0 when both are empty. Byte-identical to {@link #getSampleSetOverlap} (which uses the same
+     * numerator and {@code max}-size denominator) since both are set cardinalities.
+     */
+    private static Double getSortedIndexOverlap(final int[] a, final int[] b) {
+        final int denom = Math.max(a.length, b.length);
+        if (denom == 0) {
+            return 1.0;
+        }
+        int intersection = 0;
+        int i = 0;
+        int j = 0;
+        while (i < a.length && j < b.length) {
+            if (a[i] == b[j]) {
+                intersection++;
+                i++;
+                j++;
+            } else if (a[i] < b[j]) {
+                i++;
+            } else {
+                j++;
+            }
+        }
+        return intersection / (double) denom;
     }
 
     /**
