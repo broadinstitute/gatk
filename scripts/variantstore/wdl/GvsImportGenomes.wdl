@@ -128,7 +128,7 @@ workflow GvsImportGenomes {
 
   # Compute effective scatter width, clamped to not exceed number of samples
   Int effective_scatter_width = if (defined(load_data_scatter_width)) then
-                                  min(select_first([load_data_scatter_width]), num_samples)
+                                  if select_first([load_data_scatter_width]) < num_samples then select_first([load_data_scatter_width]) else num_samples
                                 else num_samples
 
   # Compute batch size using ceiling division to ensure we don't exceed the requested scatter width.
