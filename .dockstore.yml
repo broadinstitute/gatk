@@ -285,7 +285,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - VS-1831
          tags:
              - /.*/
    - name: GvsBeta
