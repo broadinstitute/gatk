@@ -126,9 +126,16 @@ workflow GvsImportGenomes {
     }
   }
 
-  # At least 1, per limits above not more than 20.
-  # But if it's a beta customer, use the number computed above
-  Int effective_load_data_batch_size = if (defined(load_data_scatter_width)) then num_samples / select_first([load_data_scatter_width])
+  # Compute effective scatter width, clamped to not exceed number of samples
+  Int effective_scatter_width = if (defined(load_data_scatter_width)) then
+                                  if select_first([load_data_scatter_width]) < num_samples then select_first([load_data_scatter_width]) else num_samples
+                                else num_samples
+
+  # Compute batch size using ceiling division to ensure we don't exceed the requested scatter width.
+  # Using (x + y - 1) / y implementation of ceil(x/y)
+  # Example: 10 samples, scatter_width 6 -> batch_size = ceil(10/6) = 2 -> actual tasks = ceil(10/2) ≈ 5 ≤ 6
+  Int effective_load_data_batch_size = if (defined(load_data_scatter_width)) then
+                                         (num_samples + effective_scatter_width - 1) / effective_scatter_width
                                        else if num_samples < max_scatter_for_user then 1
                                          else if is_wgs then num_samples / max_scatter_for_user
                                            else if num_samples < 5001 then 20
