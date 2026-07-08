@@ -1486,8 +1486,10 @@ task LoadEntrezDataIntoBigQuery {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # Remove the leading comment character on the first line so BigQuery will name the columns all nice.
-        sed -i 's/^\#tax_id/tax_id/' ~{entrez_data_file}
+        # Fix the header line: remove the leading comment character, and replace dots with underscores in
+        # column names (BigQuery V1 character map does not support dots in field names).
+        # Write to a temp file rather than modifying in-place, as the localized input file may be read-only.
+        sed '1{s/^\#tax_id/tax_id/; s/\./_/g}' ~{entrez_data_file} > entrez_data_processed.tsv
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
@@ -1498,7 +1500,7 @@ task LoadEntrezDataIntoBigQuery {
 
         if [ $BQ_SHOW_RC -ne 0 ]; then
             echo "Loading Entrez annotations into table ~{dataset_name}.~{entrez_table_name}"
-            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 --autodetect ~{dataset_name}.~{entrez_table_name} ~{entrez_data_file}
+            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 --autodetect ~{dataset_name}.~{entrez_table_name} entrez_data_processed.tsv
         else
             echo "Found existing Entrez annotations table ~{dataset_name}.~{entrez_table_name}. Using it"
         fi
