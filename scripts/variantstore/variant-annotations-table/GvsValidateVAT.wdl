@@ -164,6 +164,14 @@ workflow GvsValidateVat {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
+    call SpotCheckForEntrezGeneId {
+        input:
+            project_id = project_id,
+            fq_vat_table = fq_vat_table,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
     # Check if the input boolean `is_small_callset` is defined,
     # if not use the `GetNumSamples` task to find the number of samples in the callset and set the flag if it's < 10000
     Boolean callset_is_small = select_first([is_small_callset, select_first([GetNumSamplesLoaded.num_samples, 1]) < 10000])
@@ -210,6 +218,7 @@ workflow GvsValidateVat {
                            ClinvarSignificance.pass,
                            SchemaAAChangeAndExonNumberConsistent.pass,
                            SpotCheckForManeSelectTranscript.pass,
+                           SpotCheckForEntrezGeneId.pass,
                            SpotCheckForAAChangeAndExonNumberConsistency.pass,
                            CheckForNullColumns.pass
                            ],
@@ -229,6 +238,7 @@ workflow GvsValidateVat {
                                    ClinvarSignificance.name,
                                    SchemaAAChangeAndExonNumberConsistent.name,
                                    SpotCheckForManeSelectTranscript.name,
+                                   SpotCheckForEntrezGeneId.name,
                                    SpotCheckForAAChangeAndExonNumberConsistency.name,
                                    CheckForNullColumns.name
                                    ],
@@ -248,6 +258,7 @@ workflow GvsValidateVat {
                                      ClinvarSignificance.result,
                                      SchemaAAChangeAndExonNumberConsistent.result,
                                      SpotCheckForManeSelectTranscript.result,
+                                     SpotCheckForEntrezGeneId.result,
                                      SpotCheckForAAChangeAndExonNumberConsistency.result,
                                      CheckForNullColumns.result
                                      ],
@@ -273,6 +284,7 @@ workflow GvsValidateVat {
                            DuplicateAnnotations.pass,
                            SchemaAAChangeAndExonNumberConsistent.pass,
                            SpotCheckForManeSelectTranscript.pass,
+                           SpotCheckForEntrezGeneId.pass,
                            ],
                 validation_names = [
                                    EnsureVatTableHasVariants.name,
@@ -289,6 +301,7 @@ workflow GvsValidateVat {
                                    DuplicateAnnotations.name,
                                    SchemaAAChangeAndExonNumberConsistent.name,
                                    SpotCheckForManeSelectTranscript.name,
+                                   SpotCheckForEntrezGeneId.name,
                                    ],
                 validation_results = [
                                      EnsureVatTableHasVariants.result,
@@ -305,6 +318,7 @@ workflow GvsValidateVat {
                                      DuplicateAnnotations.result,
                                      SchemaAAChangeAndExonNumberConsistent.result,
                                      SpotCheckForManeSelectTranscript.result,
+                                     SpotCheckForEntrezGeneId.result,
                                      ],
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
@@ -1461,6 +1475,78 @@ task SpotCheckForManeSelectTranscript {
     output {
         Boolean pass = read_boolean(pf_file)
         String name = "SpotCheckForManeSelectTranscript"
+        String result = read_string(results_file)
+    }
+}
+
+task SpotCheckForEntrezGeneId {
+    input {
+        String project_id
+        String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
+        String last_modified_timestamp
+        String cloud_sdk_docker
+    }
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
+
+    # This test runs a spot check on the VAT table to verify that known Entrez Gene IDs are present.
+    # TP53 (GeneID=7157) and BRCA1 (GeneID=672) are used as reference genes.
+    # Update these GeneIDs if the callset does not contain variants in these genes.
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+        # bq query --max_rows check: ok single row
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
+        COUNT (DISTINCT entrez_gene_id) FROM
+        (
+            SELECT entrez_gene_id
+            FROM `~{fq_vat_table}`
+            WHERE entrez_gene_id = 7157
+        UNION ALL
+            SELECT entrez_gene_id
+            FROM `~{fq_vat_table}`
+            WHERE entrez_gene_id = 672
+        )' > output.csv
+
+        NUMVARS=$(python3 -c "csvObj=open('output.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
+
+        echo "false" > ~{pf_file}
+        # if the result of the bq call and the csv parsing is a series of digits, then check that it isn't 0
+        if [[ $NUMVARS =~ ^[0-9]+$ ]]; then
+            if [[ $NUMVARS -eq 2 ]]; then
+                echo "true" > ~{pf_file}
+                echo "The VAT table ~{fq_vat_table} has been successfully spot checked for known Entrez Gene IDs." > ~{results_file}
+            else
+                echo "The VAT table ~{fq_vat_table} has failed the spot check for known Entrez Gene IDs." > ~{results_file}
+            fi
+        # otherwise, something is off, so return the output from the bq query call
+        else
+            echo "Something went wrong. The attempt to count the spot checked entries returned: " $(cat output.csv) >&2
+            exit 1
+        fi
+    >>>
+
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: cloud_sdk_docker
+        memory: "1 GB"
+        preemptible: 3
+        cpu: 1
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        Boolean pass = read_boolean(pf_file)
+        String name = "SpotCheckForEntrezGeneId"
         String result = read_string(results_file)
     }
 }

@@ -432,6 +432,12 @@
     "mode": "Nullable"
   },
   {
+    "description": "NCBI Entrez Gene ID",
+    "name": "entrez_gene_id",
+    "type": "Integer",
+    "mode": "Nullable"
+  },
+  {
     "description": "HGNC (HUGO Gene Nomenclature Committee) Symbol",
     "name": "hgnc_symbol",
     "type": "String",

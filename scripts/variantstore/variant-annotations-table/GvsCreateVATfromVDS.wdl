@@ -81,6 +81,7 @@ workflow GvsCreateVATfromVDS {
 
     String region = "us-central1"
     File mane_annotation_file = "gs://gvs_quickstart_storage/MANE/MANE_human/release_1.4/MANE.GRCh38.v1.4.summary.txt"
+    File entrez_annotation_file = "gs://gvs-internal/Entrez/gene2ensembl_human.tsv"
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
     # no calling WDLs that might supply `git_hash`).
@@ -181,6 +182,15 @@ workflow GvsCreateVATfromVDS {
                 dataset_name = dataset_name,
                 mane_table_name = "mane_annotations",
                 mane_data_file = mane_annotation_file,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+
+        call LoadEntrezDataIntoBigQuery {
+            input:
+                project_id = project_id,
+                dataset_name = dataset_name,
+                entrez_table_name = "entrez_annotations",
+                entrez_data_file = entrez_annotation_file,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
@@ -371,6 +381,7 @@ workflow GvsCreateVATfromVDS {
                 variant_transcript_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
                 genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
                 mane_table_name = LoadManeDataIntoBigQuery.mane_table,
+                entrez_table_name = LoadEntrezDataIntoBigQuery.entrez_table,
                 vep_loftee_cooked_table_name = BigQueryCookVepAndLofteeRawAnnotations.cooked_table_name,
                 run_vep_loftee_update = generate_vep_and_loftee_annotations,
                 project_id = project_id,
@@ -1454,6 +1465,59 @@ task LoadManeDataIntoBigQuery {
     }
 }
 
+task LoadEntrezDataIntoBigQuery {
+    meta {
+        # volatile: true so that call caching does not prevent this task from loading Entrez data
+        # into the current dataset. Without this, a cache hit would return the correct output
+        # string ("entrez_annotations") but skip the actual bq load, leaving the table absent.
+        volatile: true
+    }
+
+    input {
+        String project_id
+        String dataset_name
+        String entrez_table_name
+        File entrez_data_file
+        String cloud_sdk_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Remove the leading comment character on the first line so BigQuery will name the columns all nice.
+        sed -i 's/^\#tax_id/tax_id/' ~{entrez_data_file}
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+        set +o errexit
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{entrez_table_name} > /dev/null
+        BQ_SHOW_RC=$?
+        set -o errexit
+
+        if [ $BQ_SHOW_RC -ne 0 ]; then
+            echo "Loading Entrez annotations into table ~{dataset_name}.~{entrez_table_name}"
+            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 --autodetect ~{dataset_name}.~{entrez_table_name} ~{entrez_data_file}
+        else
+            echo "Found existing Entrez annotations table ~{dataset_name}.~{entrez_table_name}. Using it"
+        fi
+    >>>
+
+    runtime {
+        docker: cloud_sdk_docker
+        memory: "3 GB"
+        preemptible: 3
+        cpu: 1
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        String entrez_table = entrez_table_name
+        Boolean done = true
+    }
+}
+
 task BigQueryLoadJson {
     meta {
         # since the WDL will not see the updated data (its getting put in a gcp bucket)
@@ -1466,6 +1530,7 @@ task BigQueryLoadJson {
         File variant_transcript_schema
         File genes_schema
         String mane_table_name
+        String entrez_table_name
         String? vep_loftee_cooked_table_name
         Boolean run_vep_loftee_update
         String project_id
@@ -1526,6 +1591,10 @@ task BigQueryLoadJson {
         echo "Adding the Mane Plus Clinical annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
         'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Plus Clinical" AND vtt.transcript is not null;'
+
+        echo "Adding Entrez gene ID data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.entrez_gene_id = CAST(entrez.GeneID AS INT64) FROM `~{dataset_name}.~{entrez_table_name}` entrez WHERE vtt.transcript = entrez.Ensembl_RNA_identifier AND entrez.tax_id = 9606 AND vtt.transcript is not null;'
 
         if [[ "~{run_vep_loftee_update}" == "true" ]]; then
         echo "Adding VEP + LOFTEE annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
@@ -1650,7 +1719,7 @@ task BigQueryLoadJson {
             # v.hgvsc AS splice_distance
             v.dbsnp_rsid,
             v.gene_id,
-            # v.entrez_gene_id,
+            v.entrez_gene_id,
             # g.hgnc_gene_id,
             g.gene_omim_id,
             CASE WHEN ( v.transcript is not null and v.is_canonical_transcript is not True)
