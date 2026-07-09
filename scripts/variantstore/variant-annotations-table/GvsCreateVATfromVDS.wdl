@@ -81,6 +81,9 @@ workflow GvsCreateVATfromVDS {
 
     String region = "us-central1"
     File mane_annotation_file = "gs://gvs_quickstart_storage/MANE/MANE_human/release_1.4/MANE.GRCh38.v1.4.summary.txt"
+
+    # gene2ensembl_human.tsv is extracted and filtered for humans from https://ftp.ncbi.nlm.nih.gov/gene/DATA/gene2ensembl.gz
+    # There is also a more comprehensive and very large https://ftp.ncbi.nlm.nih.gov/gene/DATA/gene_info.gz to use if necessary.
     File entrez_annotation_file = "gs://gvs_quickstart_storage/Entrez/gene2ensembl_human.tsv"
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
