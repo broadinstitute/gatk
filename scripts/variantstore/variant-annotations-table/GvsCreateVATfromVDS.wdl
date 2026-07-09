@@ -1489,8 +1489,14 @@ task LoadEntrezDataIntoBigQuery {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # Fix the header line: remove the leading comment character, and replace dots with underscores in
-        # column names (BigQuery V1 character map does not support dots in field names).
+        # Fix the header line: remove the leading comment character (#tax_id -> tax_id), and replace dots
+        # with underscores in column names (BigQuery V1 character map does not support dots in field names).
+        # Affected columns: RNA_nucleotide_accession.version -> RNA_nucleotide_accession_version,
+        #                   protein_accession.version -> protein_accession_version.
+        # Ensembl_rna_identifier has no dots and is unchanged — this is the column used in the UPDATE join.
+        # Column order in NCBI gene2ensembl: tax_id, GeneID, Ensembl_gene_identifier,
+        #   RNA_nucleotide_accession_version, Ensembl_rna_identifier, protein_accession_version,
+        #   Ensembl_protein_identifier — schema below must match this order exactly.
         # Write to a temp file rather than modifying in-place, as the localized input file may be read-only.
         sed '1{s/^\#tax_id/tax_id/; s/\./_/g}' ~{entrez_data_file} > entrez_data_processed.tsv
 
@@ -1503,10 +1509,43 @@ task LoadEntrezDataIntoBigQuery {
 
         if [ $BQ_SHOW_RC -ne 0 ]; then
             echo "Loading Entrez annotations into table ~{dataset_name}.~{entrez_table_name}"
-            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 --autodetect ~{dataset_name}.~{entrez_table_name} entrez_data_processed.tsv
+            # Explicit schema ensures GeneID loads as INTEGER (not STRING), making the CAST in the UPDATE
+            # a safe no-op rather than depending on autodetect inference. Column order must match file exactly.
+            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 \
+                --schema='tax_id:INTEGER,GeneID:INTEGER,Ensembl_gene_identifier:STRING,RNA_nucleotide_accession_version:STRING,Ensembl_rna_identifier:STRING,protein_accession_version:STRING,Ensembl_protein_identifier:STRING' \
+                ~{dataset_name}.~{entrez_table_name} entrez_data_processed.tsv
         else
             echo "Found existing Entrez annotations table ~{dataset_name}.~{entrez_table_name}. Using it"
         fi
+
+        # Emit the loaded table schema in prettyjson so maintainers can confirm column types in logs.
+        bq --apilog=false --project_id=~{project_id} show --format=prettyjson ~{project_id}:~{dataset_name}.~{entrez_table_name}
+
+        # Validate the table regardless of whether it was just loaded or already existed,
+        # so a malformed preexisting table is caught before the UPDATE join runs.
+        echo "Validating Entrez table ~{dataset_name}.~{entrez_table_name}"
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+            'SELECT COUNTIF(SAFE_CAST(GeneID AS INT64) IS NULL) as bad_gene_ids, COUNTIF(Ensembl_rna_identifier IS NULL) as null_transcripts FROM `~{project_id}.~{dataset_name}.~{entrez_table_name}`' > validation.csv
+        python3 -c "
+import csv, subprocess, sys
+with open('validation.csv') as f:
+    reader = csv.DictReader(f)
+    try:
+        row = next(reader)
+    except StopIteration:
+        sys.exit('ERROR: validation query returned no rows — bq output may be malformed')
+    bad_ids = int(row['bad_gene_ids'])
+    null_tx = int(row['null_transcripts'])
+    if bad_ids > 0 or null_tx > 0:
+        print(f'ERROR: {bad_ids} rows have NULL or non-numeric GeneID, {null_tx} rows have NULL Ensembl_rna_identifier', flush=True)
+        print('===== Entrez bad rows (limit 50) =====', flush=True)
+        subprocess.run([
+            'bq', '--apilog=false', '--project_id=~{project_id}', 'query', '--format=csv', '--use_legacy_sql=false',
+            'SELECT GeneID, Ensembl_rna_identifier FROM \`~{project_id}.~{dataset_name}.~{entrez_table_name}\` WHERE SAFE_CAST(GeneID AS INT64) IS NULL OR Ensembl_rna_identifier IS NULL LIMIT 50'
+        ], check=True)
+        sys.exit('Entrez table validation failed — see bad rows above')
+    print(f'Entrez table validation passed: all GeneIDs are numeric, no null transcript identifiers')
+"
     >>>
 
     runtime {
@@ -1599,7 +1638,7 @@ task BigQueryLoadJson {
 
         echo "Adding Entrez gene ID data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
-        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.entrez_gene_id = CAST(entrez.GeneID AS INT64) FROM `~{dataset_name}.~{entrez_table_name}` entrez WHERE vtt.transcript = entrez.Ensembl_RNA_identifier AND entrez.tax_id = 9606 AND vtt.transcript is not null;'
+        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.entrez_gene_id = CAST(entrez.GeneID AS INT64) FROM `~{dataset_name}.~{entrez_table_name}` entrez WHERE vtt.transcript = entrez.Ensembl_rna_identifier AND entrez.tax_id = 9606 AND vtt.transcript is not null;'
 
         if [[ "~{run_vep_loftee_update}" == "true" ]]; then
         echo "Adding VEP + LOFTEE annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
