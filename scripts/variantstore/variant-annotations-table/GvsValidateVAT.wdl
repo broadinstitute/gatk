@@ -1493,8 +1493,8 @@ task SpotCheckForEntrezGeneId {
     String results_file = "results.txt"
 
     # This test runs a spot check on the VAT table to verify that known Entrez Gene IDs are present.
-    # TP53 (GeneID=7157) and BRCA1 (GeneID=672) are used as reference genes.
-    # Update these GeneIDs if the callset does not contain variants in these genes.
+    # AAR2 (GeneID=25980, chr20) and ABCB7 (GeneID=22, chrX) are used as reference genes,
+    # as both are present in quickstart and full callsets.
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.
@@ -1509,11 +1509,11 @@ task SpotCheckForEntrezGeneId {
         (
             SELECT entrez_gene_id
             FROM `~{fq_vat_table}`
-            WHERE entrez_gene_id = 7157
+            WHERE entrez_gene_id = 25980
         UNION ALL
             SELECT entrez_gene_id
             FROM `~{fq_vat_table}`
-            WHERE entrez_gene_id = 672
+            WHERE entrez_gene_id = 22
         )' > output.csv
 
         NUMVARS=$(python3 -c "csvObj=open('output.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
