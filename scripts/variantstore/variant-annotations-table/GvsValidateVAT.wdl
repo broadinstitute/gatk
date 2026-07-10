@@ -1493,8 +1493,10 @@ task SpotCheckForEntrezGeneId {
     String results_file = "results.txt"
 
     # This test runs a spot check on the VAT table to verify that known Entrez Gene IDs are present.
-    # AAR2 (GeneID=25980, chr20) and ABCB7 (GeneID=22, chrX) are used as reference genes,
-    # as both are present in quickstart and full callsets.
+    # AAR2 (GeneID=25980, chr20) and ABCB7 (GeneID=22, chrX) are used as reference genes because both
+    # are present in the quickstart callset (chr20 and chrX only) as well as full callsets.
+    # If the quickstart data is refreshed and these genes are no longer covered, update the GeneIDs here
+    # to genes confirmed present in the new quickstart dataset.
 
     command <<<
         # Prepend date, time and pwd to xtrace log entries.

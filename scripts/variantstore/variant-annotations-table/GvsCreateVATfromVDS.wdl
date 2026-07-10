@@ -83,7 +83,10 @@ workflow GvsCreateVATfromVDS {
     File mane_annotation_file = "gs://gvs_quickstart_storage/MANE/MANE_human/release_1.4/MANE.GRCh38.v1.4.summary.txt"
 
     # gene2ensembl_human.tsv is extracted and filtered for humans from https://ftp.ncbi.nlm.nih.gov/gene/DATA/gene2ensembl.gz
-    # There is also a more comprehensive and very large https://ftp.ncbi.nlm.nih.gov/gene/DATA/gene_info.gz to use if necessary.
+    # gene2ensembl provides Entrez-to-Ensembl transcript mappings, which is all that is needed for the VAT join.
+    # gene_info.gz (https://ftp.ncbi.nlm.nih.gov/gene/DATA/gene_info.gz) is a larger alternative that includes gene
+    # descriptions, synonyms, and other metadata, but is significantly larger and slower to load. Prefer gene2ensembl
+    # unless additional gene-level annotations beyond the Entrez ID are required.
     File entrez_annotation_file = "gs://gvs_quickstart_storage/Entrez/gene2ensembl_human.tsv"
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
@@ -1637,6 +1640,9 @@ task BigQueryLoadJson {
         'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Plus Clinical" AND vtt.transcript is not null;'
 
         echo "Adding Entrez gene ID data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+        # tax_id = 9606 filters for Homo sapiens. GVS exclusively processes human data, so this is intentionally
+        # hardcoded rather than parameterized. The filter also acts as a safeguard in case an unfiltered
+        # gene2ensembl file (covering all species) is passed instead of the human-only extract.
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
         'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.entrez_gene_id = CAST(entrez.GeneID AS INT64) FROM `~{dataset_name}.~{entrez_table_name}` entrez WHERE vtt.transcript = entrez.Ensembl_rna_identifier AND entrez.tax_id = 9606 AND vtt.transcript is not null;'
 
