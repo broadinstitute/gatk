@@ -172,6 +172,16 @@ workflow GvsValidateVat {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
+    # Runs for both large and small callsets (unlike CheckForNullColumns, which is large-only): entrez_gene_id
+    # is populated for every callset, and the quickstart (small) is where coverage is most easily regressed.
+    call CheckEntrezGeneIdCoverage {
+        input:
+            project_id = project_id,
+            fq_vat_table = fq_vat_table,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
+            variants_docker = effective_variants_docker,
+    }
+
     # Check if the input boolean `is_small_callset` is defined,
     # if not use the `GetNumSamples` task to find the number of samples in the callset and set the flag if it's < 10000
     Boolean callset_is_small = select_first([is_small_callset, select_first([GetNumSamplesLoaded.num_samples, 1]) < 10000])
@@ -220,7 +230,8 @@ workflow GvsValidateVat {
                            SpotCheckForManeSelectTranscript.pass,
                            SpotCheckForEntrezGeneId.pass,
                            SpotCheckForAAChangeAndExonNumberConsistency.pass,
-                           CheckForNullColumns.pass
+                           CheckForNullColumns.pass,
+                           CheckEntrezGeneIdCoverage.pass
                            ],
                 validation_names = [
                                    EnsureVatTableHasVariants.name,
@@ -240,7 +251,8 @@ workflow GvsValidateVat {
                                    SpotCheckForManeSelectTranscript.name,
                                    SpotCheckForEntrezGeneId.name,
                                    SpotCheckForAAChangeAndExonNumberConsistency.name,
-                                   CheckForNullColumns.name
+                                   CheckForNullColumns.name,
+                                   CheckEntrezGeneIdCoverage.name
                                    ],
                 validation_results = [
                                      EnsureVatTableHasVariants.result,
@@ -260,7 +272,8 @@ workflow GvsValidateVat {
                                      SpotCheckForManeSelectTranscript.result,
                                      SpotCheckForEntrezGeneId.result,
                                      SpotCheckForAAChangeAndExonNumberConsistency.result,
-                                     CheckForNullColumns.result
+                                     CheckForNullColumns.result,
+                                     CheckEntrezGeneIdCoverage.result
                                      ],
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
@@ -285,6 +298,7 @@ workflow GvsValidateVat {
                            SchemaAAChangeAndExonNumberConsistent.pass,
                            SpotCheckForManeSelectTranscript.pass,
                            SpotCheckForEntrezGeneId.pass,
+                           CheckEntrezGeneIdCoverage.pass,
                            ],
                 validation_names = [
                                    EnsureVatTableHasVariants.name,
@@ -302,6 +316,7 @@ workflow GvsValidateVat {
                                    SchemaAAChangeAndExonNumberConsistent.name,
                                    SpotCheckForManeSelectTranscript.name,
                                    SpotCheckForEntrezGeneId.name,
+                                   CheckEntrezGeneIdCoverage.name,
                                    ],
                 validation_results = [
                                      EnsureVatTableHasVariants.result,
@@ -319,6 +334,7 @@ workflow GvsValidateVat {
                                      SchemaAAChangeAndExonNumberConsistent.result,
                                      SpotCheckForManeSelectTranscript.result,
                                      SpotCheckForEntrezGeneId.result,
+                                     CheckEntrezGeneIdCoverage.result,
                                      ],
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
@@ -1505,17 +1521,19 @@ task SpotCheckForEntrezGeneId {
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # entrez_gene_id is a repeated field, so membership is tested with `<id> IN UNNEST(entrez_gene_id)`
+        # rather than an equality comparison.
         # bq query --max_rows check: ok single row
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
-        COUNT (DISTINCT entrez_gene_id) FROM
+        COUNT (DISTINCT gene) FROM
         (
-            SELECT entrez_gene_id
+            SELECT 25980 AS gene
             FROM `~{fq_vat_table}`
-            WHERE entrez_gene_id = 25980
+            WHERE 25980 IN UNNEST(entrez_gene_id)
         UNION ALL
-            SELECT entrez_gene_id
+            SELECT 22 AS gene
             FROM `~{fq_vat_table}`
-            WHERE entrez_gene_id = 22
+            WHERE 22 IN UNNEST(entrez_gene_id)
         )' > output.csv
 
         NUMVARS=$(tail -n +2 output.csv | head -n1 | tr -d '\r')
@@ -1584,6 +1602,43 @@ task CheckForNullColumns {
     output {
         Boolean pass = read_boolean(pf_file)
         String name = "CheckForNullColumns"
+        String result = read_string(results_file)
+    }
+}
+
+task CheckEntrezGeneIdCoverage {
+    input {
+        String project_id
+        String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
+        String last_modified_timestamp
+        String variants_docker
+    }
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
+
+    command <<<
+        # check_entrez_vat_annotations.py fails if entrez_gene_id coverage over gene-bearing rows falls below
+        # the threshold (guards against regressing to the sparse transcript-keyed join) or if any gene_id maps
+        # to more than one distinct entrez_gene_id array (entrez_gene_id is a gene-level attribute).
+        python3 /app/check_entrez_vat_annotations.py --fq_vat_table ~{fq_vat_table} \
+            --query_project ~{project_id} \
+            --pass_file_output ~{pf_file} \
+            --results_file_output ~{results_file}
+    >>>
+
+    runtime {
+        docker: variants_docker
+        memory: "3 GB"
+        disks: "local-disk 10 HDD"
+        preemptible: 3
+        cpu: 1
+    }
+
+    output {
+        Boolean pass = read_boolean(pf_file)
+        String name = "CheckEntrezGeneIdCoverage"
         String result = read_string(results_file)
     }
 }
