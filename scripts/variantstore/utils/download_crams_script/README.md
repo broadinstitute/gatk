@@ -11,7 +11,6 @@ This folder includes a script that picks random samples from the official 1000 G
 ## Quick start
 
 ```bash
-cd /Users/hatcher/Projects/1000_genome_crams
 chmod +x ./get_1kg_crams.sh
 ./get_1kg_crams.sh 10 ./downloads download
 ```
@@ -19,7 +18,6 @@ chmod +x ./get_1kg_crams.sh
 ## See sample names first (no download)
 
 ```bash
-cd /Users/hatcher/Projects/1000_genome_crams
 ./get_1kg_crams.sh 10 ./downloads list
 ```
 
