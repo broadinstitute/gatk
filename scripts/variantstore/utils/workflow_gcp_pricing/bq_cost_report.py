@@ -13,6 +13,7 @@ Example:
 """
 
 import argparse
+import re
 import sys
 from typing import Optional
 
@@ -62,6 +63,9 @@ STAGES = [
     ),
 ]
 
+# Strictly allow project.dataset identifiers and prevent malformed table names.
+DATASET_PATTERN = re.compile(r"^[A-Za-z0-9:.\-]+\.[A-Za-z0-9_]+$")
+
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -90,6 +94,14 @@ def rate_label(cost_type: str) -> tuple[str, float]:
     return "Storage API Scanned", STORAGE_API_RATE_PER_TIB
 
 
+def validate_dataset_identifier(dataset: str) -> None:
+    if not DATASET_PATTERN.fullmatch(dataset):
+        raise ValueError(
+            f"Invalid dataset '{dataset}'. Expected format: project.dataset "
+            "with only letters/numbers/._:- in project and letters/numbers/_ in dataset."
+        )
+
+
 # ── Per-table report ──────────────────────────────────────────────────────────
 
 def report_table(client: bigquery.Client, table: str) -> float:
@@ -107,8 +119,7 @@ def report_table(client: bigquery.Client, table: str) -> float:
             rows = list(client.query(sql).result())
             gib = float(rows[0].gib) if rows and rows[0].gib is not None else 0.0
         except Exception as exc:
-            print(f"\n  ⚠  {display_name}: query failed — {exc}")
-            continue
+            raise RuntimeError(f"{display_name}: query failed for table '{table}': {exc}") from exc
 
         tib = gib / GIB_PER_TIB
         cost = cost_for_gib(gib, cost_type)
@@ -147,13 +158,25 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    try:
+        for dataset in args.datasets:
+            validate_dataset_identifier(dataset)
+    except ValueError as exc:
+        print(f"Error: {exc}", file=sys.stderr)
+        sys.exit(2)
+
     client = bigquery.Client(project=args.project)
 
     tables = [f"{ds}.{COST_OBSERVABILITY_TABLE}" for ds in args.datasets]
 
     grand_total = 0.0
-    for table in tables:
-        grand_total += report_table(client, table)
+    try:
+        for table in tables:
+            grand_total += report_table(client, table)
+    except Exception as exc:
+        print(f"\nError: {exc}", file=sys.stderr)
+        print("Aborted before totals could be completed.", file=sys.stderr)
+        sys.exit(1)
 
     if len(tables) > 1:
         print(f"\n{'=' * 72}")

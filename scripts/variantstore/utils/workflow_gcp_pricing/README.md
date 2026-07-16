@@ -13,6 +13,8 @@ For each input `project.dataset`, the script queries:
 
 Then it prints per-stage GiB/TiB and estimated USD cost, plus table total.
 
+If any stage query fails, the script aborts and exits non-zero so partial totals are not reported as complete.
+
 ## Requirements
 
 - Python 3.9+
@@ -44,6 +46,10 @@ Optional billing/job project:
 ```bash
 python bq_cost_report.py --project my-billing-project project_a.dataset_x
 ```
+
+Input validation:
+- Each dataset must be in `project.dataset` format.
+- Invalid identifiers are rejected before query execution.
 
 ## Example output
 
