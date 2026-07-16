@@ -238,7 +238,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - ng_gvs_entrez_annnotations
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -259,7 +258,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - ng_gvs_entrez_annnotations
          tags:
              - /.*/
    - name: GvsExtractCohortFromSampleNames
@@ -343,7 +341,6 @@ workflows:
              - master
              - ah_var_store
              - vs_1963_vat_index
-             - ng_gvs_entrez_annnotations
          tags:
              - /.*/
    - name: GvsIngestTieout
