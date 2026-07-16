@@ -4,7 +4,7 @@ This folder includes a script that picks random samples from the official 1000 G
 
 ## Prerequisites
 
-- **bash** (or any POSIX shell)
+- **bash** (the script uses bash-specific features like `[[` and `pipefail`)
 - **curl** (for downloading files)
 - **Python 3** (for robust cross-platform data parsing)
 

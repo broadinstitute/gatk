@@ -44,9 +44,10 @@ trap 'rm -f "${tmp_list}"' EXIT
 # Handle specific sample lookup vs. random sample selection
 if [[ -n "${sample_name}" ]]; then
   # Look up specific sample in the index - search for sample name in any column, extract CRAM (col 1) and CRAI (col 3)
-  curl -fsSL "${INDEX_URL}" | python3 -c "
+  curl -fsSL "${INDEX_URL}" | SAMPLE_NAME="${sample_name}" python3 -c "
+import os
 import sys
-sample_name = '$sample_name'
+sample_name = os.environ['SAMPLE_NAME']
 for line in sys.stdin:
   line = line.rstrip('\n')
   if line.startswith('#'):
@@ -62,10 +63,11 @@ for line in sys.stdin:
   fi
 else
   # Select random samples
-  curl -fsSL "${INDEX_URL}" | python3 -c "
+  curl -fsSL "${INDEX_URL}" | COUNT="${count}" python3 -c "
+import os
 import sys
 import random
-count = ${count}
+count = int(os.environ['COUNT'])
 entries = []
 for line in sys.stdin:
   line = line.rstrip('\n')
