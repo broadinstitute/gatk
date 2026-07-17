@@ -107,7 +107,7 @@ The workflow in the GVS beta workspace is pre-configured to use the 10 sample re
 To run the GVS workflow on your own sample data, follow the instructions in the tutorial, [Upload data to Terra and run the GVS workflow](https://github.com/broadinstitute/gatk/blob/ah_var_store/scripts/variantstore/beta_docs/run-your-own-samples.md).
 
 ### Time and cost
-Generally, once over ~100 samples, the GVS costs around $0.03-$0.05 USD in compute per sample to run on genomes and around $0.003-$0.005 USD in compute per sample to run on exomes. Cost to run the example data is below and for more information on cost see the [run your own samples](./run-your-own-samples.md) document. 
+Generally, once over ~100 samples, the GVS workflow costs around $0.03-$0.04 USD in compute per sample to run on genomes and around $0.003-$0.005 USD in compute per sample to run on exomes. Cost to run the example data is below and for more information on cost see the [run your own samples](./run-your-own-samples.md) document.  The exact cost will be dependent on cloud conditions during workflow execution.
 
 Cost and runtime of a callset of the **whole genome** sample data pre-loaded in the genome workspace.
 
