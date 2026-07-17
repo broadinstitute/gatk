@@ -82,6 +82,17 @@ workflow GvsCreateVATfromVDS {
     String region = "us-central1"
     File mane_annotation_file = "gs://gvs_quickstart_storage/MANE/MANE_human/release_1.4/MANE.GRCh38.v1.4.summary.txt"
 
+    # gene2ensembl_human.tsv is extracted and filtered for humans (tax_id 9606) from
+    # https://ftp.ncbi.nlm.nih.gov/gene/DATA/gene2ensembl.gz (NCBI snapshot 2026-07-10). gene2ensembl provides
+    # Entrez-to-Ensembl mappings at both the gene (Ensembl_gene_identifier -> GeneID) and transcript level; the VAT
+    # join keys on the gene, so Ensembl_gene_identifier and GeneID are the columns that matter.
+    # gene_info.gz (https://ftp.ncbi.nlm.nih.gov/gene/DATA/gene_info.gz) is a larger alternative that includes gene
+    # descriptions, synonyms, and other metadata, but is significantly larger and slower to load. Prefer gene2ensembl
+    # unless additional gene-level annotations beyond the Entrez ID are required.
+    # The path is pinned to a dated, immutable copy for reproducibility: the upstream NCBI file is a rolling file that
+    # is overwritten continuously, so an undated path could silently change the Entrez annotations between runs.
+    File entrez_annotation_file = "gs://gvs_quickstart_storage/Entrez/gene2ensembl_human_2026-07-10.tsv"
+
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
     # no calling WDLs that might supply `git_hash`).
     call Utils.GetToolVersions {
@@ -182,6 +193,24 @@ workflow GvsCreateVATfromVDS {
                 mane_table_name = "mane_annotations",
                 mane_data_file = mane_annotation_file,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+
+        call LoadEntrezDataIntoBigQuery {
+            input:
+                project_id = project_id,
+                dataset_name = dataset_name,
+                entrez_table_name = "entrez_annotations",
+                entrez_data_file = entrez_annotation_file,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+
+        call ValidateEntrezTable {
+            input:
+                project_id = project_id,
+                dataset_name = dataset_name,
+                entrez_table_name = LoadEntrezDataIntoBigQuery.entrez_table,
+                load_done = LoadEntrezDataIntoBigQuery.done,
+                variants_docker = effective_variants_docker,
         }
 
         call MakeSubpopulationFilesAndReadSchemaFiles {
@@ -371,6 +400,7 @@ workflow GvsCreateVATfromVDS {
                 variant_transcript_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
                 genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
                 mane_table_name = LoadManeDataIntoBigQuery.mane_table,
+                entrez_table_name = LoadEntrezDataIntoBigQuery.entrez_table,
                 vep_loftee_cooked_table_name = BigQueryCookVepAndLofteeRawAnnotations.cooked_table_name,
                 run_vep_loftee_update = generate_vep_and_loftee_annotations,
                 project_id = project_id,
@@ -378,7 +408,7 @@ workflow GvsCreateVATfromVDS {
                 variant_transcripts_path = variant_transcripts_output_path,
                 genes_path = genes_output_path,
                 base_vat_table_name = effective_vat_table_name,
-                go = flatten([PrepVtAnnotationJson.done, PrepGenesAnnotationJson.done]),
+                go = flatten([PrepVtAnnotationJson.done, PrepGenesAnnotationJson.done, [ValidateEntrezTable.done]]),
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
@@ -1454,6 +1484,137 @@ task LoadManeDataIntoBigQuery {
     }
 }
 
+task LoadEntrezDataIntoBigQuery {
+    meta {
+        # volatile: true so that call caching does not prevent this task from loading Entrez data
+        # into the current dataset. Without this, a cache hit would return the correct output
+        # string ("entrez_annotations") but skip the actual bq load, leaving the table absent.
+        volatile: true
+    }
+
+    input {
+        String project_id
+        String dataset_name
+        String entrez_table_name
+        File entrez_data_file
+        String cloud_sdk_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Fix the header line: remove the leading comment character (#tax_id -> tax_id), and replace dots
+        # with underscores in column names (BigQuery V1 character map does not support dots in field names).
+        # Affected columns: RNA_nucleotide_accession.version -> RNA_nucleotide_accession_version,
+        #                   protein_accession.version -> protein_accession_version.
+        # Ensembl_gene_identifier and GeneID have no dots and are unchanged — these are the columns used in the
+        # gene-level UPDATE join that populates entrez_gene_id.
+        # Column order in NCBI gene2ensembl: tax_id, GeneID, Ensembl_gene_identifier,
+        #   RNA_nucleotide_accession_version, Ensembl_rna_identifier, protein_accession_version,
+        #   Ensembl_protein_identifier — schema below must match this order exactly.
+        # Write to a temp file rather than modifying in-place, as the localized input file may be read-only.
+        sed '1{s/^\#tax_id/tax_id/; s/\./_/g}' ~{entrez_data_file} > entrez_data_processed.tsv
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+        # Row-aware guard: (re)load unless the table already exists AND has rows. An existing-but-empty table
+        # (e.g. left behind by a preempted or partial prior attempt) would otherwise be trusted as "already
+        # loaded" and silently annotate nothing, so we treat 0 rows as needing a reload.
+        NEEDS_LOAD=1
+        set +o errexit
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{entrez_table_name} > /dev/null 2>&1
+        BQ_SHOW_RC=$?
+        set -o errexit
+
+        if [ $BQ_SHOW_RC -eq 0 ]; then
+            ROW_COUNT=$(bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+                'SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.~{entrez_table_name}`' | tail -n1 | tr -d '\r')
+            if [[ "$ROW_COUNT" =~ ^[0-9]+$ && "$ROW_COUNT" -gt 0 ]]; then
+                NEEDS_LOAD=0
+                echo "Found existing non-empty Entrez annotations table ~{dataset_name}.~{entrez_table_name} ($ROW_COUNT rows). Using it"
+            else
+                echo "Existing Entrez annotations table ~{dataset_name}.~{entrez_table_name} is empty ($ROW_COUNT rows); reloading"
+            fi
+        fi
+
+        if [ $NEEDS_LOAD -eq 1 ]; then
+            echo "Loading Entrez annotations into table ~{dataset_name}.~{entrez_table_name}"
+            # Explicit schema ensures GeneID loads as INTEGER (not STRING), making the CAST in the UPDATE
+            # a safe no-op rather than depending on autodetect inference. Column order must match file exactly.
+            # --null_marker='-' matches the VEP+LOFTEE load: gene2ensembl uses the literal '-' as its missing-value
+            # placeholder, so this stores those as NULL rather than literal '-' strings. No INTEGER column
+            # (tax_id, GeneID) ever contains '-', so nothing is nulled unintentionally.
+            # --replace so a reload of a partially-loaded table starts clean rather than appending duplicates.
+            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 \
+                --null_marker='-' --replace \
+                --schema='tax_id:INTEGER,GeneID:INTEGER,Ensembl_gene_identifier:STRING,RNA_nucleotide_accession_version:STRING,Ensembl_rna_identifier:STRING,protein_accession_version:STRING,Ensembl_protein_identifier:STRING' \
+                ~{dataset_name}.~{entrez_table_name} entrez_data_processed.tsv
+        fi
+
+        # Emit the loaded table schema in prettyjson so maintainers can confirm column types in logs.
+        # Content validation (row-count floor, GeneID/Ensembl_gene_identifier integrity) is done in the
+        # downstream ValidateEntrezTable task via check_entrez_table.py.
+        bq --apilog=false --project_id=~{project_id} show --format=prettyjson ~{project_id}:~{dataset_name}.~{entrez_table_name}
+    >>>
+
+    runtime {
+        docker: cloud_sdk_docker
+        memory: "3 GB"
+        preemptible: 3
+        cpu: 1
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        String entrez_table = entrez_table_name
+        Boolean done = true
+    }
+}
+
+task ValidateEntrezTable {
+    meta {
+        # volatile: true so this content validation always runs against the current table rather than
+        # returning a cached "pass" from a previous run.
+        volatile: true
+    }
+
+    input {
+        String project_id
+        String dataset_name
+        String entrez_table_name
+        # Intentionally unused: passed solely to enforce ordering after LoadEntrezDataIntoBigQuery.
+        #@ except: UnusedInput
+        Boolean load_done
+        String variants_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # check_entrez_table.py exits non-zero (failing this task) if the table is empty/undersized or has
+        # NULL/non-numeric GeneIDs or missing Ensembl_gene_identifiers (the gene-level join key).
+        python3 /app/check_entrez_table.py \
+            --fq_entrez_table ~{project_id}.~{dataset_name}.~{entrez_table_name} \
+            --query_project ~{project_id}
+    >>>
+
+    runtime {
+        docker: variants_docker
+        memory: "3 GB"
+        preemptible: 3
+        cpu: 1
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        Boolean done = true
+    }
+}
+
 task BigQueryLoadJson {
     meta {
         # since the WDL will not see the updated data (its getting put in a gcp bucket)
@@ -1466,6 +1627,7 @@ task BigQueryLoadJson {
         File variant_transcript_schema
         File genes_schema
         String mane_table_name
+        String entrez_table_name
         String? vep_loftee_cooked_table_name
         Boolean run_vep_loftee_update
         String project_id
@@ -1526,6 +1688,35 @@ task BigQueryLoadJson {
         echo "Adding the Mane Plus Clinical annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
         'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Plus Clinical" AND vtt.transcript is not null;'
+
+        echo "Adding Entrez gene ID data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+        # entrez_gene_id is a gene-level attribute, so we map by Ensembl gene (vtt.gene_id -> entrez.Ensembl_gene_identifier)
+        # rather than by transcript. Ensembl gene IDs are unversioned and always present on both sides, whereas the
+        # transcript columns are versioned and only cover a curated subset, so a transcript-keyed join populated only
+        # ~26% of eligible rows vs. ~92% for the gene-keyed join. Ensembl gene IDs are compared version-stripped for
+        # safety even though they are normally unversioned.
+        # An Ensembl gene can legitimately map to more than one NCBI GeneID (~0.7% of genes; Ensembl and NCBI are
+        # independent authorities that sometimes draw gene boundaries differently), so we ARRAY_AGG all GeneIDs into the
+        # repeated entrez_gene_id field. The GROUP BY collapses the source to exactly one row per gene, which the UPDATE
+        # requires. An unmatched row is left as an empty array [] (not NULL).
+        # tax_id = 9606 filters for Homo sapiens. GVS exclusively processes human data, so this is intentionally
+        # hardcoded rather than parameterized. The filter also acts as a safeguard in case an unfiltered
+        # gene2ensembl file (covering all species) is passed instead of the human-only extract.
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+        UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt
+        SET vtt.entrez_gene_id = gene_map.gene_ids
+        FROM (
+            SELECT
+                SPLIT(Ensembl_gene_identifier, ".")[OFFSET(0)] AS ensembl_gene_base,
+                ARRAY_AGG(DISTINCT CAST(GeneID AS INT64) IGNORE NULLS) AS gene_ids
+            FROM `~{dataset_name}.~{entrez_table_name}`
+            WHERE Ensembl_gene_identifier IS NOT NULL
+              AND Ensembl_gene_identifier != "-"
+              AND tax_id = 9606
+            GROUP BY ensembl_gene_base
+        ) gene_map
+        WHERE vtt.gene_id IS NOT NULL
+          AND SPLIT(vtt.gene_id, ".")[OFFSET(0)] = gene_map.ensembl_gene_base;'
 
         if [[ "~{run_vep_loftee_update}" == "true" ]]; then
         echo "Adding VEP + LOFTEE annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
@@ -1650,7 +1841,7 @@ task BigQueryLoadJson {
             # v.hgvsc AS splice_distance
             v.dbsnp_rsid,
             v.gene_id,
-            # v.entrez_gene_id,
+            v.entrez_gene_id,
             # g.hgnc_gene_id,
             g.gene_omim_id,
             CASE WHEN ( v.transcript is not null and v.is_canonical_transcript is not True)

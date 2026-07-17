@@ -432,6 +432,12 @@
     "mode": "Nullable"
   },
   {
+    "description": "NCBI Entrez Gene ID(s). Repeated because a single Ensembl gene can map to more than one NCBI GeneID.",
+    "name": "entrez_gene_id",
+    "type": "Integer",
+    "mode": "Repeated"
+  },
+  {
     "description": "HGNC (HUGO Gene Nomenclature Committee) Symbol",
     "name": "hgnc_symbol",
     "type": "String",
