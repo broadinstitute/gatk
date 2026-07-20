@@ -1,6 +1,6 @@
 # Loading VCF Headers on the Parquet Ingest Branch
 
-**Tickets:** VS-1968 — *[Spike] How to load headers in Parquet branch*
+**Tickets:** VS-1968 — *[Spike] How to load headers in Parquet code path*
 
 **Motivation:** To support GVS on TSPS and the next All of Us callset. Today VCF header
 loading works only on the legacy BigQuery Write API ingest path; the Parquet ingest
