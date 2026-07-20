@@ -97,6 +97,12 @@ task.
    design must avoid re-inserting a hash already present in `vcf_header_lines` from a prior
    batch.
 5. **The current BQ dedup is itself expensive** — see §5.
+6. **Header loading must be idempotent** (explicit design goal). Re-running the load —
+   whether from a WDL task retry (`LoadParquetFilesToBQ` runs `preemptible: 5`,
+   `maxRetries: 3`), a Cromwell workflow resume, or a re-ingest of the same batch — must
+   converge to the same final tables, with no duplicate rows in `vcf_header_lines` or
+   `sample_vcf_header`. Today this holds only *by accident* (see §7); the Parquet design
+   should make it structural. Full treatment in §7.
 
 ---
 
@@ -174,11 +180,17 @@ Options 1 and 3 share the same writer-schema and WDL wiring work; only dedup dif
 
 ### 4.3 Python — merge
 - `process_sample_vcf_headers.py:21` — change the `vcf_header_lines` INSERT to a
-  **MERGE**/dedup on `vcf_header_lines_hash` (dedups the naive-loaded scratch rows *and*
-  makes it idempotent across incremental batches). The `sample_vcf_header` INSERT
-  (`:24`) stays as-is (naturally unique per sample+hash).
-- `load_parquet_to_bq.py` — no change needed for Option 1 (raw load into scratch);
-  Option 2/3 would need a content-addressed loader.
+  **MERGE** on `vcf_header_lines_hash` (`WHEN NOT MATCHED THEN INSERT`). This dedups the
+  naive-loaded scratch rows *and* makes the step idempotent across retries and incremental
+  batches (satisfies constraints #4 and #6).
+- `process_sample_vcf_headers.py:24` — the `sample_vcf_header` INSERT **also** needs to
+  become a **MERGE** on (`sample_id`, `vcf_header_lines_hash`). *(Correction: this is not
+  idempotent as a blind INSERT — a task retry or re-ingest would duplicate the
+  (sample_id, hash) associations. See §7.)*
+- `load_parquet_to_bq.py` — no change needed for Option 1 (raw load into scratch), but the
+  scratch loads rely on deterministic BQ load job IDs for retry-idempotency
+  (`load_parquet_to_bq.py:166`, `_make_job_id`) — see §7.
+- Option 2/3 would need a content-addressed loader.
 
 ### 4.4 Table schema
 - No schema change to the three tables. `vcf_header_lines_scratch` stays as the load
@@ -324,7 +336,80 @@ by N:
 
 ---
 
-## 7. AC2 — consistency queries
+## 7. Idempotency
+
+**Goal:** re-running header loading converges to the same final tables — no duplicate rows,
+no partial corruption — under three triggers: (a) a WDL **task retry** (preemption /
+`maxRetries`), (b) a Cromwell **workflow resume / re-run**, and (c) a deliberate
+**re-ingest** of the same batch.
+
+### 7.1 How idempotent is the pipeline today?
+
+Only *by accident*. The BQ path has three separate, fragile mechanisms:
+
+- **Per-sample skip:** `CreateVariantIngestFiles` checks `doScratchRowsExistFor` /
+  `doNonScratchRowsExistFor` per sample and skips header writes if rows already exist
+  (`CreateVariantIngestFiles.java:340-347`). Idempotent-ish, but per-`sample_id` and not
+  atomic — a partially-written prior run can leave inconsistent state.
+- **Blind-INSERT merge:** `process_sample_vcf_headers.py:21,24` are plain INSERTs. Running
+  the merge **twice would duplicate** rows in both `vcf_header_lines` and
+  `sample_vcf_header`.
+- **Scratch delete as the only guard:** `clean_up_scratch_table`
+  (`process_sample_vcf_headers.py:28-31`) empties scratch after the merge, so a *second*
+  merge finds nothing to insert. Idempotency thus depends on the DELETE having succeeded —
+  if the merge commits but the delete fails (or the step is retried before it), the next
+  run double-inserts.
+
+So the current design is not structurally idempotent; it relies on ordering and a cleanup
+step. The Parquet redesign should not inherit that fragility.
+
+### 7.2 Where idempotency must be enforced per layer
+
+The Parquet path deliberately moves dedup/idempotency *off* the ingest write (no BQ
+round-trips there) and onto the load + merge. Each layer needs a keyed, re-runnable
+operation:
+
+| Layer | Non-idempotent form | Idempotent form |
+|---|---|---|
+| Parquet write (offline, per sample) | (already safe — writes local files only; re-run overwrites) | deterministic file contents |
+| GCS upload of header parquet | `cp` (overwrite — safe, identical bytes) | idempotent by nature; Opt 2/3 blob uses `ifGenerationMatch=0` |
+| BQ load scratch ← parquet | `WRITE_APPEND` retried → double-load | **deterministic load job ID** (`load_parquet_to_bq.py:166`) so BQ dedups the retried job |
+| Merge scratch → `vcf_header_lines` | blind INSERT | **MERGE** on `vcf_header_lines_hash` |
+| Merge scratch → `sample_vcf_header` | blind INSERT | **MERGE** on (`sample_id`, `vcf_header_lines_hash`) |
+| Scratch cleanup | — | DELETE is naturally idempotent (re-delete = no-op) |
+
+Key point: with both final-table populations as **MERGEs keyed on their natural keys**, the
+whole chain becomes idempotent *independently* of the scratch-delete step — removing the
+fragile dependency in §7.1.
+
+### 7.3 Idempotency by option
+
+- **Option 1 (naive + MERGE):** idempotent once both merges are keyed (§7.2) and scratch
+  loads use deterministic job IDs. Note scratch can accumulate rows across retries; the
+  MERGE absorbs that harmlessly (dedup by key), which is exactly why MERGE (not
+  `INSERT ... SELECT DISTINCT`) is the right primitive here.
+- **Option 2 / 3 (content-addressed):** strongest form — the expensive header **text** is
+  idempotent at the *storage* layer (path = hash, identical bytes, `ifGenerationMatch=0`
+  skips re-writes), so re-runs are no-ops for the blob. The BQ association / `vcf_header_lines`
+  loads still need keyed MERGE/skip-existing, same as Option 1.
+- **Option 4 (consolidation):** the consolidation output must be deterministic (stable
+  file naming by hash) for the downstream load to be idempotent; otherwise re-runs produce
+  new files that re-load.
+
+### 7.4 Recommendation
+
+Make idempotency structural, not incidental:
+1. Both final-table populations become **MERGE** statements keyed on natural keys.
+2. Rely on **deterministic BQ load job IDs** for scratch-load retry safety.
+3. Keep the scratch DELETE as cleanup, but the design must be correct **without** depending
+   on it having run.
+
+This is small extra work on top of Option 1 (one of the two merges was already going to
+change for dedup) and it satisfies constraint #6 for every option.
+
+---
+
+## 8. AC2 — consistency queries
 
 Consistency queries to be supplied by Aaron Hatcher. They will presumably assert
 equivalence between a BQ-loaded and a Parquet-loaded dataset. Expected checks:
@@ -338,7 +423,7 @@ equivalence between a BQ-loaded and a Parquet-loaded dataset. Expected checks:
 
 ---
 
-## 8. Open questions / risks
+## 9. Open questions / risks
 
 - **Small-object cost (Option 2/3):** how many distinct `is_expected_unique = true` chunks
   arise at AoU scale? Determines whether content-addressing the unique lines is viable.
@@ -351,7 +436,7 @@ equivalence between a BQ-loaded and a Parquet-loaded dataset. Expected checks:
 
 ---
 
-## 9. File / line reference index
+## 10. File / line reference index
 
 | Area | Location |
 |---|---|
