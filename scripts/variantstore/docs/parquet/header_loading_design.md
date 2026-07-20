@@ -210,7 +210,121 @@ table and BQ job stats for both paths at a fixed sample count, then extrapolate.
 
 ---
 
-## 6. AC2 — consistency queries
+## 6. Comparative cost of the design options
+
+AC1 (§5) covers the naive load (Option 1). This section puts Options 2–4 and the current
+BQ path on the same cost model so they can be compared directly. **Bottom line up front:**
+at header data volumes every Parquet option costs pennies in BQ/GCS dollars — the real
+differentiators are *transient storage footprint*, *GCS object count / small-file
+handling*, and *engineering complexity*, and the current BQ path's cost is an *operational*
+query storm rather than dollars.
+
+### 6.1 Cost model & parameters
+
+Per ingest batch of **N** samples (AoU ≈ 400k):
+
+- **B** — size of the shared non-command-line blob (`is_expected_unique = false`),
+  ~10–100 KB (working figure: 50 KB).
+- **k** — command-line chunks per sample (`is_expected_unique = true`), ~1–3, each ~**C**
+  bytes (small, ~200 B).
+- **d_B** — distinct shared blobs across the batch (usually 1; a few if samples span
+  pipeline/reference versions).
+- **d_C** — distinct command-line chunks (up to ≈N if genuinely per-sample; fewer if
+  pipelines share command lines).
+
+Cost dimensions (the BQ/GCS pricing levers):
+
+1. **Ingest-time BQ queries** — query jobs fired *inside* each `CreateVariantIngestFiles` run.
+2. **GCS write ops + bytes** uploaded.
+3. **GCS transient storage** — held until the 14-day lifecycle delete.
+4. **GCS object count** — drives discovery `ls` cost and BQ small-file load overhead.
+5. **BQ load jobs** — free in dollars, but subject to quota + small-file overhead.
+6. **BQ query bytes scanned for dedup** — the on-demand dollar driver.
+7. **Final BQ storage** — deduped; ~identical and negligible across all options.
+
+Representative unit prices (US, *verify current*): on-demand query **$6.25 / TiB scanned**;
+GCS Standard **~$0.02 / GB-month**; BQ Storage Write API **~$0.025 / GB** (streaming); BQ
+batch **load jobs are free**.
+
+### 6.2 Comparison table (dominant term per cell)
+
+| Dimension | Current BQ Write API | Opt 1 Naive+MERGE | Opt 2 Content-addr (all) | Opt 3 Hybrid | Opt 4 Pre-load consolidate |
+|---|---|---|---|---|---|
+| Ingest BQ queries | **~2(k+1)·N ≈ 1.6M** | 0 | 0 | 0 | 0 |
+| GCS bytes written | 0 | **N·B** | d_B·B + d_C·C | N·k·C + d_B·B | **N·B** |
+| GCS transient storage | 0 | **N·B** | d_B·B + d_C·C | N·k·C + d_B·B | N·B (then small) |
+| GCS object count | 0 | N | **d_B + d_C (→ ~N tiny)** | N (small) + d_B | N → small |
+| BQ load jobs | 0 (stream) | N/10k | ~N/10k (tiny files) | N/10k (small) | few |
+| BQ dedup scan | 0 | **N·B** | 0 | N·k·C | 0 (local) |
+| Streaming $ | d_B·B + assoc | 0 | 0 | 0 | 0 |
+| Extra compute | — | — | — | — | **consolidation VM reads N·B** |
+| Complexity / risk | (baseline) | Low | High | Medium | Med-High |
+
+Bold marks the dominant cost for each option. Note `C ≪ B`, so any `N·k·C` term is orders
+of magnitude below an `N·B` term.
+
+### 6.3 Per-option read
+
+- **Current BQ path** — negligible dollars (small bytes, cheap streaming) but its cost is
+  *operational*: ~1.6M query jobs against per-project query rate limits / concurrency,
+  serialized inside ingest tasks (`VcfHeaderLineScratchCreator.java:93-108`,
+  `BigQueryUtils.java:455`). This is the fragility the Parquet path exists to escape, not a
+  dollar problem.
+- **Option 1 (naive)** — the only nontrivial costs are transient GCS storage of **N·B**
+  (every sample's copy of the blob) for up to 14 days, plus one dedup MERGE that scans
+  **N·B** once. Both are ~N·B — cheap in absolute dollars (§6.4) but the largest
+  storage/scan footprint of the Parquet options. Zero ingest queries; lowest complexity.
+- **Option 2 (content-addressed, all chunks)** — eliminates N·B: the blob is stored once,
+  dedup is free via the object namespace, no MERGE scan. But `is_expected_unique = true`
+  lines can explode to **~N tiny objects**, which hits (a) `ls` discovery cost/time, (b) BQ
+  small-file load overhead, and (c) GCS Class-A op counts from N precondition writes.
+  Lowest bytes, worst object-count profile, highest complexity (bespoke loader).
+- **Option 3 (hybrid)** — keeps the blob content-addressed (stored once, no MERGE scan for
+  it) while writing the small command-line/association data the naive way. Object count ≈ N
+  (same as naive) but each object is tiny (no B), so transient storage and any residual
+  dedup scan drop from **N·B** to **N·k·C** — orders of magnitude smaller. Best
+  cost/footprint overall; moderate complexity (two writer paths + one bespoke blob loader).
+- **Option 4 (pre-load consolidation)** — still pays the full **N·B** GCS write, then adds
+  a consolidation VM that reads **N·B** to dedup locally before a tiny load. Saves the BQ
+  dedup scan but not the write, and adds compute. Dominated by Option 3 on every axis.
+
+### 6.4 Worked example (plausible numbers)
+
+N = 400,000; B = 50 KB; k = 1; C = 200 B; d_B = 1; d_C ≈ 400,000.
+
+| Quantity | Opt 1 | Opt 2 | Opt 3 |
+|---|---|---|---|
+| GCS bytes written | ~20 GB | ~80 MB | ~80 MB + 50 KB |
+| Transient storage (14 d) | ~20 GB → ~$0.14 | ~80 MB → <$0.01 | ~80 MB → <$0.01 |
+| GCS objects | ~400k | ~400k tiny | ~400k tiny + 1 |
+| BQ dedup scan | ~20 GB → ~$0.13 | 0 | ~80 MB → <$0.01 |
+
+**Takeaway:** every Parquet option is dollar-trivial. The decision is *operational*, not
+financial: Option 1's downside is a ~20 GB transient footprint (already auto-cleaned by the
+14-day lifecycle rule) and one ~20 GB scan; Options 2/3 shrink that to ~80 MB at the price
+of complexity (Opt 2 also trades it for an ~N-tiny-object problem). This argues for
+**Option 1 first** (cheapest to build, only real cost is transient storage the lifecycle
+already handles) and **Option 3** only if the transient footprint or object count becomes a
+problem at full AoU scale.
+
+### 6.5 How to measure each (extends the AC1 harness)
+
+Reuse the `GvsQuickstartVcfIntegration.wdl` harness at a fixed sample count and extrapolate
+by N:
+
+- **Ingest queries:** count BQ jobs per ingest step (`cost_observability` / INFORMATION_SCHEMA.JOBS);
+  confirm 0 for all Parquet options vs ~2(k+1)·N for the BQ path.
+- **GCS bytes/objects:** `gcloud storage du` and object counts on the parquet output dir
+  *before* the lifecycle delete.
+- **Dedup scan:** `totalBytesProcessed` / `totalSlotMs` from the MERGE job.
+- **Load:** job count + per-job duration from `load_parquet_to_bq.py` `stats.json`.
+- **Empirically measure the drivers** from one real gVCF header: **B** and **k** (they
+  dominate every formula), and **d_B** via
+  `SELECT COUNT(DISTINCT vcf_header_lines_hash) ... WHERE is_expected_unique = false`.
+
+---
+
+## 7. AC2 — consistency queries
 
 Consistency queries to be supplied by Aaron Hatcher. They will presumably assert
 equivalence between a BQ-loaded and a Parquet-loaded dataset. Expected checks:
@@ -224,7 +338,7 @@ equivalence between a BQ-loaded and a Parquet-loaded dataset. Expected checks:
 
 ---
 
-## 7. Open questions / risks
+## 8. Open questions / risks
 
 - **Small-object cost (Option 2/3):** how many distinct `is_expected_unique = true` chunks
   arise at AoU scale? Determines whether content-addressing the unique lines is viable.
@@ -237,7 +351,7 @@ equivalence between a BQ-loaded and a Parquet-loaded dataset. Expected checks:
 
 ---
 
-## 8. File / line reference index
+## 9. File / line reference index
 
 | Area | Location |
 |---|---|
