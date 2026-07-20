@@ -1,8 +1,8 @@
-# Loading VCF Headers on the Parquet Ingest Branch — Spike & Implementation Plan
+# Loading VCF Headers on the Parquet Ingest Branch
 
-**Tickets:** VS-1803 / VS-1951 / VS-1968 — *[Spike] How to load headers in Parquet branch*
+**Tickets:** VS-1968 — *[Spike] How to load headers in Parquet branch*
 
-**Motivation:** Supports GVS on TSPS and the next All of Us callset. Today VCF header
+**Motivation:** To support GVS on TSPS and the next All of Us callset. Today VCF header
 loading works only on the legacy BigQuery Write API ingest path; the Parquet ingest
 path (now the default for bulk/AoU) cannot load headers and actively blocks the attempt.
 
@@ -30,7 +30,7 @@ A sample's header is split into **chunks** by
 
 Each chunk is MD5-hashed; the hash is the dedup key.
 
-### 1.2 Where dedup actually happens today (important correction)
+### 1.2 Where dedup actually happens today
 
 Dedup is done **entirely at write time** in `VcfHeaderLineScratchCreator.java:93-108`
 (BQ path): for each chunk it runs existence checks against both the scratch and the
@@ -72,7 +72,7 @@ shared blob.
 - A gate placeholder is left at `GvsImportGenomes.wdl:252`
   ("*add a gate for Parquet header loading here once that's implemented*").
 
-### 1.4 The good news for the "same invocation" requirement
+### 1.4 TODO in Parquet
 
 The Parquet-generating task already localizes each VCF once
 (`GvsImportGenomes.wdl:551-553`) and runs a **single** `CreateVariantIngestFiles` call
@@ -126,7 +126,7 @@ task.
   object-count/listing cost); needs a bespoke loader (doesn't fit the superpartition FOFN
   grouping in `DiscoverParquetFiles`).
 
-### Option 3 — Hybrid, routed by `is_expected_unique` (recommended)
+### Option 3 — Hybrid, routed by `is_expected_unique` (probably optimal for implementation)
 - `false` (shared blob): content-address it (Option 2) → stored once. The big win.
 - `true` (command lines): write naively inline with associations → no small-object
   explosion, no dedup benefit lost (they were never going to dedup).
@@ -140,8 +140,7 @@ task.
 
 **Recommendation:** implement **Option 1 first** (low risk, unblocks TSPS/AoU, benchmarks
 the "naive" cost for AC1), then evaluate **Option 3** if the naive cost is unacceptable.
-Options 1 and 3 share the same writer-schema and WDL wiring work; only the dedup locus
-differs.
+Options 1 and 3 share the same writer-schema and WDL wiring work; only dedup differs.
 
 ---
 
