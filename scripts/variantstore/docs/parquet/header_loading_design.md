@@ -1,4 +1,4 @@
-# Loading VCF Headers on the Parquet Ingest Branch
+# Loading VCF Headers in the Parquet Code Path
 
 **Tickets:** VS-1968 — *[Spike] How to load headers in Parquet code path*
 
