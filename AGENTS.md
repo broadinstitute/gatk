@@ -142,6 +142,19 @@ This is a Google Cloud SDK Alpine-based Docker image to which many useful tools,
 Python packages, and scripts have been added. This can be built on a developer's
 local machine using the `scripts/variantstore/scripts/build_docker.sh` script.
 
+The Python scripts under `scripts/variantstore/scripts/` are baked into this image at `/app/`, and
+WDL tasks that set `docker: variants_docker` invoke them as `python3 /app/<script>.py`. **Editing or
+adding such a script has no effect on a running workflow until the image is rebuilt and the new tag
+is wired in** — a common trap (the WDL keeps using the old image). So whenever you change anything
+baked into the image (a script, an added tool, or a Python package):
+
+1. Run `scripts/variantstore/scripts/build_docker.sh`. It builds the alpine-based image, runs the
+   unit tests, and pushes it to GAR with a tag of the form `<ISO-8601 date>-alpine-<12-char image
+   id>`, e.g. `us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-06-30-alpine-766e78c05289`.
+2. Update the `variants_docker` value in the `GetToolVersions` task of `GvsUtils.wdl` to that new
+   tag. Workflows resolve the image through `GetToolVersions`, so this step is what makes the rebuilt
+   image actually take effect.
+
 ### Nirvana Docker Image
 
 This is an Illumina Nirvana-based Docker image build from
