@@ -1476,7 +1476,7 @@ task SpotCheckForManeSelectTranscript {
             where mane_plus_clinical_name = "GNAS complex locus"
         )' > output.csv
 
-        NUMVARS=$(python3 -c "csvObj=open('output.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
+        NUMVARS=$(tail -n +2 output.csv | head -n1 | tr -d '\r')
 
         echo "false" > ~{pf_file}
         # if the result of the bq call and the csv parsing is a series of digits, then check that it isn't 0
