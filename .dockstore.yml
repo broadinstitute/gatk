@@ -247,6 +247,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - FoxtrotRelease_20260721_01
          tags:
              - /.*/
    - name: GvsValidateVat
