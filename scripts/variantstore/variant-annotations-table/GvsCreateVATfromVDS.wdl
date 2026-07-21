@@ -1681,13 +1681,18 @@ task BigQueryLoadJson {
         echo ~{variant_transcripts_wildcarded_path}
         bq --apilog=false load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{variant_transcripts_wildcarded_path}
 
+        # Match transcripts WITHOUT version suffixes (VS-1970): MANE's transcript versions run ahead of
+        # the Nirvana cache that produced vtt.transcript, so an exact match on vtt.transcript =
+        # mane.Ensembl_nuc silently dropped ~94% of MANE annotations. Strip versions, mirroring the
+        # version-insensitive VEP+LOFTEE join below. (No multi-match: each gene has one MANE Select
+        # transcript, so a base transcript is unique within a MANE_status.)
         echo "Adding the Mane SELECT annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
-        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_select_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Select" AND vtt.transcript is not null;'
+        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_select_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE SPLIT(vtt.transcript, ".")[OFFSET(0)] = SPLIT(mane.Ensembl_nuc, ".")[OFFSET(0)] AND mane.MANE_status = "MANE Select" AND vtt.transcript is not null;'
 
         echo "Adding the Mane Plus Clinical annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
-        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Plus Clinical" AND vtt.transcript is not null;'
+        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE SPLIT(vtt.transcript, ".")[OFFSET(0)] = SPLIT(mane.Ensembl_nuc, ".")[OFFSET(0)] AND mane.MANE_status = "MANE Plus Clinical" AND vtt.transcript is not null;'
 
         echo "Adding Entrez gene ID data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         # entrez_gene_id is a gene-level attribute, so we map by Ensembl gene (vtt.gene_id -> entrez.Ensembl_gene_identifier)
