@@ -1691,7 +1691,7 @@ task CheckManeCoverage {
         # check_mane_coverage.py fails if MANE Select / Plus Clinical coverage over the transcripts present in
         # the callset falls below the threshold -- guards against regressing to the exact-version transcript
         # join (VS-1970), which flagged only ~6% of the MANE transcripts it should have. On genome-wide
-        # callsets it also enforces a loose catalog-utilization floor (min_catalog_utilization > 0).
+        # callsets it also enforces a MANE catalog-utilization floor.
         python3 /app/check_mane_coverage.py --fq_vat_table ~{fq_vat_table} \
             --fq_mane_table ~{fq_mane_table} \
             --query_project ~{project_id} \
