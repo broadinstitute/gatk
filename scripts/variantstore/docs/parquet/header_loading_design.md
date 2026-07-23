@@ -557,17 +557,37 @@ Callsets are ingested in batches, so it matters which header tables persist:
 
 ---
 
-## 8. AC2 — consistency queries
+## 8. AC2 — header-analysis queries WIP based on VS-1215
 
-Consistency queries to be supplied by Aaron Hatcher. They will presumably assert
-equivalence between a BQ-loaded and a Parquet-loaded dataset. Expected checks:
-- row counts and distinct-hash counts in `vcf_header_lines` match across paths;
-- `sample_vcf_header` (sample_id, hash) set is identical across paths;
-- every `sample_vcf_header.vcf_header_lines_hash` resolves to a row in `vcf_header_lines`
-  (referential integrity; no orphan hashes);
-- reconstructed per-sample header text is byte-identical across paths.
+The consistency checks are captured in **VS-1215** (*Create WDL to analyze VCF headers and
+create a small report*). Those queries — from the manual analysis of the first Echo header
+ingest — read the final `vcf_header_lines` / `sample_vcf_header` / `sample_info` tables and
+fall into three groups. Because those tables are identical across load paths (§3), the queries
+are **path-agnostic** and validate a Parquet-loaded dataset the same as a BQ-loaded one.
 
-*(Placeholder — fill in once queries are provided.)*
+**1. Integrity invariants** (should hold for any correct header load):
+- distinct `sample_id` in `sample_vcf_header` == the loaded (non-control) sample count in
+  `sample_info` — i.e. every sample has header data. *(Echo: 414,830 ✓.)*
+- every sample has ≥1 `is_expected_unique = true` chunk (its per-sample processing info is
+  present). *(Echo: 414,830 ✓.)*
+- referential integrity: every `sample_vcf_header.vcf_header_lines_hash` resolves to a row in
+  `vcf_header_lines` (no orphan hashes).
+
+**2. Shared-blob distribution** — the distinct `is_expected_unique = false` blobs and how many
+samples carry each. Ideally one; more than one indicates distinct delivery batches
+(informational, not necessarily an error). *(Echo: 6 distinct shared blobs.)*
+
+**3. DRAGEN-version report (the "useful info")** — group samples by the DRAGEN software-version
+string in their `is_expected_unique = true` chunk (`DRAGENCommandLine=<ID=dragen,Version="SW: …"`).
+The final VS-1215 query joins `vcf_header_lines` × `sample_vcf_header` × `sample_info` against a
+small `dragen_versions` CTE and counts samples per version. *(This is exactly how Echo's mixed
+processing was found: four versions — `05/07.021.408.3.4.12` and `05/07.021.604.3.7.8`.)*
+
+**Relation to this spike:** these are the concrete form of the §1.5 input-gVCF sanity check,
+and they double as the Parquet consistency check — run them on a Parquet-loaded dataset and
+confirm the invariants hold and the version breakdown matches expectations. If an explicit
+A/B check against a BQ-loaded dataset is wanted, the same tables can be compared directly
+(distinct-hash sets, the (sample_id, hash) set, and reconstructed per-sample text).
 
 ---
 
