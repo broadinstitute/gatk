@@ -31,7 +31,7 @@ def check_mane_table(fq_mane_table, query_project, min_rows):
         SELECT
             COUNT(*) AS total_rows,
             COUNTIF(Ensembl_nuc IS NULL OR NOT STARTS_WITH(Ensembl_nuc, 'ENST')) AS bad_transcripts,
-            COUNTIF(MANE_status NOT IN ('MANE Select', 'MANE Plus Clinical')) AS bad_statuses
+            COUNTIF(MANE_status IS NULL OR MANE_status NOT IN ('MANE Select', 'MANE Plus Clinical')) AS bad_statuses
         FROM `{fq_mane_table}`
     """
 
