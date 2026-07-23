@@ -9,6 +9,14 @@ workflow GvsValidateVat {
         String dataset_name
         String vat_table_name
         Boolean? is_small_callset
+        # Whether the callset spans the whole genome (the default, e.g. AoU) vs. is restricted to a few
+        # contigs (e.g. the chr20/X/Y quickstart). Only genome-wide callsets exercise ~all of MANE, so
+        # the MANE catalog-utilization floor is enforced only when this is true.
+        Boolean is_genome_wide = true
+        # Loose gross-failure floor for MANE catalog utilization on genome-wide callsets. Legitimate
+        # values are ~94% (MANE Select) / ~88% (the tiny Plus Clinical set); the VS-1970 regression sits
+        # at ~6%, so 0.5 is a decisive tripwire with margin on both sides.
+        Float min_mane_catalog_utilization = 0.5
         String? cloud_sdk_docker
         String? variants_docker
     }
@@ -16,6 +24,10 @@ workflow GvsValidateVat {
     String fq_vat_table = "~{project_id}.~{dataset_name}.~{vat_table_name}"
     String fq_mane_table = "~{project_id}.~{dataset_name}.mane_annotations"
     String fq_sample_table = "~{project_id}.~{dataset_name}.sample_info"
+
+    # Catalog utilization is callset-breadth dependent, so only gate it for genome-wide callsets; a
+    # floor of 0 disables the gate (the number is still reported) for interval-restricted callsets.
+    Float effective_mane_catalog_floor = if is_genome_wide then min_mane_catalog_utilization else 0.0
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
     # no calling WDLs that might supply `git_hash`).
@@ -188,6 +200,7 @@ workflow GvsValidateVat {
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             fq_mane_table = fq_mane_table,
+            min_catalog_utilization = effective_mane_catalog_floor,
             last_modified_timestamp = VatDateTime.last_modified_timestamp,
             variants_docker = effective_variants_docker,
     }
@@ -1664,6 +1677,8 @@ task CheckManeCoverage {
         String project_id
         String fq_vat_table
         String fq_mane_table
+        # 0 disables the catalog-utilization floor (still reported); > 0 enforces it (genome-wide only).
+        Float min_catalog_utilization = 0.0
         # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
         #@ except: UnusedInput
         String last_modified_timestamp
@@ -1675,10 +1690,12 @@ task CheckManeCoverage {
     command <<<
         # check_mane_coverage.py fails if MANE Select / Plus Clinical coverage over the transcripts present in
         # the callset falls below the threshold -- guards against regressing to the exact-version transcript
-        # join (VS-1970), which flagged only ~6% of the MANE transcripts it should have.
+        # join (VS-1970), which flagged only ~6% of the MANE transcripts it should have. On genome-wide
+        # callsets it also enforces a loose catalog-utilization floor (min_catalog_utilization > 0).
         python3 /app/check_mane_coverage.py --fq_vat_table ~{fq_vat_table} \
             --fq_mane_table ~{fq_mane_table} \
             --query_project ~{project_id} \
+            --min_catalog_utilization ~{min_catalog_utilization} \
             --pass_file_output ~{pf_file} \
             --results_file_output ~{results_file}
     >>>

@@ -368,6 +368,7 @@ workflow GvsQuickstartIntegration {
                 dataset_suffix = "vat",
                 output_path = extract_vat_output_gcs_dir,
                 use_vds_as_input = run_vat_integration_test_from_vds,
+                chr20_X_Y_only = chr20_X_Y_only,
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
