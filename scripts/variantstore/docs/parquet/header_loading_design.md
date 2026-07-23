@@ -1,6 +1,10 @@
 # Loading VCF Headers in the Parquet Code Path
 
-**Tickets:** VS-1968 — *[Spike] How to load headers in Parquet code path*
+**Tickets:**
+- **VS-1968** — *[Spike] How to load headers in Parquet code path* — deliverables are this
+  design doc and the consistency checks (§8).
+- **VS-1803** — *Header loading not supported on Parquet branch* — the **implementation** (the
+  Java/Python/WDL changes and the `is_loaded` view fix described here belong to this ticket).
 
 **Motivation:** To support GVS on TSPS and the next All of Us callset. Today VCF header
 loading works only on the legacy BigQuery Write API ingest path; the Parquet ingest
@@ -72,14 +76,87 @@ shared blob.
 - A gate placeholder is left at `GvsImportGenomes.wdl:252`
   ("*add a gate for Parquet header loading here once that's implemented*").
 
-### 1.4 TODO in Parquet
+### 1.4 Header extraction: single invocation vs. the gated model
 
-The Parquet-generating task already localizes each VCF once
-(`GvsImportGenomes.wdl:551-553`) and runs a **single** `CreateVariantIngestFiles` call
-(`GvsImportGenomes.wdl:560`) that already passes `--enable-vcf-headers`
-(`GvsImportGenomes.wdl:575`). Header extraction piggybacks on the existing VCF read —
-**no second localization is required**. The work is finishing the plumbing, not adding a
-task.
+`CreateVariantIngestFiles` already localizes each VCF once (`GvsImportGenomes.wdl:551-553`)
+and runs a **single** call (`GvsImportGenomes.wdl:560`) that already accepts
+`--enable-vcf-headers` (`GvsImportGenomes.wdl:575`), so header extraction *can* piggyback on
+the existing VCF read with no extra localization. **However**, the operational model (§1.5)
+deliberately loads headers as a *separate, gated* phase before vet/ref/ploidy, which is in
+tension with folding everything into one pass. The Parquet architecture reconciles this
+because generation and BQ loading are already decoupled — see §1.5. Either way the remaining
+work is finishing the plumbing, not adding an ingest tool.
+
+### 1.5 Operational model: phased, gated loading
+
+**Purpose of the header phase.** The header-only ingest is not a check that header *loading*
+worked — it is an early **sanity check of the input gVCFs themselves**. Loading just the
+headers is a cheap way to inspect each input's metadata (reference version, contig list,
+sample names, expected INFO/FORMAT/FILTER definitions, pipeline provenance) and confirm the
+cohort is well-formed and mutually consistent *before* committing to the expensive vet/ref
+ingest. This purpose must be preserved in the Parquet path.
+
+**AoU today (BQ path).** Header loading is run as its **own** ingest first
+(`load_vcf_headers = true`, `load_vet_and_ref_ranges = false`), the loaded headers are then
+**manually inspected** to sanity-check the input gVCFs, and **only if that passes** is a
+second ingest run for vet / ref_ranges / sample_chromosome_ploidy. Three phases: *load
+headers → sanity check inputs → load everything else*. On the BQ path this localizes the VCFs
+**twice** (once per ingest run).
+
+**TSPS (assumption — undecided).** Likely the same three phases, but **automated** (the
+manual sanity check becomes an automated gate).
+
+**How this maps onto Parquet.** In the Parquet path, *generation* (localize VCF → write
+parquet to GCS) is already decoupled from *loading* (`DiscoverParquetFiles` →
+`LoadParquetFilesToBQ`). That opens two ways to honor the gate:
+
+- **(A) Generate-all-once, phased load.** One `CreateVariantIngestFiles` pass writes *all*
+  parquet (headers + vet + ref + ploidy) with a single localization; then load **only** the
+  header parquet, gate on the sanity check, and load the rest afterward from the parquet
+  already in GCS. Single localization *and* a real gate.
+  *Cost:* vet/ref/ploidy parquet is **generated before** the gate, so a failed header check
+  wastes that generation compute (and transient GCS storage).
+- **(B) Phase-separated generation.** A headers-only generation+load first (cheap), gate,
+  then a second generation+load for the rest — **re-localizing** the VCFs (as AoU does today
+  on the BQ path). *Cost:* pays localization + generation twice, but spends **no** vet/ref
+  compute until the gate passes.
+
+**Trade-off — sharpened by the purpose.** Because the gate exists specifically to *avoid
+expensive work on bad inputs*, approach (A) partly defeats it: (A) generates the vet/ref/ploidy
+parquet **before** the gate, so a caught bad input still pays the full generation cost — only
+the vet/ref *BQ load* is saved. In fact the "avoid re-localizing in a second task" wish
+(from VS-1803, not this spike) and the header phase's purpose are **fundamentally in
+conflict**: validating inputs
+before doing expensive variant work requires *either* re-localizing (B) *or* doing that
+expensive work first (A). We can have at most one.
+
+Concretely, per-sample the costs are: **localize** (copy the gVCF; needed for headers *and*
+variants), cheap **header parse**, and expensive **vet/ref parse**.
+- **(A)** localizes once but always does the vet/ref parse up front → wastes vet/ref parse on
+  a gate failure.
+- **(B)** localizes twice on success but does the vet/ref parse only after the gate → wastes
+  almost nothing on failure.
+
+So (A) wins only when localization dominates *and* input failures are rare; the stated
+purpose (the phase exists because bad inputs are a real risk) leans toward **(B)**, or toward
+(A) only if TSPS confirms failures are rare and localization is the dominant cost.
+**Recommendation:** leave open until TSPS fixes its model, but note the conflict above rather
+than assuming the re-localization can simply be optimized away.
+
+**Implication either way:**
+- The header load must complete and be validated as a *distinct, gated step* before the
+  vet/ref/ploidy load (see the WDL gate in §4.2); for approach (A) the parquet cleanup
+  (`DeleteParquetFiles`, which runs by default right after loading — plus the off-by-default
+  14-day GCS lifecycle rule as a backstop) must **not** remove the vet/ref parquet before the
+  post-gate load.
+- The sanity check reads header **content**, so the Parquet header load must persist the
+  **full header text**, not just hashes. Storing it *deduplicated* does not hurt inspection:
+  the check reconstructs any sample's header by joining `sample_vcf_header` (sample → hash) to
+  `vcf_header_lines` (hash → text). Every design in §3 ends with those same two tables, so all
+  of them keep the header lines (contigs, reference, INFO/FORMAT) fully inspectable — the only
+  way to lose that is an *incomplete* implementation that persists hashes without ever loading
+  the text into `vcf_header_lines` (see the caveat on the current content-addressing scaffold
+  in §3 / §7.3).
 
 ---
 
@@ -87,8 +164,12 @@ task.
 
 1. **The merge does not dedup** (§1.2). Naive Parquet writing requires a dedup step to be
    added.
-2. **`is_expected_unique` is an unused lever.** It cleanly separates the one shared blob
-   (dedup-worthy) from per-sample command lines (not dedup-worthy). Designs can route on it.
+2. **`is_expected_unique` distinguishes the shared blob from per-sample command lines** —
+   `false` for the joined non-command-line blob (shared, dedup-worthy), `true` for the
+   command-line chunks (expected to differ per sample). This flag is **already used** by the
+   AoU header sanity check: its query filters `is_expected_unique = TRUE` to isolate the
+   per-sample command lines and extract the DRAGEN version for validation
+   (`AOU_DELIVERABLES.md`). Dedup designs can *additionally* route storage on it (Option 3).
 3. **Per-sample invocations are isolated.** Each `CreateVariantIngestFiles` run sees one
    gVCF and cannot see other samples' chunks without a shared store — so cross-sample
    write-time dedup (as the BQ path does via BQ queries) is not naturally available offline.
@@ -97,24 +178,36 @@ task.
    design must avoid re-inserting a hash already present in `vcf_header_lines` from a prior
    batch.
 5. **The current BQ dedup is itself expensive** — see §5.
-6. **Header loading must be idempotent** (explicit design goal). Re-running the load —
-   whether from a WDL task retry (`LoadParquetFilesToBQ` runs `preemptible: 5`,
-   `maxRetries: 3`), a Cromwell workflow resume, or a re-ingest of the same batch — must
-   converge to the same final tables, with no duplicate rows in `vcf_header_lines` or
-   `sample_vcf_header`. Today this holds only *by accident* (see §7); the Parquet design
-   should make it structural. Full treatment in §7.
+6. **Header loading must be idempotent** (explicit design goal — and largely already
+   realized). Re-running the load — WDL task retry (`LoadParquetFilesToBQ` runs
+   `preemptible: 5`, `maxRetries: 3`), Cromwell resume, or re-ingest of a batch — must
+   converge to the same final tables, with no duplicate rows. The **BQ path already
+   implements this deliberately** via the per-sample `HEADERS_LOADED` status in
+   `sample_load_status` (§7.1); it is not accidental. The gap the Parquet work must close is
+   narrower: the Parquet path bypasses that per-sample status check and the promotion step's
+   blind INSERT does not dedup — both addressed by the anti-join INSERT (§7).
+7. **Loading is phased and gated — as an input-gVCF sanity check** (§1.5). The header-only
+   phase exists to validate the *input gVCFs* (reference, contigs, samples, expected fields)
+   before the expensive vet/ref ingest, so it must remain a distinct, gated phase in the
+   Parquet path too. Consequences: (a) the header load must stand alone and gate the data
+   load; (b) it must persist **full header text** so the check can inspect content (a hard
+   requirement on Option 3's content-addressing); (c) for approach (A) the parquet cleanup
+   must be phase-aware so vet/ref parquet survives until its post-gate load; (d) this gated
+   re-run pattern makes constraint #6 (idempotency) more pressing, not less.
 
 ---
 
 ## 3. Design options
 
-### Option 1 — Naive write, dedup in the merge SQL (low risk)
+### Option 1 — Naive write, dedup in the load SQL (low risk)
 - Writer: emit full text + `is_expected_unique` for every chunk, every sample; drop the
   existence queries.
-- Merge: change `process_sample_vcf_headers.py:21` from a blind INSERT to a **MERGE** into
-  `vcf_header_lines` on `vcf_header_lines_hash` (or `SELECT ... GROUP BY hash`), so it
-  dedups *and* is idempotent across batches (satisfies constraint #4).
-- **Cost:** max (transient) scratch bloat; one large dedup/MERGE query scanning the text
+- Load: change `process_sample_vcf_headers.py:21` from a blind INSERT to an **anti-join
+  INSERT** (`INSERT ... SELECT ... LEFT JOIN <target> USING(key) WHERE <target>.key IS NULL`,
+  with `GROUP BY`/`DISTINCT` on the source), so it dedups *and* is idempotent across batches
+  (satisfies constraint #4). Anti-join INSERT rather than `MERGE` to match GVS convention
+  (GVS uses `MERGE` nowhere) and avoid mutating-DML concerns.
+- **Cost:** max (transient) scratch bloat; one large dedup query scanning the text
   column; zero per-sample BQ round-trips during ingest.
 - **Pros:** simplest; keeps existing scratch + load machinery; ingest stays fully offline
   and parallel (the point of the Parquet path).
@@ -133,11 +226,18 @@ task.
   grouping in `DiscoverParquetFiles`).
 
 ### Option 3 — Hybrid, routed by `is_expected_unique` (probably optimal for implementation)
-- `false` (shared blob): content-address it (Option 2) → stored once. The big win.
+- `false` (shared blob): content-address it (Option 2) → stored once, then **loaded
+  (deduplicated) into `vcf_header_lines`** — the same final table as Option 1, so the header
+  text remains fully inspectable by the sanity check.
 - `true` (command lines): write naively inline with associations → no small-object
   explosion, no dedup benefit lost (they were never going to dedup).
 - **Pros:** cost-optimal; uses the schema flag as intended.
 - **Cons:** two code paths in the writer.
+- **Scaffold caveat:** the current `HYBRID` code (`VcfHeaderLineScratchCreator`, dormant behind
+  the hardcoded strategy switch) is a *stub* — it writes the blob's association only and drops
+  the text with a TODO. A complete Option 3 must actually store the blob and load its text into
+  `vcf_header_lines`; until then `HYBRID` is not functional and would leave the shared header
+  lines uninspectable. Only Option 1 is fully implemented.
 
 ### Option 4 — Pre-load local consolidation
 - Dedup header Parquet by hash in a consolidation step before load (git precedent:
@@ -146,7 +246,7 @@ task.
 
 **Recommendation:** implement **Option 1 first** (low risk, unblocks TSPS/AoU, benchmarks
 the "naive" cost for AC1), then evaluate **Option 3** if the naive cost is unacceptable.
-Options 1 and 3 share the same writer-schema and WDL wiring work; only dedup differs.
+Options 1 and 3 share the same writer-schema and WDL wiring work; only the dedup locus differs.
 
 ---
 
@@ -164,29 +264,49 @@ Options 1 and 3 share the same writer-schema and WDL wiring work; only dedup dif
 - Reference template: commits `e852dcf27` / `2d48b4a84` (ref & ploidy Parquet writers) and
   `gvs_ingest_refactoring.md` (note VS-1803 is called out there as the pending header work).
 
-### 4.2 WDL — `GvsImportGenomes.wdl`
-- Remove the block at `:97-100` (`CannotLoadHeadersWithParquetIngest`).
-- Upload the header Parquet in the generate task: extend the glob/copy block
-  (`:586-596`) to pick up `header_file.parquet` and copy it to a new
-  `.../vcf_header_lines_scratch/` GCS dir (before the `rm *.parquet` at `:599`).
-- `DiscoverParquetFiles` (`:273`, prefixes at `:278-279`): add `vcf_header_lines_scratch`
-  as a `regular_table_prefixes` entry so the FOFN grouping (`parse_and_group_files.py`)
-  picks it up. The loader derives the table name from the FOFN filename
-  (`load_parquet_to_bq.py:46-52`), so a `vcf_header_lines_scratch.fofn` loads into the
-  scratch table with no loader change.
-- Gate: wire `ProcessVCFHeaders` (`:249`, gate at `:252`) to also depend on
-  `LoadParquetFilesToBQ.done` when `use_parquet_ingest` (currently only
-  `LoadDataViaBigQueryWriteAPI.done`).
+### 4.2 WDL — `GvsImportGenomes.wdl` (implemented)
+- Removed the `CannotLoadHeadersWithParquetIngest` guard.
+- **Header parquet naming:** the Java writer now names the file
+  `vcf_header_lines_scratch_<sampleId>.parquet` (was `header_file.parquet`) so it matches the
+  regular-table discovery regex in `parse_and_group_files.py`
+  (`/(prefix)_([0-9]+)...`). Without this the file would never be discovered.
+- **Upload:** the generate task's per-sample upload block now guards the vet/ref/ploidy
+  copies behind `load_vet_and_ref_ranges` and adds a `load_vcf_headers`-guarded copy of the
+  header parquet to `.../vcf_header_lines_scratch/`. (`rm *.parquet` → `rm -f`.)
+- **One combined discover/load/verify** now runs when
+  `use_parquet_ingest && (load_vet_and_ref_ranges || load_vcf_headers)` — pulled out of the
+  old `load_vet_and_ref_ranges`-only block so a **headers-only** run also loads. Prefixes:
+  `regular = load_vcf_headers ? [sample_chromosome_ploidy, vcf_header_lines_scratch] :
+  [sample_chromosome_ploidy]`, `superpartitioned = [vet, ref_ranges]` (always non-empty to
+  avoid empty-array / argparse issues; extra prefixes are harmless — no files match). The
+  loader/verifier need no changes beyond receiving these prefixes.
+- **VerifyParquetLoading** now takes and forwards `--regular-table-prefixes` /
+  `--superpartitioned-table-prefixes` (previously defaulted, which would flag header files as
+  unverified).
+- **Gate:** `ProcessVCFHeaders` now gates on
+  `flatten([select_all([VerifyParquetLoading.done]), select_all(LoadDataViaBigQueryWriteAPI.done)])`
+  — i.e. the Parquet header load for parquet runs, or the BQ Write API for BQ runs.
+  `SetIsLoadedColumn` stays under `load_vet_and_ref_ranges` (headers-only runs don't mark
+  samples loaded).
+- **Phasing (per §1.5):** the AoU-style gate is achieved by running the workflow **twice**
+  (headers-only, sanity-check, then data-only). The single-run intra-workflow gate
+  (approach A with a split scatter) and phase-aware parquet deletion are **not** implemented —
+  in a combined run headers and data load together.
+- Validated with `womtool validate`. End-to-end coverage is the Terra `quickstart*` tests.
 
-### 4.3 Python — merge
-- `process_sample_vcf_headers.py:21` — change the `vcf_header_lines` INSERT to a
-  **MERGE** on `vcf_header_lines_hash` (`WHEN NOT MATCHED THEN INSERT`). This dedups the
-  naive-loaded scratch rows *and* makes the step idempotent across retries and incremental
-  batches (satisfies constraints #4 and #6).
-- `process_sample_vcf_headers.py:24` — the `sample_vcf_header` INSERT **also** needs to
-  become a **MERGE** on (`sample_id`, `vcf_header_lines_hash`). *(Correction: this is not
-  idempotent as a blind INSERT — a task retry or re-ingest would duplicate the
+### 4.3 Python — scratch → final load
+- `process_sample_vcf_headers.py:21` — change the `vcf_header_lines` INSERT to an **anti-join
+  INSERT**: `INSERT ... SELECT s.hash, ANY_VALUE(s.text), ANY_VALUE(s.is_expected_unique)
+  FROM scratch s LEFT JOIN vcf_header_lines t USING(vcf_header_lines_hash) WHERE s.text IS
+  NOT NULL AND t.vcf_header_lines_hash IS NULL GROUP BY s.hash`. This dedups the naive-loaded
+  scratch rows *and* makes the step idempotent across retries and incremental batches
+  (satisfies constraints #4 and #6).
+- `process_sample_vcf_headers.py:24` — the `sample_vcf_header` INSERT **also** needs the same
+  anti-join treatment, keyed on (`sample_id`, `vcf_header_lines_hash`). *(Correction: this is
+  not idempotent as a blind INSERT — a task retry or re-ingest would duplicate the
   (sample_id, hash) associations. See §7.)*
+- Anti-join INSERT is used rather than `MERGE` to match GVS convention (GVS uses `MERGE`
+  nowhere) and sidestep mutating-DML concerns; `INSERT` also never touches a streaming buffer.
 - `load_parquet_to_bq.py` — no change needed for Option 1 (raw load into scratch), but the
   scratch loads rely on deterministic BQ load job IDs for retry-idempotency
   (`load_parquet_to_bq.py:166`, `_make_job_id`) — see §7.
@@ -205,7 +325,7 @@ Options 1 and 3 share the same writer-schema and WDL wiring work; only dedup dif
 **Option 1 (Parquet) cost components:**
 - transient scratch storage ≈ N samples × (blob + command-line text) bytes;
 - the BQ Parquet load-job bytes;
-- the dedup/MERGE query bytes scanned (dominated by the large text column).
+- the dedup (anti-join INSERT) query bytes scanned (dominated by the large text column).
 
 **Current BQ Write API path baseline (for comparison):**
 - `doRowsExistFor` runs a `SELECT COUNT(*)` per lookup (`BigQueryUtils.java:455`), called
@@ -248,7 +368,8 @@ Cost dimensions (the BQ/GCS pricing levers):
 
 1. **Ingest-time BQ queries** — query jobs fired *inside* each `CreateVariantIngestFiles` run.
 2. **GCS write ops + bytes** uploaded.
-3. **GCS transient storage** — held until the 14-day lifecycle delete.
+3. **GCS transient storage** — held until `DeleteParquetFiles` removes it after loading (the
+   14-day GCS lifecycle rule is only an off-by-default backstop).
 4. **GCS object count** — drives discovery `ls` cost and BQ small-file load overhead.
 5. **BQ load jobs** — free in dollars, but subject to quota + small-file overhead.
 6. **BQ query bytes scanned for dedup** — the on-demand dollar driver.
@@ -260,7 +381,7 @@ batch **load jobs are free**.
 
 ### 6.2 Comparison table (dominant term per cell)
 
-| Dimension | Current BQ Write API | Opt 1 Naive+MERGE | Opt 2 Content-addr (all) | Opt 3 Hybrid | Opt 4 Pre-load consolidate |
+| Dimension | Current BQ Write API | Opt 1 Naive+anti-join INSERT | Opt 2 Content-addr (all) | Opt 3 Hybrid | Opt 4 Pre-load consolidate |
 |---|---|---|---|---|---|
 | Ingest BQ queries | **~2(k+1)·N ≈ 1.6M** | 0 | 0 | 0 | 0 |
 | GCS bytes written | 0 | **N·B** | d_B·B + d_C·C | N·k·C + d_B·B | **N·B** |
@@ -283,15 +404,15 @@ of magnitude below an `N·B` term.
   `BigQueryUtils.java:455`). This is the fragility the Parquet path exists to escape, not a
   dollar problem.
 - **Option 1 (naive)** — the only nontrivial costs are transient GCS storage of **N·B**
-  (every sample's copy of the blob) for up to 14 days, plus one dedup MERGE that scans
-  **N·B** once. Both are ~N·B — cheap in absolute dollars (§6.4) but the largest
+  (every sample's copy of the blob) for up to 14 days, plus one dedup (anti-join INSERT) scan
+  of **N·B** once. Both are ~N·B — cheap in absolute dollars (§6.4) but the largest
   storage/scan footprint of the Parquet options. Zero ingest queries; lowest complexity.
 - **Option 2 (content-addressed, all chunks)** — eliminates N·B: the blob is stored once,
-  dedup is free via the object namespace, no MERGE scan. But `is_expected_unique = true`
+  dedup is free via the object namespace, no dedup scan. But `is_expected_unique = true`
   lines can explode to **~N tiny objects**, which hits (a) `ls` discovery cost/time, (b) BQ
   small-file load overhead, and (c) GCS Class-A op counts from N precondition writes.
   Lowest bytes, worst object-count profile, highest complexity (bespoke loader).
-- **Option 3 (hybrid)** — keeps the blob content-addressed (stored once, no MERGE scan for
+- **Option 3 (hybrid)** — keeps the blob content-addressed (stored once, no dedup scan for
   it) while writing the small command-line/association data the naive way. Object count ≈ N
   (same as naive) but each object is tiny (no B), so transient storage and any residual
   dedup scan drop from **N·B** to **N·k·C** — orders of magnitude smaller. Best
@@ -312,12 +433,13 @@ N = 400,000; B = 50 KB; k = 1; C = 200 B; d_B = 1; d_C ≈ 400,000.
 | BQ dedup scan | ~20 GB → ~$0.13 | 0 | ~80 MB → <$0.01 |
 
 **Takeaway:** every Parquet option is dollar-trivial. The decision is *operational*, not
-financial: Option 1's downside is a ~20 GB transient footprint (already auto-cleaned by the
-14-day lifecycle rule) and one ~20 GB scan; Options 2/3 shrink that to ~80 MB at the price
-of complexity (Opt 2 also trades it for an ~N-tiny-object problem). This argues for
-**Option 1 first** (cheapest to build, only real cost is transient storage the lifecycle
-already handles) and **Option 3** only if the transient footprint or object count becomes a
-problem at full AoU scale.
+financial: Option 1's downside is a ~20 GB transient footprint (auto-cleaned by
+`DeleteParquetFiles` after loading, with the 14-day lifecycle rule as an off-by-default
+backstop) and one ~20 GB scan; Options 2/3 shrink that to ~80 MB at the price of complexity
+(Opt 2 also trades it for an ~N-tiny-object problem). This argues for **Option 1 first**
+(cheapest to build, only real cost is transient storage that cleanup already handles) and
+**Option 3** only if the transient footprint or object count becomes a problem at full AoU
+scale.
 
 ### 6.5 How to measure each (extends the AC1 harness)
 
@@ -327,8 +449,8 @@ by N:
 - **Ingest queries:** count BQ jobs per ingest step (`cost_observability` / INFORMATION_SCHEMA.JOBS);
   confirm 0 for all Parquet options vs ~2(k+1)·N for the BQ path.
 - **GCS bytes/objects:** `gcloud storage du` and object counts on the parquet output dir
-  *before* the lifecycle delete.
-- **Dedup scan:** `totalBytesProcessed` / `totalSlotMs` from the MERGE job.
+  *before* `DeleteParquetFiles` runs.
+- **Dedup scan:** `totalBytesProcessed` / `totalSlotMs` from the anti-join INSERT job.
 - **Load:** job count + per-job duration from `load_parquet_to_bq.py` `stats.json`.
 - **Empirically measure the drivers** from one real gVCF header: **B** and **k** (they
   dominate every formula), and **d_B** via
@@ -343,30 +465,37 @@ no partial corruption — under three triggers: (a) a WDL **task retry** (preemp
 `maxRetries`), (b) a Cromwell **workflow resume / re-run**, and (c) a deliberate
 **re-ingest** of the same batch.
 
-### 7.1 How idempotent is the pipeline today?
+### 7.1 Existing idempotency, and the gap the Parquet path leaves
 
-Only *by accident*. The BQ path has three separate, fragile mechanisms:
+The system **was designed with idempotency in mind — this is not accidental.** The BQ ingest
+path tracks a per-sample `HEADERS_LOADED` status in `sample_load_status` (`LoadStatus.java`):
+`CreateVariantIngestFiles` checks it and **skips** header writes for a sample whose headers are
+already loaded, then writes the status on success (`CreateVariantIngestFiles.java:338-354`,
+`:466-468`). Re-ingesting an already-loaded sample is a deliberate no-op. The BQ path also
+dedups header *text* at write time by hash (`VcfHeaderLineScratchCreator`), so the
+scratch→final blind INSERT sees one non-null-text row per hash.
 
-- **Per-sample skip:** `CreateVariantIngestFiles` checks `doScratchRowsExistFor` /
-  `doNonScratchRowsExistFor` per sample and skips header writes if rows already exist
-  (`CreateVariantIngestFiles.java:340-347`). Idempotent-ish, but per-`sample_id` and not
-  atomic — a partially-written prior run can leave inconsistent state.
-- **Blind-INSERT merge:** `process_sample_vcf_headers.py:21,24` are plain INSERTs. Running
-  the merge **twice would duplicate** rows in both `vcf_header_lines` and
-  `sample_vcf_header`.
-- **Scratch delete as the only guard:** `clean_up_scratch_table`
-  (`process_sample_vcf_headers.py:28-31`) empties scratch after the merge, so a *second*
-  merge finds nothing to insert. Idempotency thus depends on the DELETE having succeeded —
-  if the merge commits but the delete fails (or the step is retried before it), the next
-  run double-inserts.
+Two narrower gaps remain, both specific to the **Parquet** path:
 
-So the current design is not structurally idempotent; it relies on ordering and a cleanup
-step. The Parquet redesign should not inherit that fragility.
+- **It bypasses the per-sample status logic.** `CreateVariantIngestFiles.java:356-361`
+  short-circuits the existence checks for `PARQUET` ("operate as though they don't exist"), and
+  `HEADERS_LOADED` is never written on the Parquet path (`shouldWriteVCFHeadersLoadedStatusRow`
+  is set only on the BQ branch, `:353`). So Parquet generation does not skip already-loaded
+  samples. *(Aside: the Parquet path not writing `HEADERS_LOADED` at all is a separate gap —
+  see §9.)*
+- **The promotion step is not self-contained.** The original scratch→final blind INSERT relied
+  on the scratch DELETE having run to avoid re-inserting; and because the Parquet path does no
+  write-time hash dedup, its scratch holds full text for *every* (sample, hash), which a blind
+  INSERT would duplicate in `vcf_header_lines`.
+
+The anti-join INSERT (§7.2) closes both: it dedups by key and refuses to re-insert rows already
+in the target, so the promotion is deduplicating and idempotent regardless of the scratch
+DELETE or the (absent) Parquet per-sample skip.
 
 ### 7.2 Where idempotency must be enforced per layer
 
 The Parquet path deliberately moves dedup/idempotency *off* the ingest write (no BQ
-round-trips there) and onto the load + merge. Each layer needs a keyed, re-runnable
+round-trips there) and onto the scratch → final load. Each layer needs a keyed, re-runnable
 operation:
 
 | Layer | Non-idempotent form | Idempotent form |
@@ -374,24 +503,26 @@ operation:
 | Parquet write (offline, per sample) | (already safe — writes local files only; re-run overwrites) | deterministic file contents |
 | GCS upload of header parquet | `cp` (overwrite — safe, identical bytes) | idempotent by nature; Opt 2/3 blob uses `ifGenerationMatch=0` |
 | BQ load scratch ← parquet | `WRITE_APPEND` retried → double-load | **deterministic load job ID** (`load_parquet_to_bq.py:166`) so BQ dedups the retried job |
-| Merge scratch → `vcf_header_lines` | blind INSERT | **MERGE** on `vcf_header_lines_hash` |
-| Merge scratch → `sample_vcf_header` | blind INSERT | **MERGE** on (`sample_id`, `vcf_header_lines_hash`) |
+| Load scratch → `vcf_header_lines` | blind INSERT | **anti-join INSERT** on `vcf_header_lines_hash` |
+| Load scratch → `sample_vcf_header` | blind INSERT | **anti-join INSERT** on (`sample_id`, `vcf_header_lines_hash`) |
 | Scratch cleanup | — | DELETE is naturally idempotent (re-delete = no-op) |
 
-Key point: with both final-table populations as **MERGEs keyed on their natural keys**, the
-whole chain becomes idempotent *independently* of the scratch-delete step — removing the
-fragile dependency in §7.1.
+Key point: with both final-table populations as **anti-join INSERTs keyed on their natural
+keys**, the whole chain becomes idempotent *independently* of the scratch-delete step —
+removing the fragile dependency in §7.1.
 
 ### 7.3 Idempotency by option
 
-- **Option 1 (naive + MERGE):** idempotent once both merges are keyed (§7.2) and scratch
-  loads use deterministic job IDs. Note scratch can accumulate rows across retries; the
-  MERGE absorbs that harmlessly (dedup by key), which is exactly why MERGE (not
-  `INSERT ... SELECT DISTINCT`) is the right primitive here.
+- **Option 1 (naive + anti-join INSERT):** idempotent once both loads are anti-joined (§7.2)
+  and scratch loads use deterministic job IDs. Note scratch can accumulate rows across
+  retries; the anti-join skips keys already in the target (and `GROUP BY`/`DISTINCT` collapses
+  within-batch dups), which is exactly why an anti-join INSERT — not a blind
+  `INSERT ... SELECT DISTINCT`, which would still re-insert rows already loaded — is the right
+  primitive here.
 - **Option 2 / 3 (content-addressed):** strongest form — the expensive header **text** is
   idempotent at the *storage* layer (path = hash, identical bytes, `ifGenerationMatch=0`
   skips re-writes), so re-runs are no-ops for the blob. The BQ association / `vcf_header_lines`
-  loads still need keyed MERGE/skip-existing, same as Option 1.
+  loads still need the keyed anti-join INSERT / skip-existing, same as Option 1.
 - **Option 4 (consolidation):** the consolidation output must be deterministic (stable
   file naming by hash) for the downstream load to be idempotent; otherwise re-runs produce
   new files that re-load.
@@ -399,13 +530,30 @@ fragile dependency in §7.1.
 ### 7.4 Recommendation
 
 Make idempotency structural, not incidental:
-1. Both final-table populations become **MERGE** statements keyed on natural keys.
+1. Both final-table populations become **anti-join INSERT** statements keyed on natural keys.
 2. Rely on **deterministic BQ load job IDs** for scratch-load retry safety.
 3. Keep the scratch DELETE as cleanup, but the design must be correct **without** depending
    on it having run.
 
 This is small extra work on top of Option 1 (one of the two merges was already going to
 change for dedup) and it satisfies constraint #6 for every option.
+
+### 7.5 Table persistence & incremental ingest
+
+Callsets are ingested in batches, so it matters which header tables persist:
+
+- **`vcf_header_lines` + `sample_vcf_header` are the incremental accumulator.** Each batch
+  merges its headers into them and they grow across batches. They must persist for the
+  callset's life.
+- **`vcf_header_lines_scratch` is throwaway.** `clean_up_scratch_table` empties it after every
+  merge, so it holds no long-term data; deleting its *rows* is normal. Dropping the *table*
+  breaks the next run only until it is recreated (`DiscoverParquetFiles` queries it).
+- **Subtlety:** header "skip already-loaded" detection in `DiscoverParquetFiles` reads the
+  *transient scratch* table (regular prefix `vcf_header_lines_scratch`), unlike vet/ref/ploidy
+  which check their persistent data tables. So cross-batch skip is effectively a no-op for
+  headers — harmless only because each batch generates parquet for its new samples and old
+  parquet is deleted after loading. Incremental **correctness rests on the anti-join INSERT +
+  the persistent tables**, not on skip-detection.
 
 ---
 
@@ -425,14 +573,36 @@ equivalence between a BQ-loaded and a Parquet-loaded dataset. Expected checks:
 
 ## 9. Open questions / risks
 
+- **`is_loaded` would not be set for Parquet callsets that load headers** (found by static
+  tracing during the VS-1968 spike; fix applied under the VS-1803 implementation — no
+  dedicated bug ticket yet — but **not** yet verified end-to-end, see `quickstart*` note). The
+  Parquet path writes no `sample_load_status` rows: all `shouldWrite*StatusRow` flags are set
+  only on the BQ branch (`CreateVariantIngestFiles.java:318/334/353`) and the Parquet branch
+  bypasses them (`:356-361`). Separately, `sample_info.is_loaded` is set post-load in bulk by
+  `SetIsLoadedColumn` from the `samples_with_all_data` view, which JOINs `samples_with_header_data`
+  when headers are in play. That header view read the **transient** `vcf_header_lines_scratch`
+  table (emptied by `ProcessVCFHeaders`) UNION the `HEADERS_LOADED` status — **neither of which
+  survives for Parquet**, so the view went empty and `is_loaded` was never set.
+  - **Fix applied:** point `samples_with_header_data` at the durable
+    `sample_vcf_header` table instead of transient scratch (`GvsImportGenomes.wdl`). This is
+    path-agnostic and removes the reliance on `HEADERS_LOADED` (aligns with the code's note
+    that `sample_load_status` "may no longer be needed").
+  - **Safe for the BQ path:** the view is a shared BQ/Parquet artifact, but the change doesn't
+    regress BQ — the `HEADERS_LOADED` status clause (still UNION'd in) covers the during-ingest
+    window before the scratch→final merge, and post-merge `sample_vcf_header` is populated for
+    BQ too, so no BQ samples drop out of the view.
+  - *Alternative (not chosen):* have the Parquet path write `HEADERS_LOADED` — but only at a
+    post-merge step (writing it during generation would mark "loaded" before the data is in
+    BigQuery). Left as an option if per-sample header status is wanted for parity.
+  - **Verify in the Terra `quickstart*` run** (traced statically; not executed here).
 - **Small-object cost (Option 2/3):** how many distinct `is_expected_unique = true` chunks
   arise at AoU scale? Determines whether content-addressing the unique lines is viable.
-- **MERGE cost at scale (Option 1):** the dedup MERGE scans the text column; confirm this
-  is cheaper than the query storm it replaces.
+- **Dedup-scan cost at scale (Option 1):** the anti-join INSERT scans the text column;
+  confirm this is cheaper than the query storm it replaces.
 - **`billing_project_id` not threaded to the loader** (`GvsImportGenomes.wdl:1248`,
   VS-1955) — verify header loads don't need it.
 - **Scratch retention:** Option 1 keeps scratch; confirm `clean_up_scratch_table`
-  (`process_sample_vcf_headers.py:28-31`) still applies cleanly after a MERGE.
+  (`process_sample_vcf_headers.py:28-31`) still applies cleanly after the anti-join INSERT.
 
 ---
 
