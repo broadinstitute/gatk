@@ -90,14 +90,14 @@ localizes its VCFs independently (twice overall) rather than folding everything 
 
 **Purpose of the header phase.** The header-only ingest is an early **sanity check of the input gVCFs themselves**. Loading just the
 headers is one way to inspect each input's metadata (reference version, contig list,
-sample names, expected INFO/FORMAT/FILTER definitions, pipeline provenance, DRAGEN versions) and confirm the
+sample names, expected INFO/FORMAT/FILTER definitions, pipeline provenance, DRAGEN versions, whether reblocking was done, etc.) and confirm the
 cohort is well-formed and mutually consistent *before* committing to the expensive vet/ref
 ingest. This purpose must be preserved in the Parquet path.
 
 **The supported model.** Header loading runs as its **own** ingest first
 (`load_vcf_headers = true`, `load_vet_and_ref_ranges = false`); the loaded headers are then
 **manually inspected** with BQ queries to sanity-check the input gVCFs; and **only if that passes** is a
-second ingest run for vet / ref_ranges / sample_chromosome_ploidy (`load_vcf_headers = false`,
+second ingest run started for vet / ref_ranges / sample_chromosome_ploidy (`load_vcf_headers = false`,
 `load_vet_and_ref_ranges = true`). Three phases: *load headers → manually inspect inputs →
 load everything else*. This is the same operational model AoU already uses on the BQ path, and
 it is the **only** model supported on the Parquet path. It localizes the VCFs **twice** (once
@@ -197,6 +197,17 @@ gate passes.
 - `true` (command lines): write naively inline with associations → no small-object
   explosion, no dedup benefit lost (they were never going to dedup).
 - **Pros:** cost-optimal; uses the schema flag as intended.
+- **Pros (concurrency — the strongest structural argument):** content-addressing gives
+  **lock-free cross-shard dedup**. Generation is sharded (§1.5, `GvsImportGenomes.wdl:186`) and
+  shards are isolated (constraint #3), so no shard can see another's chunks. The BQ path solved
+  this with a *synchronous shared-table* existence check (`doRowsExistFor`), which is the source
+  of its ~1.6M-query storm (§5). Option 3 instead makes the **GCS object namespace the
+  coordination point**: concurrent shards racing to write the same `<hash>.parquet` are resolved
+  by the `ifGenerationMatch=0` precondition (first writer wins; the rest get a 412 and skip). So
+  the shared blob is written **once** across all shards with **no locks, no round-trips, and no
+  central table** — write-time-style dedup restored, but offline and contention-free. This holds
+  regardless of shard count and is unaffected by the concurrency caveat in §7.6 (the anti-join's
+  concurrent-writer gap), because the dedup happens at the storage layer, not via read-then-INSERT.
 - **Cons:** two code paths in the writer.
 - **Scaffold caveat:** the current `HYBRID` code (`VcfHeaderLineScratchCreator`, dormant behind
   the hardcoded strategy switch) is a *stub* — it writes the blob's association only and drops
@@ -212,6 +223,18 @@ gate passes.
 **Recommendation:** implement **Option 1 first** (low risk, unblocks TSPS/AoU, benchmarks
 the "naive" cost for AC1), then evaluate **Option 3** if the naive cost is unacceptable.
 Options 1 and 3 share the same writer-schema and WDL wiring work; only the dedup locus differs.
+
+**A note on preferring Option 3 despite the trivial cost.** The §6 dollar analysis says Option 1
+is fine — the N×B footprint is pennies and auto-cleaned. But cost is not the only axis. On
+*concurrency and design cleanliness* Option 3 is the better fit: it dedups the shared blob
+**structurally** at the storage layer (lock-free, shard-count-independent, §3 Option 3 pros)
+rather than deferring it to a single after-the-fact anti-join scan that is itself only
+sequentially — not concurrently — safe (§7.6). In other words, Option 3 makes the shared blob
+*"stored once"* an invariant of the write path instead of a property the load query has to
+reconstruct. That is a legitimate reason to prefer Option 3 as the eventual target even though
+the cost argument alone would not justify the extra engineering. The staging is deliberate:
+ship Option 1 to unblock and to get the AC1 measurement, then move to Option 3 for the cleaner
+concurrency story (and the smaller footprint) once the content-addressed loader is built.
 
 ---
 
@@ -384,6 +407,10 @@ of magnitude below an `N·B` term.
   (same as naive) but each object is tiny (no B), so transient storage and any residual
   dedup scan drop from **N·B** to **N·k·C** — orders of magnitude smaller. Best
   cost/footprint overall; moderate complexity (two writer paths + one bespoke blob loader).
+  **Beyond footprint, Option 3 also wins on concurrency:** the blob's *"stored once"* is
+  enforced lock-free across isolated shards by the `ifGenerationMatch=0` object namespace (§3
+  Option 3 pros), so — unlike Option 1's anti-join, whose idempotency is only sequential (§7.6)
+  — dedup is structural at the write layer and independent of shard count and promotion timing.
 - **Option 4 (pre-load consolidation)** — still pays the full **N·B** GCS write, then adds
   a consolidation VM that reads **N·B** to dedup locally before a tiny load. Saves the BQ
   dedup scan but not the write, and adds compute. Dominated by Option 3 on every axis.
@@ -404,9 +431,12 @@ financial: Option 1's downside is a ~20 GB transient footprint (auto-cleaned by
 `DeleteParquetFiles` after loading, with the 14-day lifecycle rule as an off-by-default
 backstop) and one ~20 GB scan; Options 2/3 shrink that to ~80 MB at the price of complexity
 (Opt 2 also trades it for an ~N-tiny-object problem). This argues for **Option 1 first**
-(cheapest to build, only real cost is transient storage that cleanup already handles) and
-**Option 3** only if the transient footprint or object count becomes a problem at full AoU
-scale.
+(cheapest to build, only real cost is transient storage that cleanup already handles). It does
+**not** argue against Option 3: the case for Option 3 is not the (trivial) dollars but the
+cleaner *concurrency* story — structural, lock-free, shard-independent blob dedup vs. Option 1's
+only-sequentially-idempotent anti-join (§3 Option 3 pros, §7.6). So the staging is "Option 1 to
+unblock, Option 3 as the eventual target," with the concurrency argument — not the footprint —
+being the thing that would pull Option 3 forward.
 
 ### 6.5 How to measure each (extends the AC1 harness)
 
@@ -522,6 +552,33 @@ Callsets are ingested in batches, so it matters which header tables persist:
   parquet is deleted after loading. Incremental **correctness rests on the anti-join INSERT +
   the persistent tables**, not on skip-detection.
 
+### 7.6 Re-run idempotency vs. concurrent-writer safety (review note)
+
+The anti-join INSERT makes the promotion idempotent across **sequential** re-runs (task retry,
+Cromwell resume, deliberate re-ingest). It does **not** make two promotions writing
+**concurrently** safe: two `INSERT ... SELECT ... LEFT JOIN t ... WHERE t.key IS NULL`
+statements can both observe a key as absent and both insert it, because BigQuery does **not**
+conflict-abort concurrent `INSERT`s the way it does `UPDATE`/`DELETE`/`MERGE` under optimistic
+concurrency. The result would be a duplicate row.
+
+This is **not** a live risk in the current wiring: `ProcessVCFHeaders`
+(`GvsImportGenomes.wdl:335`) is a **single, non-scattered** task that runs both anti-join
+INSERTs exactly once per workflow run. The per-shard scatter (`LoadParquetFilesToBQ`,
+`GvsImportGenomes.wdl:281-290`) only *appends* raw rows into `vcf_header_lines_scratch`
+(retry-idempotent via deterministic BQ load job IDs, §7.2) and never runs the anti-join — so no
+two shards race on the promotion. The **BQ path uses the same single-task promotion**, so this
+is not a Parquet-specific regression.
+
+The race would only appear if **two ingest runs promoted into the same dataset concurrently**.
+The WDL guarantees only the *within-run* single-task promotion above; whether two
+`GvsImportGenomes` runs can overlap on one dataset is an **orchestration-layer assumption** this
+design has NOT verified — it depends on how bulk-ingest / AoU schedules runs. **Open item:**
+confirm with the AoU/bulk-ingest owners that concurrent promotions into one dataset cannot
+happen. If they can, the anti-join alone is insufficient and the promotion must be serialized
+(a dataset-level lock / mutex step) or followed by a dedup pass; Option 3's content-addressed
+blob dedup (§3) sidesteps this entirely for the expensive shared blob.
+*(Raised in review by mcovarr on the VS-1968 doc.)*
+
 ---
 
 ## 8. AC2 — header-analysis queries WIP based on VS-1215
@@ -570,17 +627,23 @@ A/B check against a BQ-loaded dataset is wanted, the same tables can be compared
   when headers are in play. That header view read the **transient** `vcf_header_lines_scratch`
   table (emptied by `ProcessVCFHeaders`) UNION the `HEADERS_LOADED` status — **neither of which
   survives for Parquet**, so the view went empty and `is_loaded` was never set.
-  - **Fix applied:** point `samples_with_header_data` at the durable
-    `sample_vcf_header` table instead of transient scratch (`GvsImportGenomes.wdl`). This is
-    path-agnostic and removes the reliance on `HEADERS_LOADED` (aligns with the code's note
-    that `sample_load_status` "may no longer be needed").
+  - **Fix applied (review-endorsed):** point `samples_with_header_data` at the durable
+    `sample_vcf_header` table instead of transient scratch
+    (`GvsImportGenomes.wdl:1054-1058`), `UNION DISTINCT` the `HEADERS_LOADED` status
+    (`:952-960`, `:1036-1058`). This mirrors `samples_with_reference_data` /
+    `samples_with_variant_data` (data-presence source `UNION` `sample_load_status`) — exactly
+    the structure mcovarr recommended in review (VS-1968 doc): the Parquet side derives presence
+    from `sample_vcf_header`, and the `sample_load_status` `UNION` preserves legacy BQ-loaded
+    datasets. It is path-agnostic and removes reliance on `HEADERS_LOADED` for the Parquet path.
   - **Safe for the BQ path:** the view is a shared BQ/Parquet artifact, but the change doesn't
-    regress BQ — the `HEADERS_LOADED` status clause (still UNION'd in) covers the during-ingest
-    window before the scratch→final merge, and post-merge `sample_vcf_header` is populated for
-    BQ too, so no BQ samples drop out of the view.
-  - *Alternative (not chosen):* have the Parquet path write `HEADERS_LOADED` — but only at a
-    post-merge step (writing it during generation would mark "loaded" before the data is in
-    BigQuery). Left as an option if per-sample header status is wanted for parity.
+    regress BQ — the `HEADERS_LOADED` status clause (still UNION'd in, gated on the
+    `sample_load_status` table existing) covers the during-ingest window before the
+    scratch→final merge, and post-merge `sample_vcf_header` is populated for BQ too, so no BQ
+    samples drop out of the view. No BQ code-path change is required.
+  - **The Parquet path deliberately does not write `HEADERS_LOADED`** — per mcovarr's review
+    (VS-1968 doc), header-load presence is determined *by the view* (as vet/ref/ploidy already do),
+    not by a per-sample status row. Writing `HEADERS_LOADED` on the Parquet path was considered
+    and **rejected**.
   - **Verify in the Terra `quickstart*` run** (traced statically; not executed here).
 - **Small-object cost (Option 2/3):** how many distinct `is_expected_unique = true` chunks
   arise at AoU scale? Determines whether content-addressing the unique lines is viable.
@@ -590,6 +653,10 @@ A/B check against a BQ-loaded dataset is wanted, the same tables can be compared
   VS-1955) — verify header loads don't need it.
 - **Scratch retention:** Option 1 keeps scratch; confirm `clean_up_scratch_table`
   (`process_sample_vcf_headers.py:28-31`) still applies cleanly after the anti-join INSERT.
+- **Concurrent promotions into one dataset (§7.6):** the anti-join is only *sequentially*
+  idempotent. Confirm that two `GvsImportGenomes` in AoU/bulk-ingest runs cannot
+  overlap on the same dataset; if they can, serialize the promotion or move to Option 3's
+  content-addressed blob dedup.
 
 ---
 
