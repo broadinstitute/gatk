@@ -340,7 +340,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1970_fix_mane_under_annotation
          tags:
              - /.*/
    - name: GvsIngestTieout
