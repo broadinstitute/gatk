@@ -571,13 +571,16 @@ is not a Parquet-specific regression.
 
 The race would only appear if **two ingest runs promoted into the same dataset concurrently**.
 The WDL guarantees only the *within-run* single-task promotion above; whether two
-`GvsImportGenomes` runs can overlap on one dataset is an **orchestration-layer assumption** this
-design has NOT verified — it depends on how bulk-ingest / AoU schedules runs. **Open item:**
-confirm with the AoU/bulk-ingest owners that concurrent promotions into one dataset cannot
-happen. If they can, the anti-join alone is insufficient and the promotion must be serialized
-(a dataset-level lock / mutex step) or followed by a dedup pass; Option 3's content-addressed
-blob dedup (§3) sidesteps this entirely for the expensive shared blob.
-*(Raised in review by mcovarr on the VS-1968 doc.)*
+`GvsImportGenomes` runs can overlap on one dataset is an **orchestration-layer question** the
+WDL itself cannot answer. **Resolved:** the bulk-ingest / AoU owner (mcovarr) has confirmed this
+must never happen going forward — the rest of the ingest system is not designed for that
+concurrency and would almost certainly enter a bad state if two runs shared a dataset. So the
+anti-join's *sequential* idempotency is sufficient for the supported operational model, and no
+dataset-level lock is required. (Were that invariant ever relaxed, the anti-join alone would be
+insufficient and the promotion would need serializing or a dedup pass; Option 3's
+content-addressed blob dedup (§3) sidesteps the concern entirely for the expensive shared blob
+regardless.)
+*(Raised in review by mcovarr on the VS-1968 doc; concurrency invariant confirmed by mcovarr.)*
 
 ---
 
@@ -653,9 +656,11 @@ A/B check against a BQ-loaded dataset is wanted, the same tables can be compared
   VS-1955) — verify header loads don't need it.
 - **Scratch retention:** Option 1 keeps scratch; confirm `clean_up_scratch_table`
   (`process_sample_vcf_headers.py:28-31`) still applies cleanly after the anti-join INSERT.
-- **Concurrent promotions into one dataset (§7.6):** the anti-join is only *sequentially*
-  idempotent. Confirm that two `GvsImportGenomes` in AoU/bulk-ingest runs cannot
-  overlap on the same dataset; if they can, serialize the promotion or move to Option 3's
+- **Concurrent promotions into one dataset (§7.6): resolved.** The anti-join is only
+  *sequentially* idempotent, which is sufficient because the bulk-ingest / AoU owner (mcovarr)
+  has confirmed two `GvsImportGenomes` runs must never overlap on the same dataset going forward
+  (the ingest system is not designed for that concurrency). No dataset-level lock is required; if
+  that invariant were ever relaxed, serialize the promotion or move to Option 3's
   content-addressed blob dedup.
 
 ---
