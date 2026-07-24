@@ -76,87 +76,52 @@ shared blob.
 - A gate placeholder is left at `GvsImportGenomes.wdl:252`
   ("*add a gate for Parquet header loading here once that's implemented*").
 
-### 1.4 Header extraction: single invocation vs. the gated model
+### 1.4 Header extraction reuses the existing single VCF read
 
 `CreateVariantIngestFiles` already localizes each VCF once (`GvsImportGenomes.wdl:551-553`)
 and runs a **single** call (`GvsImportGenomes.wdl:560`) that already accepts
-`--enable-vcf-headers` (`GvsImportGenomes.wdl:575`), so header extraction *can* piggyback on
-the existing VCF read with no extra localization. **However**, the operational model (§1.5)
-deliberately loads headers as a *separate, gated* phase before vet/ref/ploidy, which is in
-tension with folding everything into one pass. The Parquet architecture reconciles this
-because generation and BQ loading are already decoupled — see §1.5. Either way the remaining
-work is finishing the plumbing, not adding an ingest tool.
+`--enable-vcf-headers` (`GvsImportGenomes.wdl:575`), so header extraction piggybacks on the
+existing VCF read with no extra ingest tool — the remaining work is finishing the plumbing
+(upload → discover → load), not adding an extraction tool. Note that the operational model
+(§1.5) runs header loading as a **separate ingest** from vet/ref, so in practice each phase
+localizes its VCFs independently (twice overall) rather than folding everything into one pass.
 
-### 1.5 Operational model: phased, gated loading
+### 1.5 Operational model: phased header-then-data loading (AoU style)
 
-**Purpose of the header phase.** The header-only ingest is not a check that header *loading*
-worked — it is an early **sanity check of the input gVCFs themselves**. Loading just the
-headers is a cheap way to inspect each input's metadata (reference version, contig list,
-sample names, expected INFO/FORMAT/FILTER definitions, pipeline provenance) and confirm the
+**Purpose of the header phase.** The header-only ingest is an early **sanity check of the input gVCFs themselves**. Loading just the
+headers is one way to inspect each input's metadata (reference version, contig list,
+sample names, expected INFO/FORMAT/FILTER definitions, pipeline provenance, DRAGEN versions) and confirm the
 cohort is well-formed and mutually consistent *before* committing to the expensive vet/ref
 ingest. This purpose must be preserved in the Parquet path.
 
-**AoU today (BQ path).** Header loading is run as its **own** ingest first
-(`load_vcf_headers = true`, `load_vet_and_ref_ranges = false`), the loaded headers are then
-**manually inspected** to sanity-check the input gVCFs, and **only if that passes** is a
-second ingest run for vet / ref_ranges / sample_chromosome_ploidy. Three phases: *load
-headers → sanity check inputs → load everything else*. On the BQ path this localizes the VCFs
-**twice** (once per ingest run).
+**The supported model.** Header loading runs as its **own** ingest first
+(`load_vcf_headers = true`, `load_vet_and_ref_ranges = false`); the loaded headers are then
+**manually inspected** with BQ queries to sanity-check the input gVCFs; and **only if that passes** is a
+second ingest run for vet / ref_ranges / sample_chromosome_ploidy (`load_vcf_headers = false`,
+`load_vet_and_ref_ranges = true`). Three phases: *load headers → manually inspect inputs →
+load everything else*. This is the same operational model AoU already uses on the BQ path, and
+it is the **only** model supported on the Parquet path. It localizes the VCFs **twice** (once
+per ingest run) — an accepted cost, because the header phase exists precisely to catch bad
+inputs before paying for the expensive vet/ref ingest.
 
-**TSPS (assumption — undecided).** Likely the same three phases, but **automated** (the
-manual sanity check becomes an automated gate).
+The "avoid re-localizing the VCFs in a second task" idea (from VS-1803) is therefore **not**
+pursued: the phased model re-localizes by design. Validating inputs before doing expensive
+variant work fundamentally requires either re-localizing or doing that expensive work first,
+and this model chooses to re-localize so that **no** vet/ref compute is spent until the manual
+gate passes.
 
-**How this maps onto Parquet.** In the Parquet path, *generation* (localize VCF → write
-parquet to GCS) is already decoupled from *loading* (`DiscoverParquetFiles` →
-`LoadParquetFilesToBQ`). That opens two ways to honor the gate:
-
-- **(A) Generate-all-once, phased load.** One `CreateVariantIngestFiles` pass writes *all*
-  parquet (headers + vet + ref + ploidy) with a single localization; then load **only** the
-  header parquet, gate on the sanity check, and load the rest afterward from the parquet
-  already in GCS. Single localization *and* a real gate.
-  *Cost:* vet/ref/ploidy parquet is **generated before** the gate, so a failed header check
-  wastes that generation compute (and transient GCS storage).
-- **(B) Phase-separated generation.** A headers-only generation+load first (cheap), gate,
-  then a second generation+load for the rest — **re-localizing** the VCFs (as AoU does today
-  on the BQ path). *Cost:* pays localization + generation twice, but spends **no** vet/ref
-  compute until the gate passes.
-
-**Trade-off — sharpened by the purpose.** Because the gate exists specifically to *avoid
-expensive work on bad inputs*, approach (A) partly defeats it: (A) generates the vet/ref/ploidy
-parquet **before** the gate, so a caught bad input still pays the full generation cost — only
-the vet/ref *BQ load* is saved. In fact the "avoid re-localizing in a second task" wish
-(from VS-1803, not this spike) and the header phase's purpose are **fundamentally in
-conflict**: validating inputs
-before doing expensive variant work requires *either* re-localizing (B) *or* doing that
-expensive work first (A). We can have at most one.
-
-Concretely, per-sample the costs are: **localize** (copy the gVCF; needed for headers *and*
-variants), cheap **header parse**, and expensive **vet/ref parse**.
-- **(A)** localizes once but always does the vet/ref parse up front → wastes vet/ref parse on
-  a gate failure.
-- **(B)** localizes twice on success but does the vet/ref parse only after the gate → wastes
-  almost nothing on failure.
-
-So (A) wins only when localization dominates *and* input failures are rare; the stated
-purpose (the phase exists because bad inputs are a real risk) leans toward **(B)**, or toward
-(A) only if TSPS confirms failures are rare and localization is the dominant cost.
-**Recommendation:** leave open until TSPS fixes its model, but note the conflict above rather
-than assuming the re-localization can simply be optimized away.
-
-**Implication either way:**
-- The header load must complete and be validated as a *distinct, gated step* before the
-  vet/ref/ploidy load (see the WDL gate in §4.2); for approach (A) the parquet cleanup
-  (`DeleteParquetFiles`, which runs by default right after loading — plus the off-by-default
-  14-day GCS lifecycle rule as a backstop) must **not** remove the vet/ref parquet before the
-  post-gate load.
+**Implication:**
+- The header load must complete and be **manually validated** before the vet/ref/ploidy
+  ingest is started. Because these are separate workflow runs, the gate is enforced naturally
+  by the operator between runs (see the WDL wiring in §4.2).
 - The sanity check reads header **content**, so the Parquet header load must persist the
   **full header text**, not just hashes. Storing it *deduplicated* does not hurt inspection:
   the check reconstructs any sample's header by joining `sample_vcf_header` (sample → hash) to
   `vcf_header_lines` (hash → text). Every design in §3 ends with those same two tables, so all
   of them keep the header lines (contigs, reference, INFO/FORMAT) fully inspectable — the only
   way to lose that is an *incomplete* implementation that persists hashes without ever loading
-  the text into `vcf_header_lines` (see the caveat on the current content-addressing scaffold
-  in §3 / §7.3).
+  the text into `vcf_header_lines` (see the caveat on the content-addressing scaffold in
+  §3 / §7.3).
 
 ---
 
@@ -189,11 +154,11 @@ than assuming the re-localization can simply be optimized away.
 7. **Loading is phased and gated — as an input-gVCF sanity check** (§1.5). The header-only
    phase exists to validate the *input gVCFs* (reference, contigs, samples, expected fields)
    before the expensive vet/ref ingest, so it must remain a distinct, gated phase in the
-   Parquet path too. Consequences: (a) the header load must stand alone and gate the data
-   load; (b) it must persist **full header text** so the check can inspect content (a hard
-   requirement on Option 3's content-addressing); (c) for approach (A) the parquet cleanup
-   must be phase-aware so vet/ref parquet survives until its post-gate load; (d) this gated
-   re-run pattern makes constraint #6 (idempotency) more pressing, not less.
+   Parquet path too — run as a **separate ingest** from the data load. Consequences: (a) the
+   header load must stand alone and be manually validated before the data load is started;
+   (b) it must persist **full header text** so the check can inspect content (a hard
+   requirement on Option 3's content-addressing); (c) this separate-run pattern makes
+   constraint #6 (idempotency) more pressing, not less.
 
 ---
 
@@ -288,10 +253,12 @@ Options 1 and 3 share the same writer-schema and WDL wiring work; only the dedup
   — i.e. the Parquet header load for parquet runs, or the BQ Write API for BQ runs.
   `SetIsLoadedColumn` stays under `load_vet_and_ref_ranges` (headers-only runs don't mark
   samples loaded).
-- **Phasing (per §1.5):** the AoU-style gate is achieved by running the workflow **twice**
-  (headers-only, sanity-check, then data-only). The single-run intra-workflow gate
-  (approach A with a split scatter) and phase-aware parquet deletion are **not** implemented —
-  in a combined run headers and data load together.
+- **Phasing (per §1.5):** the supported operational model runs the workflow **twice** — a
+  headers-only ingest (`load_vcf_headers = true`, `load_vet_and_ref_ranges = false`), manual
+  inspection, then a data-only ingest. Each run localizes its own VCFs and cleans up its own
+  parquet after loading, so no intra-run phase-aware deletion is needed. (Setting both
+  booleans true in one run would load headers and data together and is technically possible,
+  but it bypasses the manual gate and is **not** the supported model.)
 - Validated with `womtool validate`. End-to-end coverage is the Terra `quickstart*` tests.
 
 ### 4.3 Python — scratch → final load
