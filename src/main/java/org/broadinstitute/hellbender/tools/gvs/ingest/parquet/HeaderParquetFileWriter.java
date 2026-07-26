@@ -30,15 +30,26 @@ public class HeaderParquetFileWriter extends AbstractParquetFileWriter {
 
     /**
      * Creates a JSON object representing a header record.
-     * 
+     * <p>
+     * Column names intentionally match the {@code vcf_header_lines_scratch} BigQuery table so the
+     * resulting Parquet file can be loaded into that table by name (see the VS-1968 design doc).
+     *
      * @param sampleId the sample ID
-     * @param headerLineHash the hash of the header line
+     * @param headerChunk the header text chunk; may be {@code null} to write an association-only row
+     *                    (sample_id -> hash) without the text, mirroring the BQ path's dedup behavior
+     * @param headerLineHash the MD5 hash of the header chunk
+     * @param isExpectedUnique whether this chunk is expected to differ per sample
      * @return a JSON object containing the header information
      */
-    public static JSONObject writeJson(Long sampleId, String headerLineHash) {
+    public static JSONObject writeJson(Long sampleId, String headerChunk, String headerLineHash, Boolean isExpectedUnique) {
         JSONObject record = new JSONObject();
         record.put("sample_id", sampleId);
-        record.put("headerLineHash", headerLineHash);
+        // Omit the (nullable) text column entirely when null so the Parquet writer skips it.
+        if (headerChunk != null) {
+            record.put("vcf_header_lines", headerChunk);
+        }
+        record.put("vcf_header_lines_hash", headerLineHash);
+        record.put("is_expected_unique", isExpectedUnique);
         return record;
     }
 }

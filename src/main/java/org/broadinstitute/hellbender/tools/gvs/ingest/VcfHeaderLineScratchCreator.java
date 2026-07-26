@@ -23,6 +23,24 @@ import java.util.concurrent.ExecutionException;
 public class VcfHeaderLineScratchCreator {
     private static final Logger logger = LogManager.getLogger(VcfHeaderLineScratchCreator.class);
 
+    /**
+     * How the Parquet ingest path writes VCF header data. See the VS-1968 design doc for details.
+     * <ul>
+     *   <li>{@link #NAIVE} (Option 1): write the full header text for every chunk of every sample;
+     *       deduplication happens later in the scratch&rarr;final MERGE.</li>
+     *   <li>{@link #HYBRID} (Option 3): route on {@code is_expected_unique} &mdash; write per-sample
+     *       unique (command-line) chunks inline, and content-address the shared blob to GCS keyed by
+     *       its hash. Content-addressing is not yet implemented (see the branch in {@link #apply}).</li>
+     * </ul>
+     */
+    public enum HeaderParquetStrategy {
+        NAIVE,
+        HYBRID
+    }
+
+    // TODO(VS-1803): promote this to a real CLI/WDL parameter. Hardcoded for now.
+    private static final HeaderParquetStrategy PARQUET_STRATEGY = HeaderParquetStrategy.NAIVE;
+
     private final CommonCode.OutputType outputType;
     private final Long sampleId;
     private final String projectId;
@@ -32,8 +50,6 @@ public class VcfHeaderLineScratchCreator {
     private HeaderParquetFileWriter vcfHeaderParquetFileWriter = null;
     private static final String NON_SCRATCH_TABLE_NAME = "vcf_header_lines";
     private static final String SCRATCH_TABLE_NAME = "vcf_header_lines_scratch";
-
-    private static final String HEADER_FILETYPE_PREFIX = "header_file";
 
 
     public static boolean doScratchRowsExistFor(String projectId, String datasetName, Long sampleId) {
@@ -72,15 +88,17 @@ public class VcfHeaderLineScratchCreator {
                     vcfHeaderBQJsonWriter = new PendingBQWriter(projectId, datasetName, SCRATCH_TABLE_NAME);
                     break;
                 case PARQUET:
-                    // TODO ensure that there doesn't need to be a table_number or inputVcfFileName--it's all tables/samples, yes?
-                    final File parquetOutputFile = new File(outputDirectory, HEADER_FILETYPE_PREFIX + ".parquet");
+                    // One header file per sample. Name it "<SCRATCH_TABLE_NAME>_<sampleId>.parquet" so the
+                    // loader groups it under the vcf_header_lines_scratch table and parses the sample id
+                    // (regular-table pattern: /<prefix>_<sampleId>...parquet). See the VS-1968 design doc.
+                    final File parquetOutputFile = new File(outputDirectory, SCRATCH_TABLE_NAME + "_" + this.sampleId + ".parquet");
                     vcfHeaderParquetFileWriter = new HeaderParquetFileWriter(new Path(parquetOutputFile.toURI()), headersRowSchema, CompressionCodecName.SNAPPY);
                     break;
 
             }
         }
         catch (Exception e) {
-            throw new UserException("Could not create VCF Header Scratch Table Writer", e);
+            throw new UserException("Could not create Vcf Header Scratch Table Writer", e);
         }
 
     }
@@ -106,11 +124,35 @@ public class VcfHeaderLineScratchCreator {
                         throw new IOException("BQ exception", ex);
                     }
                     break;
-                case PARQUET:
-                    String chunkHash = Utils.calcMD5(headerChunk.getKey());
-                    JSONObject record = HeaderParquetFileWriter.writeJson(this.sampleId, chunkHash);
-                    vcfHeaderParquetFileWriter.write(record);
+                case PARQUET: {
+                    // The Parquet path does no write-time dedup (that would reintroduce the per-sample BQ
+                    // query storm); dedup + idempotency happen in the scratch->final load. See the design doc.
+                    final String chunkHash = Utils.calcMD5(headerChunk.getKey());
+                    final Boolean isExpectedUnique = headerChunk.getValue();
+                    switch (PARQUET_STRATEGY) {
+                        case NAIVE:
+                            // Option 1: write the full record for every chunk of every sample.
+                            vcfHeaderParquetFileWriter.write(
+                                    HeaderParquetFileWriter.writeJson(this.sampleId, headerChunk.getKey(), chunkHash, isExpectedUnique));
+                            break;
+                        case HYBRID:
+                            if (isExpectedUnique) {
+                                // Option 3: per-sample command-line chunks don't dedup; write text inline.
+                                vcfHeaderParquetFileWriter.write(
+                                        HeaderParquetFileWriter.writeJson(this.sampleId, headerChunk.getKey(), chunkHash, true));
+                            } else {
+                                // Option 3: the shared blob is content-addressed to GCS keyed by its hash so it is
+                                // stored once. Here we emit only the sample_id->hash association (NULL text).
+                                // TODO(VS-1803): write the blob text to gs://.../headers/text/<hash>.parquet with an
+                                //   ifGenerationMatch=0 precondition, and load those objects into vcf_header_lines.
+                                //   Until that exists, HYBRID does NOT persist the shared blob text.
+                                vcfHeaderParquetFileWriter.write(
+                                        HeaderParquetFileWriter.writeJson(this.sampleId, null, chunkHash, false));
+                            }
+                            break;
+                    }
                     break;
+                }
             }
         }
     }

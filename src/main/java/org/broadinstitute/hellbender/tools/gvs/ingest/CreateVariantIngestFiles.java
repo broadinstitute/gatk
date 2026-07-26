@@ -226,8 +226,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     public final MessageType headersRowSchema = MessageTypeParser
             .parseMessageType("""
             message HeaderRow {
-            	required int64 sample_id;
-            	required binary headerLineHash (UTF8);
+                required int64 sample_id;
+                optional binary vcf_header_lines (UTF8);
+                required binary vcf_header_lines_hash (UTF8);
+                required boolean is_expected_unique;
             }
             """);
 
