@@ -373,6 +373,14 @@ public final class ReblockGVCF extends MultiVariantWalker {
      */
     private void regenotypeVC(final VariantContext originalVC) {
 
+        // Somatic-style records (e.g. DRAGEN mitochondrial output) do not provide diploid GQ/PL data,
+        // so pass them through untouched instead of applying reblocking logic.
+        final Genotype inputGenotype = originalVC.getGenotype(0);
+        if (inputGenotype.hasExtendedAttribute("SQ") && !inputGenotype.hasGQ() && !inputGenotype.hasPL()) {
+            vcfWriter.add(originalVC);
+            return;
+        }
+
         //Pass back ref-conf homRef sites/blocks to be combined by the GVCFWriter
         if (isHomRefBlock(originalVC)) {
             //if this hom ref block is entirely overlapped by previous VCF output, then drop it
