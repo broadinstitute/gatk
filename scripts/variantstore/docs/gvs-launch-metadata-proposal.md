@@ -76,29 +76,9 @@ what recording is for. (See `scripts/variantstore/docs/tsps/gvs-tsps-bigquery-re
    distinction is wanted, TSPS has to supply it; `was_specified` below only separates "a value
    arrived" from "the WDL default applied".
 
-## Record effective values, not declared defaults
+## Recording inputs
 
-Defaults differ between entry points by design — `drop_state` is `"FORTY"` in
-`GvsJointVariantCalling.wdl:28` but `"NONE"` in `GvsBulkIngestGenomes.wdl:44`, and
-`maximum_alternate_alleles` is `1000` in `GvsJointVariantCalling.wdl:83` but `100` in
-`GvsExtractCallset.wdl:67` — because each suits how its own workflow is normally invoked, and the
-top-level workflow threads its own values down to the subworkflows that need them.
-
-The consequence for this proposal is that only *effective* values, resolved at the top level, are worth
-recording; a declared default would be actively misleading about what a run did. The schema below
-records effective values under the input's own name for that reason.
-
-`drop_state` is the clearest illustration of why the record matters more than any default: the value AoU
-requires is `"ZERO"`, which `AOU_DELIVERABLES.md:108` instructs an operator to type in and which no
-workflow default supplies, so the correct value is determined by protocol documentation rather than by
-code and nothing confirms it was followed. See `drop-state-handling.md` for the full picture, including
-the follow-on tickets it suggests.
-
-## Which inputs
-
-Recording an input costs one row (~50 rows per launch). The expensive judgment call is not what to
-store but what would be *enforced*, so everything is recorded and each input carries two attributes
-that Deliverable B would later consume:
+Two key properties characterize a workflow input:
 
 - `scope`: the blast radius over which the value must stay constant.
 - `is_enforced`: whether a mismatch should stop the pipeline.
@@ -125,9 +105,21 @@ each is something a user would need in order to interpret a delivered callset.
 | effective interval list (`interval_list`, or the `GetReference` default) | ingest, filter set, extract | Which regions samples cover; whether absence of data is meaningful                                                                                                                                            |
 | `drop_state`                                                             | ingest, extract             | Which GQ reference blocks were discarded; determines reference genotype fidelity                                                                                                                              |
 | `use_compressed_references`                                              | ingest                      | Physical `ref_ranges_%` schema (`location` vs `packed_ref_data`)                                                                                                                                              |
-| `load_vet_and_ref_ranges`                                                | ingest                      | Which core tables were populated                                                                                                                                                                              |
-| `load_vcf_headers`                                                       | ingest                      | Whether per-sample header provenance exists                                                                                                                                                                   |
-| `use_parquet_ingest`, `parquet_output_gcs_dir`                           | ingest                      | Ingest path. TSPS is Parquet-only, so the flag should always be `true` — recording lets that be asserted rather than assumed, and the GCS directory outlives the dataset, so it matters for cleanup and audit |
+
+Note what this scope deliberately excludes. `load_vcf_headers` and `load_vet_and_ref_ranges` are
+*expected* to differ between ingest runs against the same dataset: the AoU protocol loads headers first
+(`AOU_DELIVERABLES.md:91`) so that DRAGEN versions and reblocking can be validated before variant and
+reference data are loaded (`:106`). Treating them as dataset invariants would make the check fire on the
+documented flow. The Parquet inputs are per-batch for the same reason: batches can mix the Parquet path
+with the BigQuery Storage Write API and can use different `parquet_output_gcs_dir` values, so a single
+dataset may legitimately have heterogeneous ingest-mechanism provenance.
+
+Per-sample completeness, the property those booleans might otherwise be asked to guarantee, is tracked
+separately by `sample_info.is_loaded`, which `GvsImportGenomes.wdl:318-332` sets in bulk from
+`samples_with_all_data` on whichever ingest path ran. Note that `sample_load_status` is *not* the record
+to reach for here: it is written per stage by the ingest tool only on the BigQuery Storage Write API path,
+so it says nothing about Parquet-ingested samples — which is every TSPS run and the data pass of every
+recent AoU callset.
 
 ### `CALLSET` scope
 
@@ -146,6 +138,7 @@ each is something a user would need in order to interpret a delivered callset.
 
 ### `RUN` scope
 
+`load_vcf_headers`, `load_vet_and_ref_ranges`, `use_parquet_ingest`, `parquet_output_gcs_dir`,
 `call_set_identifier`, `extract_output_gcs_dir`, `extract_output_file_base_name`,
 `merge_output_vcfs`, `bgzip_output_vcfs`, `collect_variant_calling_metrics`, `sample_set_name`,
 `sample_id_column_name`, `vcf_files_column_name`, `vcf_index_files_column_name`,
@@ -154,6 +147,12 @@ each is something a user would need in order to interpret a delivered callset.
 `load_data_scatter_width`, `load_data_preemptible_override`, `load_data_maxretries_override`,
 `split_intervals_disk_size_override`, `split_intervals_mem_override`, `INDEL_VQSR_mem_gb_override`,
 `SNP_VQSR_mem_gb_override`).
+
+The first four are `RUN` scope precisely because they vary by design, and recording them is what makes a
+multi-pass ingest legible after the fact: which run loaded headers only, which loaded variant and
+reference data, which used the Parquet path, and where the Parquet landed. `parquet_output_gcs_dir` is
+also the one recorded value that points at data outside the dataset, so it outlives teardown and matters
+for cleanup and audit.
 
 The performance knobs are `RUN` scope but are exactly what Deliverable A's cost-correlation use case
 needs, which is a good illustration of why "not enforced" should not mean "not recorded".
