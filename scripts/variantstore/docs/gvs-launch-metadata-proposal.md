@@ -15,12 +15,12 @@ never a second run to disagree with the first.
 That does not make the work TSPS-irrelevant; it means two different needs are in play, and only one of
 them is a TSPS dependency:
 
-| | Deliverable A: record and export | Deliverable B: enforce |
-| --- | --- | --- |
-| **Need** | Explain, troubleshoot and cost-attribute a run after the fact | Refuse to corrupt a dataset by changing an invalidating input between runs |
-| **Driven by** | TSPS, where the dataset is deleted and the record is all that survives | GVS Beta and AoU, where datasets persist and multi-batch ingest is normal |
-| **Belongs in** | This epic | A Beta/AoU follow-on ticket |
-| **Testable on TSPS?** | Yes | No — no TSPS run can ever exercise it |
+|                       | Deliverable A: record and export                                       | Deliverable B: enforce                                                     |
+|-----------------------|------------------------------------------------------------------------|----------------------------------------------------------------------------|
+| **Need**              | Explain, troubleshoot and cost-attribute a run after the fact          | Refuse to corrupt a dataset by changing an invalidating input between runs |
+| **Driven by**         | TSPS, where the dataset is deleted and the record is all that survives | GVS Beta and AoU, where datasets persist and multi-batch ingest is normal  |
+| **Belongs in**        | This epic                                                              | A Beta/AoU follow-on ticket                                                |
+| **Testable on TSPS?** | Yes                                                                    | No — no TSPS run can ever exercise it                                      |
 
 The recommendation is to build A now and specify B without building it. The schema is the same either
 way: `scope` and `is_enforced` remain columns even though nothing consumes `is_enforced` in the first
@@ -103,11 +103,11 @@ that Deliverable B would later consume:
 - `scope`: the blast radius over which the value must stay constant.
 - `is_enforced`: whether a mismatch should stop the pipeline.
 
-| Scope | Meaning | Consequence of a change |
-| --- | --- | --- |
-| `DATASET` | Must hold for the life of the BigQuery dataset | Samples in the store are not comparable to each other |
+| Scope     | Meaning                                            | Consequence of a change                                                     |
+|-----------|----------------------------------------------------|-----------------------------------------------------------------------------|
+| `DATASET` | Must hold for the life of the BigQuery dataset     | Samples in the store are not comparable to each other                       |
 | `CALLSET` | Must agree between filter set creation and extract | The callset is filtered or extracted inconsistently with how it was modeled |
-| `RUN` | Provenance only | None; recorded for forensics, support and cost attribution |
+| `RUN`     | Provenance only                                    | None; recorded for forensics, support and cost attribution                  |
 
 On TSPS all three scopes collapse into the single run, and the classification is carried for the
 record's own sake and for Deliverable B's benefit.
@@ -117,32 +117,32 @@ record's own sake and for Deliverable B's benefit.
 Each of these makes samples ingested before a change non-comparable to samples ingested after it, and
 each is something a user would need in order to interpret a delivered callset.
 
-| Input | Consumed by | Why it matters |
-| --- | --- | --- |
-| `project_id`, `dataset_name` | everything | Dataset identity; on TSPS the dataset name is also the per-run isolation boundary, so recording it gives an audit trail |
-| `reference_name` | ingest, filter set, extract | Coordinates and reference bases |
-| `is_wgs` | ingest, extract | Selects WGS vs exome interval list and exome-specific extract behavior |
-| effective interval list (`interval_list`, or the `GetReference` default) | ingest, filter set, extract | Which regions samples cover; whether absence of data is meaningful |
-| `drop_state` | ingest, extract | Which GQ reference blocks were discarded; determines reference genotype fidelity |
-| `use_compressed_references` | ingest | Physical `ref_ranges_%` schema (`location` vs `packed_ref_data`) |
-| `load_vet_and_ref_ranges` | ingest | Which core tables were populated |
-| `load_vcf_headers` | ingest | Whether per-sample header provenance exists |
-| `use_parquet_ingest`, `parquet_output_gcs_dir` | ingest | Ingest path. TSPS is Parquet-only, so the flag should always be `true` — recording lets that be asserted rather than assumed, and the GCS directory outlives the dataset, so it matters for cleanup and audit |
+| Input                                                                    | Consumed by                 | Why it matters                                                                                                                                                                                                |
+|--------------------------------------------------------------------------|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `project_id`, `dataset_name`                                             | everything                  | Dataset identity; on TSPS the dataset name is also the per-run isolation boundary, so recording it gives an audit trail                                                                                       |
+| `reference_name`                                                         | ingest, filter set, extract | Coordinates and reference bases                                                                                                                                                                               |
+| `is_wgs`                                                                 | ingest, extract             | Selects WGS vs exome interval list and exome-specific extract behavior                                                                                                                                        |
+| effective interval list (`interval_list`, or the `GetReference` default) | ingest, filter set, extract | Which regions samples cover; whether absence of data is meaningful                                                                                                                                            |
+| `drop_state`                                                             | ingest, extract             | Which GQ reference blocks were discarded; determines reference genotype fidelity                                                                                                                              |
+| `use_compressed_references`                                              | ingest                      | Physical `ref_ranges_%` schema (`location` vs `packed_ref_data`)                                                                                                                                              |
+| `load_vet_and_ref_ranges`                                                | ingest                      | Which core tables were populated                                                                                                                                                                              |
+| `load_vcf_headers`                                                       | ingest                      | Whether per-sample header provenance exists                                                                                                                                                                   |
+| `use_parquet_ingest`, `parquet_output_gcs_dir`                           | ingest                      | Ingest path. TSPS is Parquet-only, so the flag should always be `true` — recording lets that be asserted rather than assumed, and the GCS directory outlives the dataset, so it matters for cleanup and audit |
 
 ### `CALLSET` scope
 
-| Input | Consumed by | Why it matters |
-| --- | --- | --- |
-| effective `filter_set_name` | filter set, extract | Which model extract applied |
-| `use_VQSR` (→ `use_VETS`) | filter set | VETS and VQSR scores are not interchangeable |
-| `add_additional_annotations_to_sites_only_vcf` | filter set | Model training features |
-| `INDEL_VQSR_max_gaussians_override`, `SNP_VQSR_max_gaussians_override` | filter set | Model shape |
-| `training_python_script`, `scoring_python_script` | filter set | The VETS model *code* itself — the highest-leverage override we expose, and invisible in the output |
-| effective `extract_table_prefix` | prepare, extract | Which prepare tables extract read |
-| `sample_names_to_extract` | prepare | Cohort definition |
-| `extract_do_not_filter_override` | extract | Whether filters were applied at all |
-| `target_interval_list` | extract | Exome/BGE target regions |
-| `maximum_alternate_alleles` | extract | Truncation of multi-allelic sites |
+| Input                                                                  | Consumed by         | Why it matters                                                                                      |
+|------------------------------------------------------------------------|---------------------|-----------------------------------------------------------------------------------------------------|
+| effective `filter_set_name`                                            | filter set, extract | Which model extract applied                                                                         |
+| `use_VQSR` (→ `use_VETS`)                                              | filter set          | VETS and VQSR scores are not interchangeable                                                        |
+| `add_additional_annotations_to_sites_only_vcf`                         | filter set          | Model training features                                                                             |
+| `INDEL_VQSR_max_gaussians_override`, `SNP_VQSR_max_gaussians_override` | filter set          | Model shape                                                                                         |
+| `training_python_script`, `scoring_python_script`                      | filter set          | The VETS model *code* itself — the highest-leverage override we expose, and invisible in the output |
+| effective `extract_table_prefix`                                       | prepare, extract    | Which prepare tables extract read                                                                   |
+| `sample_names_to_extract`                                              | prepare             | Cohort definition                                                                                   |
+| `extract_do_not_filter_override`                                       | extract             | Whether filters were applied at all                                                                 |
+| `target_interval_list`                                                 | extract             | Exome/BGE target regions                                                                            |
+| `maximum_alternate_alleles`                                            | extract             | Truncation of multi-allelic sites                                                                   |
 
 ### `RUN` scope
 
@@ -172,16 +172,16 @@ join key. Cheap to add now and awkward to retrofit.
 
 ### Non-input run context
 
-| Field | Source |
-| --- | --- |
-| workflow name | `GetToolVersions` — already present in the path it scrapes, see implementation notes |
-| workflow ID (root), submission ID | `GetToolVersions.workflow_id` / `.submission_id` |
-| workspace ID, bucket, Google project | `GetToolVersions.workspace_id` / `.workspace_bucket` / `.google_project` |
-| workspace name, namespace | Rawls, via the existing `scripts/get_workspace_name_for_import.py` |
-| BigQuery dataset location, workspace bucket location | `bq show` / `gcloud storage buckets describe`. The dataset location doubles as a check that TSPS runs land in the intended multi-region |
-| launch timestamp | `GetToolVersions.date_as_secs_since_unix_epoch` |
-| `gvs_version`, `git_branch_or_tag`, `git_hash` | `GetToolVersions` |
-| `gatk_docker`, `variants_docker`, `cloud_sdk_docker`, `basic_docker` | `GetToolVersions`, effective values so caller overrides are captured |
+| Field                                                                | Source                                                                                                                                  |
+|----------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------|
+| workflow name                                                        | `GetToolVersions` — already present in the path it scrapes, see implementation notes                                                    |
+| workflow ID (root), submission ID                                    | `GetToolVersions.workflow_id` / `.submission_id`                                                                                        |
+| workspace ID, bucket, Google project                                 | `GetToolVersions.workspace_id` / `.workspace_bucket` / `.google_project`                                                                |
+| workspace name, namespace                                            | Rawls, via the existing `scripts/get_workspace_name_for_import.py`                                                                      |
+| BigQuery dataset location, workspace bucket location                 | `bq show` / `gcloud storage buckets describe`. The dataset location doubles as a check that TSPS runs land in the intended multi-region |
+| launch timestamp                                                     | `GetToolVersions.date_as_secs_since_unix_epoch`                                                                                         |
+| `gvs_version`, `git_branch_or_tag`, `git_hash`                       | `GetToolVersions`                                                                                                                       |
+| `gatk_docker`, `variants_docker`, `cloud_sdk_docker`, `basic_docker` | `GetToolVersions`, effective values so caller overrides are captured                                                                    |
 
 ## Proposed schema
 
@@ -190,29 +190,29 @@ and `superpartitioned = "false"`. Both are tiny.
 
 ### `gvs_workflow_run` — one row per workflow launch
 
-| Column | Type | Mode | Notes |
-| --- | --- | --- | --- |
-| `run_id` | STRING | REQUIRED | Cromwell root workflow ID (UUID); primary key by convention |
-| `workflow_name` | STRING | REQUIRED | e.g. `GvsJointVariantCalling` |
-| `external_run_id` | STRING | NULLABLE | TSPS job/run ID when supplied |
-| `call_set_identifier` | STRING | NULLABLE | |
-| `started` | TIMESTAMP | REQUIRED | Launch time |
-| `submission_id` | STRING | REQUIRED | Terra submission ID |
-| `terra_workspace_name` | STRING | NULLABLE | Service-owned under TSPS |
-| `terra_workspace_namespace` | STRING | NULLABLE | |
-| `terra_workspace_id` | STRING | NULLABLE | |
-| `terra_workspace_bucket` | STRING | NULLABLE | |
-| `terra_google_project` | STRING | NULLABLE | |
-| `terra_workspace_bucket_location` | STRING | NULLABLE | |
-| `bq_dataset_location` | STRING | NULLABLE | Region/multi-region of the GVS dataset |
-| `gvs_version` | STRING | REQUIRED | `"unspecified"` for non-release runs |
-| `git_branch_or_tag` | STRING | NULLABLE | |
-| `git_hash` | STRING | REQUIRED | |
-| `gatk_docker` | STRING | REQUIRED | Effective value |
-| `variants_docker` | STRING | REQUIRED | Effective value |
-| `cloud_sdk_docker` | STRING | REQUIRED | Effective value |
-| `basic_docker` | STRING | REQUIRED | Effective value |
-| `gatk_override` | STRING | NULLABLE | Non-NULL means a non-production run |
+| Column                            | Type      | Mode     | Notes                                                       |
+|-----------------------------------|-----------|----------|-------------------------------------------------------------|
+| `run_id`                          | STRING    | REQUIRED | Cromwell root workflow ID (UUID); primary key by convention |
+| `workflow_name`                   | STRING    | REQUIRED | e.g. `GvsJointVariantCalling`                               |
+| `external_run_id`                 | STRING    | NULLABLE | TSPS job/run ID when supplied                               |
+| `call_set_identifier`             | STRING    | NULLABLE |                                                             |
+| `started`                         | TIMESTAMP | REQUIRED | Launch time                                                 |
+| `submission_id`                   | STRING    | REQUIRED | Terra submission ID                                         |
+| `terra_workspace_name`            | STRING    | NULLABLE | Service-owned under TSPS                                    |
+| `terra_workspace_namespace`       | STRING    | NULLABLE |                                                             |
+| `terra_workspace_id`              | STRING    | NULLABLE |                                                             |
+| `terra_workspace_bucket`          | STRING    | NULLABLE |                                                             |
+| `terra_google_project`            | STRING    | NULLABLE |                                                             |
+| `terra_workspace_bucket_location` | STRING    | NULLABLE |                                                             |
+| `bq_dataset_location`             | STRING    | NULLABLE | Region/multi-region of the GVS dataset                      |
+| `gvs_version`                     | STRING    | REQUIRED | `"unspecified"` for non-release runs                        |
+| `git_branch_or_tag`               | STRING    | NULLABLE |                                                             |
+| `git_hash`                        | STRING    | REQUIRED |                                                             |
+| `gatk_docker`                     | STRING    | REQUIRED | Effective value                                             |
+| `variants_docker`                 | STRING    | REQUIRED | Effective value                                             |
+| `cloud_sdk_docker`                | STRING    | REQUIRED | Effective value                                             |
+| `basic_docker`                    | STRING    | REQUIRED | Effective value                                             |
+| `gatk_override`                   | STRING    | NULLABLE | Non-NULL means a non-production run                         |
 
 ```
 [{"name":"run_id","type":"STRING","mode":"REQUIRED"},{"name":"workflow_name","type":"STRING","mode":"REQUIRED"},{"name":"external_run_id","type":"STRING","mode":"NULLABLE"},{"name":"call_set_identifier","type":"STRING","mode":"NULLABLE"},{"name":"started","type":"TIMESTAMP","mode":"REQUIRED"},{"name":"submission_id","type":"STRING","mode":"REQUIRED"},{"name":"terra_workspace_name","type":"STRING","mode":"NULLABLE"},{"name":"terra_workspace_namespace","type":"STRING","mode":"NULLABLE"},{"name":"terra_workspace_id","type":"STRING","mode":"NULLABLE"},{"name":"terra_workspace_bucket","type":"STRING","mode":"NULLABLE"},{"name":"terra_google_project","type":"STRING","mode":"NULLABLE"},{"name":"terra_workspace_bucket_location","type":"STRING","mode":"NULLABLE"},{"name":"bq_dataset_location","type":"STRING","mode":"NULLABLE"},{"name":"gvs_version","type":"STRING","mode":"REQUIRED"},{"name":"git_branch_or_tag","type":"STRING","mode":"NULLABLE"},{"name":"git_hash","type":"STRING","mode":"REQUIRED"},{"name":"gatk_docker","type":"STRING","mode":"REQUIRED"},{"name":"variants_docker","type":"STRING","mode":"REQUIRED"},{"name":"cloud_sdk_docker","type":"STRING","mode":"REQUIRED"},{"name":"basic_docker","type":"STRING","mode":"REQUIRED"},{"name":"gatk_override","type":"STRING","mode":"NULLABLE"}]
@@ -220,18 +220,18 @@ and `superpartitioned = "false"`. Both are tiny.
 
 ### `gvs_workflow_run_input` — one row per input per launch
 
-| Column | Type | Mode | Notes |
-| --- | --- | --- | --- |
-| `run_id` | STRING | REQUIRED | Joins to `gvs_workflow_run` |
-| `input_name` | STRING | REQUIRED | WDL input name, e.g. `drop_state`; effective values recorded under the input's own name, not `effective_*` |
-| `effective_value` | STRING | NULLABLE | Canonical string rendering; NULL means an optional input with no value |
-| `value_type` | STRING | REQUIRED | `STRING` \| `BOOLEAN` \| `INT` \| `FLOAT` \| `FILE` \| `ARRAY` |
-| `scope` | STRING | REQUIRED | `DATASET` \| `CALLSET` \| `RUN` |
-| `is_enforced` | BOOLEAN | REQUIRED | Recorded now, consumed by Deliverable B |
-| `was_specified` | BOOLEAN | NULLABLE | `false` when the WDL default applied — distinguishes "chose the default" from "the default changed under us" |
-| `file_generation` | STRING | NULLABLE | GCS object generation, for `FILE` values |
-| `file_md5` | STRING | NULLABLE | GCS `md5Hash`, for `FILE` values |
-| `file_size_bytes` | INTEGER | NULLABLE | For `FILE` values |
+| Column            | Type    | Mode     | Notes                                                                                                        |
+|-------------------|---------|----------|--------------------------------------------------------------------------------------------------------------|
+| `run_id`          | STRING  | REQUIRED | Joins to `gvs_workflow_run`                                                                                  |
+| `input_name`      | STRING  | REQUIRED | WDL input name, e.g. `drop_state`; effective values recorded under the input's own name, not `effective_*`   |
+| `effective_value` | STRING  | NULLABLE | Canonical string rendering; NULL means an optional input with no value                                       |
+| `value_type`      | STRING  | REQUIRED | `STRING` \| `BOOLEAN` \| `INT` \| `FLOAT` \| `FILE` \| `ARRAY`                                               |
+| `scope`           | STRING  | REQUIRED | `DATASET` \| `CALLSET` \| `RUN`                                                                              |
+| `is_enforced`     | BOOLEAN | REQUIRED | Recorded now, consumed by Deliverable B                                                                      |
+| `was_specified`   | BOOLEAN | NULLABLE | `false` when the WDL default applied — distinguishes "chose the default" from "the default changed under us" |
+| `file_generation` | STRING  | NULLABLE | GCS object generation, for `FILE` values                                                                     |
+| `file_md5`        | STRING  | NULLABLE | GCS `md5Hash`, for `FILE` values                                                                             |
+| `file_size_bytes` | INTEGER | NULLABLE | For `FILE` values                                                                                            |
 
 ```
 [{"name":"run_id","type":"STRING","mode":"REQUIRED"},{"name":"input_name","type":"STRING","mode":"REQUIRED"},{"name":"effective_value","type":"STRING","mode":"NULLABLE"},{"name":"value_type","type":"STRING","mode":"REQUIRED"},{"name":"scope","type":"STRING","mode":"REQUIRED"},{"name":"is_enforced","type":"BOOLEAN","mode":"REQUIRED"},{"name":"was_specified","type":"BOOLEAN","mode":"NULLABLE"},{"name":"file_generation","type":"STRING","mode":"NULLABLE"},{"name":"file_md5","type":"STRING","mode":"NULLABLE"},{"name":"file_size_bytes","type":"INTEGER","mode":"NULLABLE"}]
@@ -338,11 +338,11 @@ long after the fact. Those inputs should be looked up rather than asked for.
 for a sample with no row at a site. It is therefore not an independent knob — it is a claim about what
 ingest dropped, and the delivered genotype qualities depend on the claim being true:
 
-| Ingested with | Extract told | Result |
-| --- | --- | --- |
-| `ZERO` | `FORTY` | GQ40 confident reference calls invented where no gVCF supported any confidence |
-| `FORTY` | `ZERO` | GQ0 where GQ40 was intended; conservative, still wrong |
-| anything | argument omitted | GATK's own default `SIXTY` (`ExtractCohort.java:208`), the most confident value in the enum |
+| Ingested with | Extract told     | Result                                                                                      |
+|---------------|------------------|---------------------------------------------------------------------------------------------|
+| `ZERO`        | `FORTY`          | GQ40 confident reference calls invented where no gVCF supported any confidence              |
+| `FORTY`       | `ZERO`           | GQ0 where GQ40 was intended; conservative, still wrong                                      |
+| anything      | argument omitted | GATK's own default `SIXTY` (`ExtractCohort.java:208`), the most confident value in the enum |
 
 Nothing checks this today. Under `GvsJointVariantCalling.wdl` the two ends cannot diverge, because one
 input feeds both. They can diverge for AoU, for sub-cohort extracts (`SUB_COHORT_WORKFLOW.md`), and for
