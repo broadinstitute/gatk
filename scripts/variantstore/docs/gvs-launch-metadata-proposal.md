@@ -22,14 +22,10 @@ them is a TSPS dependency:
 | **Belongs in**        | This epic                                                              | A Beta/AoU follow-on ticket                                                |
 | **Testable on TSPS?** | Yes                                                                    | No — no TSPS run can ever exercise it                                      |
 
-The recommendation is to build A now and specify B without building it. The schema is the same either
-way: `scope` and `is_enforced` remain columns even though nothing consumes `is_enforced` in the first
-release, so the follow-on adds behavior rather than migrating data.
-
-The practical reason to split rather than build both: a drift check implemented under this epic would
-ship without any TSPS run able to test it, against datasets that have no recorded history yet. It
-would be exercised for the first time by a Beta user. Pairing it with a Beta/AoU ticket puts it where
-it can be validated.
+This document will describe how to build deliverable A now in a way that allows for building
+deliverable B later. The schema is the same either way: `scope` and `is_enforced` remain columns
+even though nothing will consume `is_enforced` for A in Joint Calling on TSPS; the follow-on B will
+add behavior rather than migrating data.
 
 ## Scope
 
@@ -37,10 +33,9 @@ it can be validated.
 GVS Beta uses the same entry point and so is covered incidentally.
 
 AoU is kept in mind but is not the target: AoU callsets never run `GvsJointVariantCalling.wdl`, they
-run `GvsBulkIngestGenomes.wdl`, `GvsCreateFilterSet.wdl`, `GvsExtractAvroFilesForHail.wdl` and
-`GvsCreateVDS.wdl` individually. The schema below is consequently *workflow-agnostic* — one row per
-workflow launch, one row per input, workflow name as a column — so those entry points can be wired in
-later with no schema change, one task call each.
+run `GvsBulkIngestGenomes.wdl`, `GvsPopulateAltAllele.wdl`, etc. individually. The schema below is
+consequently *workflow-agnostic* — one row per workflow launch, one row per input, workflow name as
+a column — so those entry points can be wired in later with no schema change, one task call each.
 
 ## Deliverable A: why recording inputs is worth doing for TSPS
 
@@ -57,8 +52,7 @@ what recording is for. (See `scripts/variantstore/docs/tsps/gvs-tsps-bigquery-re
    (`GvsUtils.wdl:1147`) does the same for vet table layout. On Beta and AoU that archaeology still
    works months later. On TSPS the dataset is deleted, the user never had BigQuery access, and only
    the VCFs remain — so a question like "which interval list, filter model and GATK version produced
-   this?" has no answer at all unless it was recorded at launch. This is the one respect in which the
-   ephemeral dataset makes the case *stronger* rather than weaker.
+   this?" has no answer at all unless it was recorded at launch.
 
 2. **Cost rows are hard to interpret without the inputs beside them.** `cost_observability` records
    what a run cost; sample count, `is_wgs`, interval list and scatter widths are what make a
@@ -106,42 +100,15 @@ each is something a user would need in order to interpret a delivered callset.
 | `drop_state`                                                             | ingest, extract              | Which GQ reference blocks were discarded; determines reference genotype fidelity                                        |
 | `use_compressed_references`                                              | ingest, prepare, Avro export | Physical `ref_ranges_%` schema (`location` vs `packed_ref_data`); every reader of `ref_ranges` has to know which it is  |
 
-`use_compressed_references` is worth singling out, because it is the one case where GVS already solved
-this problem the hard way. Ingest takes it as an input (`GvsJointVariantCalling.wdl:32` →
-`GvsBulkIngestGenomes.wdl:60` → `GvsImportGenomes.wdl:23`, and `GvsCreateTables.wdl:31-32` uses it to pick
-the physical schema and clustering field). Downstream nobody asks for it: `GvsPrepareRangesCallset.wdl:73`
-and `GvsExtractAvroFilesForHail.wdl:125` both call `Utils.IsUsingCompressedReferences` and feed the answer
-into the prepare script and the Avro export's `UnpackRefRangeInfo` branch. So VCF/PGEN extraction consumes
-it transitively through the prepare tables and the VDS path consumes it directly — but in both cases by
-reading `INFORMATION_SCHEMA` rather than by being told. That inference exists only because the value was
-never recorded, and it works only because this particular choice happens to leave a fingerprint in the
-physical schema. It is the precedent for the lookup pattern in Deliverable B, and the contrast with
-`drop_state` is the argument for recording rather than inferring. `drop_state` does leave a fingerprint —
-the dropped band is missing from `ref_ranges` — but a much weaker one, because reading it requires knowing
-which bands the input could have contained in the first place. GVS bins reference GQ into states in tens
-(`RefRangesCreator.java:227-243`), while the reblocking GVS expects (`-GQB 20 -GQB 30 -GQB 40
---floor-blocks`, `ReblockGVCF.java:73`) can only produce states `0`, `2`, `3` and `4`. States `1`, `5` and
-`6` are therefore always absent for reasons that have nothing to do with `drop_state`, so a naive "which
-state is missing" query returns four candidates rather than one. The inference is sound given the
-reblocking scheme and a callset large enough for every expected band to be populated, and it is undermined
-by `--ignore-above-gq-threshold`, which drops higher bands too. Compare
-`use_compressed_references`, whose fingerprint is a column name: present or absent, no interpretation
-required.
-
-Note what this scope deliberately excludes. `load_vcf_headers` and `load_vet_and_ref_ranges` are
-*expected* to differ between ingest runs against the same dataset: the AoU protocol loads headers first
-(`AOU_DELIVERABLES.md:91`) so that DRAGEN versions and reblocking can be validated before variant and
-reference data are loaded (`:106`). Treating them as dataset invariants would make the check fire on the
-documented flow. The Parquet inputs are per-batch for the same reason: batches can mix the Parquet path
+Note `load_vcf_headers` and `load_vet_and_ref_ranges` are currently *expected* to differ between
+ingest runs against the same dataset: the AoU protocol loads only headers first for validation.
+The Parquet inputs are per-batch for the same reason: batches can mix the Parquet path
 with the BigQuery Storage Write API and can use different `parquet_output_gcs_dir` values, so a single
 dataset may legitimately have heterogeneous ingest-mechanism provenance.
 
 Per-sample completeness, the property those booleans might otherwise be asked to guarantee, is tracked
 separately by `sample_info.is_loaded`, which `GvsImportGenomes.wdl:318-332` sets in bulk from
-`samples_with_all_data` on whichever ingest path ran. Note that `sample_load_status` is *not* the record
-to reach for here: it is written per stage by the ingest tool only on the BigQuery Storage Write API path,
-so it says nothing about Parquet-ingested samples — which is every TSPS run and the data pass of every
-recent AoU callset.
+`samples_with_all_data` on whichever ingest path(s) ran.
 
 ### `CALLSET` scope
 
@@ -180,8 +147,8 @@ The performance knobs are `RUN` scope but are exactly what Deliverable A's cost-
 needs, which is a good illustration of why "not enforced" should not mean "not recorded".
 
 `gatk_override` deserves a callout: a defined `gatk_override` means the run did not use the production
-GATK binary. On TSPS that should never happen, so recording it makes `gatk_override IS NOT NULL` a
-cheap assertion rather than an assumption.
+GATK binary. On TSPS or any production GVS run that should never happen, so recording it makes
+`gatk_override IS NOT NULL` a cheap assertion rather than an assumption.
 
 ### Proposed new input: `external_run_id`
 
@@ -263,88 +230,6 @@ The GCS fingerprint columns are why `File` inputs need more than a path. An inte
 URI, so the object generation is the only reliable answer to "is this the same interval list that run
 used?" — and on TSPS the interval list is the input most likely to vary per request.
 
-### Completion: `gvs_workflow_run_event`, and why there is no `finished` column
-
-The run row is written at launch, before any real work starts, so that failed and aborted runs are
-visible too — which matters for Deliverable A, since a failed run is exactly the one someone will ask
-about. The row is then never updated, and `gvs_workflow_run` deliberately has no `finished` or
-`terminal_status` column. The symmetry is appealing but the workflow cannot honestly supply it:
-
-- **A WDL cannot observe its own failure.** Any completion record has to be written by a task, and a
-  task only runs if the workflow reaches it. `GvsJointVariantCalling.wdl` currently ends at
-  `GvsExtractCallset` with a `Boolean done = true` output and has no terminal task; adding one gives us
-  a task that runs on success and is skipped on failure or abort. So a `terminal_status` column could
-  only ever contain `SUCCEEDED`, and `finished IS NULL` would mean "still running, or failed, or
-  aborted, or the metadata task itself failed" — four states one column cannot distinguish.
-- **The real terminal status already exists elsewhere.** Cromwell and Terra know it, and the run row
-  records `submission_id` and `workflow_id` precisely so it can be looked up. Duplicating a field we
-  can only populate on the happy path invites readers to trust it as authoritative.
-
-So completion is appended as an event, mirroring the existing `sample_load_status` shape (`sample_id`,
-`status`, `event_timestamp`):
-
-```
-[{"name":"run_id","type":"STRING","mode":"REQUIRED"},{"name":"event","type":"STRING","mode":"REQUIRED"},{"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]
-```
-
-A deliberately small vocabulary: `SUCCEEDED` from a terminal task, plus optional milestones
-(`INGEST_COMPLETE`, `FILTER_SET_COMPLETE`, `EXTRACT_COMPLETE`) written by tasks gated on the
-corresponding subworkflow's `done` output. Milestones are where this earns its keep beyond symmetry —
-they turn a multi-day AoU run into a timeline, and they let cost be attributed per phase rather than per
-run. They also degrade usefully: a run with `INGEST_COMPLETE` and no `EXTRACT_COMPLETE` tells you where
-it stopped, which no `finished` column would.
-
-Queries can still look symmetric, via a view rather than a column:
-
-```sql
-SELECT
-  r.run_id,
-  r.started,
-  MAX(IF(e.event = 'SUCCEEDED', e.event_timestamp, NULL)) AS finished
-FROM `PROJECT.DATASET.gvs_workflow_run` r
-LEFT JOIN `PROJECT.DATASET.gvs_workflow_run_event` e USING (run_id)
-GROUP BY r.run_id, r.started
-```
-
-Two implementation notes. Because rows are written with `bq load` rather than streaming inserts, DML
-against them would in fact be legal immediately — load jobs do not pass through the streaming buffer —
-so the argument for appending is the immutability of the audit record, not a BigQuery restriction. And on
-TSPS the terminal event has to be written before the NDJSON export, since the export is what survives
-teardown; a completion row that lands after the export is a completion row nobody will ever read.
-
-### Terminal status is knowable on TSPS, and only on TSPS
-
-The workflow cannot observe its own failure, but TSPS can. It submits the workflow and tracks the Terra
-submission, so it knows the terminal status of every run it launches. That makes TSPS unique among GVS
-callers: Beta runs are launched by a human in a workspace and AoU runs by engineers following a protocol,
-and in neither case is there a process waiting to record how the run ended.
-
-This is beyond the ticket's scope, but worth flagging because the schema already accommodates it.
-`gvs_workflow_run_event` is writer-agnostic, so TSPS can append `FAILED` or `ABORTED` rows that no task
-inside the workflow could ever produce — no new columns and no migration. The ordering constraint above
-applies: to survive, such a row has to be appended before the NDJSON export and the teardown that follows.
-TSPS may equally prefer to keep terminal status in its own job record and treat the exported metadata as
-the launch-time half of the story. Either is reasonable, and it is TSPS's call rather than ours; the point
-is that the record does not have to stay one-sided just because a WDL cannot close it.
-
-This is the same asymmetry as request-supplied versus service-pinned inputs: a few facts worth recording
-are only knowable outside the workflow. Wherever that holds, the schema should let an external writer
-contribute rows rather than expecting the WDL to fabricate them.
-
-### Why one row per input rather than one column per input
-
-A wide table (one column per WDL input) is more pleasant to query but a poor fit:
-
-- `GvsJointVariantCalling` alone has ~45 inputs and they change from release to release. A wide table
-  needs a schema migration each time an input is added or renamed.
-- Made workflow-agnostic, a wide table becomes the union of every entry point's inputs — hundreds of
-  mostly-NULL columns.
-- Deliverable B's checks can then be written once, generically, without enumerating column names.
-
-The cost is stringly-typed values. Canonical rendering rules keep that manageable: booleans as
-`true`/`false`, arrays as JSON array text, files as `gs://` URIs, NULL reserved for "no value". Views
-can present a typed, pivoted shape where convenient.
-
 ## Where the record lives, given that TSPS deletes the dataset
 
 Three parts, in priority order:
@@ -397,115 +282,3 @@ Implementation details that matter:
   `/app/get_workspace_name_for_import.py` already returns workspace name and namespace from a
   workspace ID; `bq show --format=prettyjson` and `gcloud storage buckets describe` supply the
   locations.
-
-## Deliverable B, specified but not built: stop asking operators for facts we already know
-
-Recorded here so the follow-on ticket has a starting point, and so it is clear what the columns above
-are for.
-
-The obvious framing for enforcement is drift detection — compare this run to the last one and complain.
-The more valuable framing is narrower and more actionable: several GVS inputs are not choices at all,
-they are *assertions about how the data was already ingested*, and an operator supplies them by hand
-long after the fact. Those inputs should be looked up rather than asked for.
-
-### Worked example: `drop_state` at extract
-
-`drop_state` reaches extract as `--inferred-reference-state`, and
-`ExtractCohortEngine.java:687` stamps that state's GQ onto every reference genotype extract synthesizes
-for a sample with no row at a site. It is therefore not an independent knob — it is a claim about what
-ingest dropped, and the delivered genotype qualities depend on the claim being true:
-
-| Ingested with | Extract told     | Result                                                                                      |
-|---------------|------------------|---------------------------------------------------------------------------------------------|
-| `ZERO`        | `FORTY`          | GQ40 confident reference calls invented where no gVCF supported any confidence              |
-| `FORTY`       | `ZERO`           | GQ0 where GQ40 was intended; conservative, still wrong                                      |
-| anything      | argument omitted | GATK's own default `SIXTY` (`ExtractCohort.java:208`), the most confident value in the enum |
-
-Nothing checks this today. Under `GvsJointVariantCalling.wdl` the two ends cannot diverge, because one
-input feeds both. They can diverge for AoU, for sub-cohort extracts (`SUB_COHORT_WORKFLOW.md`), and for
-any direct `GvsExtractCallset` run — exactly the cases where the value is typed in by hand, possibly
-months after ingest, with nothing recording what ingest used.
-
-With launch metadata recorded, extract should read the ingest value (`scope = 'DATASET'`,
-`input_name = 'drop_state'`) instead of accepting it as an input, retaining the input as an explicit
-override and failing when an override disagrees with the record. For datasets that predate the table
-there is a serviceable fallback: which GQ band is missing from `ref_ranges` reveals what was dropped,
-subject to the caveats above about knowing which bands the input could contain, and it need only run once
-per dataset.
-Where `use_compressed_references` is set the state is packed into `packed_ref_data`, so that fallback
-needs the unpack logic (`SchemaUtils#encodeCompressedRefBlock` / `UnpackRefRangeInfo`).
-
-One detail worth preserving in any such change: `"NONE"` asserts the same thing at both ends — no band
-was dropped — and extract remaps it to `"ZERO"` (`GvsExtractCallset.wdl:440`) because
-`GQStateEnum.NONE` carries a null `referenceGQ` and extract needs a concrete GQ to stamp. That remap is
-consistent with GVS's convention that absent reference data reads as GQ0, which `GQStateEnum.java:16-18`
-documents directly.
-
-This is not hypothetical. The AoU small callsets are extracted without specifying `drop_state` at all,
-and they come out correct only because a hand-typed ingest value agrees with an extract default that was
-set for an unrelated reason and then remapped in a third change. Nothing in the system knows those facts
-agree, and because no artifact records what ingest used, the agreement can only be re-derived from git
-history and the data. `SUB_COHORT_WORKFLOW.md:27` already states the rule — the invariant is known, it
-just has nowhere to live. `drop-state-handling.md` documents the case in full.
-
-### The same pattern applies to every value extract currently has to be told
-
-`IsUsingCompressedReferences` (`GvsUtils.wdl:1084`), `IsVETS` (`GvsUtils.wdl:1014`) and
-`GetExtractVetTableVersion` (`GvsUtils.wdl:1147`) all exist because a downstream workflow needs a fact
-about ingest or filtering that nobody wrote down. Each becomes a metadata read, with the existing
-inference retained as the fallback for datasets that predate the table. `reference_name` and
-`use_compressed_references` are the same shape of problem.
-
-### Drift detection, where a dataset really is reused
-
-A `CheckDatasetInvariants` task, run before ingest, reads the most recent prior run against this
-dataset, diffs its enforced `DATASET`-scope values against this run's, and fails with a readable diff.
-An `allow_dataset_invariant_change` escape hatch covers deliberate changes and, being an input, is
-itself recorded — so a deliberate change leaves a trail. Datasets with no prior recorded run must pass
-rather than fail, which is also what makes the check a harmless no-op on TSPS.
-
-Drift across a dataset's whole history is a single generic query:
-
-```sql
-SELECT
-  i.input_name,
-  ARRAY_AGG(DISTINCT IFNULL(i.effective_value, '<none>')) AS distinct_values,
-  COUNT(DISTINCT i.run_id) AS runs
-FROM `PROJECT.DATASET.gvs_workflow_run_input` i
-WHERE i.scope = 'DATASET' AND i.is_enforced
-GROUP BY i.input_name
-HAVING COUNT(DISTINCT IFNULL(i.effective_value, '<none>')) > 1
-```
-
-### Input allowlists
-
-The VS-1941 requirements doc raises the product questions of runs using unvalidated or mixed interval
-lists. Recording the declared interval list is the prerequisite for the "unvalidated" half: a run whose
-interval list is not on an allowlist of known-good lists can be rejected or flagged. The *mixed* half is
-a property of the input gVCF headers rather than of a WDL input, so this metadata is the declared value
-to validate those headers against, not a substitute for reading them.
-
-## Open questions for review
-
-1. **Does the epic owner agree with the A/B split?** Specifically, that the ticket's stated AC — inputs
-   that invalidate joint calling if changed — describes a Beta/AoU need, and what this epic actually
-   needs is the record-and-export half.
-2. **Was the drift framing motivated by resumability?** VS-1962 covers runtime state. If TSPS ever
-   resumes or retries a run against a dataset that outlived the first attempt, drift between the
-   original launch and the resumed launch *is* the invalidation concern, and Deliverable B becomes a
-   genuine TSPS dependency. This is the one story in which the AC as written is TSPS-motivated, and it
-   is worth confirming before deferring B.
-3. **Which retention mechanism does TSPS want?** Recommendation: the NDJSON workflow output as the
-   surviving record, with the in-dataset tables as the canonical write. Is per-run retention on the
-   TSPS side sufficient, or do we want the long-lived cross-run registry (which is also what would
-   make Deliverable B possible on TSPS)?
-4. **Should `external_run_id` be plumbed through now?** Without it, tying a callset back to a TSPS
-   request depends on the Terra submission record in a service-owned workspace.
-5. **Does TSPS want to contribute terminal status to the record?** It is the only caller that can observe
-   how a run ended, and the event table accepts such rows without any schema change. Strictly beyond this
-   ticket, but cheap to agree on now and awkward to bolt on after TSPS has settled its own job-record
-   format.
-6. **When do the AoU entry points get wired in?** The schema supports them now; the work is one task
-   call per workflow and can follow the TSPS work rather than gate it. Note that AoU is where the
-   `drop_state` recording argument above bites hardest, since the required `"ZERO"` is supplied by an
-   operator following a document rather than by any default.
