@@ -327,3 +327,28 @@ Note that for the past Echo callset there may need to be an additional step to
 patch this table for a set of VIDs that did not have corresponding Participant
 IDs. See the directory `pseudo_vids_only_in_vat` for more information on
 unmatched VIDs that were discovered in the VATs of the Delta and Echo callsets.
+
+# Documentation Conventions
+
+## Markdown tables must be rectangular
+
+IntelliJ's Markdown plugin reformats tables to rectangular form on save (every
+cell padded to its column's widest content). A table left ragged therefore
+reappears as a spurious whitespace-only diff the next time anyone opens the file
+in the IDE, and the IDE flags it. A single cell one character wider than its
+column is enough to cause this, which is nearly invisible in review — and editing
+one cell of an already-aligned table is the usual way it happens.
+
+After adding or editing a table, run:
+
+```shell
+python3 scripts/variantstore/utils/format_markdown_tables.py <file.md>
+```
+
+Add `--check` to report without rewriting (exit status 1 if anything would
+change), and pass a directory to search it recursively. The script is idempotent
+and never touches content inside fenced code blocks.
+
+Some existing docs predate this and are still ragged. Only format files you are
+already modifying; reformatting untouched docs adds diff noise that obscures the
+actual change.

@@ -23,20 +23,20 @@ At ingest the value becomes GATK's `--ref-block-gq-to-ignore`. Two details matte
 Those two rules together mean the three plausible values produce quite different `ref_ranges`
 footprints:
 
-| Value | Bands discarded | Missing intervals | Result |
-| --- | --- | --- | --- |
-| `NONE` | none | written as GQ0 | Largest possible `ref_ranges` |
-| `ZERO` | GQ0 | not written | Smallest; absence of a row means GQ0 |
-| `FORTY` | GQ40 | written as GQ0 | Gaps mean GQ40, to be inferred back at extract |
+| Value   | Bands discarded | Missing intervals | Result                                         |
+|---------|-----------------|-------------------|------------------------------------------------|
+| `NONE`  | none            | written as GQ0    | Largest possible `ref_ranges`                  |
+| `ZERO`  | GQ0             | not written       | Smallest; absence of a row means GQ0           |
+| `FORTY` | GQ40            | written as GQ0    | Gaps mean GQ40, to be inferred back at extract |
 
 ## The defaults, and why they differ
 
-| Location | Default |
-| --- | --- |
-| `GvsJointVariantCalling.wdl:28` | `"FORTY"` |
-| `GvsBulkIngestGenomes.wdl:44`, `GvsImportGenomes.wdl:29` | `"NONE"` |
-| `GvsExtractCallset.wdl:38`, `GvsExtractCallsetPgen.wdl:51`, `GvsExtractCallsetPgenMerged.wdl:43`, `GvsExtractCohortFromSampleNames.wdl:35` | `"NONE"` |
-| GATK `--ref-block-gq-to-ignore` (`CreateVariantIngestFiles.java:63`) | `SIXTY` |
+| Location                                                                                                                                   | Default   |
+|--------------------------------------------------------------------------------------------------------------------------------------------|-----------|
+| `GvsJointVariantCalling.wdl:28`                                                                                                            | `"FORTY"` |
+| `GvsBulkIngestGenomes.wdl:44`, `GvsImportGenomes.wdl:29`                                                                                   | `"NONE"`  |
+| `GvsExtractCallset.wdl:38`, `GvsExtractCallsetPgen.wdl:51`, `GvsExtractCallsetPgenMerged.wdl:43`, `GvsExtractCohortFromSampleNames.wdl:35` | `"NONE"`  |
+| GATK `--ref-block-gq-to-ignore` (`CreateVariantIngestFiles.java:63`)                                                                       | `SIXTY`   |
 
 The divergence between entry points is deliberate rather than a wiring defect:
 `GvsJointVariantCalling.wdl` threads its own value down to the subworkflows that need it (`drop_state`
@@ -49,12 +49,12 @@ comment directly above it — `# set to "NONE" to ingest all the reference data 
 of VCF) output` — which dates from before AoU established that GQ0 blocks can be dropped safely. No
 caller in this repo relies on it:
 
-| Caller | Value |
-| --- | --- |
-| `GvsJointVariantCalling.wdl` | `FORTY` |
-| Hail/VDS quickstart integration | `ZERO` |
-| VCF quickstart, benchmark workflows | `FORTY` |
-| AoU | `ZERO`, by instruction at `AOU_DELIVERABLES.md:108` |
+| Caller                              | Value                                               |
+|-------------------------------------|-----------------------------------------------------|
+| `GvsJointVariantCalling.wdl`        | `FORTY`                                             |
+| Hail/VDS quickstart integration     | `ZERO`                                              |
+| VCF quickstart, benchmark workflows | `FORTY`                                             |
+| AoU                                 | `ZERO`, by instruction at `AOU_DELIVERABLES.md:108` |
 
 So the least appropriate of the three values — largest storage footprint, no consumer — is what an
 operator gets by omission on exactly the invocation path AoU uses.
@@ -66,11 +66,11 @@ Extract consumes the value as `--inferred-reference-state`, and
 for a sample with no row at a site. The value is therefore a claim about what ingest discarded, and
 delivered genotype qualities depend on the claim being true:
 
-| Ingested with | Extract told | Result |
-| --- | --- | --- |
-| `ZERO` | `FORTY` | GQ40 confident reference calls invented where no gVCF supported any confidence |
-| `FORTY` | `ZERO` | GQ0 where GQ40 was intended; conservative, still wrong |
-| anything | argument omitted | GATK's default `SIXTY` (`ExtractCohort.java:208`), the most confident value in the enum |
+| Ingested with | Extract told     | Result                                                                                  |
+|---------------|------------------|-----------------------------------------------------------------------------------------|
+| `ZERO`        | `FORTY`          | GQ40 confident reference calls invented where no gVCF supported any confidence          |
+| `FORTY`       | `ZERO`           | GQ0 where GQ40 was intended; conservative, still wrong                                  |
+| anything      | argument omitted | GATK's default `SIXTY` (`ExtractCohort.java:208`), the most confident value in the enum |
 
 Nothing checks this. Under `GvsJointVariantCalling.wdl` the two ends cannot diverge because one input
 feeds both, but they can for AoU, for sub-cohort extracts, and for any direct `GvsExtractCallset` run —
@@ -117,6 +117,25 @@ The data-side check is cheap if it is ever wanted: query the callset's `ref_rang
 GQ0-state rows, whose absence confirms `ZERO` ingest. Where `use_compressed_references` is set the state
 is packed into `packed_ref_data`, so this needs the unpack logic
 (`SchemaUtils#encodeCompressedRefBlock` / the `UnpackRefRangeInfo` BigQuery function).
+
+Read such a query carefully, because absence is weaker evidence than it looks. GVS bins reference GQ into
+states in tens (`RefRangesCreator.java:227-243`), but the reblocking GVS expects (`-GQB 20 -GQB 30 -GQB 40
+--floor-blocks`, `ReblockGVCF.java:73`) can only produce states `0`, `2`, `3` and `4`. States `1`, `5` and
+`6` are therefore always absent regardless of `drop_state`, so the diagnostic is "which one of `0`, `2`,
+`3`, `4` is missing", not "which state is missing". A `FORTY`-ingested callset looks like this — states
+`0`, `2` and `3` populated, `4` empty:
+
+```
+gvs-internal.quickit_2026_07_21_..._vets_vcf.ref_ranges_001
+  state 0: 2764630
+  state 2: 2495387
+  state 3: 4773472
+  state 4: absent   <- drop_state = FORTY
+```
+
+Two further caveats: a callset small enough that a band is genuinely unpopulated will read as a false
+positive, and `--ignore-above-gq-threshold` (`dropAboveGqThreshold`, default `false`) drops bands above the
+named one as well, so more than one absent band does not imply more than one `drop_state`.
 
 ## Candidate follow-on work
 

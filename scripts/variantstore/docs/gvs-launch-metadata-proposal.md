@@ -97,14 +97,36 @@ record's own sake and for Deliverable B's benefit.
 Each of these makes samples ingested before a change non-comparable to samples ingested after it, and
 each is something a user would need in order to interpret a delivered callset.
 
-| Input                                                                    | Consumed by                 | Why it matters                                                                                                                                                                                                |
-|--------------------------------------------------------------------------|-----------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `project_id`, `dataset_name`                                             | everything                  | Dataset identity; on TSPS the dataset name is also the per-run isolation boundary, so recording it gives an audit trail                                                                                       |
-| `reference_name`                                                         | ingest, filter set, extract | Coordinates and reference bases                                                                                                                                                                               |
-| `is_wgs`                                                                 | ingest, extract             | Selects WGS vs exome interval list and exome-specific extract behavior                                                                                                                                        |
-| effective interval list (`interval_list`, or the `GetReference` default) | ingest, filter set, extract | Which regions samples cover; whether absence of data is meaningful                                                                                                                                            |
-| `drop_state`                                                             | ingest, extract             | Which GQ reference blocks were discarded; determines reference genotype fidelity                                                                                                                              |
-| `use_compressed_references`                                              | ingest                      | Physical `ref_ranges_%` schema (`location` vs `packed_ref_data`)                                                                                                                                              |
+| Input                                                                    | Consumed by                  | Why it matters                                                                                                          |
+|--------------------------------------------------------------------------|------------------------------|-------------------------------------------------------------------------------------------------------------------------|
+| `project_id`, `dataset_name`                                             | everything                   | Dataset identity; on TSPS the dataset name is also the per-run isolation boundary, so recording it gives an audit trail |
+| `reference_name`                                                         | ingest, filter set, extract  | Coordinates and reference bases                                                                                         |
+| `is_wgs`                                                                 | ingest, extract              | Selects WGS vs exome interval list and exome-specific extract behavior                                                  |
+| effective interval list (`interval_list`, or the `GetReference` default) | ingest, filter set, extract  | Which regions samples cover; whether absence of data is meaningful                                                      |
+| `drop_state`                                                             | ingest, extract              | Which GQ reference blocks were discarded; determines reference genotype fidelity                                        |
+| `use_compressed_references`                                              | ingest, prepare, Avro export | Physical `ref_ranges_%` schema (`location` vs `packed_ref_data`); every reader of `ref_ranges` has to know which it is  |
+
+`use_compressed_references` is worth singling out, because it is the one case where GVS already solved
+this problem the hard way. Ingest takes it as an input (`GvsJointVariantCalling.wdl:32` →
+`GvsBulkIngestGenomes.wdl:60` → `GvsImportGenomes.wdl:23`, and `GvsCreateTables.wdl:31-32` uses it to pick
+the physical schema and clustering field). Downstream nobody asks for it: `GvsPrepareRangesCallset.wdl:73`
+and `GvsExtractAvroFilesForHail.wdl:125` both call `Utils.IsUsingCompressedReferences` and feed the answer
+into the prepare script and the Avro export's `UnpackRefRangeInfo` branch. So VCF/PGEN extraction consumes
+it transitively through the prepare tables and the VDS path consumes it directly — but in both cases by
+reading `INFORMATION_SCHEMA` rather than by being told. That inference exists only because the value was
+never recorded, and it works only because this particular choice happens to leave a fingerprint in the
+physical schema. It is the precedent for the lookup pattern in Deliverable B, and the contrast with
+`drop_state` is the argument for recording rather than inferring. `drop_state` does leave a fingerprint —
+the dropped band is missing from `ref_ranges` — but a much weaker one, because reading it requires knowing
+which bands the input could have contained in the first place. GVS bins reference GQ into states in tens
+(`RefRangesCreator.java:227-243`), while the reblocking GVS expects (`-GQB 20 -GQB 30 -GQB 40
+--floor-blocks`, `ReblockGVCF.java:73`) can only produce states `0`, `2`, `3` and `4`. States `1`, `5` and
+`6` are therefore always absent for reasons that have nothing to do with `drop_state`, so a naive "which
+state is missing" query returns four candidates rather than one. The inference is sound given the
+reblocking scheme and a callset large enough for every expected band to be populated, and it is undermined
+by `--ignore-above-gq-threshold`, which drops higher bands too. Compare
+`use_compressed_references`, whose fingerprint is a column name: present or absent, no interpretation
+required.
 
 Note what this scope deliberately excludes. `load_vcf_headers` and `load_vet_and_ref_ranges` are
 *expected* to differ between ingest runs against the same dataset: the AoU protocol loads headers first
@@ -219,18 +241,18 @@ and `superpartitioned = "false"`. Both are tiny.
 
 ### `gvs_workflow_run_input` — one row per input per launch
 
-| Column            | Type    | Mode     | Notes                                                                                                        |
-|-------------------|---------|----------|--------------------------------------------------------------------------------------------------------------|
-| `run_id`          | STRING  | REQUIRED | Joins to `gvs_workflow_run`                                                                                  |
-| `input_name`      | STRING  | REQUIRED | WDL input name, e.g. `drop_state`; effective values recorded under the input's own name, not `effective_*`   |
-| `effective_value` | STRING  | NULLABLE | Canonical string rendering; NULL means an optional input with no value                                       |
-| `value_type`      | STRING  | REQUIRED | `STRING` \| `BOOLEAN` \| `INT` \| `FLOAT` \| `FILE` \| `ARRAY`                                               |
-| `scope`           | STRING  | REQUIRED | `DATASET` \| `CALLSET` \| `RUN`                                                                              |
-| `is_enforced`     | BOOLEAN | REQUIRED | Recorded now, consumed by Deliverable B                                                                      |
-| `was_specified`   | BOOLEAN | NULLABLE | `false` when the WDL default applied — distinguishes "chose the default" from "the default changed under us" |
-| `file_generation` | STRING  | NULLABLE | GCS object generation, for `FILE` values                                                                     |
-| `file_md5`        | STRING  | NULLABLE | GCS `md5Hash`, for `FILE` values                                                                             |
-| `file_size_bytes` | INTEGER | NULLABLE | For `FILE` values                                                                                            |
+| Column            | Type    | Mode     | Notes                                                                                                        |             |         |           |          |         |
+|-------------------|---------|----------|--------------------------------------------------------------------------------------------------------------|-------------|---------|-----------|----------|---------|
+| `run_id`          | STRING  | REQUIRED | Joins to `gvs_workflow_run`                                                                                  |             |         |           |          |         |
+| `input_name`      | STRING  | REQUIRED | WDL input name, e.g. `drop_state`; effective values recorded under the input's own name, not `effective_*`   |             |         |           |          |         |
+| `effective_value` | STRING  | NULLABLE | Canonical string rendering; NULL means an optional input with no value                                       |             |         |           |          |         |
+| `value_type`      | STRING  | REQUIRED | `STRING` \                                                                                                   | `BOOLEAN` \ | `INT` \ | `FLOAT` \ | `FILE` \ | `ARRAY` |
+| `scope`           | STRING  | REQUIRED | `DATASET` \                                                                                                  | `CALLSET` \ | `RUN`   |           |          |         |
+| `is_enforced`     | BOOLEAN | REQUIRED | Recorded now, consumed by Deliverable B                                                                      |             |         |           |          |         |
+| `was_specified`   | BOOLEAN | NULLABLE | `false` when the WDL default applied — distinguishes "chose the default" from "the default changed under us" |             |         |           |          |         |
+| `file_generation` | STRING  | NULLABLE | GCS object generation, for `FILE` values                                                                     |             |         |           |          |         |
+| `file_md5`        | STRING  | NULLABLE | GCS `md5Hash`, for `FILE` values                                                                             |             |         |           |          |         |
+| `file_size_bytes` | INTEGER | NULLABLE | For `FILE` values                                                                                            |             |         |           |          |         |
 
 ```
 [{"name":"run_id","type":"STRING","mode":"REQUIRED"},{"name":"input_name","type":"STRING","mode":"REQUIRED"},{"name":"effective_value","type":"STRING","mode":"NULLABLE"},{"name":"value_type","type":"STRING","mode":"REQUIRED"},{"name":"scope","type":"STRING","mode":"REQUIRED"},{"name":"is_enforced","type":"BOOLEAN","mode":"REQUIRED"},{"name":"was_specified","type":"BOOLEAN","mode":"NULLABLE"},{"name":"file_generation","type":"STRING","mode":"NULLABLE"},{"name":"file_md5","type":"STRING","mode":"NULLABLE"},{"name":"file_size_bytes","type":"INTEGER","mode":"NULLABLE"}]
@@ -241,17 +263,73 @@ The GCS fingerprint columns are why `File` inputs need more than a path. An inte
 URI, so the object generation is the only reliable answer to "is this the same interval list that run
 used?" — and on TSPS the interval list is the input most likely to vary per request.
 
-### Optional: `gvs_workflow_run_event`
+### Completion: `gvs_workflow_run_event`, and why there is no `finished` column
 
-The run row is written at launch, before any real work starts, so failed and aborted runs are visible
-too — which matters for Deliverable A, since a failed run is exactly the one someone will ask about.
-Terminal status, if wanted, is best appended rather than updated, mirroring the existing
-`sample_load_status` pattern (`sample_id`, `status`, `event_timestamp`) and avoiding DML against rows
-that may still be in the streaming buffer:
+The run row is written at launch, before any real work starts, so that failed and aborted runs are
+visible too — which matters for Deliverable A, since a failed run is exactly the one someone will ask
+about. The row is then never updated, and `gvs_workflow_run` deliberately has no `finished` or
+`terminal_status` column. The symmetry is appealing but the workflow cannot honestly supply it:
+
+- **A WDL cannot observe its own failure.** Any completion record has to be written by a task, and a
+  task only runs if the workflow reaches it. `GvsJointVariantCalling.wdl` currently ends at
+  `GvsExtractCallset` with a `Boolean done = true` output and has no terminal task; adding one gives us
+  a task that runs on success and is skipped on failure or abort. So a `terminal_status` column could
+  only ever contain `SUCCEEDED`, and `finished IS NULL` would mean "still running, or failed, or
+  aborted, or the metadata task itself failed" — four states one column cannot distinguish.
+- **The real terminal status already exists elsewhere.** Cromwell and Terra know it, and the run row
+  records `submission_id` and `workflow_id` precisely so it can be looked up. Duplicating a field we
+  can only populate on the happy path invites readers to trust it as authoritative.
+
+So completion is appended as an event, mirroring the existing `sample_load_status` shape (`sample_id`,
+`status`, `event_timestamp`):
 
 ```
 [{"name":"run_id","type":"STRING","mode":"REQUIRED"},{"name":"event","type":"STRING","mode":"REQUIRED"},{"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]
 ```
+
+A deliberately small vocabulary: `SUCCEEDED` from a terminal task, plus optional milestones
+(`INGEST_COMPLETE`, `FILTER_SET_COMPLETE`, `EXTRACT_COMPLETE`) written by tasks gated on the
+corresponding subworkflow's `done` output. Milestones are where this earns its keep beyond symmetry —
+they turn a multi-day AoU run into a timeline, and they let cost be attributed per phase rather than per
+run. They also degrade usefully: a run with `INGEST_COMPLETE` and no `EXTRACT_COMPLETE` tells you where
+it stopped, which no `finished` column would.
+
+Queries can still look symmetric, via a view rather than a column:
+
+```sql
+SELECT
+  r.run_id,
+  r.started,
+  MAX(IF(e.event = 'SUCCEEDED', e.event_timestamp, NULL)) AS finished
+FROM `PROJECT.DATASET.gvs_workflow_run` r
+LEFT JOIN `PROJECT.DATASET.gvs_workflow_run_event` e USING (run_id)
+GROUP BY r.run_id, r.started
+```
+
+Two implementation notes. Because rows are written with `bq load` rather than streaming inserts, DML
+against them would in fact be legal immediately — load jobs do not pass through the streaming buffer —
+so the argument for appending is the immutability of the audit record, not a BigQuery restriction. And on
+TSPS the terminal event has to be written before the NDJSON export, since the export is what survives
+teardown; a completion row that lands after the export is a completion row nobody will ever read.
+
+### Terminal status is knowable on TSPS, and only on TSPS
+
+The workflow cannot observe its own failure, but TSPS can. It submits the workflow and tracks the Terra
+submission, so it knows the terminal status of every run it launches. That makes TSPS unique among GVS
+callers: Beta runs are launched by a human in a workspace and AoU runs by engineers following a protocol,
+and in neither case is there a process waiting to record how the run ended.
+
+This is beyond the ticket's scope, but worth flagging because the schema already accommodates it.
+`gvs_workflow_run_event` is writer-agnostic, so TSPS can append `FAILED` or `ABORTED` rows that no task
+inside the workflow could ever produce — no new columns and no migration. The ordering constraint above
+applies: to survive, such a row has to be appended before the NDJSON export and the teardown that follows.
+TSPS may equally prefer to keep terminal status in its own job record and treat the exported metadata as
+the launch-time half of the story. Either is reasonable, and it is TSPS's call rather than ours; the point
+is that the record does not have to stay one-sided just because a WDL cannot close it.
+
+This is the same asymmetry as request-supplied versus service-pinned inputs: a few facts worth recording
+are only knowable outside the workflow. Wherever that holds, the schema should let an external writer
+contribute rows rather than expecting the WDL to fabricate them.
 
 ### Why one row per input rather than one column per input
 
@@ -351,8 +429,9 @@ months after ingest, with nothing recording what ingest used.
 With launch metadata recorded, extract should read the ingest value (`scope = 'DATASET'`,
 `input_name = 'drop_state'`) instead of accepting it as an input, retaining the input as an explicit
 override and failing when an override disagrees with the record. For datasets that predate the table
-there is a serviceable fallback: which GQ band is wholly absent from `ref_ranges` reveals what was
-dropped, the same archaeology as `IsUsingCompressedReferences`, and it need only run once per dataset.
+there is a serviceable fallback: which GQ band is missing from `ref_ranges` reveals what was dropped,
+subject to the caveats above about knowing which bands the input could contain, and it need only run once
+per dataset.
 Where `use_compressed_references` is set the state is packed into `packed_ref_data`, so that fallback
 needs the unpack logic (`SchemaUtils#encodeCompressedRefBlock` / `UnpackRefRangeInfo`).
 
@@ -422,7 +501,11 @@ to validate those headers against, not a substitute for reading them.
    make Deliverable B possible on TSPS)?
 4. **Should `external_run_id` be plumbed through now?** Without it, tying a callset back to a TSPS
    request depends on the Terra submission record in a service-owned workspace.
-5. **When do the AoU entry points get wired in?** The schema supports them now; the work is one task
+5. **Does TSPS want to contribute terminal status to the record?** It is the only caller that can observe
+   how a run ended, and the event table accepts such rows without any schema change. Strictly beyond this
+   ticket, but cheap to agree on now and awkward to bolt on after TSPS has settled its own job-record
+   format.
+6. **When do the AoU entry points get wired in?** The schema supports them now; the work is one task
    call per workflow and can follow the TSPS work rather than gate it. Note that AoU is where the
    `drop_state` recording argument above bites hardest, since the required `"ZERO"` is supplied by an
    operator following a document rather than by any default.
