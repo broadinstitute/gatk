@@ -10,7 +10,15 @@ import java.io.IOException;
 /**
  * Parquet writer for VCF header information.
  * <p>
- * This writer stores sample ID and header line hash associations in Parquet format.
+ * This writer stores sample ID and header line hash associations in Parquet format. The record shape
+ * intentionally mirrors the {@code vcf_header_lines_scratch} BigQuery table so the file can be loaded
+ * by column name (see the VS-1968 design doc). The expected columns and their BigQuery types are:
+ * <ul>
+ *   <li>{@code sample_id} &mdash; INTEGER, required</li>
+ *   <li>{@code vcf_header_lines} &mdash; STRING, nullable (omitted for association-only rows)</li>
+ *   <li>{@code vcf_header_lines_hash} &mdash; STRING, required</li>
+ *   <li>{@code is_expected_unique} &mdash; BOOLEAN, required</li>
+ * </ul>
  */
 public class HeaderParquetFileWriter extends AbstractParquetFileWriter {
 
