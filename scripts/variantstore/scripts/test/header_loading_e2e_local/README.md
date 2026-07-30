@@ -58,10 +58,19 @@ Pass an iteration count as the first argument (e.g. `./run_header_loading_e2e.sh
 
 ## Expected output
 
-- Each `verify` prints **`3 / 3 / 0`** (`header_lines` / `sample_assocs` /
-  `scratch_remaining`) for the parquet dataset.
+- Each `verify` reports **`3 / 3 / 0`** (`header_lines` / `sample_assocs` /
+  `scratch_remaining`) and now **hard-fails** if the counts are off. These are
+  chunk/row counts, not VCF-header-line counts — each `vcf_header_lines` row is a
+  comma-joined blob of many header lines. Override the expected count with
+  `EXPECT_HEADER_CHUNKS` for a different input VCF. On the **BQ path** only,
+  `scratch_remaining > 0` is tolerated (streaming-buffer wrinkle, below); the
+  **parquet path** must drain to `0`.
 - Each `ab_compare` prints **`0 / 0`** for both `vcf_header_lines` and
   `sample_vcf_header`.
+- The final step reconstructs the sample's full header from
+  `sample_vcf_header` ⋈ `vcf_header_lines` and asserts it is **non-empty** (proves
+  the split is losslessly reversible; exact equality to the BQ path is already
+  covered by `ab_compare`).
 - The counts are identical across every iteration.
 
 ### Known benign wrinkle: BQ scratch_remaining
