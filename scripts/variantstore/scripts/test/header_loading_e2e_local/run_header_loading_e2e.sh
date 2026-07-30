@@ -50,6 +50,10 @@ INTERVALS=${INTERVALS:?Set INTERVALS to an interval_list path or gs:// URI}
 DATASET_PREFIX=${DATASET_PREFIX:-header_loading_e2e}
 SAMPLE_ID=${SAMPLE_ID:-1}
 REF_VERSION=${REF_VERSION:-38}
+# Number of vcf_header_lines chunks/rows expected for the sample (3 for HG00405).
+# Each chunk is a comma-joined blob of many header lines, NOT one VCF line -- so this
+# is a row/chunk count, not a header-line count. Override for a different input VCF.
+EXPECT_HEADER_CHUNKS=${EXPECT_HEADER_CHUNKS:-3}
 WORK_DIR=${WORK_DIR:-$PWD/header_loading_e2e_work}
 TEARDOWN=${TEARDOWN:-0}
 
@@ -85,6 +89,7 @@ create_header_tables() {  # $1 = dataset, $2 = "with_load_status" (optional)
 # Run CreateVariantIngestFiles for one output type. $1 = PARQUET|BQ, $2 = dataset, $3 = out dir
 ingest() {
   rm -rf "$3"
+  mkdir -p "$3"
   "$GATK" CreateVariantIngestFiles \
     -V "$INPUT_VCF" \
     -L "$INTERVALS" \
@@ -123,12 +128,24 @@ promote() {  # $1 = dataset
   fi
 }
 
-verify() {  # $1 = dataset  (expect 3 / 3 / 0)
-  bq query --use_legacy_sql=false "
+# Assert the final counts. $1 = dataset, $2 = "strict" (parquet: scratch must be 0)
+# or "" (BQ: tolerate scratch_remaining > 0 while the streaming buffer flushes).
+# Counts are header_lines / sample_assocs / scratch_remaining; expect N / N / 0
+# where N = EXPECT_HEADER_CHUNKS. header_lines/sample_assocs are chunk/row counts,
+# not VCF-header-line counts (each chunk packs many header lines).
+verify() {
+  local ds=$1 strict=${2:-} hl sa sr
+  read -r hl sa sr < <(bq query --use_legacy_sql=false --format=csv "
     SELECT
-      (SELECT COUNT(*) FROM \`$PROJECT.$1.vcf_header_lines\`)         AS header_lines,
-      (SELECT COUNT(*) FROM \`$PROJECT.$1.sample_vcf_header\`)        AS sample_assocs,
-      (SELECT COUNT(*) FROM \`$PROJECT.$1.vcf_header_lines_scratch\`) AS scratch_remaining"
+      (SELECT COUNT(*) FROM \`$PROJECT.$ds.vcf_header_lines\`),
+      (SELECT COUNT(*) FROM \`$PROJECT.$ds.sample_vcf_header\`),
+      (SELECT COUNT(*) FROM \`$PROJECT.$ds.vcf_header_lines_scratch\`)" | tail -n +2 | tr ',' ' ')
+  echo "  header_lines=$hl  sample_assocs=$sa  scratch_remaining=$sr  (expect $EXPECT_HEADER_CHUNKS / $EXPECT_HEADER_CHUNKS / 0)"
+  [[ "$hl" == "$EXPECT_HEADER_CHUNKS" ]] || { echo "  FAIL: expected $EXPECT_HEADER_CHUNKS vcf_header_lines rows, got '$hl'"; return 1; }
+  [[ "$sa" == "$EXPECT_HEADER_CHUNKS" ]] || { echo "  FAIL: expected $EXPECT_HEADER_CHUNKS sample_vcf_header assocs, got '$sa'"; return 1; }
+  if [[ "$strict" == "strict" ]]; then
+    [[ "$sr" == "0" ]] || { echo "  FAIL: expected scratch drained to 0, got '$sr'"; return 1; }
+  fi
 }
 
 ab_compare() {  # every count must be 0
@@ -150,14 +167,21 @@ ab_compare() {  # every count must be 0
       (SELECT COUNT(*) FROM (SELECT * FROM b EXCEPT DISTINCT SELECT * FROM p)) AS in_bq_not_parquet"
 }
 
-# Reconstruct the sample's full header text from the tables (the design-doc sanity check).
+# Reconstruct the sample's full header text from the tables (the design-doc sanity
+# check that the split is losslessly reversible) and assert it is non-empty. Note the
+# reconstructed text is hundreds of VCF lines packed into $EXPECT_HEADER_CHUNKS
+# comma-joined chunks -- exact equality to the BQ path is covered by ab_compare (0/0),
+# so here we only prove the sample_vcf_header -> vcf_header_lines join reassembles content.
 show_reconstructed_header() {  # $1 = dataset
   echo "-- reconstructed header for sample $SAMPLE_ID from $1 --"
-  bq query --use_legacy_sql=false --format=csv "
+  local full
+  full=$(bq query --use_legacy_sql=false --format=csv "
     SELECT STRING_AGG(h.vcf_header_lines, '\n') AS full_header
     FROM \`$PROJECT.$1.sample_vcf_header\` s
     JOIN \`$PROJECT.$1.vcf_header_lines\`  h USING (vcf_header_lines_hash)
-    WHERE s.sample_id = $SAMPLE_ID" | tail -n +2
+    WHERE s.sample_id = $SAMPLE_ID" | tail -n +2)
+  [[ -n "$full" && "$full" != '""' ]] || { echo "  FAIL: reconstructed header is empty for sample $SAMPLE_ID"; return 1; }
+  echo "$full"
 }
 
 ### ---- Setup (once) ------------------------------------------------------------
@@ -174,7 +198,7 @@ for i in $(seq 1 "$ITERATIONS"); do
   ( cd "$PQ_DIR" && load_parquet_to_scratch )
   promote "$PQ_DS"
   echo "== parquet counts (expect 3 / 3 / 0) =="
-  verify "$PQ_DS"
+  verify "$PQ_DS" strict
 
   echo "--- BQ path ($BQ_DS) ---"
   ingest BQ "$BQ_DS" "$BQ_DIR"
