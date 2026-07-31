@@ -1,0 +1,66 @@
+name: GVS Python Unit Tests
+
+# Runs the Python unit tests under scripts/variantstore/scripts/test.
+# These tests were previously only executed from build_docker.sh (invoked manually),
+# so this workflow runs them automatically on pull requests and pushes to ah_var_store.
+on:
+  push:
+    branches:
+      - 'ah_var_store'
+  pull_request:
+    # The `branches` filter matches a PR's base (target) branch, so this runs
+    # for PRs merging into ah_var_store, the principal GVS branch.
+    branches:
+      - 'ah_var_store'
+  workflow_dispatch:
+
+defaults:
+  run:
+    # Tests reference their data files with paths relative to the scripts directory
+    # (e.g. 'test/bulk_ingest_test_files/...'), so all steps run from there.
+    working-directory: scripts/variantstore/scripts
+
+jobs:
+  python-unit-tests:
+    name: run GVS python unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout gatk
+        uses: actions/checkout@v4
+
+      - name: set up python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+          cache-dependency-path: scripts/variantstore/scripts/requirements.txt
+
+      - name: install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # setuptools is constrained to match build_docker.sh (see fiss issue #192).
+          pip install 'setuptools<80.3.0'
+          pip install -r requirements.txt
+
+      - name: run unit tests
+        run: |
+          # Put both the scripts directory (for the modules under test) and the
+          # test directory (so test modules import by bare name) on PYTHONPATH.
+          # The bare-name import avoids colliding with CPython's stdlib `test`
+          # package, which would otherwise shadow the local test/ directory.
+          export PYTHONPATH="$PWD:$PWD/test"
+          fail=0
+          for test in test/test_*.py
+          do
+              name=$(basename "$test" .py)
+              echo "::group::$name"
+              if ! python -m unittest "$name"; then
+                  fail=1
+                  echo "$test has failed"
+              fi
+              echo "::endgroup::"
+          done
+          if [ $fail -ne 0 ]; then
+              echo "One or more unit tests have failed."
+              exit $fail
+          fi

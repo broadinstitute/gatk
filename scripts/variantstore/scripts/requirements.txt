@@ -2,5 +2,5 @@ google-cloud-bigquery
 ijson
 numpy
 google-cloud-storage
-terra-notebook-utils
+terra-notebook-utils; sys_platform != 'darwin'
 biopython
