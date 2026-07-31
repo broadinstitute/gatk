@@ -51,6 +51,7 @@ public class ReadUtilsIntegrationTest extends GATKBaseTest {
     final String outputPathName = BucketUtils.getTempFilePath(getGCPTestStaging() + "samWriterTest", outputExtension);
     final Path outputPath = BucketUtils.getPathOnGcs(outputPathName);
     final Path md5Path = BucketUtils.getPathOnGcs(outputPathName + ".md5");
+    final Path referencePath = referenceFile == null ? null : referenceFile.toPath();
 
     try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile)) {
 
@@ -58,8 +59,6 @@ public class ReadUtilsIntegrationTest extends GATKBaseTest {
       if (expectIndex) { // ensure test condition
         Assert.assertEquals(expectIndex, header.getSortOrder() == SAMFileHeader.SortOrder.coordinate);
       }
-
-      final Path referencePath = referenceFile == null ? null : referenceFile.toPath();
 
       try (final SAMFileWriter samWriter = ReadUtils.createCommonSAMWriter
           (outputPath, referencePath, samReader.getFileHeader(), preSorted, createIndex, createMD5)) {
@@ -73,12 +72,27 @@ public class ReadUtilsIntegrationTest extends GATKBaseTest {
       Assert.assertEquals(createMD5, Files.exists(md5Path));
     }
 
-    // now check the contents are the same
-    try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile);
+    // Write to a local temp file to use as the comparison baseline. For CRAM output, TLEN is
+    // elided during encode and recomputed from alignment positions on decode (htsjdk 5.0.0+
+    // matches htslib behavior), so the round-tripped TLEN may differ from the original SAM.
+    // Comparing against a locally-written file in the same format ensures both sides undergo
+    // identical encoding/decoding, producing consistent TLEN values.
+    final File localTempFile = File.createTempFile("samWriterTest", outputExtension);
+    localTempFile.deleteOnExit();
+    try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile)) {
+      try (final SAMFileWriter localWriter = ReadUtils.createCommonSAMWriter(
+          localTempFile.toPath(), referencePath, samReader.getFileHeader(), preSorted, false, false)) {
+        final Iterator<SAMRecord> samRecIt = samReader.iterator();
+        while (samRecIt.hasNext()) {
+          localWriter.addAlignment(samRecIt.next());
+        }
+      }
+    }
+
+    // now check the GCS output matches the locally-written file
+    try (final SamReader localReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(localTempFile);
         final SamReader outputReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(outputPath)) {
-      final Iterator<SAMRecord> samRecIt = samReader.iterator();
-      final Iterator<SAMRecord> outRecIt = outputReader.iterator();
-      Assert.assertEquals(samRecIt, outRecIt);
+      Assert.assertEquals(localReader.iterator(), outputReader.iterator());
     }
   }
 
