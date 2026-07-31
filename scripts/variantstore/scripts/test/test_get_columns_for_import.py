@@ -1,15 +1,11 @@
-import sys
 import unittest
 import json
 
 
-@unittest.skipIf(sys.platform.startswith("darwin"), "get_columns_for_import dependent on terra-notebook-utils that is not available for macos")
+from get_columns_for_import import get_column_values
+
+
 class TestBulkIngestGenomes(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        # Code only runs if the class is NOT skipped
-        from get_columns_for_import import get_column_values
-        cls.get_column_values = staticmethod(get_column_values)
 
     def test_get_column_values(self):
         numSamples = 5
@@ -82,5 +78,3 @@ class TestBulkIngestGenomes(unittest.TestCase):
             expected = ('gvcf','gvcf_index')
             actual = get_column_values(columnSamplesExpected, numSamples, None, None)
             self.assertEqual(actual, expected)
-
-

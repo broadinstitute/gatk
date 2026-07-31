@@ -40,25 +40,30 @@ jobs:
           python -m pip install --upgrade pip
           # setuptools is constrained to match build_docker.sh (see fiss issue #192).
           pip install 'setuptools<80.3.0'
-          pip install -r requirements.txt
+          # Install everything except terra-notebook-utils. It is only needed by
+          # get_columns_for_import's Terra-facing helpers (not exercised by the
+          # unit tests), and it drags in `bgzip`, a source-only C extension that
+          # fails to compile against modern CPython headers. The tests import the
+          # pure-logic helpers directly, so terra is not required here.
+          grep -v 'terra-notebook-utils' requirements.txt > ci-requirements.txt
+          pip install -r ci-requirements.txt
+          rm ci-requirements.txt
 
       - name: run unit tests
         run: |
           # Put both the scripts directory (for the modules under test) and the
           # test directory (so test modules import by bare name) on PYTHONPATH.
-          # The bare-name import avoids colliding with CPython's stdlib `test`
-          # package, which would otherwise shadow the local test/ directory.
           export PYTHONPATH="$PWD:$PWD/test"
           fail=0
           for test in test/test_*.py
           do
               name=$(basename "$test" .py)
-              echo "::group::$name"
+              echo "Start test $test..."
               if ! python -m unittest "$name"; then
                   fail=1
                   echo "$test has failed"
               fi
-              echo "::endgroup::"
+              echo "End test $test"
           done
           if [ $fail -ne 0 ]; then
               echo "One or more unit tests have failed."

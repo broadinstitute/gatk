@@ -1,6 +1,10 @@
 import argparse
 import re
-from terra_notebook_utils import table
+# `terra_notebook_utils` is imported lazily inside the functions that use it
+# (get_entity_data / get_column_data) rather than at module load time. This keeps
+# the pure-logic helpers (e.g. get_column_values) importable where
+# terra-notebook-utils is not installed -- notably CI and macOS, where its
+# transitive `bgzip` C extension cannot be built.
 
 
 # The goal of this code is to validate and determine the 5 values for:
@@ -22,6 +26,7 @@ maxNumSamples = 50
 
 
 def get_entity_data(user_defined_entity, entity_set):
+    from terra_notebook_utils import table
     tables_list=list(table.list_tables())
     ## When the user has supplied a defined entity
     if user_defined_entity:
@@ -86,6 +91,7 @@ def get_entity_data(user_defined_entity, entity_set):
 
 
 def get_column_data(entity_type):
+    from terra_notebook_utils import table
     # We need to identify 3 things
     # 1. entity id field (just <entity_type>_id)
     # 2. vcf column name
