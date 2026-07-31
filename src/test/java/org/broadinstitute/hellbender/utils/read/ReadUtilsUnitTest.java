@@ -514,12 +514,22 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(expectIndex, null != SamFiles.findIndex(outputFile));
         Assert.assertEquals(createMD5, md5File.exists());
 
-        // now check the contents are the same
+        // Write the input to a baseline file in the same output format. htsjdk 5.0.0 strips NM/MD
+        // (and elides TLEN) when writing CRAM and regenerates them from the reference on read
+        // (matching htslib), so a CRAM round-trip differs from the original SAM. Comparing against a
+        // same-format baseline makes both sides undergo identical encode/decode.
+        final File baselineFile = createTempFile("samWriterBaseline", outputExtension);
         try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile);
-            final SamReader outputReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(outputFile)) {
+            final SAMFileWriter baselineWriter = ReadUtils.createCommonSAMWriter(
+                    baselineFile, referenceFile, samReader.getFileHeader(), preSorted, false, false)) {
             final Iterator<SAMRecord> samRecIt = samReader.iterator();
-            final Iterator<SAMRecord> outRecIt = outputReader.iterator();
-            Assert.assertEquals(samRecIt, outRecIt);
+            while (samRecIt.hasNext()) {
+                baselineWriter.addAlignment(samRecIt.next());
+            }
+        }
+        try (final SamReader baselineReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(baselineFile);
+            final SamReader outputReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(outputFile)) {
+            Assert.assertEquals(outputReader.iterator(), baselineReader.iterator());
         }
     }
 
@@ -565,12 +575,22 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
                 Assert.assertEquals(createMD5, Files.exists(md5Path));
             }
 
-            // now check the contents are the same
+            // Write the input to a baseline file in the same output format and compare against that:
+            // htsjdk 5.0.0 strips NM/MD (and elides TLEN) when writing CRAM and regenerates them from
+            // the reference on read (matching htslib), so a CRAM round-trip differs from the original
+            // SAM. A same-format baseline makes both sides undergo identical encode/decode.
+            final File baselineFile = createTempFile("samWriterBaseline", outputExtension);
             try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile);
-                final SamReader outputReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(outputPath)) {
+                final SAMFileWriter baselineWriter = ReadUtils.createCommonSAMWriter(
+                        baselineFile, referenceFile, samReader.getFileHeader(), preSorted, false, false)) {
                 final Iterator<SAMRecord> samRecIt = samReader.iterator();
-                final Iterator<SAMRecord> outRecIt = outputReader.iterator();
-                Assert.assertEquals(samRecIt, outRecIt);
+                while (samRecIt.hasNext()) {
+                    baselineWriter.addAlignment(samRecIt.next());
+                }
+            }
+            try (final SamReader baselineReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(baselineFile);
+                final SamReader outputReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(outputPath)) {
+                Assert.assertEquals(outputReader.iterator(), baselineReader.iterator());
             }
         }
     }
