@@ -44,6 +44,12 @@ tasks.withType(Test) {
     environment "SPARK_LOCAL_IP","127.0.0.1"
     environment "SUPPRESS_GCLOUD_CREDS_WARNING","true"
 
+    // Pin the test JVM charset so tests are locale-independent. The javadoc/doclet smoke tests
+    // (DocumentationGeneration/TabCompletion/WDLGeneration) run javadoc in-process, which reads
+    // UTF-8 source (e.g. non-ASCII characters in DragstrReferenceAnalyzer) and fails with
+    // unmappable-character errors when the JVM default charset is ASCII.
+    defaultCharacterEncoding = 'UTF-8'
+
     // set heap size for the test JVM(s)
     minHeapSize = "500M"
     maxHeapSize = "3500M"
