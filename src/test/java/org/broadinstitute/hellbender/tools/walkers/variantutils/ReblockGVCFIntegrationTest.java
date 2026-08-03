@@ -522,6 +522,43 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         Assert.assertThrows(UserException.class, () -> runCommandLine(args));
     }
 
+    /**
+     * DRAGEN mitochondrial gVCFs use SQ instead of GQ/PL. The tool should pass all records
+     * through untouched without throwing a BadInput exception.
+     */
+    @Test
+    public void testDragenMitochondrialSQPassthrough() {
+        final File input = getTestFile("dragenMitochondrial.g.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(hg38Reference))
+                .add("V", input)
+                .add("L", "chrM")
+                .addOutput(output);
+        runCommandLine(args);
+
+        final Pair<VCFHeader, List<VariantContext>> result =
+                VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        final List<VariantContext> outVCs = result.getRight();
+
+        // All 5 input records should be present in the output unchanged
+        Assert.assertEquals(outVCs.size(), 5, "All SQ-style records should be passed through");
+
+        // The SQ FORMAT header line from the input must survive in the output header
+        Assert.assertNotNull(result.getLeft().getFormatHeaderLine("SQ"),
+                "SQ FORMAT header line must be preserved in output header");
+
+        // The called variant at chrM:73 should be present with SQ but no GQ or PL
+        final VariantContext variantRecord = outVCs.stream()
+                .filter(vc -> vc.getStart() == 73).findFirst().orElse(null);
+        Assert.assertNotNull(variantRecord, "chrM:73 variant record should be present");
+        final Genotype variantG = variantRecord.getGenotype(0);
+        Assert.assertTrue(variantG.hasExtendedAttribute("SQ"), "SQ attribute should be present");
+        Assert.assertFalse(variantG.hasGQ(), "GQ should not have been added to SQ-only record");
+        Assert.assertFalse(variantG.hasPL(), "PL should not have been added to SQ-only record");
+    }
+
     @Test
     public void testDragenGvcfs() {
         final File input = getTestFile("dragen.g.vcf");

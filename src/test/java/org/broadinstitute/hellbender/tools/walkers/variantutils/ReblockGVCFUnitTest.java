@@ -428,6 +428,79 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
 
     }
 
+    /**
+     * Somatic-style mitochondrial records from DRAGEN carry SQ instead of GQ/PL.
+     * regenotypeVC() should pass them through untouched without throwing.
+     */
+    @Test
+    public void testSomaticSQRecordsPassThroughUntouched() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        reblocker.createAnnotationEngine();
+        reblocker.vcfWriter = new ReblockingGVCFWriter(new MockVcfWriter(), Arrays.asList(20, 100), true, null, new ReblockingOptions());
+
+        final Allele ref = Allele.create("A", true);
+        final Allele alt = Allele.create("G", false);
+
+        // Variant record: SQ present, no GQ, no PL — mimics a DRAGEN chrM ALT call
+        final GenotypeBuilder variantGB = new GenotypeBuilder("sample1", Arrays.asList(alt, alt));
+        variantGB.attribute("SQ", "97.96,0.00")
+                 .AD(new int[]{0, 88, 0})
+                 .DP(88)
+                 .noGQ()
+                 .noPL();
+        final VariantContext sqVariant = new VariantContextBuilder("test", "chrM", 73, 73,
+                Arrays.asList(ref, alt, Allele.NON_REF_ALLELE))
+                .genotypes(variantGB.make()).unfiltered().make();
+
+        // Should not throw; record must be written as-is (MockVcfWriter just records the call)
+        reblocker.regenotypeVC(sqVariant);
+
+        // Hom-ref block record: SQ present, no GQ, no PL — mimics a DRAGEN chrM ref block
+        final GenotypeBuilder refBlockGB = new GenotypeBuilder("sample1", Arrays.asList(ref, ref));
+        refBlockGB.attribute("SQ", "10")
+                  .attribute("MIN_DP", 45)
+                  .AD(new int[]{76, 0})
+                  .DP(76)
+                  .noGQ()
+                  .noPL();
+        final VariantContext sqRefBlock = new VariantContextBuilder("test", "chrM", 2, 72,
+                Arrays.asList(ref, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, 72)
+                .genotypes(refBlockGB.make()).unfiltered().make();
+
+        // Should not throw
+        reblocker.regenotypeVC(sqRefBlock);
+    }
+
+    /**
+     * A record with both SQ and GQ should NOT take the somatic passthrough path;
+     * it should be processed normally (i.e. the standard diploid path still applies
+     * when both fields are present, as seen in some mixed DRAGEN outputs).
+     */
+    @Test
+    public void testRecordWithSQAndGQIsNotPassedThrough() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        reblocker.createAnnotationEngine();
+        reblocker.vcfWriter = new ReblockingGVCFWriter(new MockVcfWriter(), Arrays.asList(20, 100), true, null, new ReblockingOptions());
+
+        final Allele ref = Allele.create("A", true);
+
+        // Record has SQ but ALSO has GQ and PL — should not take the SQ passthrough path
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(ref, ref));
+        gb.attribute("SQ", "10")
+          .GQ(42)
+          .PL(new int[]{0, 42, 420})
+          .AD(new int[]{76, 0})
+          .DP(76);
+        final VariantContext sqAndGQ = new VariantContextBuilder("test", "chrM", 2, 72,
+                Arrays.asList(ref, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, 72)
+                .genotypes(gb.make()).unfiltered().make();
+
+        // Should not throw — goes through normal hom-ref block path, not passthrough
+        reblocker.regenotypeVC(sqAndGQ);
+    }
+
     private VariantContext makeDeletionVC(final String source, final List<Allele> alleles, final int refLength, final Genotype... genotypes) {
         final int start = DEFAULT_START;
         final int stop = start+refLength-1;

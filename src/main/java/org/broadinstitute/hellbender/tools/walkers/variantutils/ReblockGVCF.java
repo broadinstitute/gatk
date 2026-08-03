@@ -371,7 +371,8 @@ public final class ReblockGVCF extends MultiVariantWalker {
      *
      * @param originalVC     the combined genomic VC
      */
-    private void regenotypeVC(final VariantContext originalVC) {
+    @VisibleForTesting
+    void regenotypeVC(final VariantContext originalVC) {
 
         // Somatic-style records (e.g. DRAGEN mitochondrial output) do not provide diploid GQ/PL data,
         // so pass them through untouched instead of applying reblocking logic.
