@@ -57,6 +57,11 @@ public class ReblockingGVCFBlockCombiner extends GVCFBlockCombiner implements Pu
         final Genotype genotype = vc.getGenotype(0);
         final VariantContextBuilder vcBuilder = new VariantContextBuilder(vc);
 
+        // Somatic-style records (e.g. DRAGEN mitochondrial output) lack diploid GQ/PL; pass through untouched.
+        if (genotype.hasExtendedAttribute("SQ") && !genotype.hasGQ() && !genotype.hasPL()) {
+            return vc;
+        }
+
         if (dropLowQuals && (!genotype.hasGQ() || genotype.getGQ() < rgqThreshold || genotype.getGQ() == 0)) {
             return null;
         } else if (isHomRef(g)) {
