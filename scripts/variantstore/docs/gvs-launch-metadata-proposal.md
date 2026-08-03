@@ -80,6 +80,7 @@ what recording is for. (See `scripts/variantstore/docs/tsps/gvs-tsps-bigquery-re
 | effective interval list (`interval_list`, or the `GetReference` default) | ingest, filter set, extract  | Which regions samples cover; whether absence of data is meaningful                                                      |
 | `drop_state`                                                             | ingest, extract              | Which GQ reference blocks were discarded; determines reference genotype fidelity                                        |
 | `use_compressed_references`                                              | ingest, prepare, Avro export | Physical `ref_ranges_%` schema (`location` vs `packed_ref_data`); every reader of `ref_ranges` has to know which it is  |
+| `extract_output_gcs_dir`                                                 | extract                      | Where the delivered VCFs were written; the first thing to look up when asked what produced a given callset              |
 
 ### Proposed new inputs
 
@@ -133,29 +134,29 @@ and `superpartitioned = "false"`. Both are tiny.
 
 ### `gvs_workflow_run` — one row per workflow launch
 
-| Column                            | Type      | Mode     | Notes                                                       |
-|-----------------------------------|-----------|----------|-------------------------------------------------------------|
-| `workflow_id`                     | STRING    | REQUIRED | Cromwell root workflow ID (UUID); primary key by convention |
-| `workflow_name`                   | STRING    | REQUIRED | e.g. `GvsJointVariantCalling`                               |
-| `external_run_id`                 | STRING    | NULLABLE | TSPS job/run ID when supplied                               |
-| `call_set_identifier`             | STRING    | NULLABLE |                                                             |
-| `started`                         | TIMESTAMP | REQUIRED | Launch time                                                 |
-| `submission_id`                   | STRING    | REQUIRED | Terra submission ID                                         |
-| `terra_workspace_name`            | STRING    | NULLABLE | Service-owned under TSPS                                    |
-| `terra_workspace_namespace`       | STRING    | NULLABLE |                                                             |
-| `terra_workspace_id`              | STRING    | NULLABLE |                                                             |
-| `terra_workspace_bucket`          | STRING    | NULLABLE |                                                             |
-| `terra_google_project`            | STRING    | NULLABLE |                                                             |
-| `terra_workspace_bucket_location` | STRING    | NULLABLE |                                                             |
-| `bq_dataset_location`             | STRING    | NULLABLE | Region/multi-region of the GVS dataset                      |
-| `gvs_version`                     | STRING    | REQUIRED | `"unspecified"` for non-release runs                        |
-| `git_branch_or_tag`               | STRING    | NULLABLE |                                                             |
-| `git_hash`                        | STRING    | REQUIRED |                                                             |
-| `gatk_docker`                     | STRING    | REQUIRED | Effective value                                             |
-| `variants_docker`                 | STRING    | REQUIRED | Effective value                                             |
-| `cloud_sdk_docker`                | STRING    | REQUIRED | Effective value                                             |
-| `basic_docker`                    | STRING    | REQUIRED | Effective value                                             |
-| `gatk_override`                   | STRING    | NULLABLE | Non-NULL means a non-production run                         |
+| Column                            | Type      | Mode     | Notes                                                                                              |
+|-----------------------------------|-----------|----------|----------------------------------------------------------------------------------------------------|
+| `workflow_id`                     | STRING    | REQUIRED | Cromwell root workflow ID (UUID); primary key by convention                                        |
+| `workflow_name`                   | STRING    | REQUIRED | e.g. `GvsJointVariantCalling`                                                                      |
+| `external_run_id`                 | STRING    | NULLABLE | TSPS job/run ID when supplied                                                                      |
+| `call_set_identifier`             | STRING    | NULLABLE |                                                                                                    |
+| `started`                         | TIMESTAMP | REQUIRED | Launch time                                                                                        |
+| `submission_id`                   | STRING    | REQUIRED | Terra submission ID                                                                                |
+| `terra_workspace_name`            | STRING    | NULLABLE | Service-owned under TSPS                                                                           |
+| `terra_workspace_namespace`       | STRING    | NULLABLE |                                                                                                    |
+| `terra_workspace_id`              | STRING    | NULLABLE |                                                                                                    |
+| `terra_workspace_bucket`          | STRING    | NULLABLE |                                                                                                    |
+| `terra_google_project`            | STRING    | NULLABLE |                                                                                                    |
+| `terra_workspace_bucket_location` | STRING    | NULLABLE |                                                                                                    |
+| `bq_dataset_location`             | STRING    | NULLABLE | Region/multi-region of the GVS dataset                                                             |
+| `gvs_version`                     | STRING    | REQUIRED | `"unspecified"` for non-release runs; TSPS should launch from a released tag so this is never that |
+| `git_branch_or_tag`               | STRING    | NULLABLE |                                                                                                    |
+| `git_hash`                        | STRING    | REQUIRED |                                                                                                    |
+| `gatk_docker`                     | STRING    | REQUIRED | Effective value                                                                                    |
+| `variants_docker`                 | STRING    | REQUIRED | Effective value                                                                                    |
+| `cloud_sdk_docker`                | STRING    | REQUIRED | Effective value                                                                                    |
+| `basic_docker`                    | STRING    | REQUIRED | Effective value                                                                                    |
+| `gatk_override`                   | STRING    | NULLABLE | Non-NULL means a non-production run                                                                |
 
 ```
 [{"name":"workflow_id","type":"STRING","mode":"REQUIRED"},{"name":"workflow_name","type":"STRING","mode":"REQUIRED"},{"name":"external_run_id","type":"STRING","mode":"NULLABLE"},{"name":"call_set_identifier","type":"STRING","mode":"NULLABLE"},{"name":"started","type":"TIMESTAMP","mode":"REQUIRED"},{"name":"submission_id","type":"STRING","mode":"REQUIRED"},{"name":"terra_workspace_name","type":"STRING","mode":"NULLABLE"},{"name":"terra_workspace_namespace","type":"STRING","mode":"NULLABLE"},{"name":"terra_workspace_id","type":"STRING","mode":"NULLABLE"},{"name":"terra_workspace_bucket","type":"STRING","mode":"NULLABLE"},{"name":"terra_google_project","type":"STRING","mode":"NULLABLE"},{"name":"terra_workspace_bucket_location","type":"STRING","mode":"NULLABLE"},{"name":"bq_dataset_location","type":"STRING","mode":"NULLABLE"},{"name":"gvs_version","type":"STRING","mode":"REQUIRED"},{"name":"git_branch_or_tag","type":"STRING","mode":"NULLABLE"},{"name":"git_hash","type":"STRING","mode":"REQUIRED"},{"name":"gatk_docker","type":"STRING","mode":"REQUIRED"},{"name":"variants_docker","type":"STRING","mode":"REQUIRED"},{"name":"cloud_sdk_docker","type":"STRING","mode":"REQUIRED"},{"name":"basic_docker","type":"STRING","mode":"REQUIRED"},{"name":"gatk_override","type":"STRING","mode":"NULLABLE"}]
@@ -201,6 +202,12 @@ Three parts, in priority order:
 Whatever is chosen should match how `cost_observability` is extracted before teardown — the same
 constraint, and ideally the same mechanism, so there is one answer to "get the run's records out
 before the dataset disappears".
+
+The sample-level table loaded from `bulk_ingest_fofn` should be exported the same way and at the same
+time. It is the per-sample half of the provenance — which gVCFs went in, and their CRC32c hashes — and it
+dies with the dataset like everything else. Exporting it also answers what sample count a run had, which
+matters for the cost correlation above and which no launch input records: a TSPS run's 100 samples are a
+row count, not a parameter.
 
 ## How the values get recorded
 
