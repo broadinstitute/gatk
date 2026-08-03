@@ -14,6 +14,9 @@ on:
       - 'ah_var_store'
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 defaults:
   run:
     # Tests reference their data files with paths relative to the scripts directory
