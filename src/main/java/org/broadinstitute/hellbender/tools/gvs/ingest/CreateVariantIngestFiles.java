@@ -223,7 +223,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             }
             """);
 
-    public final MessageType headersRowSchema = MessageTypeParser
+    // static so tests can assert against the exact production shape (see VcfHeaderLineScratchCreatorUnitTest)
+    // rather than hand-copying it.
+    public static final MessageType headersRowSchema = MessageTypeParser
             .parseMessageType("""
             message HeaderRow {
                 required int64 sample_id;

@@ -311,26 +311,9 @@ workflow GvsImportGenomes {
     }
   }
 
-  if (load_vet_and_ref_ranges) {
-    call SetIsLoadedColumn {
-      input:
-        # A BQ Write API-flavored invocation of `LoadData` actually loads all data into vet and ref ranges tables, but a
-        # Parquet-flavored invocation of `LoadData` only generates Parquet files from input gVCFs.
-        # Because the loading of Parquet data into BigQuery is handled by a chain of WDL tasks subsequent to
-        # `GenerateParquetFilesFromInputGVCFs`, the `go` trigger for setting the `is_loaded` column is the `done` output
-        # of the last task in that chain, `VerifyParquetLoading`. The other component of the `go` trigger is the
-        # `LoadDataViaBigQueryWriteAPI.done` corresponding to the Write API flow.
-        # Intentionally using select_first to pick whichever of the two mutually exclusive code paths (Parquet vs WriteAPI) ran.
-        #@ except: UnnecessaryFunctionCall
-        go = select_all(select_first([[VerifyParquetLoading.done], LoadDataViaBigQueryWriteAPI.done])),
-        project_id = project_id,
-        dataset_name = dataset_name,
-        cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
-  }
-
   # Merge the loaded header scratch data into vcf_header_lines / sample_vcf_header. Gate on whichever
   # load path ran: the Parquet header load (VerifyParquetLoading) or the BQ Write API.
+  # Declared before SetIsLoadedColumn because that task may depend on this one's `done` (see below).
   if (load_vcf_headers) {
     call ProcessVCFHeaders {
       input:
@@ -341,6 +324,34 @@ workflow GvsImportGenomes {
         ]),
         dataset_name = dataset_name,
         project_id = project_id,
+    }
+  }
+
+  if (load_vet_and_ref_ranges) {
+    call SetIsLoadedColumn {
+      input:
+        # A BQ Write API-flavored invocation of `LoadData` actually loads all data into vet and ref ranges tables, but a
+        # Parquet-flavored invocation of `LoadData` only generates Parquet files from input gVCFs.
+        # Because the loading of Parquet data into BigQuery is handled by a chain of WDL tasks subsequent to
+        # `GenerateParquetFilesFromInputGVCFs`, the `go` trigger for setting the `is_loaded` column is the `done` output
+        # of the last task in that chain, `VerifyParquetLoading`. The other component of the `go` trigger is the
+        # `LoadDataViaBigQueryWriteAPI.done` corresponding to the Write API flow.
+        # Intentionally using select_first to pick whichever of the two mutually exclusive code paths (Parquet vs WriteAPI) ran.
+        #
+        # Also gate on ProcessVCFHeaders.done: this task computes is_loaded from `samples_with_all_data`, which
+        # JOINs `samples_with_header_data` (backed by `sample_vcf_header` on the Parquet path). That table is
+        # populated by ProcessVCFHeaders, and the Parquet path writes no HEADERS_LOADED status to rescue the
+        # view. When a single run sets both load_vcf_headers and load_vet_and_ref_ranges, without this edge the
+        # two tasks race and is_loaded is silently left FALSE. select_all makes it a no-op for data-only runs
+        # (headers loaded in a prior run, so sample_vcf_header is already populated).
+        #@ except: UnnecessaryFunctionCall
+        go = flatten([
+          select_all(select_first([[VerifyParquetLoading.done], LoadDataViaBigQueryWriteAPI.done])),
+          select_all([ProcessVCFHeaders.done])
+        ]),
+        project_id = project_id,
+        dataset_name = dataset_name,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
     }
   }
 
@@ -667,6 +678,11 @@ task ProcessVCFHeaders {
       --project_id=~{project_id} \
       --dataset_name ~{dataset_name}
   >>>
+
+  output {
+    # Exists so downstream tasks (e.g. SetIsLoadedColumn) can order themselves after the header merge.
+    Boolean done = true
+  }
 
   runtime {
     docker: variants_docker
@@ -1026,10 +1042,12 @@ task CreateSampleDataViews {
       DECLARE create_header_data_view STRING;
       DECLARE create_all_sample_data_view STRING;
 
+      -- Probe sample_vcf_header, the table the view below actually reads (it is created alongside
+      -- vcf_header_lines_scratch when load_vcf_headers is set), so the guard matches its dependency.
       SET header_table_exists = (
         SELECT COUNT(1) FROM
         `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
-        WHERE table_name = 'vcf_header_lines_scratch'
+        WHERE table_name = 'sample_vcf_header'
       );
 
       IF header_table_exists > 0 THEN

@@ -7,7 +7,6 @@ import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
-import org.apache.parquet.schema.MessageTypeParser;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.HeaderParquetFileWriter;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -30,15 +29,8 @@ public class VcfHeaderLineScratchCreatorUnitTest {
 
     private static final long SAMPLE_ID = 100;
 
-    // Must match CreateVariantIngestFiles#headersRowSchema and the vcf_header_lines_scratch BQ table.
-    private static final MessageType HEADERS_ROW_SCHEMA = MessageTypeParser.parseMessageType("""
-            message HeaderRow {
-                required int64 sample_id;
-                optional binary vcf_header_lines (UTF8);
-                required binary vcf_header_lines_hash (UTF8);
-                required boolean is_expected_unique;
-            }
-            """);
+    // Reference the production schema directly so the test can never assert a stale shape.
+    private static final MessageType HEADERS_ROW_SCHEMA = CreateVariantIngestFiles.headersRowSchema;
 
     @Test
     public void testWriteJsonFullRecord() {

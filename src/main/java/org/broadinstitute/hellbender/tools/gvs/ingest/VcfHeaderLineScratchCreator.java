@@ -12,7 +12,6 @@ import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.HeaderParquetFileW
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.BigQueryUtils;
 import org.broadinstitute.hellbender.utils.gvs.bigquery.PendingBQWriter;
-import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
@@ -123,11 +122,12 @@ public class VcfHeaderLineScratchCreator {
                         Boolean isExpectedUnique = headerChunk.getValue();
                         boolean vcfScratchHeaderRowsExist = doScratchRowsExistFor(this.projectId, this.datasetName, chunkHash);
                         boolean vcfNonScratchHeaderRowsExist = doNonScratchRowsExistFor(this.projectId, this.datasetName, chunkHash);
+                        // Both paths must emit identical rows, so share one record builder (writeJson).
                         if (vcfScratchHeaderRowsExist || vcfNonScratchHeaderRowsExist) {
-                            vcfHeaderBQJsonWriter.addJsonRow(createJson(this.sampleId, null, chunkHash, isExpectedUnique));
+                            vcfHeaderBQJsonWriter.addJsonRow(HeaderParquetFileWriter.writeJson(this.sampleId, null, chunkHash, isExpectedUnique));
                         }
                         else {
-                            vcfHeaderBQJsonWriter.addJsonRow(createJson(this.sampleId, headerChunk.getKey(), chunkHash, isExpectedUnique));
+                            vcfHeaderBQJsonWriter.addJsonRow(HeaderParquetFileWriter.writeJson(this.sampleId, headerChunk.getKey(), chunkHash, isExpectedUnique));
                         }
                     } catch (Descriptors.DescriptorValidationException | ExecutionException | InterruptedException ex) {
                         throw new IOException("BQ exception", ex);
@@ -160,18 +160,6 @@ public class VcfHeaderLineScratchCreator {
                 }
             }
         }
-    }
-
-    public JSONObject createJson(Long sampleId, String headerChunk, String headerHash, Boolean isExpectedUnique) {
-        JSONObject record = new JSONObject();
-        record.put("sample_id", sampleId);
-
-        if (headerChunk != null) {
-            record.put("vcf_header_lines", headerChunk);
-        }
-        record.put("vcf_header_lines_hash", headerHash);
-        record.put("is_expected_unique", isExpectedUnique);
-        return record;
     }
 
     public void commitData() {
