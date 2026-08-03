@@ -145,9 +145,12 @@ named one as well, so more than one absent band does not imply more than one `dr
    extract-side defaults alone in this change; see item 3.
 2. **Document `drop_state` in the "Smaller Interval Lists" and "Smaller Sample Lists" sections of
    `AOU_DELIVERABLES.md`**, matching what `SUB_COHORT_WORKFLOW.md:27` already says.
-3. **Have extract look the value up rather than ask for it.** Depends on launch metadata being recorded
-   (VS-1961); see `gvs-launch-metadata-proposal.md`, where this is the worked example for the enforcement
-   half of that work. The input would remain as an override that fails when it disagrees with the record,
-   with band-absence inference as the fallback for datasets predating the metadata table.
+3. **Have extract look the value up rather than ask for it.** Extract's `drop_state` is an assertion about
+   how the data was ingested (see "At extract, `drop_state` is an assertion rather than a choice" above),
+   so it should be read from a record of the ingest run rather than supplied by hand. This depends on
+   launch metadata being recorded; `gvs-launch-metadata-proposal.md` (VS-1961) proposes that record, though
+   enforcing values against it is deferred to a follow-on there. The input would remain as an override that
+   fails when it disagrees with the record, with band-absence inference as the fallback for datasets
+   predating the metadata table.
 4. **Decide whether the pre-remap window (2022-08-24 to 2023-01-23) needs auditing**, which reduces to
    confirming whether `NONE` could reach `GenotypeBuilder.GQ` in the engine code of that period.

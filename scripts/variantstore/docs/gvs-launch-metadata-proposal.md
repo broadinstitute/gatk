@@ -210,10 +210,16 @@ output gating ingest (the established GVS ordering idiom).
 
 Implementation details that matter:
 
-- **Declare the task's inputs as `String`, never `File`.** `interval_list` and `bulk_ingest_fofn` are
-  `File` at the workflow level; passing them to a `File` task input would localize them and record a
-  container-local path rather than the URI we want. Coercing to `String` at the call site preserves the
-  `gs://` URI and costs nothing.
+- **Keep `File` types and set `localization_optional: true`.** `interval_list` and `bulk_ingest_fofn` are
+  `File` at the workflow level, and the metadata task should declare them the same way under a
+  `parameter_meta { <arg>: { localization_optional: true } }` entry. That skips localization while leaving
+  the interpolated value as the `gs://` URI — the same mechanism that lets `CopyFile` run
+  `gsutil cp ~{input_file}` (`GvsUtils.wdl:1635-1638`), and that `MergeVCFs` and `SplitIntervals` rely on.
+  This is preferable to coercing to `String`, which would also carry the URI but would drop the input out
+  of Cromwell's content-based call-cache hashing, so a file overwritten in place would no longer
+  invalidate a cached result. Note that the `parameter_meta` entry is not merely a performance
+  optimization: without it the task interpolates a localized container path, and the recorded value would
+  silently become that path instead of the URI.
 - **Compute effective values in the workflow, not the task.** `GvsJointVariantCalling.wdl` already
   computes `effective_*` values for dockers, git hash, workspace and the extract names; the same
   pattern covers the rest, and `defined(x)` supplies `was_specified`.
