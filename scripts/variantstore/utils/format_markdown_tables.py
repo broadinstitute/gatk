@@ -29,6 +29,11 @@ import sys
 FENCE = re.compile(r'^\s*(```|~~~)')
 SEPARATOR_CELL = re.compile(r'^:?-+:?$')
 UNESCAPED_PIPE = re.compile(r'(?<!\\)\|')
+# Up to three spaces of indentation still parses as a table; four or more is an indented
+# code block, which must be left alone. Rows of one table are frequently indented
+# inconsistently — that is the usual reason a table is ragged in the first place — so
+# membership is decided per line and the whole table is emitted at its header's indent.
+TABLE_LINE = re.compile(r'^( {0,3})\|')
 
 
 def _split_cells(line):
@@ -64,8 +69,12 @@ def _separator_cell(width, marker):
     return (':' if left else '') + '-' * max(dashes, 1) + (':' if right else '')
 
 
-def format_table(rows):
-    """Given the lines of one pipe table, return them padded rectangularly."""
+def format_table(rows, indent=''):
+    """Given the lines of one pipe table, return them padded rectangularly.
+
+    Every row is emitted at ``indent``, normalizing away the inconsistent leading
+    whitespace that makes tables ragged.
+    """
     parsed = [_split_cells(row) for row in rows]
     ncols = max(len(cells) for cells in parsed)
     parsed = [cells + [''] * (ncols - len(cells)) for cells in parsed]
@@ -81,11 +90,11 @@ def format_table(rows):
     out = []
     for index, cells in enumerate(parsed):
         if index == 1:
-            out.append('|' + '|'.join(
+            out.append(indent + '|' + '|'.join(
                 _separator_cell(width, marker) for width, marker in zip(widths, cells)
             ) + '|')
         else:
-            out.append('|' + '|'.join(
+            out.append(indent + '|' + '|'.join(
                 ' ' + cell.ljust(width) + ' ' for cell, width in zip(cells, widths)
             ) + '|')
     return out
@@ -105,14 +114,15 @@ def format_text(text):
             index += 1
             continue
 
-        if not in_fence and line.startswith('|'):
+        header = None if in_fence else TABLE_LINE.match(line)
+        if header:
             end = index
-            while end < len(lines) and lines[end].startswith('|'):
+            while end < len(lines) and TABLE_LINE.match(lines[end]):
                 end += 1
             table = lines[index:end]
             # A pipe table needs a header and a separator row; anything else is left alone.
             if len(table) >= 2 and _is_separator_row(table[1]):
-                formatted = format_table(table)
+                formatted = format_table(table, indent=header.group(1))
                 if formatted != table:
                     changed += 1
                 out.extend(formatted)
@@ -146,7 +156,9 @@ def main(argv=None):
 
     would_change = []
     for path in markdown_files(args.paths):
-        with open(path) as handle:
+        # Explicit UTF-8 rather than the platform default: these docs contain em dashes and
+        # other non-ASCII characters, which fail to decode under a non-UTF-8 locale.
+        with open(path, encoding='utf-8') as handle:
             original = handle.read()
         formatted, changed = format_text(original)
         if formatted == original:
@@ -155,7 +167,7 @@ def main(argv=None):
         if args.check:
             print(f'{path}: {changed} table(s) not rectangular')
         else:
-            with open(path, 'w') as handle:
+            with open(path, 'w', encoding='utf-8') as handle:
                 handle.write(formatted)
             if not args.quiet:
                 print(f'{path}: {changed} table(s) reformatted')

@@ -332,12 +332,12 @@ unmatched VIDs that were discovered in the VATs of the Delta and Echo callsets.
 
 ## Markdown tables must be rectangular
 
-IntelliJ's Markdown plugin reformats tables to rectangular form on save (every
-cell padded to its column's widest content). A table left ragged therefore
-reappears as a spurious whitespace-only diff the next time anyone opens the file
-in the IDE, and the IDE flags it. A single cell one character wider than its
-column is enough to cause this, which is nearly invisible in review — and editing
-one cell of an already-aligned table is the usual way it happens.
+IntelliJ wants Markdown tables to be rectangular (cell padded to its column's
+widest content). A table left ragged therefore reappears as a spurious
+whitespace-only diff the next time anyone opens the file in IntelliJ, and the IDE
+flags it. A single cell one character wider than its column is enough to cause
+this, which is nearly invisible in review — and editing one cell of an
+already-aligned table is the usual way it happens.
 
 After adding or editing a table, run:
 
