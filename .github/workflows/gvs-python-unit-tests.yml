@@ -56,19 +56,4 @@ jobs:
         run: |
           # Put both the scripts directory (for the modules under test) and the
           # test directory (so test modules import by bare name) on PYTHONPATH.
-          export PYTHONPATH="$PWD:$PWD/test"
-          fail=0
-          for test in test/test_*.py
-          do
-              name=$(basename "$test" .py)
-              echo "Start test $test..."
-              if ! python -m unittest "$name"; then
-                  fail=1
-                  echo "$test has failed"
-              fi
-              echo "End test $test"
-          done
-          if [ $fail -ne 0 ]; then
-              echo "One or more unit tests have failed."
-              exit $fail
-          fi
+          PYTHONPATH="$PWD:$PWD/test" python -m unittest discover -s test -p 'test_*.py'
