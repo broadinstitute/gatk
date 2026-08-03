@@ -79,12 +79,16 @@ the cases where the value is supplied by hand, possibly months after ingest.
 `GvsImportGenomes` (or `GvsJointVariantCalling`)"), so the invariant is known; it simply has nowhere to
 live and nothing to enforce it.
 
-`"NONE"` means the same thing at both ends — no band was discarded — and extract remaps it to `"ZERO"`
-(`GvsExtractCallset.wdl:440`, `GvsExtractCallsetPgen.wdl:394`) because `GQStateEnum.NONE` has a null
-`referenceGQ` and extract needs a concrete GQ to stamp. The remap is consistent with GVS's convention
-that absent reference data reads as GQ0, which `GQStateEnum.java:16-18` documents directly. Note also
-that the argument is interpolated from a non-optional, never-empty String, so these WDLs always pass it
-and GATK's `SIXTY` default cannot apply through them.
+`"NONE"` means the same thing at both ends — no band was discarded. However extract silently remaps it to
+`"ZERO"` (`GvsExtractCallset.wdl:440`, `GvsExtractCallsetPgen.wdl:394`), because `GQStateEnum.NONE` has a
+null `referenceGQ` while extract needs a concrete GQ value to write for reference data missing from the
+original input gVCF; see `GQStateEnum.java:16-18` for details.
+
+Expect this to surprise people. The remap appears nowhere in the workflow inputs — the only place the
+substitution is visible is the extract task's command line — and `ZERO` behavior is load-bearing for AoU
+extracts, whose runbook sections do not mention `drop_state` at all. Note also that the argument is
+interpolated from a non-optional, never-empty String, so these WDLs always pass it and GATK's `SIXTY`
+default cannot apply through them.
 
 ## How the current arrangement came about
 
@@ -133,10 +137,6 @@ gvs-internal.quickit_2026_07_21_..._vets_vcf.ref_ranges_001
   state 4: absent   <- drop_state = FORTY
 ```
 
-Two further caveats: a callset small enough that a band is genuinely unpopulated will read as a false
-positive, and `--ignore-above-gq-threshold` (`dropAboveGqThreshold`, default `false`) drops bands above the
-named one as well, so more than one absent band does not imply more than one `drop_state`.
-
 ## Candidate follow-on work
 
 1. **Remove the `drop_state` defaults from `GvsBulkIngestGenomes.wdl` and `GvsImportGenomes.wdl`**, making
@@ -152,5 +152,3 @@ named one as well, so more than one absent band does not imply more than one `dr
    enforcing values against it is deferred to a follow-on there. The input would remain as an override that
    fails when it disagrees with the record, with band-absence inference as the fallback for datasets
    predating the metadata table.
-4. **Decide whether the pre-remap window (2022-08-24 to 2023-01-23) needs auditing**, which reduces to
-   confirming whether `NONE` could reach `GenotypeBuilder.GQ` in the engine code of that period.

@@ -179,7 +179,7 @@ and `superpartitioned = "false"`. Both are tiny.
 [{"name":"workflow_id","type":"STRING","mode":"REQUIRED"},{"name":"input_name","type":"STRING","mode":"REQUIRED"},{"name":"effective_value","type":"STRING","mode":"NULLABLE"},{"name":"value_type","type":"STRING","mode":"REQUIRED"},{"name":"was_specified","type":"BOOLEAN","mode":"NULLABLE"},{"name":"file_generation","type":"STRING","mode":"NULLABLE"},{"name":"file_crc32c","type":"STRING","mode":"NULLABLE"},{"name":"file_size_bytes","type":"INTEGER","mode":"NULLABLE"}]
 ```
 
-The GCS fingerprint columns are why `File` inputs need more than a path. An interval list or a FOFN can
+The GCS hash columns are why `File` inputs need more than a path. An interval list or a FOFN can
 be overwritten in place at the same URI, so the object generation is the only reliable answer to "is this
 the same interval list that run used?" — and on TSPS the interval list is the input most likely to vary
 per request.
@@ -234,10 +234,18 @@ Implementation details that matter:
   `bq --apilog=false load --source_format=NEWLINE_DELIMITED_JSON`, following the precedent at
   `GvsUtils.wdl:859`. No `INSERT` means no quoting hazards and no streaming-buffer interactions — and
   the same NDJSON file is the workflow output from part 1 above, so there is one artifact, not two.
-- **File fingerprints** come from
-  `gcloud storage objects describe <uri> --format="value(generation,crc32c_hash,size)"`, tolerating
-  failure: a missing or inaccessible object should not fail the run, just record the URI with NULL
-  fingerprints.
+- **File hashes** come from
+  `gcloud storage objects describe <uri> --format="value(generation,crc32c_hash,size)"`, and a failure
+  should fail the run rather than record NULL hashes. If the interval list or the FOFN cannot be
+  read, ingest is going to fail moments later with a worse message, so failing here is the better
+  outcome: earlier, cheaper, and naming the object that could not be read. Recording NULLs instead would
+  produce a record that looks complete while being unverifiable, which is the failure mode this proposal
+  exists to prevent.
+- Requester-pays inputs look unlikely to be supported on TSPS at all: TSPS collects no billing project
+  from the user, so it would have to charge the egress to its own project, which sits badly with the TSPS
+  credit model. If that is the decision, the cheapest place to enforce it is while reading file hashes —
+  this task already reads each input object's metadata, so one `gcloud storage buckets describe` per
+  distinct bucket can reject a requester-pays input at launch with a precise message.
 - **`GetToolVersions` needs only one addition, `workflow_name`.** The delocalization path it already
   scrapes is `gs://fc-<workspace id>/submissions/<submission id>/<workflow name>/<workflow id>/...`,
   and the existing regex at `GvsUtils.wdl:96` already captures the workflow name as group 4 — the new
