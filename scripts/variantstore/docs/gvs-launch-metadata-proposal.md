@@ -178,10 +178,10 @@ and `superpartitioned = "false"`. Both are tiny.
 [{"name":"workflow_id","type":"STRING","mode":"REQUIRED"},{"name":"input_name","type":"STRING","mode":"REQUIRED"},{"name":"effective_value","type":"STRING","mode":"NULLABLE"},{"name":"value_type","type":"STRING","mode":"REQUIRED"},{"name":"was_specified","type":"BOOLEAN","mode":"NULLABLE"},{"name":"file_generation","type":"STRING","mode":"NULLABLE"},{"name":"file_crc32c","type":"STRING","mode":"NULLABLE"},{"name":"file_size_bytes","type":"INTEGER","mode":"NULLABLE"}]
 ```
 
-The GCS fingerprint columns are why `File` inputs need more than a path. An interval list, a
-`sample_names_to_extract` file or a `training_python_script` can be overwritten in place at the same
-URI, so the object generation is the only reliable answer to "is this the same interval list that run
-used?" — and on TSPS the interval list is the input most likely to vary per request.
+The GCS fingerprint columns are why `File` inputs need more than a path. An interval list or a FOFN can
+be overwritten in place at the same URI, so the object generation is the only reliable answer to "is this
+the same interval list that run used?" — and on TSPS the interval list is the input most likely to vary
+per request.
 
 ## Where the record lives, given that TSPS deletes the dataset
 
@@ -210,10 +210,10 @@ output gating ingest (the established GVS ordering idiom).
 
 Implementation details that matter:
 
-- **Declare the task's inputs as `String`, never `File`.** `interval_list`, `target_interval_list`,
-  `sample_names_to_extract` and the VETS scripts are `File` at the workflow level; passing them to a
-  `File` task input would localize them and record a container-local path. Coercing to `String` at the
-  call site preserves the `gs://` URI and costs nothing.
+- **Declare the task's inputs as `String`, never `File`.** `interval_list` and `bulk_ingest_fofn` are
+  `File` at the workflow level; passing them to a `File` task input would localize them and record a
+  container-local path rather than the URI we want. Coercing to `String` at the call site preserves the
+  `gs://` URI and costs nothing.
 - **Compute effective values in the workflow, not the task.** `GvsJointVariantCalling.wdl` already
   computes `effective_*` values for dockers, git hash, workspace and the extract names; the same
   pattern covers the rest, and `defined(x)` supplies `was_specified`.
