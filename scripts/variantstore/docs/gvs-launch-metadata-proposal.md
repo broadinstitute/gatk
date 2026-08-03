@@ -27,7 +27,7 @@ deliverable B later.
 
 ## Scope
 
-`GvsJointVariantCalling.wdl` is expected to the TSPS entry point; GVS Beta uses this same WDL as its
+`GvsJointVariantCalling.wdl` is expected to be the TSPS entry point; GVS Beta uses this same WDL as its
 entry point and so is covered incidentally.
 
 AoU is kept in mind but is not the target: AoU callsets never run `GvsJointVariantCalling.wdl`, they
