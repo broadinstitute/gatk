@@ -215,7 +215,7 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
             for (final Genotype genotype : genotypes) {
                 final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.noGQ();
-                gb.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL));
+                gb.alleles(Arrays.asList(Allele.NO_CALL));
                 gb.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN));
                 gb.attribute(GATKSVVCFConstants.COPY_NUMBER_QUALITY_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.RD_GQ));
                 updatedGenotypes.add(gb.make());
@@ -294,7 +294,7 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
             for (final Genotype genotype : genotypes) {
                 final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.noGQ();
-                gb.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL));
+                gb.alleles(Arrays.asList(Allele.NO_CALL));
                 gb.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN));
                 gb.attribute(GATKSVVCFConstants.COPY_NUMBER_QUALITY_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.RD_GQ));
                 updatedGenotypes.add(gb.make());
