@@ -218,6 +218,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - ng_vs_1803_parquet_headers_impl
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
