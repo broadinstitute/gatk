@@ -1,19 +1,16 @@
 # Proposal: recording GVS launch metadata (VS-1961)
 
 GVS currently does not record the input parameters it was launched with. This proposal identifies which inputs
-matter, proposes a schema for storing them, and separates the two distinct needs that get conflated when this
-is described as a single piece of work.
+matter and proposes a schema for storing them. It also separates two needs that a single piece of work cannot
+serve at once.
 
 ## Two motivations, two deliverables
 
-The VS-1961 ticket describes the goal as tracking inputs "that invalidate the joint calling process if they
-are changed". That is a *drift* concern: it presumes a dataset that is used more than once, so that a
-second run can contradict the first. Every GVS use case has that property except the one this epic is
-about: on TSPS the BigQuery dataset is created per run and deleted when the run finishes, so there is
-never a second run to disagree with the first, apart from TSPS-controlled retries.
-
-This observation does not make the work TSPS-irrelevant; it means two different needs are in play, and only one of
-them is a TSPS dependency:
+Tracking inputs "that invalidate the joint calling process if they are changed" is a *drift* concern: it
+presumes a dataset used more than once, so that a second run can contradict the first. That describes Beta
+and AoU rather than TSPS, where the BigQuery dataset is created per run and deleted when the run finishes,
+leaving nothing for a later run to disagree with apart from TSPS-controlled retries. So two needs are in
+play, and only one of them is a TSPS dependency:
 
 |                       | Deliverable A: record and export                                       | Deliverable B: enforce                                                     |
 |-----------------------|------------------------------------------------------------------------|----------------------------------------------------------------------------|
@@ -235,6 +232,19 @@ of drift on a reusable dataset — an operator re-filling a form after a failure
 workflow version changed a default underneath them, can load the second batch under different invariants.
 Two rows are what make that visible, which is the strongest practical argument for the enforcement
 follow-on.
+
+## Out of scope: runtime state (VS-1962)
+
+This record describes a launch. It is written once, before work starts, and never updated. Tracking how far
+a run got — which phases completed, which scattered shards succeeded, what a restart may skip — is a
+different problem with a different write pattern, and belongs to VS-1962. Two decisions here are meant to
+serve it. `gvs_workflow_run.workflow_id` is the intended parent key, so state rows can hang off a launch
+without having to re-derive run identity. And whatever mechanism exports this record before a TSPS dataset
+is torn down will have to carry state rows too — the constraint is identical, so it should not be solved
+twice.
+
+Worth carrying into that work: much of what looks like runtime state is already inferable from the data, as
+the previous section describes. The useful output there is the list of things that genuinely are not.
 
 ## How the values get recorded
 
