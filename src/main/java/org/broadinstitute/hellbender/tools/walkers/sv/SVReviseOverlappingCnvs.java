@@ -472,11 +472,16 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
 
         Map<String, Set<String>> supportMap = new HashMap<>();
         for (final Genotype genotype : variant.getGenotypes()) {
-            final String supportStr = genotype.hasExtendedAttribute(GATKSVVCFConstants.EV)
+            final String rawEv = genotype.hasExtendedAttribute(GATKSVVCFConstants.EV)
                     ? genotype.getExtendedAttribute(GATKSVVCFConstants.EV).toString()
                     : "";
+            // EV may be encoded as a numeric index into GATKSVVCFConstants.EV_VALUES rather than
+            // the resolved comma-delimited support string, depending on upstream VCF formatting.
+            final String supportStr = rawEv.matches("\\d+")
+                    ? GATKSVVCFConstants.EV_VALUES.get(Integer.parseInt(rawEv))
+                    : rawEv;
             final Set<String> supportSet = new HashSet<>();
-            if (!supportStr.isEmpty()) {
+            if (supportStr != null && !supportStr.isEmpty()) {
                 supportSet.addAll(Arrays.asList(supportStr.split(",")));
             }
             supportMap.put(genotype.getSampleName(), supportSet);
