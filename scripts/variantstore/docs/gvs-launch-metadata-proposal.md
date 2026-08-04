@@ -93,10 +93,10 @@ This optional String parameter would serve the same function as the parameter of
 
 We would likely also want to capture the paths of the files enumerated within, as well as their hashes.
 That per-sample provenance does not belong in `gvs_workflow_run_input`, whose grain is one row per
-parameter — a TSPS run enumerates up to 10,000 samples. It belongs in the sample-level table the FOFN
-contents are loaded into, keyed by `workflow_id`, with `gvs_workflow_run_input` recording only the FOFN
-itself as a single row carrying its own generation and CRC32c, which pins the manifest exactly. AoU does
-this loading by hand today; a canonical table should arrive with the ticket adding `bulk_ingest_fofn` to
+parameter — a TSPS run enumerates up to 10,000 samples. It belongs in `gvs_sample_input_files` (proposed below),
+keyed by `workflow_id`, with `gvs_workflow_run_input` recording only the FOFN itself as a single row carrying
+its own generation and CRC32c, which pins the manifest exactly. AoU loads a table of this shape by hand
+today; making it canonical belongs with the ticket adding `bulk_ingest_fofn` to
 `GvsJointVariantCalling.wdl`.
 
 Collecting the hashes is cheap: CRC32c is present on every GCS object, and object listing returns it
@@ -126,8 +126,10 @@ join key. Cheap to add now and awkward to retrofit.
 
 ## Proposed schema
 
-Two tables, created with the existing `GvsCreateTables.CreateTables` task with `partitioned = "false"`
-and `superpartitioned = "false"`. Both are tiny.
+Three tables, created with the existing `GvsCreateTables.CreateTables` task with `partitioned = "false"`
+and `superpartitioned = "false"`. The first two hold a handful of rows per launch; `gvs_sample_input_files`
+holds one per sample, so tens of thousands of rows for a TSPS run and more for AoU — still small enough that
+partitioning and clustering buy nothing.
 
 ### `gvs_workflow_run` — one row per workflow launch
 
@@ -181,6 +183,40 @@ be overwritten in place at the same URI, so the object generation is the only re
 the same interval list that run used?" — and on TSPS the interval list is the input most likely to vary
 per request.
 
+### `gvs_sample_input_files` — one row per sample per launch
+
+The contents of `bulk_ingest_fofn`, which is where the per-sample half of the provenance lives. A table of
+this shape was created by hand for Foxtrot with three nullable `STRING` columns — `research_id`,
+`reblocked_gvcf`, `reblocked_gvcf_index` — and this is a proposal to make it canonical, add fingerprints,
+and tighten the modes.
+
+| Column                        | Type    | Mode     | Notes                                                                              |
+|-------------------------------|---------|----------|------------------------------------------------------------------------------------|
+| `workflow_id`                 | STRING  | REQUIRED | Which launch loaded this manifest; joins to `gvs_workflow_run`                     |
+| `sample_name`                 | STRING  | REQUIRED | Matches `sample_info.sample_name`; the FOFN's first column (`research_id` for AoU) |
+| `input_gvcf`                  | STRING  | REQUIRED | `gs://` URI of the reblocked gVCF                                                  |
+| `input_gvcf_generation`       | STRING  | REQUIRED | GCS object generation                                                              |
+| `input_gvcf_crc32c`           | STRING  | REQUIRED | GCS `crc32c`                                                                       |
+| `input_gvcf_size_bytes`       | INTEGER | REQUIRED | GCS object size                                                                    |
+| `input_gvcf_index`            | STRING  | REQUIRED | `gs://` URI of the index                                                           |
+| `input_gvcf_index_generation` | STRING  | REQUIRED | GCS object generation                                                              |
+| `input_gvcf_index_crc32c`     | STRING  | REQUIRED | GCS `crc32c`                                                                       |
+| `input_gvcf_index_size_bytes` | INTEGER | REQUIRED | GCS object size                                                                    |
+
+```
+[{"name":"workflow_id","type":"STRING","mode":"REQUIRED"},{"name":"sample_name","type":"STRING","mode":"REQUIRED"},{"name":"input_gvcf","type":"STRING","mode":"REQUIRED"},{"name":"input_gvcf_generation","type":"STRING","mode":"REQUIRED"},{"name":"input_gvcf_crc32c","type":"STRING","mode":"REQUIRED"},{"name":"input_gvcf_size_bytes","type":"INTEGER","mode":"REQUIRED"},{"name":"input_gvcf_index","type":"STRING","mode":"REQUIRED"},{"name":"input_gvcf_index_generation","type":"STRING","mode":"REQUIRED"},{"name":"input_gvcf_index_crc32c","type":"STRING","mode":"REQUIRED"},{"name":"input_gvcf_index_size_bytes","type":"INTEGER","mode":"REQUIRED"}]
+```
+
+Everything is `REQUIRED`, which follows from the decision that a failed `objects describe` fails the run: if
+the fingerprints cannot be read there is nothing to insert, so there is no case for a nullable hash.
+
+Rows are appended per launch rather than replaced, keyed by `workflow_id`. A restarted run that re-reads an
+overlapping FOFN will therefore record a sample twice, which is a feature: identical fingerprints across two
+attempts confirm the input did not move, and differing fingerprints say the gVCF was replaced between
+attempts — the per-sample form of the drift described under restarts. Deduplicate on `sample_name` taking the
+latest `workflow_id` when a single view of the manifest is wanted. Row count per `workflow_id` is also the
+sample count for that launch.
+
 ## Where the record lives, given that TSPS deletes the dataset
 
 Three parts, in priority order:
@@ -200,7 +236,7 @@ Whatever is chosen should match how `cost_observability` is extracted before tea
 constraint, and ideally the same mechanism, so there is one answer to "get the run's records out
 before the dataset disappears".
 
-The sample-level table loaded from `bulk_ingest_fofn` should be exported the same way and at the same
+`gvs_sample_input_files` should be exported the same way and at the same
 time. It is the per-sample half of the provenance — which gVCFs went in, and their CRC32c hashes — and it
 dies with the dataset like everything else. Exporting it also answers what sample count a run had, which
 matters for the cost correlation above and which no launch input records: a TSPS run's 100 samples are a
