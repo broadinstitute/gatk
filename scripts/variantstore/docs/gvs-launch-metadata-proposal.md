@@ -59,7 +59,7 @@ what recording is for. (See `scripts/variantstore/docs/tsps/gvs-tsps-bigquery-re
    `gvs_version`, `git_hash`, the four Docker images — were written down.
 
 4. **Inputs are service-pinned, which makes the record small and stable.** TSPS pins nearly everything
-   from its pipeline definition; the values that vary per request are the sample FOFN, WGS versus
+   from its pipeline definition; the values that vary per request are the sample input TSV, WGS versus
    exome, the interval lists and the callset name. Note that WDL cannot distinguish "supplied by the
    user's request" from "pinned by the pipeline definition" — both arrive as inputs. If that
    distinction is wanted, TSPS has to supply it; `was_specified` below only separates "a value
@@ -71,7 +71,7 @@ what recording is for. (See `scripts/variantstore/docs/tsps/gvs-tsps-bigquery-re
 |--------------------------------------------------------------------------|------------------------------|-------------------------------------------------------------------------------------------------------------------------|
 | `external_run_id` (new)                                                  | ingest                       | External job/run ID for auditing and traceability                                                                       |
 | `project_id`, `dataset_name`                                             | everything                   | Dataset identity; on TSPS the dataset name is also the per-run isolation boundary, so recording it gives an audit trail |
-| `bulk_ingest_fofn` (new)                                                 | ingest                       | Paths to the input data: VCFs and indexes                                                                               |
+| `sample_input_tsv` (new)                                                 | ingest                       | Paths to the input data: VCFs and indexes                                                                               |
 | `reference_name`                                                         | ingest, filter set, extract  | Coordinates and reference bases                                                                                         |
 | `is_wgs`                                                                 | ingest, extract              | Selects WGS vs exome interval list and exome-specific extract behavior                                                  |
 | effective interval list (`interval_list`, or the `GetReference` default) | ingest, filter set, extract  | Which regions samples cover; whether absence of data is meaningful                                                      |
@@ -81,10 +81,13 @@ what recording is for. (See `scripts/variantstore/docs/tsps/gvs-tsps-bigquery-re
 
 ### Proposed new inputs
 
-#### `bulk_ingest_fofn`
+#### `sample_input_tsv`
 
-This optional String parameter would serve the same function as the parameter of the same name in
-`GvsBulkIngestGenomes.wdl`: A FOFN of the VCF and VCF index data to load. We want this because:
+This optional parameter would serve the same function as `bulk_ingest_fofn` in
+`GvsBulkIngestGenomes.wdl`, which it would feed: a tab-delimited file of the VCF and VCF index data to
+load, one line per sample. The name deliberately differs from the subworkflow's — "FOFN" and "bulk
+ingest" are implementation details that callers of the top-level workflow should not have to know, and
+"manifest" is already taken by the output manifest described in the Beta docs. We want this because:
 
 - We really don't want to create and populate Terra data tables for every Joint Calling run in
   the shared TSPS workspace
@@ -94,9 +97,9 @@ This optional String parameter would serve the same function as the parameter of
 We would likely also want to capture the paths of the files enumerated within, as well as their hashes.
 That per-sample provenance does not belong in `gvs_workflow_run_input`, whose grain is one row per
 parameter — a TSPS run enumerates up to 10,000 samples. It belongs in `gvs_sample_input_files` (proposed below),
-keyed by `workflow_id`, with `gvs_workflow_run_input` recording only the FOFN itself as a single row carrying
+keyed by `workflow_id`, with `gvs_workflow_run_input` recording only the TSV itself as a single row carrying
 its own generation and CRC32c, which pins the manifest exactly. AoU loads a table of this shape by hand
-today; making it canonical belongs with the ticket adding `bulk_ingest_fofn` to
+today; making it canonical belongs with the ticket adding `sample_input_tsv` to
 `GvsJointVariantCalling.wdl`.
 
 Collecting the hashes is cheap: CRC32c is present on every GCS object, and object listing returns it
@@ -178,30 +181,30 @@ partitioning and clustering buy nothing.
 [{"name":"workflow_id","type":"STRING","mode":"REQUIRED"},{"name":"input_name","type":"STRING","mode":"REQUIRED"},{"name":"effective_value","type":"STRING","mode":"NULLABLE"},{"name":"value_type","type":"STRING","mode":"REQUIRED"},{"name":"was_specified","type":"BOOLEAN","mode":"NULLABLE"},{"name":"file_generation","type":"STRING","mode":"NULLABLE"},{"name":"file_crc32c","type":"STRING","mode":"NULLABLE"},{"name":"file_size_bytes","type":"INTEGER","mode":"NULLABLE"}]
 ```
 
-The GCS hash columns are why `File` inputs need more than a path. An interval list or a FOFN can
+The GCS hash columns are why `File` inputs need more than a path. An interval list or a sample input TSV can
 be overwritten in place at the same URI, so the object generation is the only reliable answer to "is this
 the same interval list that run used?" — and on TSPS the interval list is the input most likely to vary
 per request.
 
 ### `gvs_sample_input_files` — one row per sample per launch
 
-The contents of `bulk_ingest_fofn`, which is where the per-sample half of the provenance lives. A table of
+The contents of `sample_input_tsv`, which is where the per-sample half of the provenance lives. A table of
 this shape was created by hand for Foxtrot with three nullable `STRING` columns — `research_id`,
 `reblocked_gvcf`, `reblocked_gvcf_index` — and this is a proposal to make it canonical, add fingerprints,
 and tighten the modes.
 
-| Column                        | Type    | Mode     | Notes                                                                              |
-|-------------------------------|---------|----------|------------------------------------------------------------------------------------|
-| `workflow_id`                 | STRING  | REQUIRED | Which launch loaded this manifest; joins to `gvs_workflow_run`                     |
-| `sample_name`                 | STRING  | REQUIRED | Matches `sample_info.sample_name`; the FOFN's first column (`research_id` for AoU) |
-| `input_gvcf`                  | STRING  | REQUIRED | `gs://` URI of the reblocked gVCF                                                  |
-| `input_gvcf_generation`       | STRING  | REQUIRED | GCS object generation                                                              |
-| `input_gvcf_crc32c`           | STRING  | REQUIRED | GCS `crc32c`                                                                       |
-| `input_gvcf_size_bytes`       | INTEGER | REQUIRED | GCS object size                                                                    |
-| `input_gvcf_index`            | STRING  | REQUIRED | `gs://` URI of the index                                                           |
-| `input_gvcf_index_generation` | STRING  | REQUIRED | GCS object generation                                                              |
-| `input_gvcf_index_crc32c`     | STRING  | REQUIRED | GCS `crc32c`                                                                       |
-| `input_gvcf_index_size_bytes` | INTEGER | REQUIRED | GCS object size                                                                    |
+| Column                        | Type    | Mode     | Notes                                                                             |
+|-------------------------------|---------|----------|-----------------------------------------------------------------------------------|
+| `workflow_id`                 | STRING  | REQUIRED | Which launch loaded this manifest; joins to `gvs_workflow_run`                    |
+| `sample_name`                 | STRING  | REQUIRED | Matches `sample_info.sample_name`; the TSV's first column (`research_id` for AoU) |
+| `input_gvcf`                  | STRING  | REQUIRED | `gs://` URI of the reblocked gVCF                                                 |
+| `input_gvcf_generation`       | STRING  | REQUIRED | GCS object generation                                                             |
+| `input_gvcf_crc32c`           | STRING  | REQUIRED | GCS `crc32c`                                                                      |
+| `input_gvcf_size_bytes`       | INTEGER | REQUIRED | GCS object size                                                                   |
+| `input_gvcf_index`            | STRING  | REQUIRED | `gs://` URI of the index                                                          |
+| `input_gvcf_index_generation` | STRING  | REQUIRED | GCS object generation                                                             |
+| `input_gvcf_index_crc32c`     | STRING  | REQUIRED | GCS `crc32c`                                                                      |
+| `input_gvcf_index_size_bytes` | INTEGER | REQUIRED | GCS object size                                                                   |
 
 ```
 [{"name":"workflow_id","type":"STRING","mode":"REQUIRED"},{"name":"sample_name","type":"STRING","mode":"REQUIRED"},{"name":"input_gvcf","type":"STRING","mode":"REQUIRED"},{"name":"input_gvcf_generation","type":"STRING","mode":"REQUIRED"},{"name":"input_gvcf_crc32c","type":"STRING","mode":"REQUIRED"},{"name":"input_gvcf_size_bytes","type":"INTEGER","mode":"REQUIRED"},{"name":"input_gvcf_index","type":"STRING","mode":"REQUIRED"},{"name":"input_gvcf_index_generation","type":"STRING","mode":"REQUIRED"},{"name":"input_gvcf_index_crc32c","type":"STRING","mode":"REQUIRED"},{"name":"input_gvcf_index_size_bytes","type":"INTEGER","mode":"REQUIRED"}]
@@ -211,7 +214,7 @@ Everything is `REQUIRED`, which follows from the decision that a failed `objects
 the fingerprints cannot be read there is nothing to insert, so there is no case for a nullable hash.
 
 Rows are appended per launch rather than replaced, keyed by `workflow_id`. A restarted run that re-reads an
-overlapping FOFN will therefore record a sample twice, which is a feature: identical fingerprints across two
+overlapping TSV will therefore record a sample twice, which is a feature: identical fingerprints across two
 attempts confirm the input did not move, and differing fingerprints say the gVCF was replaced between
 attempts — the per-sample form of the drift described under restarts. Deduplicate on `sample_name` taking the
 latest `workflow_id` when a single view of the manifest is wanted. Row count per `workflow_id` is also the
@@ -290,7 +293,7 @@ output gating ingest (the established GVS ordering idiom).
 
 Implementation details that matter:
 
-- **Keep `File` types and set `localization_optional: true`.** `interval_list` and `bulk_ingest_fofn` are
+- **Keep `File` types and set `localization_optional: true`.** `interval_list` and `sample_input_tsv` are
   `File` at the workflow level, and the metadata task should declare them the same way under a
   `parameter_meta { <arg>: { localization_optional: true } }` entry. That skips localization while leaving
   the interpolated value as the `gs://` URI — the same mechanism that lets `CopyFile` run
@@ -309,7 +312,7 @@ Implementation details that matter:
   the same NDJSON file is the workflow output from part 1 above, so there is one artifact, not two.
 - **File hashes** come from
   `gcloud storage objects describe <uri> --format="value(generation,crc32c_hash,size)"`, and a failure
-  should fail the run rather than record NULL hashes. If the interval list or the FOFN cannot be
+  should fail the run rather than record NULL hashes. If the interval list or the sample input TSV cannot be
   read, ingest is going to fail moments later with a worse message, so failing here is the better
   outcome: earlier, cheaper, and naming the object that could not be read. Recording NULLs instead would
   produce a record that looks complete while being unverifiable, which is the failure mode this proposal
