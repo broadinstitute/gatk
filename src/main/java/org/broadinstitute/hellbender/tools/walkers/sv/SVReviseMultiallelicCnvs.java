@@ -61,6 +61,7 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
     private Set<String> outlierSamples;
 
     private double maxVF;
+    private double maxVFAllSamples;
 
     private static final int MIN_LARGE_EVENT_SIZE = 1000;
     private static final int MIN_MULTIALLELIC_EVENT_SIZE = 5000;
@@ -79,6 +80,8 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
 
         // Populate maxVf based on sample information
         maxVF = Math.max((getHeaderForVariants().getGenotypeSamples().size() - outlierSamples.size()) * 0.01, 2);
+        // PESR genotype overdispersion uses a threshold computed over all samples (outliers included)
+        maxVFAllSamples = Math.max(getHeaderForVariants().getGenotypeSamples().size() * 0.01, 2);
 
         // Filter specific header lines
         final VCFHeader header = getHeaderForVariants();
@@ -148,7 +151,7 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
                 numGtOver2 += 1;
             }
         }
-        if (numGtOver2 > maxVF) {
+        if (numGtOver2 > maxVFAllSamples) {
             builder.attribute(GATKSVVCFConstants.PESR_GT_OVERDISPERSION, true);
         }
     }
@@ -178,7 +181,8 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         final List<Integer> allowedAlleleIndices = Arrays.asList(-1, 0, 1);
         final boolean hasCn0Alt = variant.getAlternateAlleles().stream().anyMatch(a -> a.getDisplayString().equals("<CN0>"));
 
-        if (genotypes.stream().anyMatch(g -> g.getAlleles().stream().anyMatch(a -> !allowedAlleleIndices.contains(variant.getAlleleIndex(a))))) {
+        if (genotypes.stream().filter(g -> !outlierSamples.contains(g.getSampleName()))
+                .anyMatch(g -> g.getAlleles().stream().anyMatch(a -> !allowedAlleleIndices.contains(variant.getAlleleIndex(a))))) {
             gt5kbFilter = true;
         } else if ((eventLength >= MIN_MULTIALLELIC_EVENT_SIZE || hasCn0Alt) && !multiallelicFilter) {
             gt5kbFilter = true;
@@ -187,11 +191,11 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
         if (gt5kbFilter) {
             for (final Genotype genotype : genotypes) {
-                if (genotype.isNoCall() || !genotype.hasGQ()) {
+                if ((genotype.getPloidy() == 2 && genotype.isNoCall()) || !genotype.hasGQ()) {
                     updatedGenotypes.add(genotype);
                     continue;
                 }
-                
+
                 final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 final Object rdCn = genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN);
                 if (rdCn != null && Integer.parseInt(rdCn.toString()) >= 2) {
@@ -208,10 +212,10 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
 
         updatedGenotypes = new ArrayList<>(genotypes.size());
         if (multiallelicFilter) {
-            for (final Genotype genotype : genotypes) {               
+            for (final Genotype genotype : genotypes) {
                 final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.noGQ();
-                gb.alleles(Arrays.asList(Allele.NO_CALL));
+                gb.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL));
                 gb.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN));
                 gb.attribute(GATKSVVCFConstants.COPY_NUMBER_QUALITY_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.RD_GQ));
                 updatedGenotypes.add(gb.make());
@@ -256,7 +260,8 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         final List<Integer> allowedAlleleIndices = Arrays.asList(-1, 0, 1);
         final boolean hasCn0Alt = variant.getAlternateAlleles().stream().anyMatch(a -> a.getDisplayString().equals("<CN0>"));
 
-        if (genotypes.stream().anyMatch(g -> g.getAlleles().stream().anyMatch(a -> !allowedAlleleIndices.contains(variant.getAlleleIndex(a))))) {
+        if (genotypes.stream().filter(g -> !outlierSamples.contains(g.getSampleName()))
+                .anyMatch(g -> g.getAlleles().stream().anyMatch(a -> !allowedAlleleIndices.contains(variant.getAlleleIndex(a))))) {
             gt5kbFilter = true;
         } else if ((eventLength >= MIN_MULTIALLELIC_EVENT_SIZE || hasCn0Alt) && !multiallelicFilter) {
             gt5kbFilter = true;
@@ -265,7 +270,7 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         List<Genotype> updatedGenotypes = new ArrayList<>(genotypes.size());
         if (gt5kbFilter) {
             for (final Genotype genotype : genotypes) {
-                if (genotype.isNoCall() || !genotype.hasGQ()) {
+                if ((genotype.getPloidy() == 2 && genotype.isNoCall()) || !genotype.hasGQ()) {
                     updatedGenotypes.add(genotype);
                     continue;
                 }
@@ -289,7 +294,7 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
             for (final Genotype genotype : genotypes) {
                 final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.noGQ();
-                gb.alleles(Arrays.asList(Allele.NO_CALL));
+                gb.alleles(Arrays.asList(Allele.NO_CALL, Allele.NO_CALL));
                 gb.attribute(GATKSVVCFConstants.COPY_NUMBER_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN));
                 gb.attribute(GATKSVVCFConstants.COPY_NUMBER_QUALITY_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.RD_GQ));
                 updatedGenotypes.add(gb.make());
@@ -328,6 +333,7 @@ public class SVReviseMultiallelicCnvs extends VariantWalker {
         if (alleles.size() == 1 && alleles.get(0).isReference()) return true;
         else if (alleles.size() == 2 && alleles.get(0).isReference() && alleles.get(1).isReference()) return true;
         else if (alleles.size() == 1 && alleles.get(0).isNoCall()) return true;
+        else if (alleles.size() == 2 && alleles.get(0).isNoCall() && alleles.get(1).isNoCall()) return true;
         return false;
     }
 }

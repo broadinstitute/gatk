@@ -362,12 +362,13 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
 
             final String sampleName = entry.getKey();
             final Genotype genotype = variant.getGenotype(sampleName);
-            
-            // Skip no-call genotypes (e.g., females on chrY)
-            if (genotype.isNoCall()) {
+
+            // Skip true no-call genotypes (e.g., females on chrY); depth-only placeholder
+            // genotypes are haploid no-calls and must still be eligible for revision.
+            if (genotype.getPloidy() == 2 && genotype.isNoCall()) {
                 continue;
             }
-            
+
             final String largerId = event.getLeft();
             final String largerSvType = event.getRight();
             final int currentRdCn = currentCopyNumbers.get(variantId).getOrDefault(sampleName, 0);
@@ -383,10 +384,11 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
             if (newVal != -1) {
                 final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
-                if (!genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) continue;
-
-                final int rdCn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
-                gb.GQ(rdCn);
+                if (genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_GQ)) {
+                    gb.GQ(Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_GQ).toString()));
+                } else {
+                    gb.noGQ();
+                }
                 revisedGenotypes.put(sampleName, gb.make());
             }
         }
@@ -409,9 +411,10 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
         // Replace revised alleles and copy numbers
         for (final Genotype genotype : genotypes) {
             final String sampleName = genotype.getSampleName();
-            
-            // Skip no-call genotypes (e.g., females on chrY)
-            if (genotype.isNoCall()) {
+
+            // Skip true no-call genotypes (e.g., females on chrY); depth-only placeholder
+            // genotypes are haploid no-calls and must still be eligible for revision.
+            if (genotype.getPloidy() == 2 && genotype.isNoCall()) {
                 updatedGenotypes.add(genotype);
                 continue;
             }
