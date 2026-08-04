@@ -12,9 +12,7 @@ def vcf_header_lines_insert_sql(project_id, dataset_name):
     Deduplicating and idempotent: the Parquet ingest path writes the full header text for every chunk
     of every sample (no write-time dedup), and re-running (task retry, workflow resume, or re-ingest)
     inserts nothing already present -- the LEFT JOIN ... IS NULL skips hashes already in the target.
-    We use an anti-join INSERT rather than MERGE to match GVS convention (GVS uses MERGE nowhere) and
-    to avoid mutating-DML/streaming-buffer concerns entirely. See the VS-1968 design doc. This also
-    fixes a latent double-insert bug on the legacy BQ path.
+    See the VS-1968 design doc. This also fixes a latent double-insert bug on the legacy BQ path.
 
     The source subquery collapses to one row per hash; all texts for a given hash are identical by
     construction (the hash is an MD5 of the text), so ANY_VALUE is safe.

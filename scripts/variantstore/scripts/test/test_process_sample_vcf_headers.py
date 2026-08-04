@@ -14,30 +14,21 @@ def _norm(sql):
 
 
 class TestHeaderLoadSql(unittest.TestCase):
-    """Unit tests for the anti-join INSERT SQL builders (no BigQuery client required)."""
+    """Intent-level guards on the SQL builders (no BigQuery client required).
 
-    def test_vcf_header_lines_is_anti_join_insert(self):
+    These deliberately assert only the properties that must hold for ANY correct rewrite -- the right
+    target table and INSERT-vs-DELETE. Behavior (dedup + idempotency) is covered by
+    TestHeaderLoadIntegration below; we intentionally do NOT pin the exact join text here, since an
+    equivalent rewrite (e.g. NOT EXISTS) would be just as correct.
+    """
+
+    def test_vcf_header_lines_insert_targets_right_table(self):
         sql = _norm(psh.vcf_header_lines_insert_sql(PROJECT, DATASET))
-        # Targets the right table via INSERT (not MERGE).
-        self.assertIn(f"INSERT INTO `{PROJECT}.{DATASET}.vcf_header_lines` "
-                      "(vcf_header_lines_hash, vcf_header_lines, is_expected_unique)", sql)
-        self.assertNotIn("MERGE", sql.upper())
-        # Anti-join against the target on the hash key, keeping only rows not already present.
-        self.assertIn(f"LEFT JOIN `{PROJECT}.{DATASET}.vcf_header_lines` t USING (vcf_header_lines_hash)", sql)
-        self.assertIn("t.vcf_header_lines_hash IS NULL", sql)
-        # Skips association-only (NULL text) scratch rows and dedups the source by hash.
-        self.assertIn("s.vcf_header_lines IS NOT NULL", sql)
-        self.assertIn("GROUP BY s.vcf_header_lines_hash", sql)
+        self.assertIn(f"INSERT INTO `{PROJECT}.{DATASET}.vcf_header_lines`", sql)
 
-    def test_sample_vcf_header_is_anti_join_insert(self):
+    def test_sample_vcf_header_insert_targets_right_table(self):
         sql = _norm(psh.sample_vcf_header_insert_sql(PROJECT, DATASET))
-        self.assertIn(f"INSERT INTO `{PROJECT}.{DATASET}.sample_vcf_header` "
-                      "(sample_id, vcf_header_lines_hash)", sql)
-        self.assertNotIn("MERGE", sql.upper())
-        self.assertIn("SELECT DISTINCT s.sample_id, s.vcf_header_lines_hash", sql)
-        self.assertIn(f"LEFT JOIN `{PROJECT}.{DATASET}.sample_vcf_header` t "
-                      "USING (sample_id, vcf_header_lines_hash)", sql)
-        self.assertIn("t.sample_id IS NULL", sql)
+        self.assertIn(f"INSERT INTO `{PROJECT}.{DATASET}.sample_vcf_header`", sql)
 
     def test_clean_up_scratch_is_delete(self):
         sql = _norm(psh.clean_up_scratch_sql(PROJECT, DATASET))
@@ -64,7 +55,24 @@ class TestHeaderLoadIntegration(unittest.TestCase):
         cls.bigquery = bigquery
         cls.project = os.environ["GVS_HEADER_IT_PROJECT"]
         cls.dataset = os.environ["GVS_HEADER_IT_DATASET"]
-        cls.client = bigquery.Client(project=cls.project)
+        # If GVS_HEADER_IT_ENDPOINT is set, talk to a local BigQuery emulator
+        # (e.g. ghcr.io/goccy/bigquery-emulator) with anonymous credentials so this
+        # runs hermetically in CI with no GCP project or secrets. Unset -> real BigQuery.
+        endpoint = os.environ.get("GVS_HEADER_IT_ENDPOINT")
+        # utils.execute_with_retry reads client._default_query_job_config.labels, so the client must
+        # be built with a default query job config (production's _make_client does the same).
+        default_config = bigquery.QueryJobConfig(labels={}, use_legacy_sql=False)
+        if endpoint:
+            from google.api_core.client_options import ClientOptions
+            from google.auth.credentials import AnonymousCredentials
+            cls.client = bigquery.Client(
+                project=cls.project,
+                credentials=AnonymousCredentials(),
+                client_options=ClientOptions(api_endpoint=endpoint),
+                default_query_job_config=default_config,
+            )
+        else:
+            cls.client = bigquery.Client(project=cls.project, default_query_job_config=default_config)
         cls.fq = lambda _cls, t: f"{cls.project}.{cls.dataset}.{t}"
 
     def _run(self, sql):
