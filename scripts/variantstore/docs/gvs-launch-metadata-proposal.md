@@ -209,6 +209,33 @@ dies with the dataset like everything else. Exporting it also answers what sampl
 matters for the cost correlation above and which no launch input records: a TSPS run's 100 samples are a
 row count, not a parameter.
 
+## Restarts, and datasets that are reused
+
+Outside TSPS the dataset persists, so a workflow can be re-submitted against it — most often after failing
+partway through. A restart is a new Terra submission and therefore a new `workflow_id`, so it adds a row
+rather than amending one. That is the intended behavior: two attempts did run, and the first attempt's
+record survives. Attempts are correlated by the dataset they targeted, since the record lives in that
+dataset: ordering `gvs_workflow_run` by `started` is the attempt history, and each row's `submission_id`
+and `workflow_id` lead back to the corresponding Cromwell run. `call_set_identifier` is the human-facing
+label for a callset, but it is free text, so a restart that mistypes it still correlates by dataset and
+timestamp.
+
+Nothing about resuming depends on this record, and nothing should. GVS re-derives what is already loaded
+from the data: `CreateSampleDataViews` (`GvsImportGenomes.wdl:895`) builds `samples_with_reference_data`
+and `samples_with_variant_data` from `INFORMATION_SCHEMA` partition ids `UNION DISTINCT`
+`sample_load_status`, deliberately, because the Parquet flow writes no status rows while
+`INFORMATION_SCHEMA` lags Storage Write API ingest by hours (`:911-921`); `CurateInputLists` (`:857`) then
+trims the input lists to whatever `samples_with_all_data` (`:1041`) reports as missing. Because those views
+read data rather than the `is_loaded` flag, a crash before that flag is set does not cause double-loading.
+
+The distinction worth preserving is to infer facts about **data** and record facts about **configuration**.
+Which samples are loaded is ground truth in BigQuery and self-correcting after a crash; `drop_state` and
+the interval list leave no trace and cannot be re-derived. It is also why restarts are the likeliest source
+of drift on a reusable dataset — an operator re-filling a form after a failure, or re-submitting after a
+workflow version changed a default underneath them, can load the second batch under different invariants.
+Two rows are what make that visible, which is the strongest practical argument for the enforcement
+follow-on.
+
 ## How the values get recorded
 
 A new `WriteWorkflowRunMetadata` task in `GvsUtils.wdl`, called from `GvsJointVariantCalling.wdl`
