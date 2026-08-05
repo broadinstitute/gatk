@@ -96,7 +96,12 @@ def get_entity_data(user_defined_entity, entity_set):
 
 
 def get_column_data(entity_type):
-    from terra_notebook_utils import table
+    try:
+        from terra_notebook_utils import table
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError(
+            "terra-notebook-utils is required for get_column_data(); install it (pip install terra-notebook-utils) or run in a Terra notebook environment."
+        ) from e
     # We need to identify 3 things
     # 1. entity id field (just <entity_type>_id)
     # 2. vcf column name

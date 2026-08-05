@@ -27,6 +27,9 @@ jobs:
   python-unit-tests:
     name: run GVS python unit tests
     runs-on: ubuntu-latest
+    # Guard against a hung BigQuery-emulator pull/start so the job fails fast instead of
+    # running to GitHub's 6-hour default. The tests themselves take a couple of minutes.
+    timeout-minutes: 20
     steps:
       - name: checkout gatk
         uses: actions/checkout@v4
