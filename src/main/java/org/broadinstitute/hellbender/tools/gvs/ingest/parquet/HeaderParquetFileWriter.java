@@ -10,7 +10,15 @@ import java.io.IOException;
 /**
  * Parquet writer for VCF header information.
  * <p>
- * This writer stores sample ID and header line hash associations in Parquet format.
+ * This writer stores sample ID and header line hash associations in Parquet format. The record shape
+ * intentionally mirrors the {@code vcf_header_lines_scratch} BigQuery table so the file can be loaded
+ * by column name (see the VS-1968 design doc). The expected columns and their BigQuery types are:
+ * <ul>
+ *   <li>{@code sample_id} &mdash; INTEGER, required</li>
+ *   <li>{@code vcf_header_lines} &mdash; STRING, nullable (omitted for association-only rows)</li>
+ *   <li>{@code vcf_header_lines_hash} &mdash; STRING, required</li>
+ *   <li>{@code is_expected_unique} &mdash; BOOLEAN, required</li>
+ * </ul>
  */
 public class HeaderParquetFileWriter extends AbstractParquetFileWriter {
 
@@ -30,15 +38,26 @@ public class HeaderParquetFileWriter extends AbstractParquetFileWriter {
 
     /**
      * Creates a JSON object representing a header record.
-     * 
+     * <p>
+     * Column names intentionally match the {@code vcf_header_lines_scratch} BigQuery table so the
+     * resulting Parquet file can be loaded into that table by name (see the VS-1968 design doc).
+     *
      * @param sampleId the sample ID
-     * @param headerLineHash the hash of the header line
+     * @param headerChunk the header text chunk; may be {@code null} to write an association-only row
+     *                    (sample_id -> hash) without the text, mirroring the BQ path's dedup behavior
+     * @param headerLineHash the MD5 hash of the header chunk
+     * @param isExpectedUnique whether this chunk is expected to differ per sample
      * @return a JSON object containing the header information
      */
-    public static JSONObject writeJson(Long sampleId, String headerLineHash) {
+    public static JSONObject writeJson(Long sampleId, String headerChunk, String headerLineHash, Boolean isExpectedUnique) {
         JSONObject record = new JSONObject();
         record.put("sample_id", sampleId);
-        record.put("headerLineHash", headerLineHash);
+        // Omit the (nullable) text column entirely when null so the Parquet writer skips it.
+        if (headerChunk != null) {
+            record.put("vcf_header_lines", headerChunk);
+        }
+        record.put("vcf_header_lines_hash", headerLineHash);
+        record.put("is_expected_unique", isExpectedUnique);
         return record;
     }
 }

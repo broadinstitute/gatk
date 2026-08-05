@@ -14,6 +14,9 @@ workflow GvsQuickstartVATIntegration {
         String expected_output_prefix
         String dataset_suffix
         Boolean use_vds_as_input = true      # If true, use a VDS, otherwise use a sites only VCF.
+        # Mirrors GvsQuickstartIntegration.chr20_X_Y_only: when true the callset is restricted to a few
+        # contigs, so the genome-wide-only MANE catalog-utilization floor must not be enforced.
+        Boolean chr20_X_Y_only = false
         String output_path
         Int split_intervals_scatter_count = 10
         String? basic_docker
@@ -92,6 +95,7 @@ workflow GvsQuickstartVATIntegration {
             dataset_name = CreateDatasetForTest.dataset_name,
             vat_table_name = CreateVATFromVDS.vat_table_name,
             is_small_callset = true,
+            is_genome_wide = !chr20_X_Y_only,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             variants_docker = effective_variants_docker,
     }

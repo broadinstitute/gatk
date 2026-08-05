@@ -77,22 +77,27 @@ variants in downstream analysis.
 
 ### Split versus unsplit multi-allelics
 
-A multi-allelic site is a genomic location where more than one alternate allele is observed.
-For example, at a given position the reference allele might be "A", and there could be two
-alternate alleles "C" and "G". In an unsplit multi-allelic representation, this would be
-represented as a single conceptual row with the alternate alleles listed together (e.g., A -> C,G).
-In a split multi-allelic representation, this would be represented as two separate rows
+A multi-allelic site is a genomic location where more than one alternate allele
+is observed. For example, at a given position the reference allele might be "A",
+and there could be two alternate alleles "C" and "G". In an unsplit
+multi-allelic representation, this would be represented as a single conceptual
+row with the alternate alleles listed together (e.g., A -> C,G). In a split
+multi-allelic representation, this would be represented as two separate rows
 (e.g., A -> C and A -> G).
 
-GVS contains examples of both split and unsplit multi-allelic representations. Knowing which representation is
-used where is critical for a correct understanding of the data and for writing code that interacts with GVS.
-For example the `alt_allele` table uses a split multi-allelic representation to support efficient
-querying and filtering, while the `vet_%` tables use an unsplit multi-allelic representation like
-the input gVCFs from which they are derived. While Hail VDSes in general can use either split or unsplit
-multi-allelic representations, the VDSes created, read, and modified by GVS are exclusively unsplit.
+GVS contains examples of both split and unsplit multi-allelic representations.
+Knowing which representation is used where is critical for a correct
+understanding of the data and for writing code that interacts with GVS. For
+example, the `alt_allele` table uses a split multi-allelic representation to
+support efficient querying and filtering, while the `vet_%` tables use an
+unsplit multi-allelic representation like the input gVCFs from which they are
+derived. While Hail VDSes in general can use either split or unsplit
+multi-allelic representations, the VDSes created, read, and modified by GVS are
+exclusively unsplit.
 
-Some of the GVS code in this repo does interact with split multi-allelic non-VDS Hail artifacts; see
-`AOU_MARKETING_STATISTICS.md` for an example that takes a split Exome MatrixTable as input.
+Some of the GVS code in this repo does interact with split multi-allelic non-VDS
+Hail artifacts; see `AOU_MARKETING_STATISTICS.md` for an example that takes a
+split Exome MatrixTable as input.
 
 # High-Level Architecture (WDLs, BigQuery, Terra)
 
@@ -137,6 +142,19 @@ This is a Google Cloud SDK Alpine-based Docker image to which many useful tools,
 Python packages, and scripts have been added. This can be built on a developer's
 local machine using the `scripts/variantstore/scripts/build_docker.sh` script.
 
+The Python scripts under `scripts/variantstore/scripts/` are baked into this image at `/app/`, and
+WDL tasks that set `docker: variants_docker` invoke them as `python3 /app/<script>.py`. **Editing or
+adding such a script has no effect on a running workflow until the image is rebuilt and the new tag
+is wired in** — a common trap (the WDL keeps using the old image). So whenever you change anything
+baked into the image (a script, an added tool, or a Python package):
+
+1. Run `scripts/variantstore/scripts/build_docker.sh`. It builds the alpine-based image, runs the
+   unit tests, and pushes it to GAR with a tag of the form `<ISO-8601 date>-alpine-<12-char image
+   id>`, e.g. `us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-06-30-alpine-766e78c05289`.
+2. Update the `variants_docker` value in the `GetToolVersions` task of `GvsUtils.wdl` to that new
+   tag. Workflows resolve the image through `GetToolVersions`, so this step is what makes the rebuilt
+   image actually take effect.
+
 ### Nirvana Docker Image
 
 This is an Illumina Nirvana-based Docker image build from
@@ -170,24 +188,25 @@ The canonical GVS location encoding and decoding logic lives in
 
 - **`sample_info`**: Holds sample name, control / non-control status, and a
   withdrawal date if applicable.
-- **`sample_load_status`**: This table tracks which data has been loaded for
-  each sample. As described in the LoadStatusValue enum in LoadStatus.java, the
-  values currently used include REFERENCES_LOADED, VARIANTS_LOADED,
-  HEADERS_LOADED. For historical reasons some legacy values are also recognized.
+- **`sample_load_status`**: (deprecated, used for Storage Write API-based ingest
+  only). This table tracks which data has been loaded for each sample. As
+  described in the LoadStatusValue enum in LoadStatus.java, the values currently
+  used include REFERENCES_LOADED, VARIANTS_LOADED, HEADERS_LOADED. For
+  historical reasons some legacy values are also recognized.
 - **`sample_chromosome_ploidy`**: This table contains a per-sample,
   per-chromosome of the ploidy observed in its input GVCF file.
 - **`vet_%`**: Primary variant information (sample id, location, alleles,
   annotations). These tables are partitioned by sample id. Due to BigQuery's
   4000 partition limit there can be many `vet_%` tables in a GVS dataset, named
   `vet_001`, `vet_002`, etc. Schema information for vet tables can be found in
-  the `CreateBQTables.wdl` workflow in the variable `vet_schema_json`.
+  the `GvsCreateTables.wdl` workflow in the variable `vet_schema_json`.
 - **`ref_ranges_%`**: Reference genome locations, lengths, and qualities.
   Similar to vet, this table is partitioned by sample id and can hold at most
   4000 samples, so there will be multiple `ref_ranges_%` for larger datasets.
 
   Note that `ref_ranges_%` tables have two alternate schemas, compressed and
   uncompressed, to accommodate different data storage needs. Both schemas are
-  described in the `CreateBQTables.wdl` workflow. The canonical implementation
+  described in the `GvsCreateTables.wdl` workflow. The canonical implementation
   of reference compression can be found in
   `SchemaUtils#encodeCompressedRefBlock`. Implementations of reference
   decompression can be found in `create_ranges_cohort_extract_data_table.py` and

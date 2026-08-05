@@ -49,24 +49,10 @@ BASE_REPO="broad-dsde-methods/gvs"
 REPO_WITH_TAG="${BASE_REPO}/variants:${TAG}"
 docker tag "${IMAGE_ID}" "${REPO_WITH_TAG}"
 
-# Run unit tests before pushing.
-set +o errexit
-fail=0
-for test in test/test_*.py
-do
-    docker run --platform linux/amd64 --rm -v "$PWD":/in -t "${REPO_WITH_TAG}" bash -c "cd /in; python3 -m unittest $test"
-    if [ $? -ne 0 ]; then
-        fail=1
-        echo "$test has failed"
-    fi
-done
-
-if [ $fail -ne 0 ]; then
-    echo "One or more unit tests have failed, exiting."
-    exit $fail
-fi
-
-set -o errexit
+# Run the Python unit tests (including the BigQuery-emulator-backed header-load integration test)
+# inside the freshly built image before pushing. The runner also manages the emulator lifecycle and
+# is shared with CI (see run_python_unit_tests.sh); errexit aborts the build here if any test fails.
+./run_python_unit_tests.sh "${REPO_WITH_TAG}"
 
 GAR_TAG="us-central1-docker.pkg.dev/${REPO_WITH_TAG}"
 docker tag "${REPO_WITH_TAG}" "${GAR_TAG}"
