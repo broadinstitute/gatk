@@ -2,3 +2,4 @@
 src/test/resources
 src/test/resources/*
 build/
+bin/

@@ -363,8 +363,7 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
             final String sampleName = entry.getKey();
             final Genotype genotype = variant.getGenotype(sampleName);
 
-            // Skip true no-call genotypes (e.g., females on chrY); depth-only placeholder
-            // genotypes are haploid no-calls and must still be eligible for revision.
+            // Skip true no-call genotypes (e.g., females on chrY); depth-only no-calls are haploid and still eligible
             if (genotype.getPloidy() == 2 && genotype.isNoCall()) {
                 continue;
             }
@@ -412,8 +411,7 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
         for (final Genotype genotype : genotypes) {
             final String sampleName = genotype.getSampleName();
 
-            // Skip true no-call genotypes (e.g., females on chrY); depth-only placeholder
-            // genotypes are haploid no-calls and must still be eligible for revision.
+            // Skip true no-call genotypes (e.g., females on chrY); depth-only no-calls are haploid and still eligible
             if (genotype.getPloidy() == 2 && genotype.isNoCall()) {
                 updatedGenotypes.add(genotype);
                 continue;
@@ -475,8 +473,7 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
             final String rawEv = genotype.hasExtendedAttribute(GATKSVVCFConstants.EV)
                     ? genotype.getExtendedAttribute(GATKSVVCFConstants.EV).toString()
                     : "";
-            // EV may be encoded as a numeric index into GATKSVVCFConstants.EV_VALUES rather than
-            // the resolved comma-delimited support string, depending on upstream VCF formatting.
+            // EV may be a numeric index into GATKSVVCFConstants.EV_VALUES instead of the resolved support string
             final String supportStr = rawEv.matches("\\d+")
                     ? GATKSVVCFConstants.EV_VALUES.get(Integer.parseInt(rawEv))
                     : rawEv;

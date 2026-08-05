@@ -49,11 +49,7 @@ public class SVReviseOverlappingMultiallelics extends MultiplePassVariantWalker 
         }
     }
 
-    /**
-     * Resolves which of each overlapping pair of multiallelic sites is redundant. Candidates must be
-     * processed in descending order of the driving (larger) variant's length, so that a larger variant's
-     * own redundancy status is always settled before it is used to judge smaller overlapping variants.
-     */
+    // Resolves redundant multiallelic pairs, processing largest driving variant first so status settles before use
     private void resolveRedundantMultiallelics() {
         overlapCandidates.sort((a, b) -> {
             final int cmp = Integer.compare(b.largerLength, a.largerLength);
