@@ -26,7 +26,12 @@ maxNumSamples = 50
 
 
 def get_entity_data(user_defined_entity, entity_set):
-    from terra_notebook_utils import table
+    try:
+        from terra_notebook_utils import table
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError(
+            "terra-notebook-utils is required for get_entity_data(); install it (pip install terra-notebook-utils) or run in a Terra notebook environment."
+        ) from e
     tables_list=list(table.list_tables())
     ## When the user has supplied a defined entity
     if user_defined_entity:
