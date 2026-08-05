@@ -213,6 +213,15 @@ workflow GvsCreateVATfromVDS {
                 variants_docker = effective_variants_docker,
         }
 
+        call ValidateManeTable {
+            input:
+                project_id = project_id,
+                dataset_name = dataset_name,
+                mane_table_name = LoadManeDataIntoBigQuery.mane_table,
+                load_done = LoadManeDataIntoBigQuery.done,
+                variants_docker = effective_variants_docker,
+        }
+
         call MakeSubpopulationFilesAndReadSchemaFiles {
             input:
                 input_ancestry_file = ancestry_file,
@@ -408,7 +417,7 @@ workflow GvsCreateVATfromVDS {
                 variant_transcripts_path = variant_transcripts_output_path,
                 genes_path = genes_output_path,
                 base_vat_table_name = effective_vat_table_name,
-                go = flatten([PrepVtAnnotationJson.done, PrepGenesAnnotationJson.done, [ValidateEntrezTable.done]]),
+                go = flatten([PrepVtAnnotationJson.done, PrepGenesAnnotationJson.done, [ValidateEntrezTable.done], [ValidateManeTable.done]]),
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
@@ -1452,22 +1461,48 @@ task LoadManeDataIntoBigQuery {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # Remove the leading comment character on the first line so BigQuery will name the columns all nice.
-        sed -i 's/^\#NCBI_GeneID/NCBI_GeneID/' ~{mane_data_file}
+        # Remove the leading comment character on the header (#NCBI_GeneID -> NCBI_GeneID) so BigQuery names
+        # the columns cleanly. Write to a temp file rather than editing in place, as the localized input file
+        # may be read-only (mirrors the Entrez load).
+        sed '1s/^\#NCBI_GeneID/NCBI_GeneID/' ~{mane_data_file} > mane_data_processed.tsv
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # Row-aware guard (mirrors the Entrez load): (re)load unless the table already exists AND has rows, so an
+        # existing-but-empty table left by a preempted or partial prior attempt is not silently trusted.
+        NEEDS_LOAD=1
         set +o errexit
-        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{mane_table_name} > /dev/null
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{mane_table_name} > /dev/null 2>&1
         BQ_SHOW_RC=$?
         set -o errexit
 
-        if [ $BQ_SHOW_RC -ne 0 ]; then
-            echo "Loading MANE annotations into table ~{dataset_name}.~{mane_table_name}"
-            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 --autodetect ~{dataset_name}.~{mane_table_name} ~{mane_data_file}
-        else
-            echo "Found existing MANE annotations table ~{dataset_name}.~{mane_table_name}. Using it"
+        if [ $BQ_SHOW_RC -eq 0 ]; then
+            ROW_COUNT=$(bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+                'SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.~{mane_table_name}`' | tail -n1 | tr -d '\r')
+            if [[ "$ROW_COUNT" =~ ^[0-9]+$ && "$ROW_COUNT" -gt 0 ]]; then
+                NEEDS_LOAD=0
+                echo "Found existing non-empty MANE annotations table ~{dataset_name}.~{mane_table_name} ($ROW_COUNT rows). Using it"
+            else
+                echo "Existing MANE annotations table ~{dataset_name}.~{mane_table_name} is empty ($ROW_COUNT rows); reloading"
+            fi
         fi
+
+        if [ $NEEDS_LOAD -eq 1 ]; then
+            echo "Loading MANE annotations into table ~{dataset_name}.~{mane_table_name}"
+            # Explicit schema instead of --autodetect so the columns the joins depend on (Ensembl_nuc, name,
+            # MANE_status) get stable, known types rather than relying on inference. Types match what autodetect
+            # produced for this file (NCBI_GeneID stays STRING; only chr_start/chr_end are integers), so the load
+            # cannot fail on an unexpected value. Column order must match the MANE summary file exactly.
+            # --replace so a reload of a partially-loaded table starts clean rather than appending duplicates.
+            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 \
+                --replace \
+                --schema='NCBI_GeneID:STRING,Ensembl_Gene:STRING,HGNC_ID:STRING,symbol:STRING,name:STRING,RefSeq_nuc:STRING,RefSeq_prot:STRING,Ensembl_nuc:STRING,Ensembl_prot:STRING,MANE_status:STRING,GRCh38_chr:STRING,chr_start:INTEGER,chr_end:INTEGER,chr_strand:STRING' \
+                ~{dataset_name}.~{mane_table_name} mane_data_processed.tsv
+        fi
+
+        # Emit the loaded schema for the logs; content validation (row-count floor, Ensembl_nuc / MANE_status
+        # integrity) is done downstream in ValidateManeTable via check_mane_table.py.
+        bq --apilog=false --project_id=~{project_id} show --format=prettyjson ~{project_id}:~{dataset_name}.~{mane_table_name}
     >>>
 
     runtime {
@@ -1614,6 +1649,41 @@ task ValidateEntrezTable {
         Boolean done = true
     }
 }
+task ValidateManeTable {
+    input {
+        String project_id
+        String dataset_name
+        String mane_table_name
+        # Intentionally unused: passed solely to order this task after LoadManeDataIntoBigQuery.
+        #@ except: UnusedInput
+        Boolean load_done
+        String variants_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+        # Fails on an empty/partial table or a bad Ensembl_nuc / MANE_status; see check_mane_table.py.
+        python3 /app/check_mane_table.py --fq_mane_table ~{project_id}.~{dataset_name}.~{mane_table_name} \
+            --query_project ~{project_id}
+    >>>
+
+    runtime {
+        docker: variants_docker
+        memory: "3 GB"
+        preemptible: 3
+        cpu: 1
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        Boolean done = true
+    }
+}
 
 task BigQueryLoadJson {
     meta {
@@ -1681,13 +1751,18 @@ task BigQueryLoadJson {
         echo ~{variant_transcripts_wildcarded_path}
         bq --apilog=false load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{variant_transcripts_wildcarded_path}
 
+        # Match transcripts WITHOUT version suffixes (VS-1970): MANE's transcript versions run ahead of
+        # the Nirvana cache that produced vtt.transcript, so an exact match on vtt.transcript =
+        # mane.Ensembl_nuc silently dropped ~94% of MANE annotations. Strip versions, mirroring the
+        # version-insensitive VEP+LOFTEE join below. (No multi-match: each gene has one MANE Select
+        # transcript, so a base transcript is unique within a MANE_status.)
         echo "Adding the Mane SELECT annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
-        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_select_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Select" AND vtt.transcript is not null;'
+        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_select_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE SPLIT(vtt.transcript, ".")[OFFSET(0)] = SPLIT(mane.Ensembl_nuc, ".")[OFFSET(0)] AND mane.MANE_status = "MANE Select" AND vtt.transcript is not null;'
 
         echo "Adding the Mane Plus Clinical annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
-        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Plus Clinical" AND vtt.transcript is not null;'
+        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE SPLIT(vtt.transcript, ".")[OFFSET(0)] = SPLIT(mane.Ensembl_nuc, ".")[OFFSET(0)] AND mane.MANE_status = "MANE Plus Clinical" AND vtt.transcript is not null;'
 
         echo "Adding Entrez gene ID data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         # entrez_gene_id is a gene-level attribute, so we map by Ensembl gene (vtt.gene_id -> entrez.Ensembl_gene_identifier)

@@ -67,6 +67,7 @@ public class ParquetWriteSupport extends WriteSupport<JSONObject> {
                 switch(col.getPrimitiveType().getPrimitiveTypeName()) {
                     case INT64 -> recordConsumer.addLong(record.getLong(columnName));
                     case FLOAT -> recordConsumer.addFloat(record.getFloat(columnName));
+                    case BOOLEAN -> recordConsumer.addBoolean(record.getBoolean(columnName));
                     case BINARY -> recordConsumer.addBinary(Binary.fromString(record.getString(columnName)));
                     default ->
                             throw new UnsupportedOperationException("Haven't implemented other types yet! Can't process column " + columnName + " with type " + col.getPrimitiveType().getName());

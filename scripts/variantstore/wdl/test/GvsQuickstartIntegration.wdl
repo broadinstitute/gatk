@@ -39,7 +39,7 @@ workflow GvsQuickstartIntegration {
     }
 
     String expected_subdir = if (!chr20_X_Y_only) then "all_chrs/"  else ""
-    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2026-07-09/" + expected_subdir
+    File expected_output_prefix = "gs://gvs-internal-quickstart/integration/2026-07-22/" + expected_subdir
     File truth_data_prefix = "gs://gvs-internal-quickstart/integration/test_data/2025-12-05/" + expected_subdir
 
     # WDL 1.0 trick to set a variable ('none') to be undefined.
@@ -368,6 +368,7 @@ workflow GvsQuickstartIntegration {
                 dataset_suffix = "vat",
                 output_path = extract_vat_output_gcs_dir,
                 use_vds_as_input = run_vat_integration_test_from_vds,
+                chr20_X_Y_only = chr20_X_Y_only,
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
