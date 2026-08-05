@@ -1,6 +1,10 @@
+# Test-safe base dependencies -- everything the Python unit tests import. Installs cleanly on every
+# platform (including darwin), so `pip install -r requirements.txt` just works for local dev and CI.
+#
+# Production-only dependencies (currently terra-notebook-utils, which can't compile on darwin and CI) live in
+# requirements-prod.txt, which the Docker build installs on top of this file.
 google-cloud-bigquery
 ijson
 numpy
 google-cloud-storage
-terra-notebook-utils; sys_platform != 'darwin'
 biopython
