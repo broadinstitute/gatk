@@ -25,13 +25,23 @@ import re
 maxNumSamples = 50
 
 
-def get_entity_data(user_defined_entity, entity_set):
+def _import_terra_table(caller):
+    """Lazily import terra_notebook_utils.table (see the module comment on why it's deferred).
+
+    Raises a ModuleNotFoundError with an actionable message naming the calling function when the
+    package is not installed (e.g. CI and macOS, where its bgzip C extension cannot be built)."""
     try:
         from terra_notebook_utils import table
     except ModuleNotFoundError as e:
         raise ModuleNotFoundError(
-            "terra-notebook-utils is required for get_entity_data(); install it (pip install terra-notebook-utils) or run in a Terra notebook environment."
+            f"terra-notebook-utils is required for {caller}(); install it "
+            "(pip install terra-notebook-utils) or run in a Terra notebook environment."
         ) from e
+    return table
+
+
+def get_entity_data(user_defined_entity, entity_set):
+    table = _import_terra_table("get_entity_data")
     tables_list=list(table.list_tables())
     ## When the user has supplied a defined entity
     if user_defined_entity:
@@ -86,6 +96,10 @@ def get_entity_data(user_defined_entity, entity_set):
             entity = tables_list[1]
     else:
         ## TODO: move this to the top or do it throughout the gates--not sure which is better. Currently it is set immediately by the default value in the argparse arg
+        # LATENT BUG: `default_entity` is never defined in this module, so reaching this
+        # branch raises NameError. It is currently unreachable from any caller (the __main__ path
+        # always resolves entity_type before calling, and the tests don't exercise it). The intended
+        # value is "sample" (see the module comment and the print above).
         print("default set to entity type sample")
         entity = default_entity
 
@@ -96,12 +110,7 @@ def get_entity_data(user_defined_entity, entity_set):
 
 
 def get_column_data(entity_type):
-    try:
-        from terra_notebook_utils import table
-    except ModuleNotFoundError as e:
-        raise ModuleNotFoundError(
-            "terra-notebook-utils is required for get_column_data(); install it (pip install terra-notebook-utils) or run in a Terra notebook environment."
-        ) from e
+    table = _import_terra_table("get_column_data")
     # We need to identify 3 things
     # 1. entity id field (just <entity_type>_id)
     # 2. vcf column name

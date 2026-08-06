@@ -8,10 +8,6 @@ on:
     branches:
       - 'ah_var_store'
   pull_request:
-    # The `branches` filter matches a PR's base (target) branch, so this runs
-    # for PRs merging into ah_var_store, the principal GVS branch.
-    branches:
-      - 'ah_var_store'
   workflow_dispatch:
 
 permissions:
