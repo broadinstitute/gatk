@@ -21,7 +21,7 @@ import re
 ### NOTE: FOR NOW WE JUST ALLOW "SAMPLE" TO BE THE DEFAULT ENTITY TYPE AND THIS CODE JUST VALIDATES THAT
 
 
-
+default_entity = "sample"
 maxNumSamples = 50
 
 
@@ -96,11 +96,7 @@ def get_entity_data(user_defined_entity, entity_set):
             entity = tables_list[1]
     else:
         ## TODO: move this to the top or do it throughout the gates--not sure which is better. Currently it is set immediately by the default value in the argparse arg
-        # LATENT BUG: `default_entity` is never defined in this module, so reaching this
-        # branch raises NameError. It is currently unreachable from any caller (the __main__ path
-        # always resolves entity_type before calling, and the tests don't exercise it). The intended
-        # value is "sample" (see the module comment and the print above).
-        print("default set to entity type sample")
+        print(f"setting entity to {default_entity}")
         entity = default_entity
 
     if entity not in tables_list:
