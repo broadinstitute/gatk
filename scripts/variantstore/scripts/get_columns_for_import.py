@@ -31,11 +31,12 @@ def _import_terra_table(caller):
     Raises a ModuleNotFoundError with an actionable message naming the calling function when the
     package is not installed (e.g. CI and macOS, where its bgzip C extension cannot be built)."""
     try:
-        from terra_notebook_utils import table
+        from terra_notebook_utils import table # pyright: ignore[reportMissingImports]  # noqa: F401
     except ModuleNotFoundError as e:
         raise ModuleNotFoundError(
             f"terra-notebook-utils is required for {caller}(); install it "
             "(pip install terra-notebook-utils) or run in a Terra notebook environment."
+             "Note: this dependency is production-only; see requirements-prod.txt."
         ) from e
     return table
 
