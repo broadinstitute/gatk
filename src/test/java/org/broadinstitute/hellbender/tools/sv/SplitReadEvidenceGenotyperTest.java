@@ -953,4 +953,152 @@ public class SplitReadEvidenceGenotyperTest extends GATKBaseTest {
         // Should not throw: the sample above threshold was registered
         genotyper.finalizeFirstPass();
     }
+
+    // ---- Degenerate cutoff grid handling ----
+    //
+    // Selecting zero cutoffs is not a safe default: at application time
+    // rare.freqMax == common.freqMin, so a zero cutoff turns the frequency predicate into a
+    // tautology and disables SR background filtering. A grid that cannot distinguish a winner
+    // must therefore be reported. Detection does not throw, because Cromwell delocalizes task
+    // outputs only on success and a failure here would strand the diagnostics report on the
+    // worker; enforcement is the ValidateSRCutoffs task in GenotypeBatch.wdl.
+
+    private static final List<String> SIX_SAMPLES =
+            Arrays.asList("s1", "s2", "s3", "s4", "s5", "s6");
+
+    /** minCount 3.0 so that a normalized count of 5 is non-ref and 2 is not. */
+    private static SplitReadEvidenceGenotyper.SplitReadGenotypeParameters gridTestParams() {
+        return new SplitReadEvidenceGenotyper.SplitReadGenotypeParameters(3.0, 20.0, 5.0);
+    }
+
+    private static List<SplitReadEvidence> gridTestEvidence(final int position,
+                                                            final List<String> nonRefSamples,
+                                                            final List<String> backgroundSamples) {
+        final List<SplitReadEvidence> evidence = new ArrayList<>();
+        addSREvidence(evidence, nonRefSamples, "chr1", position, 5, true);
+        addSREvidence(evidence, backgroundSamples, "chr1", position, 2, true);
+        return evidence;
+    }
+
+    /**
+     * With no entry satisfying the pass criteria the baseline is zero, so every cell scores
+     * NaN and the objective is undefined. The cutoffs still fall back to (0.0, 0.0) as before,
+     * but the rejection is now reported instead of being silent.
+     */
+    @Test
+    public void testFinalizeThirdPassReportsGridWithNoPassingEntries() {
+        final SplitReadEvidenceGenotyper genotyper = makeGenotyper(SIX_SAMPLES, NUM_SAMPLES);
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeParameters params = gridTestParams();
+
+        // isCNV = false for every record, so pass is never true
+        genotyper.accumulateHistogramOnly(makeINSRecord("fail_rare", 20000),
+                gridTestEvidence(20000, Arrays.asList("s1", "s2"), Collections.emptyList()),
+                Collections.emptyList(), false, params, SIX_SAMPLES);
+
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeFrequencyCutoffs cutoffs =
+                genotyper.finalizeThirdPass();
+
+        Assert.assertEquals(cutoffs.rare().fracSingle(), 0.0, TEST_TOLERANCE);
+        Assert.assertEquals(cutoffs.rare().fracBoth(), 0.0, TEST_TOLERANCE);
+        assertRejectedWith(genotyper, SplitReadEvidenceGenotyper.SelectionStatus.REJECTED_NO_PASSING_ENTRIES);
+        Assert.assertTrue(genotyper.cutoffDiagnosticsReport()
+                        .contains("rare_selection_status\tREJECTED_NO_PASSING_ENTRIES"),
+                "Diagnostics report must carry the machine-readable status that ValidateSRCutoffs greps");
+    }
+
+    /**
+     * When every recovery fraction lands in the same histogram bin, no cutoff changes the
+     * training partition, all 121 cells score identically, and any choice among them is
+     * arbitrary. This is the collapse mode that produced all-zero cutoffs at scale.
+     */
+    @Test
+    public void testFinalizeThirdPassReportsFullyTiedGrid() {
+        final SplitReadEvidenceGenotyper genotyper = makeGenotyper(SIX_SAMPLES, NUM_SAMPLES);
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeParameters params = gridTestParams();
+        final List<String> carriers = Arrays.asList("s1", "s2");
+
+        // Both records put their frac at exactly 1.0 (2 non-ref of 2 samples over one),
+        // so the pass and fail mass share a single bin.
+        genotyper.accumulateHistogramOnly(
+                makeDELRecord("pass_rare", 1000, 5000,
+                        Collections.singletonList(GATKSVVCFConstants.EvidenceTypes.SR),
+                        Collections.singletonList("pesr")),
+                gridTestEvidence(1000, carriers, Collections.emptyList()),
+                Collections.emptyList(), true, params, SIX_SAMPLES);
+        genotyper.accumulateHistogramOnly(makeINSRecord("fail_rare", 20000),
+                gridTestEvidence(20000, carriers, Collections.emptyList()),
+                Collections.emptyList(), false, params, SIX_SAMPLES);
+
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeFrequencyCutoffs cutoffs =
+                genotyper.finalizeThirdPass();
+
+        Assert.assertEquals(cutoffs.rare().fracSingle(), 0.0, TEST_TOLERANCE);
+        Assert.assertEquals(cutoffs.rare().fracBoth(), 0.0, TEST_TOLERANCE);
+        assertRejectedWith(genotyper, SplitReadEvidenceGenotyper.SelectionStatus.REJECTED_DEGENERATE_GRID);
+        Assert.assertTrue(genotyper.cutoffDiagnosticsReport()
+                        .contains("rare_selection_status\tREJECTED_DEGENERATE_GRID"),
+                "Diagnostics report must carry the machine-readable status that ValidateSRCutoffs greps");
+    }
+
+    private static void assertRejectedWith(final SplitReadEvidenceGenotyper genotyper,
+                                           final SplitReadEvidenceGenotyper.SelectionStatus expected) {
+        final List<SplitReadEvidenceGenotyper.SelectionOutcome> outcomes = genotyper.cutoffSelectionOutcomes();
+        Assert.assertEquals(outcomes.size(), 2, "Expected one outcome per frequency bin");
+        Assert.assertEquals(outcomes.get(0).status(), expected);
+        Assert.assertTrue(outcomes.get(0).rejected());
+        Assert.assertFalse(outcomes.get(0).detail().isEmpty(), "A rejection must explain itself");
+    }
+
+    /**
+     * A partial tie is a legitimate optimum and must still be accepted, resolving to the
+     * lowest tied cutoff. Here fail mass sits in bins 5 and 10 while pass mass sits only in
+     * bin 10, so every fracSingle from 0.6 upward separates the training data equally well.
+     * The lowest such cutoff is chosen because raising it further would reject ratios that
+     * were never observed to be bad. This also guards against the degeneracy checks
+     * over-reaching and rejecting a grid that does carry signal.
+     */
+    @Test
+    public void testFinalizeThirdPassAcceptsPartialTieAndTakesLowestCutoff() {
+        final SplitReadEvidenceGenotyper genotyper = makeGenotyper(SIX_SAMPLES, NUM_SAMPLES);
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeParameters params = gridTestParams();
+        final List<String> rareCarriers = Arrays.asList("s1", "s2");
+        final List<String> commonCarriers = Arrays.asList("s1", "s2", "s3");
+
+        // Rare bin (non-ref count 2, at rareMax): pass at frac 1.0, fail at 1.0 and 0.5
+        genotyper.accumulateHistogramOnly(
+                makeDELRecord("pass_rare", 1000, 5000,
+                        Collections.singletonList(GATKSVVCFConstants.EvidenceTypes.SR),
+                        Collections.singletonList("pesr")),
+                gridTestEvidence(1000, rareCarriers, Collections.emptyList()),
+                Collections.emptyList(), true, params, SIX_SAMPLES);
+        genotyper.accumulateHistogramOnly(makeINSRecord("fail_rare_high", 20000),
+                gridTestEvidence(20000, rareCarriers, Collections.emptyList()),
+                Collections.emptyList(), false, params, SIX_SAMPLES);
+        genotyper.accumulateHistogramOnly(makeINSRecord("fail_rare_low", 30000),
+                gridTestEvidence(30000, rareCarriers, Arrays.asList("s3", "s4")),
+                Collections.emptyList(), false, params, SIX_SAMPLES);
+
+        // Common bin (non-ref count 3, above commonMin): pass at frac 1.0, fail at 0.5
+        genotyper.accumulateHistogramOnly(
+                makeDELRecord("pass_common", 40000, 45000,
+                        Collections.singletonList(GATKSVVCFConstants.EvidenceTypes.SR),
+                        Collections.singletonList("pesr")),
+                gridTestEvidence(40000, commonCarriers, Collections.emptyList()),
+                Collections.emptyList(), true, params, SIX_SAMPLES);
+        genotyper.accumulateHistogramOnly(makeINSRecord("fail_common_low", 50000),
+                gridTestEvidence(50000, commonCarriers, Arrays.asList("s4", "s5", "s6")),
+                Collections.emptyList(), false, params, SIX_SAMPLES);
+
+        final SplitReadEvidenceGenotyper.SplitReadGenotypeFrequencyCutoffs cutoffs =
+                genotyper.finalizeThirdPass();
+
+        Assert.assertEquals(cutoffs.rare().fracSingle(), 0.6, TEST_TOLERANCE,
+                "Rare tie should resolve to the lowest fracSingle that drops the fail mass in bin 5");
+        Assert.assertEquals(cutoffs.rare().fracBoth(), 0.0, TEST_TOLERANCE,
+                "With no both-sided data fracBoth is unconstrained and takes its lowest value");
+        Assert.assertEquals(cutoffs.common().fracSingle(), 0.6, TEST_TOLERANCE,
+                "Common tie should resolve to the lowest fracSingle that drops the fail mass in bin 5");
+        Assert.assertEquals(cutoffs.common().fracBoth(), 0.0, TEST_TOLERANCE,
+                "With no both-sided data fracBoth is unconstrained and takes its lowest value");
+    }
 }

@@ -382,6 +382,13 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     private OverlapDetector<SimpleInterval> depthExclusionIntervals;
     private SVStratificationEngine pesrExclusionEngine;
 
+    // Traversal tallies, written to the SR cutoff diagnostics file. Observational only.
+    private long diagPhase1DepthResults = 0;
+    private long diagPhase1PeTrainable = 0;
+    private long diagPhase1SrTrainable = 0;
+    private long diagPhase2VariantsVisited = 0;
+    private long diagPhase2VariantsProcessed = 0;
+
     private static final String PESR_EXCLUSION_STRATIFICATION = "pesrex";
 
     protected int numberOfPasses() {
@@ -444,6 +451,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
                         allDepthResults.put(record.getId(), depthResult);
                     }
                 });
+        diagPhase1DepthResults = allDepthResults.size();
         logger.info("Phase 1: Depth genotyping complete (" + allDepthResults.size() + " CNV results)");
 
         // Build the overlap detector from registered intervals
@@ -475,6 +483,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
                 });
         // Free the full depth results map — only trainingDepthResults is needed for training
         allDepthResults.clear();
+        diagPhase1PeTrainable = trainablePERecords.size();
         logger.info("Phase 1: Found " + trainablePERecords.size() + " PE-trainable variants");
         progressMeter.reset();
 
@@ -521,6 +530,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
                 final DepthEvidenceGenotyper.DepthGenotypeResult depthResult = trainingDepthResults.get(record.getId());
                 final boolean peEligible = true; // already filtered to PE-trainable records
                 if (splitReadGenotyper.trainableRecord(record, peEligible, pesrExclusionEngine)) {
+                    diagPhase1SrTrainable++;
                     final List<SplitReadEvidence> startSplitReads = splitReadStartCollector.collectEvidence(record);
                     final List<SplitReadEvidence> endSplitReads = splitReadEndCollector.collectEvidence(record);
                     splitReadGenotyper.addFirstPass(record, startSplitReads, endSplitReads, depthResult, masterSampleList);
@@ -573,6 +583,8 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
                     .filter(countingVariantFilter)
                     .forEach(variant -> {
                         progressMeter.update(new SimpleInterval(variant));
+                        diagPhase2VariantsVisited++;
+                        diagPhase2VariantsProcessed++;
                         final SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
 
                         // Depth genotype (re-computed from tabix)
@@ -610,12 +622,14 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
                     .filter(countingVariantFilter)
                     .forEach(variant -> {
                         progressMeter.update(new SimpleInterval(variant));
+                        diagPhase2VariantsVisited++;
                         if (strideCounter[0]++ % srCutoffStride != 0) {
                             return;
                         }
                         if (!splitReadCollectionEnabled()) {
                             return;
                         }
+                        diagPhase2VariantsProcessed++;
                         final SVCallRecord record = SVCallRecordUtils.create(variant, dictionary);
                         final GATKSVVCFConstants.StructuralVariantAnnotationType svtype = record.getType();
                         final boolean isCNV = svtype == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL
@@ -637,8 +651,15 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
                 // scaling, so the selected fracSingle/fracBoth cutoffs are unchanged.
                 splitReadGenotyper.scaleHistograms(srCutoffStride);
             }
-            splitReadFrequencyCutoffs = splitReadGenotyper.finalizeThirdPass();
-            writeSplitReadParameters(new SplitReadEvidenceGenotyper.SplitReadGenotypeMetrics(splitReadParameters, splitReadFrequencyCutoffs));
+            try {
+                splitReadFrequencyCutoffs = splitReadGenotyper.finalizeThirdPass();
+                writeSplitReadParameters(new SplitReadEvidenceGenotyper.SplitReadGenotypeMetrics(splitReadParameters, splitReadFrequencyCutoffs));
+            } finally {
+                // Always emit diagnostics: a rejected grid is exactly when they are needed, and
+                // this tool must still exit zero for Cromwell to delocalize them.
+                writeSplitReadCutoffDiagnostics();
+            }
+            logSplitReadCutoffSelectionOutcomes();
         }
 
         logger.info(countingVariantFilter.getSummaryLine());
@@ -888,6 +909,69 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
             tableWriter.writeRecord(parameters);
         } catch (IOException e) {
             throw new GATKException("Error while writing PE cutoffs table", e);
+        }
+    }
+
+    /**
+     * Write the SR frequency-cutoff diagnostic report to
+     * {@code <output-dir>/<output-name>.sr_cutoff_diagnostics.txt}.
+     *
+     * <p>The cutoffs in {@code .sr_geno_params.tsv} record only the winning grid cell, which
+     * is not enough to tell a real optimum from a degenerate grid: if the frac histograms
+     * concentrate in one bin, every cell scores alike and the argmax returns the first cell,
+     * (0.0, 0.0). This report carries the histograms, the fully scored grid, and the tie/NaN
+     * counts needed to distinguish those cases. It goes to a file rather than the log so it
+     * survives as a workflow output.</p>
+     *
+     * <p>Diagnostics are best-effort: a failure here must not fail a training run that has
+     * already produced its parameter tables.</p>
+     */
+    private void writeSplitReadCutoffDiagnostics() {
+        final GATKPath path = getTablePath(".sr_cutoff_diagnostics.txt");
+        try (final java.io.Writer out = java.nio.file.Files.newBufferedWriter(path.toPath(), Charset.defaultCharset())) {
+            out.write("## RUN_CONFIGURATION\n");
+            out.write("tool\tTrainSVGenotyping\n");
+            out.write("output_name\t" + tableBaseName + '\n');
+            out.write("num_samples\t" + masterSampleList.size() + '\n');
+            out.write("sr_quality_cutoff\t" + minSplitReadQuality + '\n');
+            out.write("pe_quality_cutoff\t" + minDiscordantPairQuality + '\n');
+            out.write("min_pesr_size\t" + minPesrSize + '\n');
+            out.write("sr_cutoff_stride\t" + srCutoffStride + '\n');
+            out.write("output_training_vcf\t" + outputTrainingVcf + '\n');
+            out.write("phase2_mode\t" + (outputTrainingVcf ? "2a_full_genotype" : "2b_histogram_only") + '\n');
+            out.write("max_quality\t" + maxQual + '\n');
+            out.write("num_training_states\t" + numTrainingStates + '\n');
+            out.write("depth_min_separation\t" + depthMinSeparation + '\n');
+            out.write("pesr_min_separation\t" + pesrMinSeparation + '\n');
+
+            out.write("## TRAVERSAL_TALLIES\n");
+            out.write("phase1_depth_genotyped_cnvs\t" + diagPhase1DepthResults + '\n');
+            out.write("phase1_pe_trainable_variants\t" + diagPhase1PeTrainable + '\n');
+            out.write("phase1_sr_trainable_variants\t" + diagPhase1SrTrainable + '\n');
+            out.write("phase2_variants_visited\t" + diagPhase2VariantsVisited + '\n');
+            out.write("phase2_variants_processed\t" + diagPhase2VariantsProcessed + '\n');
+
+            out.write(splitReadGenotyper.cutoffDiagnosticsReport());
+            logger.info("Wrote SR cutoff diagnostics to " + path);
+        } catch (final IOException | RuntimeException e) {
+            logger.warn("Could not write SR cutoff diagnostics to " + path + ": " + e.getMessage());
+        }
+    }
+
+    /**
+     * Log any SR cutoff selection rejection prominently.
+     *
+     * <p>This tool does not fail on a rejection, because Cromwell delocalizes task outputs only
+     * on success and failing here would strand the diagnostics report. Enforcement is the
+     * ValidateSRCutoffs task, which reads the delocalized report.</p>
+     */
+    private void logSplitReadCutoffSelectionOutcomes() {
+        for (final SplitReadEvidenceGenotyper.SelectionOutcome outcome : splitReadGenotyper.cutoffSelectionOutcomes()) {
+            if (outcome.rejected()) {
+                logger.warn("*** SR frequency cutoff selection REJECTED (" + outcome.status() + "). "
+                        + "Cutoffs fell back to 0.0, which disables SR background filtering. "
+                        + outcome.detail());
+            }
         }
     }
 
