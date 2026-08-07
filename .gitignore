@@ -54,3 +54,9 @@ test*.dot
 venv
 .headroom_data
 .serena
+
+# Emacs backup / autosave / lock files
+*~
+\#*\#
+.\#*
+*.save
