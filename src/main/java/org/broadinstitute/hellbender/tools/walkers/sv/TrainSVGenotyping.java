@@ -130,7 +130,6 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     public static final String DEPTH_MIN_SEPARATION_LONG_NAME = "rd-depth-min-separation";
     public static final String PESR_MIN_SEPARATION_LONG_NAME = "rd-pesr-min-separation";
     public static final String OUTPUT_TRAINING_VCF_LONG_NAME = "output-training-vcf";
-    public static final String SR_CUTOFF_STRIDE_LONG_NAME = "sr-cutoff-stride";
 
     @Argument(
             fullName = DEPTH_EVIDENCE_FILE_PATH_LONG_NAME,
@@ -305,17 +304,6 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
     public boolean outputTrainingVcf = false;
 
     @Argument(
-            fullName = SR_CUTOFF_STRIDE_LONG_NAME,
-            doc = "Process every Nth variant for SR frequency cutoff estimation in the final pass. " +
-                    "Higher values reduce runtime by skipping SR evidence queries. Histogram counts " +
-                    "are scaled by the stride factor to compensate. Only applies when --" +
-                    OUTPUT_TRAINING_VCF_LONG_NAME + " is false; ignored when writing the training VCF.",
-            minValue = 1,
-            optional = true
-    )
-    public int srCutoffStride = 1;
-
-    @Argument(
             fullName = AggregateDepthEvidence.MAX_QUALITY_LONG_NAME,
             doc = "Max quality score",
             minValue = 1
@@ -413,9 +401,7 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
      *
      * Phase 2b (SR Histogram Only, when --output-training-vcf is false): Re-reads the VCF
      * from disk but only queries SR evidence for recovery histogram accumulation, skipping
-     * depth and PE evidence queries entirely. A stride ({@code --sr-cutoff-stride}) can
-     * further reduce the number of variants processed; histogram counts are scaled by the
-     * stride factor to compensate.
+     * depth and PE evidence queries entirely.
      *
      * In both modes, SR recovery statistics are maintained as fixed-size histograms (352 bytes
      * total) rather than unbounded lists. No per-variant data accumulates across records.
@@ -616,16 +602,12 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
             // because the histogram's pass flag depends only on SVType (CNV <-> depthGenotype
             // != null) and PE GQ which is always >= 1. See accumulateHistogramOnly() for details.
 
-            logger.info("Phase 2: SR histogram accumulation (stride=" + srCutoffStride + ")");
-            final int[] strideCounter = {0};
+            logger.info("Phase 2: SR histogram accumulation");
             StreamSupport.stream(getSpliteratorForDrivingVariants(), false)
                     .filter(countingVariantFilter)
                     .forEach(variant -> {
                         progressMeter.update(new SimpleInterval(variant));
                         diagPhase2VariantsVisited++;
-                        if (strideCounter[0]++ % srCutoffStride != 0) {
-                            return;
-                        }
                         if (!splitReadCollectionEnabled()) {
                             return;
                         }
@@ -644,13 +626,6 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
 
         // Finalize SR recovery cutoffs from histograms and write params
         if (splitReadCollectionEnabled()) {
-            if (srCutoffStride > 1 && !outputTrainingVcf) {
-                // Compensate histogram counts for stride-based downsampling so that
-                // the written countPass/countFail approximate the full-cohort values.
-                // The cutoff optimization uses ratios which are invariant under uniform
-                // scaling, so the selected fracSingle/fracBoth cutoffs are unchanged.
-                splitReadGenotyper.scaleHistograms(srCutoffStride);
-            }
             try {
                 splitReadFrequencyCutoffs = splitReadGenotyper.finalizeThirdPass();
                 writeSplitReadParameters(new SplitReadEvidenceGenotyper.SplitReadGenotypeMetrics(splitReadParameters, splitReadFrequencyCutoffs));
@@ -936,7 +911,6 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
             out.write("sr_quality_cutoff\t" + minSplitReadQuality + '\n');
             out.write("pe_quality_cutoff\t" + minDiscordantPairQuality + '\n');
             out.write("min_pesr_size\t" + minPesrSize + '\n');
-            out.write("sr_cutoff_stride\t" + srCutoffStride + '\n');
             out.write("output_training_vcf\t" + outputTrainingVcf + '\n');
             out.write("phase2_mode\t" + (outputTrainingVcf ? "2a_full_genotype" : "2b_histogram_only") + '\n');
             out.write("max_quality\t" + maxQual + '\n');
