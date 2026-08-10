@@ -21,6 +21,7 @@ workflow GvsValidateVcfHeaders {
         String dataset_name
         String project_id
         String? expected_dragen_version
+        Boolean require_reblocking = true
         Boolean fail_on_validation_errors = true
 
         String? git_branch_or_tag
@@ -37,6 +38,9 @@ workflow GvsValidateVcfHeaders {
         }
         expected_dragen_version: {
             help: "Optional expected DRAGEN version triplet, e.g. '3.7.8'. If set, every sample's DRAGEN version must match it; otherwise only cross-sample consistency is enforced."
+        }
+        require_reblocking: {
+            help: "If true (default), a sample without a ReblockGVCF command line fails validation (AoU fails fast on non-reblocked input). Set to false to report non-reblocked samples without failing."
         }
         fail_on_validation_errors: {
             help: "If true (default), the workflow fails when any fatal header check fails, stopping the pipeline before the expensive data ingest. If false, the results are reported without failing the workflow."
@@ -58,6 +62,7 @@ workflow GvsValidateVcfHeaders {
             dataset_name = dataset_name,
             project_id = project_id,
             expected_dragen_version = expected_dragen_version,
+            require_reblocking = require_reblocking,
             variants_docker = effective_variants_docker,
     }
 
@@ -84,6 +89,7 @@ task ValidateVcfHeaders {
         String dataset_name
         String project_id
         String? expected_dragen_version
+        Boolean require_reblocking = true
         String variants_docker
     }
 
@@ -104,6 +110,7 @@ task ValidateVcfHeaders {
             --project_id ~{project_id} \
             --dataset_name ~{dataset_name} \
             ~{"--expected_dragen_version " + expected_dragen_version} \
+            ~{if require_reblocking then "" else "--allow_non_reblocked"} \
             --pass_file_output pass.txt \
             --report_file_output report.txt
     >>>

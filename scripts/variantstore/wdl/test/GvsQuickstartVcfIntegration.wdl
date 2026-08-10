@@ -2,6 +2,7 @@ version 1.0
 
 import "../GvsUtils.wdl" as Utils
 import "../GvsJointVariantCalling.wdl" as JointVariantCalling
+import "../GvsValidateVcfHeaders.wdl" as ValidateVcfHeaders
 
 workflow GvsQuickstartVcfIntegration {
     input {
@@ -12,6 +13,11 @@ workflow GvsQuickstartVcfIntegration {
         Boolean extract_do_not_filter_override = true
         Boolean use_compressed_references = false
         Boolean load_vcf_headers = false
+        # When headers are loaded, also run GvsValidateVcfHeaders (VS-1966) against the resulting
+        # dataset and assert it passes -- this gives the header validation real end-to-end coverage
+        # on the quickstart samples.
+        Boolean validate_vcf_headers = true
+        String? expected_dragen_version
         Boolean use_parquet_ingest = true
         String drop_state = "FORTY"
         Boolean bgzip_output_vcfs = false
@@ -129,6 +135,23 @@ workflow GvsQuickstartVcfIntegration {
             parquet_output_gcs_dir = parquet_output_gcs_dir,
     }
 
+    # VS-1966: if headers were loaded, validate them end to end and fail the test if validation fails.
+    # The quickstart gVCFs are reblocked (reblocking is a GVS prerequisite) and predate DRAGEN, so
+    # this asserts a PASS with require_reblocking on and no expected DRAGEN version (informational).
+    if (load_vcf_headers && validate_vcf_headers) {
+        call ValidateVcfHeaders.GvsValidateVcfHeaders as ValidateHeaders {
+            input:
+                go = JointVariantCalling.done,
+                dataset_name = CreateDatasetForTest.dataset_name,
+                project_id = project_id,
+                expected_dragen_version = expected_dragen_version,
+                fail_on_validation_errors = true,
+                git_branch_or_tag = git_branch_or_tag,
+                variants_docker = effective_variants_docker,
+                basic_docker = effective_basic_docker,
+        }
+    }
+
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VETS (which is deterministic)
     if (extract_do_not_filter_override || use_VETS) {
         String expected_prefix = expected_output_prefix + dataset_suffix + "/"
@@ -196,6 +219,8 @@ workflow GvsQuickstartVcfIntegration {
         String recorded_git_hash = effective_git_hash
         Boolean done = true
         Boolean used_tighter_gcp_quotas = JointVariantCalling.used_tighter_gcp_quotas
+        Boolean? vcf_headers_validation_passed = ValidateHeaders.validation_passed
+        File? vcf_headers_validation_report = ValidateHeaders.validation_report
     }
 }
 
