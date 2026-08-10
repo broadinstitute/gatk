@@ -123,9 +123,6 @@ public class SplitReadEvidenceGenotyper {
     private Double diagSecondPassHomMedian = null;
     private Double diagSecondPassHetMad = null;
 
-    // Stride compensation actually applied to the histograms, if any
-    private int diagHistogramScaleFactor = 1;
-
     // Scored cutoff grids and their selection outcomes, retained from finalizeThirdPass
     private CutoffGrid diagRareGrid = null;
     private CutoffGrid diagCommonGrid = null;
@@ -858,30 +855,6 @@ public class SplitReadEvidenceGenotyper {
         }
     }
 
-    /**
-     * Scale all histogram bin counts by the given factor. Used to compensate for stride-based
-     * downsampling: multiplying by the stride factor produces approximate full-cohort counts.
-     * The cutoff optimization uses ratios (countFail / total and countPass / baseline) which
-     * are invariant under uniform scaling, so the selected cutoffs are unchanged.
-     */
-    public void scaleHistograms(final int factor) {
-        final long scaleFactor = factor;
-        diagHistogramScaleFactor = factor;
-        for (int f = 0; f < 2; f++) {
-            for (int p = 0; p < 2; p++) {
-                for (int b = 0; b < NUM_FRAC_BINS; b++) {
-                    singleHistogram[f][p][b] *= scaleFactor;
-                    bothHistogram[f][p][b] *= scaleFactor;
-                }
-                for (int s = 0; s < NUM_FRAC_BINS; s++) {
-                    for (int b = 0; b < NUM_FRAC_BINS; b++) {
-                        overlapHistogram[f][p][s][b] *= scaleFactor;
-                    }
-                }
-            }
-        }
-    }
-
     // ------------------------------------------------------------------------
     // Diagnostics recording and reporting
     // ------------------------------------------------------------------------
@@ -1112,7 +1085,6 @@ public class SplitReadEvidenceGenotyper {
         sb.append("rare_max\t").append(rareMax).append('\n');
         sb.append("common_min\t").append(commonMin).append('\n');
         sb.append("common_max\t").append(commonMax).append('\n');
-        sb.append("histogram_scale_factor_applied\t").append(diagHistogramScaleFactor).append('\n');
 
         sb.append("## SR_TRAINING_PASSES\n");
         sb.append("first_pass_variants\t").append(diagFirstPassVariants).append('\n');
