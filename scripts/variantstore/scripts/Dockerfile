@@ -11,10 +11,12 @@ FROM us.gcr.io/broad-dsde-methods/variantstore:2026-06-23-alpine-build-base AS b
 # Install all of our variantstore Python requirements.
 # We constrain the version of setuptools to sidestep an issue in `terra-notebook-util`'s FISS dependency.
 # See https://github.com/broadinstitute/fiss/issues/192.
+# requirements-prod.txt pulls in requirements.txt via `-r`, so both must be present.
 COPY requirements.txt requirements.txt
+COPY requirements-prod.txt requirements-prod.txt
 RUN . /localvenv/bin/activate && \
     pip3 install 'setuptools<80.3.0' && \
-    pip3 install -r requirements.txt
+    pip3 install -r requirements-prod.txt
 
 # Install FISS from source and patch for a `ConfigParser` issue.
 # See https://github.com/broadinstitute/fiss/issues/194.

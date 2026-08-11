@@ -1,0 +1,51 @@
+name: GVS Python Unit Tests
+
+# Runs the Python unit tests under scripts/variantstore/scripts/test.
+# These tests were previously only executed from build_docker.sh (invoked manually),
+# so this workflow runs them automatically on pull requests and pushes to ah_var_store.
+on:
+  push:
+    branches:
+      - 'ah_var_store'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    # Tests reference their data files with paths relative to the scripts directory
+    # (e.g. 'test/bulk_ingest_test_files/...'), so all steps run from there.
+    working-directory: scripts/variantstore/scripts
+
+jobs:
+  python-unit-tests:
+    name: run GVS python unit tests
+    runs-on: ubuntu-latest
+    # Guard against a hung BigQuery-emulator pull/start so the job fails fast instead of
+    # running to GitHub's 6-hour default. The tests themselves take a couple of minutes.
+    timeout-minutes: 20
+    steps:
+      - name: checkout gatk
+        uses: actions/checkout@v4
+
+      - name: set up python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+          cache-dependency-path: scripts/variantstore/scripts/requirements.txt
+
+      - name: install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # setuptools is constrained to match build_docker.sh (see fiss issue #192).
+          pip install 'setuptools<80.3.0'
+          # requirements.txt is the test-safe dependency set the unit tests import. Production-only
+          # deps (terra-notebook-utils) live in requirements-prod.txt and are not needed here.
+          pip install -r requirements.txt
+
+      - name: run unit tests
+        run: ./run_python_unit_tests.sh
+

@@ -18,7 +18,7 @@
 #       localhost. Used by the GitHub Actions workflow (VS-1983).
 #
 # Optional environment overrides:
-#   EMULATOR_IMAGE   BigQuery emulator image (default ghcr.io/goccy/bigquery-emulator:latest).
+#   EMULATOR_IMAGE   BigQuery emulator image (default ghcr.io/goccy/bigquery-emulator:0.8).
 #   EMULATOR_PORT    Host port for the emulator in native mode (default 9050).
 #   PYTHON_BIN       Python interpreter for native mode (default python3).
 #
@@ -38,8 +38,8 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
-# TODO(VS-1983): pin to a specific emulator release once this stabilizes.
-EMULATOR_IMAGE="${EMULATOR_IMAGE:-ghcr.io/goccy/bigquery-emulator:latest}"
+# Pinned to a specific emulator release: Override if needed.
+EMULATOR_IMAGE="${EMULATOR_IMAGE:-ghcr.io/goccy/bigquery-emulator:0.8}"
 EMULATOR_PORT="${EMULATOR_PORT:-9050}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 # $$-suffixed so concurrent runs (e.g. a local build while CI runs) do not collide.
