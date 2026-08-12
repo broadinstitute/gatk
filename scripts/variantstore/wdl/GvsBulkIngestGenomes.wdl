@@ -59,6 +59,8 @@ workflow GvsBulkIngestGenomes {
         # if validation fails. Intended for the AoU headers-only pass (load_vcf_headers = true,
         # load_vet_and_ref_ranges = false): validation then fails fast before any vet/ref ingest.
         Boolean validate_vcf_headers = false
+        # Exact triplet ('3.7.8', AoU) or a range with optional interval notation ('3.4.12-3.7.8',
+        # '[3.7.8-3.8)', '(3.7-3.8)'); see GvsValidateVcfHeaders.
         String? expected_dragen_version
         Boolean require_reblocking = true
         # End GvsValidateVcfHeaders

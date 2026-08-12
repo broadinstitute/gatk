@@ -17,6 +17,9 @@ workflow GvsQuickstartVcfIntegration {
         # dataset and assert it passes -- this gives the header validation real end-to-end coverage
         # on the quickstart samples.
         Boolean validate_vcf_headers = true
+        # Exact triplet ('3.7.8') or a range with optional interval notation ('3.4.12-3.7.8',
+        # '[3.7.8-3.8)', '(3.7-3.8)'); see GvsValidateVcfHeaders. Left unset for the quickstart
+        # (its samples predate DRAGEN, so the DRAGEN check is informational there).
         String? expected_dragen_version
         Boolean use_parquet_ingest = true
         String drop_state = "FORTY"

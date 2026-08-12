@@ -37,7 +37,7 @@ workflow GvsValidateVcfHeaders {
             help: "Google project for the GVS dataset."
         }
         expected_dragen_version: {
-            help: "Optional expected DRAGEN version triplet, e.g. '3.7.8'. If set, every sample's DRAGEN version must match it; otherwise only cross-sample consistency is enforced."
+            help: "Optional expected DRAGEN version. A single triplet, e.g. '3.7.8', requires every sample to match it exactly (AoU); a range requires every sample's triplet to fall within it. Ranges accept interval notation: '3.4.12-3.7.8' (both inclusive), '[3.7.8-3.8)' (inclusive-exclusive), '(3.7-3.8)' (both exclusive). If unset, only cross-sample consistency is enforced."
         }
         require_reblocking: {
             help: "If true (default), a sample without a ReblockGVCF command line fails validation (AoU fails fast on non-reblocked input). Set to false to report non-reblocked samples without failing."
