@@ -115,6 +115,7 @@ workflow GvsJointVariantCalling {
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+    String effective_heavy_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_heavy_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
@@ -191,6 +192,7 @@ workflow GvsJointVariantCalling {
             interval_list = interval_list_to_use,
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
+            gatk_heavy_docker = effective_heavy_gatk_docker,
             gatk_override = gatk_override,
             INDEL_VQSR_max_gaussians_override = INDEL_VQSR_max_gaussians_override,
             INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
