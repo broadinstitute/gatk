@@ -514,22 +514,12 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(expectIndex, null != SamFiles.findIndex(outputFile));
         Assert.assertEquals(createMD5, md5File.exists());
 
-        // Write the input to a baseline file in the same output format. htsjdk 5.0.0 strips NM/MD
-        // (and elides TLEN) when writing CRAM and regenerates them from the reference on read
-        // (matching htslib), so a CRAM round-trip differs from the original SAM. Comparing against a
-        // same-format baseline makes both sides undergo identical encode/decode.
-        final File baselineFile = createTempFile("samWriterBaseline", outputExtension);
+        // Check the written reads round-trip back to the original SAM. htsjdk 5.0.0 (htslib-compatible)
+        // regenerates NM/MD and recomputes TLEN when reading CRAM, so those derived fields are
+        // normalized before comparison; everything else must survive the round-trip unchanged.
         try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile);
-            final SAMFileWriter baselineWriter = ReadUtils.createCommonSAMWriter(
-                    baselineFile, referenceFile, samReader.getFileHeader(), preSorted, false, false)) {
-            final Iterator<SAMRecord> samRecIt = samReader.iterator();
-            while (samRecIt.hasNext()) {
-                baselineWriter.addAlignment(samRecIt.next());
-            }
-        }
-        try (final SamReader baselineReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(baselineFile);
             final SamReader outputReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(outputFile)) {
-            Assert.assertEquals(outputReader.iterator(), baselineReader.iterator());
+            assertSameReadsIgnoringCramDerivedFields(samReader, outputReader);
         }
     }
 
@@ -575,24 +565,32 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
                 Assert.assertEquals(createMD5, Files.exists(md5Path));
             }
 
-            // Write the input to a baseline file in the same output format and compare against that:
-            // htsjdk 5.0.0 strips NM/MD (and elides TLEN) when writing CRAM and regenerates them from
-            // the reference on read (matching htslib), so a CRAM round-trip differs from the original
-            // SAM. A same-format baseline makes both sides undergo identical encode/decode.
-            final File baselineFile = createTempFile("samWriterBaseline", outputExtension);
+            // Check the written reads round-trip back to the original SAM. htsjdk 5.0.0
+            // (htslib-compatible) regenerates NM/MD and recomputes TLEN when reading CRAM, so those
+            // derived fields are normalized before comparison; everything else must round-trip unchanged.
             try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile);
-                final SAMFileWriter baselineWriter = ReadUtils.createCommonSAMWriter(
-                        baselineFile, referenceFile, samReader.getFileHeader(), preSorted, false, false)) {
-                final Iterator<SAMRecord> samRecIt = samReader.iterator();
-                while (samRecIt.hasNext()) {
-                    baselineWriter.addAlignment(samRecIt.next());
-                }
-            }
-            try (final SamReader baselineReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(baselineFile);
                 final SamReader outputReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(outputPath)) {
-                Assert.assertEquals(outputReader.iterator(), baselineReader.iterator());
+                assertSameReadsIgnoringCramDerivedFields(samReader, outputReader);
             }
         }
+    }
+
+    // Compares reads for a round-trip while tolerating the derived fields htsjdk 5.0.0 regenerates
+    // when reading CRAM (NM/MD tags and the recomputed TLEN). All other fields must match exactly.
+    private static void assertSameReadsIgnoringCramDerivedFields(final SamReader expected, final SamReader actual) {
+        final Iterator<SAMRecord> expectedIt = expected.iterator();
+        final Iterator<SAMRecord> actualIt = actual.iterator();
+        while (expectedIt.hasNext() && actualIt.hasNext()) {
+            final SAMRecord expectedRec = expectedIt.next();
+            final SAMRecord actualRec = actualIt.next();
+            for (final SAMRecord rec : new SAMRecord[]{expectedRec, actualRec}) {
+                rec.setAttribute(SAMTag.NM, null);
+                rec.setAttribute(SAMTag.MD, null);
+                rec.setInferredInsertSize(0);
+            }
+            Assert.assertEquals(actualRec, expectedRec);
+        }
+        Assert.assertEquals(actualIt.hasNext(), expectedIt.hasNext(), "record count mismatch");
     }
 
     @DataProvider(name="hasCRAMFileContents")

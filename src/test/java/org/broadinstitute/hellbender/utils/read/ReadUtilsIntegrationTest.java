@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.read;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SamFiles;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
@@ -72,27 +73,24 @@ public class ReadUtilsIntegrationTest extends GATKBaseTest {
       Assert.assertEquals(createMD5, Files.exists(md5Path));
     }
 
-    // Write to a local temp file to use as the comparison baseline. For CRAM output, TLEN is
-    // elided during encode and recomputed from alignment positions on decode (htsjdk 5.0.0+
-    // matches htslib behavior), so the round-tripped TLEN may differ from the original SAM.
-    // Comparing against a locally-written file in the same format ensures both sides undergo
-    // identical encoding/decoding, producing consistent TLEN values.
-    final File localTempFile = File.createTempFile("samWriterTest", outputExtension);
-    localTempFile.deleteOnExit();
-    try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile)) {
-      try (final SAMFileWriter localWriter = ReadUtils.createCommonSAMWriter(
-          localTempFile.toPath(), referencePath, samReader.getFileHeader(), preSorted, false, false)) {
-        final Iterator<SAMRecord> samRecIt = samReader.iterator();
-        while (samRecIt.hasNext()) {
-          localWriter.addAlignment(samRecIt.next());
-        }
-      }
-    }
-
-    // now check the GCS output matches the locally-written file
-    try (final SamReader localReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(localTempFile);
+    // Check the written reads round-trip back to the original SAM. htsjdk 5.0.0 (htslib-compatible)
+    // regenerates NM/MD and recomputes TLEN when reading CRAM, so those derived fields are normalized
+    // before comparison; everything else must survive the round-trip unchanged.
+    try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile);
         final SamReader outputReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(outputPath)) {
-      Assert.assertEquals(localReader.iterator(), outputReader.iterator());
+      final Iterator<SAMRecord> expectedIt = samReader.iterator();
+      final Iterator<SAMRecord> actualIt = outputReader.iterator();
+      while (expectedIt.hasNext() && actualIt.hasNext()) {
+        final SAMRecord expectedRec = expectedIt.next();
+        final SAMRecord actualRec = actualIt.next();
+        for (final SAMRecord rec : new SAMRecord[]{expectedRec, actualRec}) {
+          rec.setAttribute(SAMTag.NM, null);
+          rec.setAttribute(SAMTag.MD, null);
+          rec.setInferredInsertSize(0);
+        }
+        Assert.assertEquals(actualRec, expectedRec);
+      }
+      Assert.assertEquals(actualIt.hasNext(), expectedIt.hasNext(), "record count mismatch");
     }
   }
 
