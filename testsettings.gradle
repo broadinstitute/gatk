@@ -44,6 +44,14 @@ tasks.withType(Test) {
     environment "SPARK_LOCAL_IP","127.0.0.1"
     environment "SUPPRESS_GCLOUD_CREDS_WARNING","true"
 
+    // Make the Python numeric stack (numpy/scipy/scikit-learn, incl. isolation-forest scoring in
+    // ScoreVariantAnnotations) bit-reproducible across CPU microarchitectures. Without this, an
+    // AVX-512 runner dispatches different SIMD kernels than the AVX2 machines used to generate the
+    // expected outputs, producing tiny floating-point differences (e.g. CALIBRATION_SENSITIVITY) that
+    // break exact-match test comparisons. Force the AVX2 code path everywhere.
+    environment "NPY_DISABLE_CPU_FEATURES", "AVX512F AVX512CD AVX512_KNL AVX512_KNM AVX512_SKX AVX512_CLX AVX512_CNL AVX512_ICL AVX512_SPR"
+    environment "MKL_CBWR", "AVX2"
+
     // Pin the test JVM charset so tests are locale-independent. The javadoc/doclet smoke tests
     // (DocumentationGeneration/TabCompletion/WDLGeneration) run javadoc in-process, which reads
     // UTF-8 source (e.g. non-ASCII characters in DragstrReferenceAnalyzer) and fails with
