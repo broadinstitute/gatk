@@ -3,7 +3,9 @@ package org.broadinstitute.hellbender.utils.read;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.*;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import htsjdk.samtools.util.SequenceUtil;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -572,6 +574,60 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
                 final SamReader outputReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(outputPath)) {
                 assertSameReadsIgnoringCramDerivedFields(samReader, outputReader);
             }
+        }
+    }
+
+    // Pattern-1 lossless round-trip (mirrors htsjdk's LosslessRoundTripTest): pre-set canonical
+    // NM/MD on the inputs so the FULL record - including NM/MD - survives the CRAM strip-and-regenerate
+    // round-trip. Unlike testCreate*SAMWriter (which normalizes NM/MD/TLEN away), this asserts the
+    // regenerated tags are correct rather than merely tolerated. CRAM cases only (needs a reference).
+    @Test(dataProvider = "createSAMWriter")
+    public void testCreateSAMWriterCramLosslessNmMd(
+            final File bamFile,
+            final File referenceFile,
+            final String outputExtension,
+            final boolean preSorted,
+            final boolean createIndex,
+            final boolean createMD5,
+            final boolean expectIndex) throws Exception {
+        if (referenceFile == null || !outputExtension.equals(".cram")) {
+            return; // canonicalizing NM/MD requires a reference; the round-trip effect is CRAM-specific
+        }
+
+        final File outputFile = createTempFile("samWriterLossless", outputExtension);
+
+        // Read the input and set canonical NM/MD from the reference on every mapped record.
+        final List<SAMRecord> canonicalRecords = new ArrayList<>();
+        final SAMFileHeader header;
+        try (final ReferenceSequenceFile ref = ReferenceSequenceFileFactory.getReferenceSequenceFile(referenceFile);
+             final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile)) {
+            header = samReader.getFileHeader();
+            final Map<String, byte[]> refBasesByContig = new HashMap<>();
+            for (final SAMRecord rec : samReader) {
+                if (!rec.getReadUnmappedFlag()) {
+                    final byte[] refBases = refBasesByContig.computeIfAbsent(
+                            rec.getReferenceName(), contig -> ref.getSequence(contig).getBases());
+                    SequenceUtil.calculateMdAndNmTags(rec, refBases, true, true);
+                }
+                canonicalRecords.add(rec);
+            }
+        }
+
+        try (final SAMFileWriter writer = ReadUtils.createCommonSAMWriter(
+                outputFile, referenceFile, header, preSorted, createIndex, createMD5)) {
+            for (final SAMRecord rec : canonicalRecords) {
+                writer.addAlignment(rec);
+            }
+        }
+
+        // Full equality, including NM/MD: the canonical tags must survive the CRAM round-trip.
+        try (final SamReader outputReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(outputFile)) {
+            final Iterator<SAMRecord> actualIt = outputReader.iterator();
+            for (final SAMRecord expected : canonicalRecords) {
+                Assert.assertTrue(actualIt.hasNext(), "too few records round-tripped through CRAM");
+                Assert.assertEquals(actualIt.next(), expected);
+            }
+            Assert.assertFalse(actualIt.hasNext(), "extra records round-tripped through CRAM");
         }
     }
 
