@@ -21,10 +21,12 @@ workflow GvsCreateVATfromVDS {
         String? hail_version
         File? hail_wheel
         String? vat_version
-        String? workspace_gcs_project
+        String? workspace_project
 
         Boolean generate_vep_and_loftee_annotations = true
         Boolean leave_hail_cluster_running_at_end = false
+        Boolean use_tiny_dataproc_cluster = false
+        Boolean use_tiny_vep_annotation_load_runtime = false
         Int? merge_vcfs_disk_size_override
         Int? split_intervals_disk_size_override
         Int? split_intervals_mem_override
@@ -80,6 +82,17 @@ workflow GvsCreateVATfromVDS {
     String region = "us-central1"
     File mane_annotation_file = "gs://gvs_quickstart_storage/MANE/MANE_human/release_1.4/MANE.GRCh38.v1.4.summary.txt"
 
+    # gene2ensembl_human.tsv is extracted and filtered for humans (tax_id 9606) from
+    # https://ftp.ncbi.nlm.nih.gov/gene/DATA/gene2ensembl.gz (NCBI snapshot 2026-07-10). gene2ensembl provides
+    # Entrez-to-Ensembl mappings at both the gene (Ensembl_gene_identifier -> GeneID) and transcript level; the VAT
+    # join keys on the gene, so Ensembl_gene_identifier and GeneID are the columns that matter.
+    # gene_info.gz (https://ftp.ncbi.nlm.nih.gov/gene/DATA/gene_info.gz) is a larger alternative that includes gene
+    # descriptions, synonyms, and other metadata, but is significantly larger and slower to load. Prefer gene2ensembl
+    # unless additional gene-level annotations beyond the Entrez ID are required.
+    # The path is pinned to a dated, immutable copy for reproducibility: the upstream NCBI file is a rolling file that
+    # is overwritten continuously, so an undated path could silently change the Entrez annotations between runs.
+    File entrez_annotation_file = "gs://gvs_quickstart_storage/Entrez/gene2ensembl_human_2026-07-10.tsv"
+
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
     # no calling WDLs that might supply `git_hash`).
     call Utils.GetToolVersions {
@@ -95,11 +108,16 @@ workflow GvsCreateVATfromVDS {
     String effective_variants_nirvana_docker = select_first([variants_nirvana_docker, GetToolVersions.variants_nirvana_docker])
     String effective_vep_loftee_docker = select_first([vep_loftee_docker, GetToolVersions.vep_loftee_docker])
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
-    String effective_google_project = select_first([workspace_gcs_project, GetToolVersions.google_project])
+    String effective_google_project = select_first([workspace_project, GetToolVersions.google_project])
 
     # If the vat version is undefined or v1 then the vat tables would be named like filter_vat, otherwise filter_vat_v2.
     String effective_vat_version = if (defined(vat_version) && select_first([vat_version]) != "v1") then "_" + select_first([vat_version]) else ""
     String effective_vat_table_name = filter_set_name + "_vat" + effective_vat_version
+
+    Int vep_annotation_load_cpu         = if use_tiny_vep_annotation_load_runtime then 2                     else 16
+    String vep_annotation_load_memory   = if use_tiny_vep_annotation_load_runtime then "7 GB"                else "16 GB"
+    String vep_annotation_load_disks    = if use_tiny_vep_annotation_load_runtime then "local-disk 1000 HDD" else "local-disk 4000 SSD"
+    Int vep_annotation_load_preemptible = if use_tiny_vep_annotation_load_runtime then 2                     else 0
 
     String output_path_without_a_trailing_slash = sub(output_path, "/$", "")
     String effective_output_path = if (output_path == output_path_without_a_trailing_slash) then output_path + "/" else output_path
@@ -177,6 +195,33 @@ workflow GvsCreateVATfromVDS {
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
+        call LoadEntrezDataIntoBigQuery {
+            input:
+                project_id = project_id,
+                dataset_name = dataset_name,
+                entrez_table_name = "entrez_annotations",
+                entrez_data_file = entrez_annotation_file,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+
+        call ValidateEntrezTable {
+            input:
+                project_id = project_id,
+                dataset_name = dataset_name,
+                entrez_table_name = LoadEntrezDataIntoBigQuery.entrez_table,
+                load_done = LoadEntrezDataIntoBigQuery.done,
+                variants_docker = effective_variants_docker,
+        }
+
+        call ValidateManeTable {
+            input:
+                project_id = project_id,
+                dataset_name = dataset_name,
+                mane_table_name = LoadManeDataIntoBigQuery.mane_table,
+                load_done = LoadManeDataIntoBigQuery.done,
+                variants_docker = effective_variants_docker,
+        }
+
         call MakeSubpopulationFilesAndReadSchemaFiles {
             input:
                 input_ancestry_file = ancestry_file,
@@ -186,6 +231,7 @@ workflow GvsCreateVATfromVDS {
         if (!defined(sites_only_vcf)) {
             call GenerateSitesOnlyVcf {
                 input:
+                    use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
                     vds_path = select_first([vds_path]),
                     workspace_project = effective_google_project,
                     hail_version = effective_hail_version,
@@ -325,6 +371,10 @@ workflow GvsCreateVATfromVDS {
                     raw_data_table = select_first([vep_loftee_data_table_raw, "vep_loftee_data_table_raw"]),
                     raw_data_table_schema = MakeSubpopulationFilesAndReadSchemaFiles.vep_loftee_raw_schema_json_file,
                     variants_docker = effective_variants_docker,
+                    runtime_cpu = vep_annotation_load_cpu,
+                    runtime_memory = vep_annotation_load_memory,
+                    runtime_disks = vep_annotation_load_disks,
+                    runtime_preemptible = vep_annotation_load_preemptible,
             }
 
             call BigQueryCookVepAndLofteeRawAnnotations {
@@ -359,6 +409,7 @@ workflow GvsCreateVATfromVDS {
                 variant_transcript_schema = MakeSubpopulationFilesAndReadSchemaFiles.variant_transcript_schema_json_file,
                 genes_schema = MakeSubpopulationFilesAndReadSchemaFiles.genes_schema_json_file,
                 mane_table_name = LoadManeDataIntoBigQuery.mane_table,
+                entrez_table_name = LoadEntrezDataIntoBigQuery.entrez_table,
                 vep_loftee_cooked_table_name = BigQueryCookVepAndLofteeRawAnnotations.cooked_table_name,
                 run_vep_loftee_update = generate_vep_and_loftee_annotations,
                 project_id = project_id,
@@ -366,8 +417,7 @@ workflow GvsCreateVATfromVDS {
                 variant_transcripts_path = variant_transcripts_output_path,
                 genes_path = genes_output_path,
                 base_vat_table_name = effective_vat_table_name,
-                prep_vt_json_done = PrepVtAnnotationJson.done,
-                prep_genes_json_done = PrepGenesAnnotationJson.done,
+                go = flatten([PrepVtAnnotationJson.done, PrepGenesAnnotationJson.done, [ValidateEntrezTable.done], [ValidateManeTable.done]]),
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
 
@@ -392,7 +442,7 @@ workflow GvsCreateVATfromVDS {
                 merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
-       }
+        }
     }
 
     output {
@@ -432,7 +482,7 @@ task ExcludeSitesFromSitesOnlyVcf {
         docker: variants_docker
         memory: "4 GB"
         preemptible: 2
-        cpu: "1"
+        cpu: 1
         disks: "local-disk ${disk_size_gb} HDD"
     }
 
@@ -445,6 +495,7 @@ task ExcludeSitesFromSitesOnlyVcf {
 
 task GenerateSitesOnlyVcf {
     input {
+        Boolean use_tiny_dataproc_cluster
         String vds_path
         String workspace_project
         String workspace_bucket
@@ -513,15 +564,14 @@ task GenerateSitesOnlyVcf {
         FIN
 
         # Run the hail python script to make a sites-only VCF from a VDS
-        # - The autoscaling policy gvs-autoscaling-policy will exist already from the VDS creation
         python3 ~{run_in_hail_cluster_script} \
             --script-path ~{hail_create_vat_inputs_script} \
             --secondary-script-path-list ~{create_vat_inputs_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
-            --autoscaling-policy gvs-autoscaling-policy \
+            ~{true='--use-tiny-dataproc-cluster' false='' use_tiny_dataproc_cluster} \
             --region ~{region} \
-            --gcs-project ~{workspace_project} \
+            --workspace-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
@@ -578,7 +628,7 @@ task MakeSubpopulationFilesAndReadSchemaFiles {
         docker: variants_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 
@@ -626,7 +676,7 @@ task StripCustomAnnotationsFromSitesOnlyVCF {
     runtime {
         docker: variants_docker
         memory: "7 GiB"
-        cpu: "2"
+        cpu: 2
         preemptible: 3
         disks: "local-disk " + disk_size + " HDD"
     }
@@ -677,7 +727,7 @@ task RemoveDuplicatesFromSitesOnlyVCF {
         rm sites_only.bcf
 
         echo_date "VAT: normalize, left align and split multi allelic sites to new lines, remove duplicate lines"
-        ## note that normalization may create sites with more than 50 alt alleles
+        ## note that normalization may create sites with 100 or more alt alleles
         bcftools norm --threads 4 -m- --check-ref w -f ~{ref} filtered_sites_only.bcf -O b -o normalized.bcf
         rm filtered_sites_only.bcf
 
@@ -769,7 +819,7 @@ for line in sys.stdin:
         maxRetries: 3
         memory: "16 GB"
         preemptible: 3
-        cpu: "8"
+        cpu: 8
         disks: "local-disk " + disk_size + " HDD"
     }
 
@@ -894,7 +944,7 @@ task GenerateVepAndLofteeAnnotations {
         maxRetries: 2
         noAddress: true
         docker: vep_loftee_docker
-        memory: "4 GB"
+        memory: "8 GB"
         disks: "local-disk 500 HDD"
     }
 
@@ -915,6 +965,10 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
         String dataset_name
         String raw_data_table
         File raw_data_table_schema
+        Int runtime_cpu
+        String runtime_memory
+        String runtime_disks
+        Int runtime_preemptible
     }
 
     meta {
@@ -979,10 +1033,10 @@ task BigQueryLoadRawVepAndLofteeAnnotations {
 
     runtime {
         docker: variants_docker
-        cpu: 16
-        memory: "16 GB"
-        disks: "local-disk 4000 SSD"
-        preemptible: 0
+        cpu: runtime_cpu
+        memory: runtime_memory
+        disks: runtime_disks
+        preemptible: runtime_preemptible
     }
 
     output {
@@ -998,6 +1052,9 @@ task BigQueryCookVepAndLofteeRawAnnotations {
     # - Splitting and castng a nested GERP field into an array of floating point numbers.
     # - Squashing any duplicate rows resulting from deletions spanning shards.
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go
         String variants_docker
         String project_id
@@ -1133,6 +1190,7 @@ task AnnotateVCF {
 
         # Mentioning this path in the inputs section of the task combined with checking the 'Use reference disks' option
         # in Terra UI tells Cromwell to arrange for the Nirvana reference disk to be attached to this VM.
+        #@ except: UnusedInput
         File summon_reference_disk =
             "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/MITOMAP_20200819.nsa.idx"
 
@@ -1172,7 +1230,7 @@ task AnnotateVCF {
 
         if [ ! -s content_check_file.txt ]; then
             echo "Found NO custom annotations in ~{custom_annotations_file} skipping annotation of input VCF"
-            echo "Creating empty ennotation jsons for subsequent tasks"
+            echo "Creating empty annotation jsons for subsequent tasks"
             touch ~{gene_annotation_json_name}
             touch ~{positions_annotation_json_name}
             exit 0
@@ -1272,7 +1330,7 @@ task AnnotateVCF {
     runtime {
         docker: variants_nirvana_docker
         memory: "128 GB"
-        cpu: "4"
+        cpu: 4
         preemptible: 1
         maxRetries: 1
         disks: "local-disk 2000 HDD"
@@ -1324,7 +1382,7 @@ task PrepVtAnnotationJson {
         docker: variants_docker
         memory: "16 GB"
         preemptible: 2
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 500 HDD"
     }
 
@@ -1372,7 +1430,7 @@ task PrepGenesAnnotationJson {
         docker: variants_docker
         memory: "7 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 500 HDD"
     }
 
@@ -1403,34 +1461,226 @@ task LoadManeDataIntoBigQuery {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # Remove the leading comment character on the first line so BigQuery will name the columns all nice.
-        sed -i 's/^\#NCBI_GeneID/NCBI_GeneID/' ~{mane_data_file}
+        # Remove the leading comment character on the header (#NCBI_GeneID -> NCBI_GeneID) so BigQuery names
+        # the columns cleanly. Write to a temp file rather than editing in place, as the localized input file
+        # may be read-only (mirrors the Entrez load).
+        sed '1s/^\#NCBI_GeneID/NCBI_GeneID/' ~{mane_data_file} > mane_data_processed.tsv
 
         echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+        # Row-aware guard (mirrors the Entrez load): (re)load unless the table already exists AND has rows, so an
+        # existing-but-empty table left by a preempted or partial prior attempt is not silently trusted.
+        NEEDS_LOAD=1
         set +o errexit
-        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{mane_table_name} > /dev/null
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{mane_table_name} > /dev/null 2>&1
         BQ_SHOW_RC=$?
         set -o errexit
 
-        if [ $BQ_SHOW_RC -ne 0 ]; then
-            echo "Loading MANE annotations into table ~{dataset_name}.~{mane_table_name}"
-            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 --autodetect ~{dataset_name}.~{mane_table_name} ~{mane_data_file}
-        else
-            echo "Found existing MANE annotations table ~{dataset_name}.~{mane_table_name}. Using it"
+        if [ $BQ_SHOW_RC -eq 0 ]; then
+            ROW_COUNT=$(bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+                'SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.~{mane_table_name}`' | tail -n1 | tr -d '\r')
+            if [[ "$ROW_COUNT" =~ ^[0-9]+$ && "$ROW_COUNT" -gt 0 ]]; then
+                NEEDS_LOAD=0
+                echo "Found existing non-empty MANE annotations table ~{dataset_name}.~{mane_table_name} ($ROW_COUNT rows). Using it"
+            else
+                echo "Existing MANE annotations table ~{dataset_name}.~{mane_table_name} is empty ($ROW_COUNT rows); reloading"
+            fi
         fi
+
+        if [ $NEEDS_LOAD -eq 1 ]; then
+            echo "Loading MANE annotations into table ~{dataset_name}.~{mane_table_name}"
+            # Explicit schema instead of --autodetect so the columns the joins depend on (Ensembl_nuc, name,
+            # MANE_status) get stable, known types rather than relying on inference. Types match what autodetect
+            # produced for this file (NCBI_GeneID stays STRING; only chr_start/chr_end are integers), so the load
+            # cannot fail on an unexpected value. Column order must match the MANE summary file exactly.
+            # --replace so a reload of a partially-loaded table starts clean rather than appending duplicates.
+            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 \
+                --replace \
+                --schema='NCBI_GeneID:STRING,Ensembl_Gene:STRING,HGNC_ID:STRING,symbol:STRING,name:STRING,RefSeq_nuc:STRING,RefSeq_prot:STRING,Ensembl_nuc:STRING,Ensembl_prot:STRING,MANE_status:STRING,GRCh38_chr:STRING,chr_start:INTEGER,chr_end:INTEGER,chr_strand:STRING' \
+                ~{dataset_name}.~{mane_table_name} mane_data_processed.tsv
+        fi
+
+        # Emit the loaded schema for the logs; content validation (row-count floor, Ensembl_nuc / MANE_status
+        # integrity) is done downstream in ValidateManeTable via check_mane_table.py.
+        bq --apilog=false --project_id=~{project_id} show --format=prettyjson ~{project_id}:~{dataset_name}.~{mane_table_name}
     >>>
 
     runtime {
         docker: cloud_sdk_docker
         memory: "3 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 
     output {
         String mane_table = mane_table_name
+        Boolean done = true
+    }
+}
+
+task LoadEntrezDataIntoBigQuery {
+    meta {
+        # volatile: true so that call caching does not prevent this task from loading Entrez data
+        # into the current dataset. Without this, a cache hit would return the correct output
+        # string ("entrez_annotations") but skip the actual bq load, leaving the table absent.
+        volatile: true
+    }
+
+    input {
+        String project_id
+        String dataset_name
+        String entrez_table_name
+        File entrez_data_file
+        String cloud_sdk_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Fix the header line: remove the leading comment character (#tax_id -> tax_id), and replace dots
+        # with underscores in column names (BigQuery V1 character map does not support dots in field names).
+        # Affected columns: RNA_nucleotide_accession.version -> RNA_nucleotide_accession_version,
+        #                   protein_accession.version -> protein_accession_version.
+        # Ensembl_gene_identifier and GeneID have no dots and are unchanged — these are the columns used in the
+        # gene-level UPDATE join that populates entrez_gene_id.
+        # Column order in NCBI gene2ensembl: tax_id, GeneID, Ensembl_gene_identifier,
+        #   RNA_nucleotide_accession_version, Ensembl_rna_identifier, protein_accession_version,
+        #   Ensembl_protein_identifier — schema below must match this order exactly.
+        # Write to a temp file rather than modifying in-place, as the localized input file may be read-only.
+        sed '1{s/^\#tax_id/tax_id/; s/\./_/g}' ~{entrez_data_file} > entrez_data_processed.tsv
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+        # Row-aware guard: (re)load unless the table already exists AND has rows. An existing-but-empty table
+        # (e.g. left behind by a preempted or partial prior attempt) would otherwise be trusted as "already
+        # loaded" and silently annotate nothing, so we treat 0 rows as needing a reload.
+        NEEDS_LOAD=1
+        set +o errexit
+        bq --apilog=false show --project_id=~{project_id} ~{dataset_name}.~{entrez_table_name} > /dev/null 2>&1
+        BQ_SHOW_RC=$?
+        set -o errexit
+
+        if [ $BQ_SHOW_RC -eq 0 ]; then
+            ROW_COUNT=$(bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false \
+                'SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.~{entrez_table_name}`' | tail -n1 | tr -d '\r')
+            if [[ "$ROW_COUNT" =~ ^[0-9]+$ && "$ROW_COUNT" -gt 0 ]]; then
+                NEEDS_LOAD=0
+                echo "Found existing non-empty Entrez annotations table ~{dataset_name}.~{entrez_table_name} ($ROW_COUNT rows). Using it"
+            else
+                echo "Existing Entrez annotations table ~{dataset_name}.~{entrez_table_name} is empty ($ROW_COUNT rows); reloading"
+            fi
+        fi
+
+        if [ $NEEDS_LOAD -eq 1 ]; then
+            echo "Loading Entrez annotations into table ~{dataset_name}.~{entrez_table_name}"
+            # Explicit schema ensures GeneID loads as INTEGER (not STRING), making the CAST in the UPDATE
+            # a safe no-op rather than depending on autodetect inference. Column order must match file exactly.
+            # --null_marker='-' matches the VEP+LOFTEE load: gene2ensembl uses the literal '-' as its missing-value
+            # placeholder, so this stores those as NULL rather than literal '-' strings. No INTEGER column
+            # (tax_id, GeneID) ever contains '-', so nothing is nulled unintentionally.
+            # --replace so a reload of a partially-loaded table starts clean rather than appending duplicates.
+            bq --apilog=false load --project_id=~{project_id} --source_format=CSV --field_delimiter='\t' --skip_leading_rows=1 \
+                --null_marker='-' --replace \
+                --schema='tax_id:INTEGER,GeneID:INTEGER,Ensembl_gene_identifier:STRING,RNA_nucleotide_accession_version:STRING,Ensembl_rna_identifier:STRING,protein_accession_version:STRING,Ensembl_protein_identifier:STRING' \
+                ~{dataset_name}.~{entrez_table_name} entrez_data_processed.tsv
+        fi
+
+        # Emit the loaded table schema in prettyjson so maintainers can confirm column types in logs.
+        # Content validation (row-count floor, GeneID/Ensembl_gene_identifier integrity) is done in the
+        # downstream ValidateEntrezTable task via check_entrez_table.py.
+        bq --apilog=false --project_id=~{project_id} show --format=prettyjson ~{project_id}:~{dataset_name}.~{entrez_table_name}
+    >>>
+
+    runtime {
+        docker: cloud_sdk_docker
+        memory: "3 GB"
+        preemptible: 3
+        cpu: 1
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        String entrez_table = entrez_table_name
+        Boolean done = true
+    }
+}
+
+task ValidateEntrezTable {
+    meta {
+        # volatile: true so this content validation always runs against the current table rather than
+        # returning a cached "pass" from a previous run.
+        volatile: true
+    }
+
+    input {
+        String project_id
+        String dataset_name
+        String entrez_table_name
+        # Intentionally unused: passed solely to enforce ordering after LoadEntrezDataIntoBigQuery.
+        #@ except: UnusedInput
+        Boolean load_done
+        String variants_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # check_entrez_table.py exits non-zero (failing this task) if the table is empty/undersized or has
+        # NULL/non-numeric GeneIDs or missing Ensembl_gene_identifiers (the gene-level join key).
+        python3 /app/check_entrez_table.py \
+            --fq_entrez_table ~{project_id}.~{dataset_name}.~{entrez_table_name} \
+            --query_project ~{project_id}
+    >>>
+
+    runtime {
+        docker: variants_docker
+        memory: "3 GB"
+        preemptible: 3
+        cpu: 1
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        Boolean done = true
+    }
+}
+task ValidateManeTable {
+    input {
+        String project_id
+        String dataset_name
+        String mane_table_name
+        # Intentionally unused: passed solely to order this task after LoadManeDataIntoBigQuery.
+        #@ except: UnusedInput
+        Boolean load_done
+        String variants_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+        # Fails on an empty/partial table or a bad Ensembl_nuc / MANE_status; see check_mane_table.py.
+        python3 /app/check_mane_table.py --fq_mane_table ~{project_id}.~{dataset_name}.~{mane_table_name} \
+            --query_project ~{project_id}
+    >>>
+
+    runtime {
+        docker: variants_docker
+        memory: "3 GB"
+        preemptible: 3
+        cpu: 1
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
         Boolean done = true
     }
 }
@@ -1447,14 +1697,17 @@ task BigQueryLoadJson {
         File variant_transcript_schema
         File genes_schema
         String mane_table_name
+        String entrez_table_name
         String? vep_loftee_cooked_table_name
         Boolean run_vep_loftee_update
         String project_id
         String dataset_name
         String variant_transcripts_path
         String genes_path
-        Array[Boolean] prep_vt_json_done
-        Array[Boolean] prep_genes_json_done
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
+        Array[Boolean] go
         String cloud_sdk_docker
     }
 
@@ -1498,13 +1751,47 @@ task BigQueryLoadJson {
         echo ~{variant_transcripts_wildcarded_path}
         bq --apilog=false load --project_id=~{project_id} --source_format=NEWLINE_DELIMITED_JSON ~{dataset_name}.~{variant_transcript_table} ~{variant_transcripts_wildcarded_path}
 
+        # Match transcripts WITHOUT version suffixes (VS-1970): MANE's transcript versions run ahead of
+        # the Nirvana cache that produced vtt.transcript, so an exact match on vtt.transcript =
+        # mane.Ensembl_nuc silently dropped ~94% of MANE annotations. Strip versions, mirroring the
+        # version-insensitive VEP+LOFTEE join below. (No multi-match: each gene has one MANE Select
+        # transcript, so a base transcript is unique within a MANE_status.)
         echo "Adding the Mane SELECT annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
-        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_select_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Select" AND vtt.transcript is not null;'
+        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_select_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE SPLIT(vtt.transcript, ".")[OFFSET(0)] = SPLIT(mane.Ensembl_nuc, ".")[OFFSET(0)] AND mane.MANE_status = "MANE Select" AND vtt.transcript is not null;'
 
         echo "Adding the Mane Plus Clinical annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
         bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
-        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE vtt.transcript = mane.Ensembl_nuc AND mane.MANE_status = "MANE Plus Clinical" AND vtt.transcript is not null;'
+        'UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt SET vtt.mane_plus_clinical_name = mane.name FROM `~{dataset_name}.~{mane_table_name}` mane WHERE SPLIT(vtt.transcript, ".")[OFFSET(0)] = SPLIT(mane.Ensembl_nuc, ".")[OFFSET(0)] AND mane.MANE_status = "MANE Plus Clinical" AND vtt.transcript is not null;'
+
+        echo "Adding Entrez gene ID data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
+        # entrez_gene_id is a gene-level attribute, so we map by Ensembl gene (vtt.gene_id -> entrez.Ensembl_gene_identifier)
+        # rather than by transcript. Ensembl gene IDs are unversioned and always present on both sides, whereas the
+        # transcript columns are versioned and only cover a curated subset, so a transcript-keyed join populated only
+        # ~26% of eligible rows vs. ~92% for the gene-keyed join. Ensembl gene IDs are compared version-stripped for
+        # safety even though they are normally unversioned.
+        # An Ensembl gene can legitimately map to more than one NCBI GeneID (~0.7% of genes; Ensembl and NCBI are
+        # independent authorities that sometimes draw gene boundaries differently), so we ARRAY_AGG all GeneIDs into the
+        # repeated entrez_gene_id field. The GROUP BY collapses the source to exactly one row per gene, which the UPDATE
+        # requires. An unmatched row is left as an empty array [] (not NULL).
+        # tax_id = 9606 filters for Homo sapiens. GVS exclusively processes human data, so this is intentionally
+        # hardcoded rather than parameterized. The filter also acts as a safeguard in case an unfiltered
+        # gene2ensembl file (covering all species) is passed instead of the human-only extract.
+        bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+        UPDATE `~{dataset_name}.~{variant_transcript_table}` vtt
+        SET vtt.entrez_gene_id = gene_map.gene_ids
+        FROM (
+            SELECT
+                SPLIT(Ensembl_gene_identifier, ".")[OFFSET(0)] AS ensembl_gene_base,
+                ARRAY_AGG(DISTINCT CAST(GeneID AS INT64) IGNORE NULLS) AS gene_ids
+            FROM `~{dataset_name}.~{entrez_table_name}`
+            WHERE Ensembl_gene_identifier IS NOT NULL
+              AND Ensembl_gene_identifier != "-"
+              AND tax_id = 9606
+            GROUP BY ensembl_gene_base
+        ) gene_map
+        WHERE vtt.gene_id IS NOT NULL
+          AND SPLIT(vtt.gene_id, ".")[OFFSET(0)] = gene_map.ensembl_gene_base;'
 
         if [[ "~{run_vep_loftee_update}" == "true" ]]; then
         echo "Adding VEP + LOFTEE annotation data to the pre-vat table ~{dataset_name}.~{variant_transcript_table}"
@@ -1629,7 +1916,7 @@ task BigQueryLoadJson {
             # v.hgvsc AS splice_distance
             v.dbsnp_rsid,
             v.gene_id,
-            # v.entrez_gene_id,
+            v.entrez_gene_id,
             # g.hgnc_gene_id,
             g.gene_omim_id,
             CASE WHEN ( v.transcript is not null and v.is_canonical_transcript is not True)
@@ -1702,7 +1989,7 @@ task BigQueryLoadJson {
         docker: cloud_sdk_docker
         memory: "3 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 1000 HDD"
     }
 
@@ -1771,7 +2058,7 @@ task DeduplicateVatInBigQuery {
         docker: cloud_sdk_docker
         memory: "3 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 

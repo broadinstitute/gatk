@@ -5,6 +5,9 @@ import "GvsUtils.wdl" as Utils
 workflow GvsImportGenomes {
 
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String? git_branch_or_tag
     String? git_hash
@@ -91,14 +94,6 @@ workflow GvsImportGenomes {
     }
   }
 
-  if (load_vcf_headers && use_parquet_ingest) {
-    call Utils.TerminateWorkflow as CannotLoadHeadersWithParquetIngest {
-      input:
-      message = "The combination of Parquet ingest and VCF header loading is not currently supported.",
-      basic_docker = effective_basic_docker,
-    }
-  }
-
   call Utils.GetReference {
     input:
       reference_name = reference_name,
@@ -123,9 +118,16 @@ workflow GvsImportGenomes {
     }
   }
 
-  # At least 1, per limits above not more than 20.
-  # But if it's a beta customer, use the number computed above
-  Int effective_load_data_batch_size = if (defined(load_data_scatter_width)) then num_samples / select_first([load_data_scatter_width])
+  # Compute effective scatter width, clamped to not exceed number of samples
+  Int effective_scatter_width = if (defined(load_data_scatter_width)) then
+                                  if select_first([load_data_scatter_width]) < num_samples then select_first([load_data_scatter_width]) else num_samples
+                                else num_samples
+
+  # Compute batch size using ceiling division to ensure we don't exceed the requested scatter width.
+  # Using (x + y - 1) / y implementation of ceil(x/y)
+  # Example: 10 samples, scatter_width 6 -> batch_size = ceil(10/6) = 2 -> actual tasks = ceil(10/2) ≈ 5 ≤ 6
+  Int effective_load_data_batch_size = if (defined(load_data_scatter_width)) then
+                                         (num_samples + effective_scatter_width - 1) / effective_scatter_width
                                        else if num_samples < max_scatter_for_user then 1
                                          else if is_wgs then num_samples / max_scatter_for_user
                                            else if num_samples < 5001 then 20
@@ -235,76 +237,97 @@ workflow GvsImportGenomes {
     }
   }
 
+  # Load whatever Parquet we generated into BigQuery. Headers and vet/ref/ploidy are discovered and
+  # loaded together here; header data lands in the vcf_header_lines_scratch table. A caller wanting the
+  # AoU-style gated phasing (load + sanity-check headers, THEN load the rest) does so by running this
+  # workflow twice -- once with load_vcf_headers=true/load_vet_and_ref_ranges=false, then the reverse.
+  # See the VS-1968 design doc, section 1.5. (No intra-run gate between the two phases is implemented.)
+  if (use_parquet_ingest && (load_vet_and_ref_ranges || load_vcf_headers)) {
+    String defined_parquet_output_dir = select_first([parquet_output_gcs_dir])
+
+    # Table prefixes to discover/load/verify. vcf_header_lines_scratch is included only when headers
+    # were generated (its table may not exist otherwise). vet/ref_ranges/ploidy prefixes are harmless
+    # to include for a headers-only run -- no such files will be present to match.
+    Array[String] parquet_regular_prefixes = if load_vcf_headers
+      then ["sample_chromosome_ploidy", "vcf_header_lines_scratch"]
+      else ["sample_chromosome_ploidy"]
+    Array[String] parquet_superpartitioned_prefixes = ["vet", "ref_ranges"]
+
+    # Set up lifecycle rules for parquet directories before loading
+    if (configure_parquet_lifecycle) {
+      call ConfigureParquetLifecycle {
+        input:
+          output_gcs_dir = defined_parquet_output_dir,
+          billing_project_id = billing_project_id,
+          variants_docker = effective_variants_docker,
+      }
+    }
+
+    # Discover and load Parquet files into BigQuery after all data has been created.
+    call DiscoverParquetFiles {
+      input:
+        output_gcs_dir = defined_parquet_output_dir,
+        project_id = project_id,
+        dataset_name = dataset_name,
+        regular_table_prefixes = parquet_regular_prefixes,
+        superpartitioned_table_prefixes = parquet_superpartitioned_prefixes,
+        go = flatten([
+          select_all([ConfigureParquetLifecycle.done]),
+          select_all(GenerateParquetFilesFromInputGVCFs.done)
+        ]),
+        variants_docker = effective_variants_docker,
+    }
+
+    scatter (fofn in DiscoverParquetFiles.file_fofns) {
+      call LoadParquetFilesToBQ {
+        input:
+          project_id = project_id,
+          dataset_name = dataset_name,
+          fofn_file = fofn,
+          batch_size = 10000,
+          variants_docker = effective_variants_docker,
+      }
+    }
+
+    call VerifyParquetLoading {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        gcs_files_list = DiscoverParquetFiles.all_files_list,
+        regular_table_prefixes = parquet_regular_prefixes,
+        superpartitioned_table_prefixes = parquet_superpartitioned_prefixes,
+        go = LoadParquetFilesToBQ.done,
+        variants_docker = effective_variants_docker,
+    }
+
+    if (delete_parquet_files_after_loading && VerifyParquetLoading.all_loaded) {
+      call DeleteParquetFiles {
+        input:
+          output_gcs_dir = defined_parquet_output_dir,
+          use_alternate_delete_strategy = use_alternate_parquet_delete_strategy,
+          billing_project_id = billing_project_id,
+          cloud_sdk_docker = effective_cloud_sdk_docker,
+      }
+    }
+  }
+
+  # Merge the loaded header scratch data into vcf_header_lines / sample_vcf_header. Gate on whichever
+  # load path ran: the Parquet header load (VerifyParquetLoading) or the BQ Write API.
+  # Declared before SetIsLoadedColumn because that task may depend on this one's `done` (see below).
   if (load_vcf_headers) {
     call ProcessVCFHeaders {
       input:
         variants_docker = effective_variants_docker,
-        go = select_all(LoadDataViaBigQueryWriteAPI.done), # add a gate for Parquet header loading here once that's implemented
+        go = flatten([
+          select_all([VerifyParquetLoading.done]),
+          select_all(LoadDataViaBigQueryWriteAPI.done)
+        ]),
         dataset_name = dataset_name,
         project_id = project_id,
     }
   }
 
   if (load_vet_and_ref_ranges) {
-    if (use_parquet_ingest) {
-      String defined_parquet_output_dir = select_first([parquet_output_gcs_dir])
-
-      # Set up lifecycle rules for parquet directories before loading
-      if (configure_parquet_lifecycle) {
-        call ConfigureParquetLifecycle {
-          input:
-            output_gcs_dir = defined_parquet_output_dir,
-            billing_project_id = billing_project_id,
-            variants_docker = effective_variants_docker,
-        }
-      }
-
-      # Discover and load Parquet files into BigQuery after all data has been created.
-      call DiscoverParquetFiles {
-        input:
-          output_gcs_dir = defined_parquet_output_dir,
-          project_id = project_id,
-          dataset_name = dataset_name,
-          regular_table_prefixes = ["sample_chromosome_ploidy"],
-          superpartitioned_table_prefixes = ["vet", "ref_ranges"],
-          go = flatten([
-            select_all([ConfigureParquetLifecycle.done]),
-            select_all(GenerateParquetFilesFromInputGVCFs.done)
-          ]),
-          variants_docker = effective_variants_docker,
-      }
-
-      scatter (fofn in DiscoverParquetFiles.file_fofns) {
-        call LoadParquetFilesToBQ {
-          input:
-            project_id = project_id,
-            dataset_name = dataset_name,
-            fofn_file = fofn,
-            batch_size = 10000,
-            variants_docker = effective_variants_docker,
-        }
-      }
-
-      call VerifyParquetLoading {
-        input:
-          project_id = project_id,
-          dataset_name = dataset_name,
-          gcs_files_list = DiscoverParquetFiles.all_files_list,
-          go = LoadParquetFilesToBQ.done,
-          variants_docker = effective_variants_docker,
-      }
-
-      if (delete_parquet_files_after_loading && VerifyParquetLoading.all_loaded) {
-        call DeleteParquetFiles {
-          input:
-            output_gcs_dir = defined_parquet_output_dir,
-            use_alternate_delete_strategy = use_alternate_parquet_delete_strategy,
-            billing_project_id = billing_project_id,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-        }
-      }
-    }
-
     call SetIsLoadedColumn {
       input:
         # A BQ Write API-flavored invocation of `LoadData` actually loads all data into vet and ref ranges tables, but a
@@ -313,7 +336,19 @@ workflow GvsImportGenomes {
         # `GenerateParquetFilesFromInputGVCFs`, the `go` trigger for setting the `is_loaded` column is the `done` output
         # of the last task in that chain, `VerifyParquetLoading`. The other component of the `go` trigger is the
         # `LoadDataViaBigQueryWriteAPI.done` corresponding to the Write API flow.
-        go = select_all(select_first([[VerifyParquetLoading.done], LoadDataViaBigQueryWriteAPI.done])),
+        # Intentionally using select_first to pick whichever of the two mutually exclusive code paths (Parquet vs WriteAPI) ran.
+        #
+        # Also gate on ProcessVCFHeaders.done: this task computes is_loaded from `samples_with_all_data`, which
+        # JOINs `samples_with_header_data` (backed by `sample_vcf_header` on the Parquet path). That table is
+        # populated by ProcessVCFHeaders, and the Parquet path writes no HEADERS_LOADED status to rescue the
+        # view. When a single run sets both load_vcf_headers and load_vet_and_ref_ranges, without this edge the
+        # two tasks race and is_loaded is silently left FALSE. select_all makes it a no-op for data-only runs
+        # (headers loaded in a prior run, so sample_vcf_header is already populated).
+        #@ except: UnnecessaryFunctionCall
+        go = flatten([
+          select_all(select_first([[VerifyParquetLoading.done], LoadDataViaBigQueryWriteAPI.done])),
+          select_all([ProcessVCFHeaders.done])
+        ]),
         project_id = project_id,
         dataset_name = dataset_name,
         cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -324,6 +359,8 @@ workflow GvsImportGenomes {
     Boolean done = true
     Boolean used_tighter_gcp_quotas = is_rate_limited_beta_customer
     String recorded_git_hash = effective_git_hash
+    # Intentionally using select_first to pick the stderr files from whichever of the two mutually exclusive code paths (Parquet vs WriteAPI) ran.
+    #@ except: UnnecessaryFunctionCall
     Array[File] load_data_stderrs = select_first([select_all(GenerateParquetFilesFromInputGVCFs.stderr), select_all(LoadDataViaBigQueryWriteAPI.stderr)])
     Boolean? parquet_loading_verified = VerifyParquetLoading.all_loaded
     Int? parquet_files_loaded = VerifyParquetLoading.loaded_files
@@ -417,7 +454,6 @@ task ProcessInputGVCFs {
     }
   }
 
-  Int samples_per_table = 4000
   Int num_samples = length(sample_names)
   String temp_table = "~{dataset_name}.sample_names_to_load_~{index}"
   # add labels for DSP Cloud Cost Control Labeling and Reporting
@@ -569,21 +605,33 @@ task ProcessInputGVCFs {
         rm ${updated_input_vcf}.tbi
 
         OUTPUT_GCS_DIR=$(echo ~{parquet_output_gcs_dir} | sed 's/\/$//')
-        # the file name is a little wonky, so let's just grab the file using such a star statement
-        vet_parquet_file=`ls vet_*.parquet`
-        ref_parquet_file=`ls ref_*.parquet`
-        ploidy_parquet_file=`ls sample_chromosome_ploidy_*.parquet`
 
-        # parse the table superpartition out of the file name
-        table_number=$(echo "$vet_parquet_file" | cut -d'_' -f2)
+        if [[ "~{load_vet_and_ref_ranges}" = 'true' ]]
+        then
+          # the file name is a little wonky, so let's just grab the file using such a star statement
+          vet_parquet_file=`ls vet_*.parquet`
+          ref_parquet_file=`ls ref_*.parquet`
+          ploidy_parquet_file=`ls sample_chromosome_ploidy_*.parquet`
 
-        # copy the vet and ref parquet files to the gcs bucket in the right place
-        gcloud storage ~{"--billing-project " + billing_project_id} cp $vet_parquet_file ${OUTPUT_GCS_DIR}/vet/$table_number/$vet_parquet_file
-        gcloud storage ~{"--billing-project " + billing_project_id} cp $ref_parquet_file ${OUTPUT_GCS_DIR}/ref_ranges/$table_number/$ref_parquet_file
-        gcloud storage ~{"--billing-project " + billing_project_id} cp $ploidy_parquet_file ${OUTPUT_GCS_DIR}/sample_chromosome_ploidy/$ploidy_parquet_file
+          # parse the table superpartition out of the file name
+          table_number=$(echo "$vet_parquet_file" | cut -d'_' -f2)
+
+          # copy the vet and ref parquet files to the gcs bucket in the right place
+          gcloud storage ~{"--billing-project " + billing_project_id} cp $vet_parquet_file ${OUTPUT_GCS_DIR}/vet/$table_number/$vet_parquet_file
+          gcloud storage ~{"--billing-project " + billing_project_id} cp $ref_parquet_file ${OUTPUT_GCS_DIR}/ref_ranges/$table_number/$ref_parquet_file
+          gcloud storage ~{"--billing-project " + billing_project_id} cp $ploidy_parquet_file ${OUTPUT_GCS_DIR}/sample_chromosome_ploidy/$ploidy_parquet_file
+        fi
+
+        if [[ "~{load_vcf_headers}" = 'true' ]]
+        then
+          # Header parquet is named vcf_header_lines_scratch_<sampleId>.parquet so DiscoverParquetFiles
+          # groups it under the vcf_header_lines_scratch table.
+          header_parquet_file=`ls vcf_header_lines_scratch_*.parquet`
+          gcloud storage ~{"--billing-project " + billing_project_id} cp $header_parquet_file ${OUTPUT_GCS_DIR}/vcf_header_lines_scratch/$header_parquet_file
+        fi
 
         # cleanup after ourselves
-        rm *.parquet
+        rm -f *.parquet
       else
         rm input_vcf_$i.vcf.gz
         rm input_vcf_$i.vcf.gz.tbi
@@ -611,6 +659,9 @@ task ProcessVCFHeaders {
   input {
     String dataset_name
     String project_id
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Array[Boolean] go
     String variants_docker
   }
@@ -628,6 +679,11 @@ task ProcessVCFHeaders {
       --dataset_name ~{dataset_name}
   >>>
 
+  output {
+    # Exists so downstream tasks (e.g. SetIsLoadedColumn) can order themselves after the header merge.
+    Boolean done = true
+  }
+
   runtime {
     docker: variants_docker
     disks: "local-disk 500 HDD"
@@ -639,6 +695,9 @@ task SetIsLoadedColumn {
     String dataset_name
     String project_id
 
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Array[Boolean] go
     String cloud_sdk_docker
   }
@@ -688,6 +747,9 @@ task SetIsLoadedColumn {
 
 task GetUningestedSampleIds {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go
     String dataset_name
     String project_id
@@ -893,7 +955,7 @@ task CreateSampleDataViews {
       -- determine load status. Conversely, data written with the BigQuery Write API seems to result in very delayed
       -- population of INFORMATION_SCHEMA, often lagging writes by several hours, which makes reading INFORMATION_SCHEMA
       -- unreliable with the Write API. The following vet and ref ranges queries UNION DISTINCT the sample_load_status
-      -- table with INFORMATION_SCHEMA to reliably detect sample data regarless of how it was loaded into GVS.
+      -- table with INFORMATION_SCHEMA to reliably detect sample data regardless of how it was loaded into GVS.
       --
       -- This code also provides for a header row existence view if headers are being loaded.
 
@@ -980,10 +1042,12 @@ task CreateSampleDataViews {
       DECLARE create_header_data_view STRING;
       DECLARE create_all_sample_data_view STRING;
 
+      -- Probe sample_vcf_header, the table the view below actually reads (it is created alongside
+      -- vcf_header_lines_scratch when load_vcf_headers is set), so the guard matches its dependency.
       SET header_table_exists = (
         SELECT COUNT(1) FROM
         `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
-        WHERE table_name = 'vcf_header_lines_scratch'
+        WHERE table_name = 'sample_vcf_header'
       );
 
       IF header_table_exists > 0 THEN
@@ -993,11 +1057,21 @@ task CreateSampleDataViews {
           SET headers_load_status_clause = '';
         END IF;
 
+        -- Read the DURABLE sample->header map, not the transient scratch table. `vcf_header_lines_scratch`
+        -- is emptied by ProcessVCFHeaders after each merge, so a view over it goes empty once headers are
+        -- loaded; combined with the Parquet path not writing HEADERS_LOADED, that left this view empty for
+        -- Parquet callsets and prevented SetIsLoadedColumn from ever setting is_loaded. sample_vcf_header
+        -- persists and is populated for both the BQ and Parquet paths. See the VS-1968 design doc.
+        --
+        -- Safe for the BQ path: the HEADERS_LOADED status clause (UNION'd below) still covers the
+        -- during-ingest window before the scratch->final merge, and post-merge sample_vcf_header is
+        -- populated for BQ as well -- so switching the data-presence source from scratch to
+        -- sample_vcf_header does not lose any BQ samples from this view.
         SET create_header_data_view = """
 
           CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_header_data` AS
           (
-          SELECT DISTINCT sample_id FROM `~{project_id}.~{dataset_name}.vcf_header_lines_scratch`
+          SELECT DISTINCT sample_id FROM `~{project_id}.~{dataset_name}.sample_vcf_header`
 
           """ || headers_load_status_clause || ");";
 
@@ -1052,6 +1126,7 @@ task CreateSampleDataViews {
 task ConfigureParquetLifecycle {
   input {
     String output_gcs_dir
+    # TODO: billing_project_id is declared but not passed to load_parquet_to_bq.py - see VS-1955.
     String? billing_project_id
     String variants_docker
   }
@@ -1099,7 +1174,7 @@ task ConfigureParquetLifecycle {
       "action": {"type": "Delete"},
       "condition": {
         "age": 14,
-        "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/", "${BUCKET_PATH_PREFIX}sample_chromosome_ploidy/"]
+        "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/", "${BUCKET_PATH_PREFIX}sample_chromosome_ploidy/", "${BUCKET_PATH_PREFIX}vcf_header_lines_scratch/"]
       }
     }
 EOF
@@ -1162,6 +1237,9 @@ task DiscoverParquetFiles {
     String dataset_name
     Array[String] regular_table_prefixes
     Array[String] superpartitioned_table_prefixes
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Array[Boolean] go
     String? billing_project_id
     String variants_docker
@@ -1219,6 +1297,7 @@ task LoadParquetFilesToBQ {
     String dataset_name
     File fofn_file
     Int batch_size
+    # TODO: billing_project_id is declared but not passed to load_parquet_to_bq.py - see VS-1955.
     String? billing_project_id
     String variants_docker
   }
@@ -1255,6 +1334,11 @@ task VerifyParquetLoading {
     String project_id
     String dataset_name
     File gcs_files_list
+    Array[String] regular_table_prefixes = ["sample_chromosome_ploidy"]
+    Array[String] superpartitioned_table_prefixes = ["vet", "ref_ranges"]
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Array[Boolean] go
     String variants_docker
   }
@@ -1272,6 +1356,8 @@ task VerifyParquetLoading {
       --project-id ~{project_id} \
       --dataset-name ~{dataset_name} \
       --gcs-files-list ~{gcs_files_list} \
+      --regular-table-prefixes ~{sep=" " regular_table_prefixes} \
+      --superpartitioned-table-prefixes ~{sep=" " superpartitioned_table_prefixes} \
       --output-dir verification_output
   >>>
 
@@ -1283,6 +1369,7 @@ task VerifyParquetLoading {
   }
 
   output {
+    # TODO: Sprocket flags read_json indexing as invalid on Union type; fix by upgrading to WDL 1.1 and using struct coercion — see VS-1957.
     File results_json = "verification_output/verification_results.json"
     Boolean all_loaded = read_json(results_json)["all_loaded"]
     Int total_files = read_json(results_json)["total_files"]
@@ -1317,6 +1404,10 @@ task DeleteParquetFiles {
       gcloud storage ls ~{"--billing-project " + billing_project_id} \
         "${OUTPUT_GCS_DIR}/vet/" "${OUTPUT_GCS_DIR}/ref_ranges/" > parquet_dirs.txt
       echo "${OUTPUT_GCS_DIR}/sample_chromosome_ploidy/" >> parquet_dirs.txt
+      # Only present when headers were loaded; guard on existence so data-only runs don't fail here.
+      if gcloud storage ls ~{"--billing-project " + billing_project_id} "${OUTPUT_GCS_DIR}/vcf_header_lines_scratch/" >/dev/null 2>&1; then
+        echo "${OUTPUT_GCS_DIR}/vcf_header_lines_scratch/" >> parquet_dirs.txt
+      fi
 
       # Iterate over all Google Cloud paths in parquet_dirs.txt and delete all objects therein
       echo "Deleting Parquet files..."

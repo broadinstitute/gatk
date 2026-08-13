@@ -4,6 +4,8 @@ import "../structs/Reference.wdl" as Reference
 
 task GetReference {
   input {
+    # Someday this task may support other reference genomes, but for now it is hard-coded to hg38.
+    #@ except: UnusedInput
     String reference_name
     String basic_docker
   }
@@ -65,8 +67,6 @@ task GetToolVersions {
   String effective_version = select_first([git_branch_or_tag, version])
 
   String workspace_id_output = "workspace_id.txt"
-  String workspace_name_output = "workspace_name.txt"
-  String workspace_namespace_output = "workspace_namespace.txt"
   String workspace_bucket_output = "workspace_bucket.txt"
   String submission_id_output = "submission_id.txt"
   String workflow_id_output = "workflow_id.txt"
@@ -131,7 +131,7 @@ task GetToolVersions {
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-04-22-alpine-636408a165ee"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-07-23-alpine-48448f6c15c9"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-08-12-gatkbase-lite-e7d076d7edca"
     String gatk_heavy_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-08-12-gatkbase-0cb71686e186"
@@ -385,6 +385,9 @@ task SplitIntervalsTarred {
 
 task GetBQTableLastModifiedDatetime {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String project_id
     String fq_table
@@ -421,6 +424,8 @@ task GetBQTableLastModifiedDatetime {
   >>>
 
   output {
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String last_modified_timestamp = read_string(stdout())
     File monitoring_log = "monitoring.log"
   }
@@ -468,6 +473,8 @@ task GetBQTablesMaxLastModifiedTimestamp {
   >>>
 
   output {
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String max_last_modified_timestamp = read_string("max_last_modified_timestamp.txt")
     File monitoring_log = "monitoring.log"
   }
@@ -687,6 +694,9 @@ task BuildGATKJarAndCreateDataset {
 
 task TerminateWorkflow {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String message
     String basic_docker
@@ -726,6 +736,9 @@ task TerminateWorkflow {
 
 task ScaleXYBedValues {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go = true
         File interval_weights_bed
         Float x_bed_weight_scaling
@@ -762,7 +775,7 @@ task ScaleXYBedValues {
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
-        cpu: "2"
+        cpu: 2
         disks: "local-disk 500 HDD"
     }
 }
@@ -771,6 +784,8 @@ task GetNumSamplesLoaded {
   input {
     String fq_sample_table
     String project_id
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String sample_table_timestamp
     Boolean control_samples = false
     String cloud_sdk_docker
@@ -945,6 +960,9 @@ task CountSuperpartitions {
 
 task ValidateFilterSetName {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go = true
         String project_id
         String fq_filter_set_info_table
@@ -1069,6 +1087,8 @@ task IsUsingCompressedReferences {
     String query_project_id
     String dest_project_id
     String dataset_name
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String ref_table_timestamp
     String cloud_sdk_docker
   }
@@ -1505,7 +1525,7 @@ task SummarizeTaskMonitorLogs {
         docker: variants_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -1566,7 +1586,7 @@ task PopulateFilterSetInfo {
         -V ~{snp_recal_file} \
         -O ~{filter_set_name}.snps.recal.tsv
 
-    echo "Creating INDELs racalibration file"
+    echo "Creating INDELs recalibration file"
     gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
       CreateFilteringFiles \
         --ref-version 38 \

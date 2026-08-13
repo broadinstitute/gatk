@@ -2,6 +2,8 @@ import argparse
 
 import hail as hl
 
+from hail_gvs_util import filter_samples_and_remove_monomorphic_rows, load_samples_to_remove
+
 
 def remove_samples_from_vds(
         input_vds_path: str,
@@ -26,25 +28,12 @@ def remove_samples_from_vds(
     output_vds_path : str
         GCS (or local) path where the filtered VDS will be written.
     """
+    # Load and validate the samples-to-remove table (keyed by 's').
+    samples_to_remove_table = load_samples_to_remove(samples_to_remove_path)
+    n_to_remove = samples_to_remove_table.count()
+
     # Load the input VDS.
     input_vds = hl.vds.read_vds(input_vds_path)
-
-    # Load the samples-to-remove table and key by 's' (the Hail sample-column key).
-    samples_to_remove_table = hl.import_table(samples_to_remove_path, delimiter=',')
-
-    # Fail fast if the removal file contains duplicate research_ids.
-    # Select only research_id before comparing so the check is unambiguous
-    # regardless of whether the file contains extra columns.
-    research_ids = samples_to_remove_table.select('research_id')
-    n_to_remove = research_ids.count()
-    n_distinct = research_ids.key_by('research_id').distinct().count()
-    if n_to_remove != n_distinct:
-        raise ValueError(
-            f"samples_to_remove file contains {n_to_remove - n_distinct} duplicate research_id(s). "
-            "Please deduplicate before proceeding."
-        )
-
-    samples_to_remove_table = samples_to_remove_table.key_by(s=samples_to_remove_table.research_id)
 
     # Compute the intersection of the removal list with the VDS columns so we know
     # how many samples will actually be removed, and print informative counts.
@@ -62,24 +51,8 @@ def remove_samples_from_vds(
             "None of the samples listed in the removal file are present in the VDS. Aborting."
         )
 
-    # Step 1: filter samples and remove dead alleles.
-    filtered_vds = hl.vds.filter_samples(
-        input_vds,
-        samples_to_remove_table,
-        keep=False,
-        remove_dead_alleles=True,
-    )
-
-    # Step 2: drop rows that no longer have any non-reference calls.
-    # This removes vestigial monomorphic reference rows in the variant data
-    # (e.g. sites where only the removed samples carried an alt allele).
-    filtered_vds = hl.vds.VariantDataset(
-        filtered_vds.reference_data,
-        filtered_vds.variant_data.filter_rows(
-            hl.agg.any(filtered_vds.variant_data.LGT.is_non_ref())
-        ),
-    )
-
+    # Filter samples and remove monomorphic reference rows.
+    filtered_vds = filter_samples_and_remove_monomorphic_rows(input_vds, samples_to_remove_table)
 
     # Verify the arithmetic adds up using the intersection count.
     n_output = filtered_vds.variant_data.cols().count()
@@ -145,4 +118,3 @@ if __name__ == '__main__':
         samples_to_remove_path=args.samples_to_remove_path,
         output_vds_path=args.output_vds_path,
     )
-

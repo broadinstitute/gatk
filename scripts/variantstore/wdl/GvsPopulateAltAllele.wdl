@@ -4,6 +4,9 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsPopulateAltAllele {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String dataset_name
     String project_id
@@ -66,7 +69,7 @@ workflow GvsPopulateAltAllele {
         call_set_identifier = call_set_identifier,
         dataset_name = dataset_name,
         project_id = project_id,
-        create_table_done = CreateAltAlleleTable.done,
+        go = CreateAltAlleleTable.done,
         vet_table_names_file = vet_table_names_file,
         last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
         max_sample_id = GetMaxSampleId.max_sample_id,
@@ -90,6 +93,9 @@ workflow GvsPopulateAltAllele {
 
 task GetMaxSampleId {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String dataset_name
     String project_id
@@ -195,6 +201,9 @@ task GetVetTableNames {
 
 task CreateAltAlleleTable {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String dataset_name
     String project_id
@@ -259,15 +268,21 @@ task CreateAltAlleleTable {
 
 task PopulateAltAlleleTable {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
+    Boolean go
+
     String dataset_name
     String project_id
 
-    String create_table_done
     File vet_table_names_file
     String call_set_identifier
     Int max_sample_id
-
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String last_modified_timestamp
+
     String variants_docker
   }
   meta {
@@ -307,6 +322,9 @@ task PopulateAltAlleleTable {
 
 task VerifySampleCount {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String dataset_name
     String project_id

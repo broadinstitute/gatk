@@ -9,12 +9,25 @@ workflow GvsValidateVat {
         String dataset_name
         String vat_table_name
         Boolean? is_small_callset
+        # Whether the callset spans the whole genome (the default, e.g. AoU) vs. is restricted to a few
+        # contigs (e.g. the chr20/X/Y quickstart). Only genome-wide callsets exercise ~all of MANE, so
+        # the MANE catalog-utilization floor is enforced only when this is true.
+        Boolean is_genome_wide = true
+        # Loose gross-failure floor for MANE catalog utilization on genome-wide callsets. Legitimate
+        # values are ~94% (MANE Select) / ~88% (the tiny Plus Clinical set); the VS-1970 regression sits
+        # at ~6%, so 0.5 is a decisive tripwire with margin on both sides.
+        Float min_mane_catalog_utilization = 0.5
         String? cloud_sdk_docker
         String? variants_docker
     }
 
     String fq_vat_table = "~{project_id}.~{dataset_name}.~{vat_table_name}"
+    String fq_mane_table = "~{project_id}.~{dataset_name}.mane_annotations"
     String fq_sample_table = "~{project_id}.~{dataset_name}.sample_info"
+
+    # Catalog utilization is callset-breadth dependent, so only gate it for genome-wide callsets; a
+    # floor of 0 disables the gate (the number is still reported) for interval-restricted callsets.
+    Float effective_mane_catalog_floor = if is_genome_wide then min_mane_catalog_utilization else 0.0
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
     # no calling WDLs that might supply `git_hash`).
@@ -164,6 +177,34 @@ workflow GvsValidateVat {
             cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
+    call SpotCheckForEntrezGeneId {
+        input:
+            project_id = project_id,
+            fq_vat_table = fq_vat_table,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
+    # Runs for both large and small callsets (unlike CheckForNullColumns, which is large-only): entrez_gene_id
+    # is populated for every callset, and the quickstart (small) is where coverage is most easily regressed.
+    call CheckEntrezGeneIdCoverage {
+        input:
+            project_id = project_id,
+            fq_vat_table = fq_vat_table,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
+            variants_docker = effective_variants_docker,
+    }
+
+    call CheckManeCoverage {
+        input:
+            project_id = project_id,
+            fq_vat_table = fq_vat_table,
+            fq_mane_table = fq_mane_table,
+            min_catalog_utilization = effective_mane_catalog_floor,
+            last_modified_timestamp = VatDateTime.last_modified_timestamp,
+            variants_docker = effective_variants_docker,
+    }
+
     # Check if the input boolean `is_small_callset` is defined,
     # if not use the `GetNumSamples` task to find the number of samples in the callset and set the flag if it's < 10000
     Boolean callset_is_small = select_first([is_small_callset, select_first([GetNumSamplesLoaded.num_samples, 1]) < 10000])
@@ -210,8 +251,11 @@ workflow GvsValidateVat {
                            ClinvarSignificance.pass,
                            SchemaAAChangeAndExonNumberConsistent.pass,
                            SpotCheckForManeSelectTranscript.pass,
+                           SpotCheckForEntrezGeneId.pass,
                            SpotCheckForAAChangeAndExonNumberConsistency.pass,
-                           CheckForNullColumns.pass
+                           CheckForNullColumns.pass,
+                           CheckEntrezGeneIdCoverage.pass,
+                           CheckManeCoverage.pass
                            ],
                 validation_names = [
                                    EnsureVatTableHasVariants.name,
@@ -229,8 +273,11 @@ workflow GvsValidateVat {
                                    ClinvarSignificance.name,
                                    SchemaAAChangeAndExonNumberConsistent.name,
                                    SpotCheckForManeSelectTranscript.name,
+                                   SpotCheckForEntrezGeneId.name,
                                    SpotCheckForAAChangeAndExonNumberConsistency.name,
-                                   CheckForNullColumns.name
+                                   CheckForNullColumns.name,
+                                   CheckEntrezGeneIdCoverage.name,
+                                   CheckManeCoverage.name
                                    ],
                 validation_results = [
                                      EnsureVatTableHasVariants.result,
@@ -248,8 +295,11 @@ workflow GvsValidateVat {
                                      ClinvarSignificance.result,
                                      SchemaAAChangeAndExonNumberConsistent.result,
                                      SpotCheckForManeSelectTranscript.result,
+                                     SpotCheckForEntrezGeneId.result,
                                      SpotCheckForAAChangeAndExonNumberConsistency.result,
-                                     CheckForNullColumns.result
+                                     CheckForNullColumns.result,
+                                     CheckEntrezGeneIdCoverage.result,
+                                     CheckManeCoverage.result
                                      ],
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
@@ -273,6 +323,9 @@ workflow GvsValidateVat {
                            DuplicateAnnotations.pass,
                            SchemaAAChangeAndExonNumberConsistent.pass,
                            SpotCheckForManeSelectTranscript.pass,
+                           SpotCheckForEntrezGeneId.pass,
+                           CheckEntrezGeneIdCoverage.pass,
+                           CheckManeCoverage.pass,
                            ],
                 validation_names = [
                                    EnsureVatTableHasVariants.name,
@@ -289,6 +342,9 @@ workflow GvsValidateVat {
                                    DuplicateAnnotations.name,
                                    SchemaAAChangeAndExonNumberConsistent.name,
                                    SpotCheckForManeSelectTranscript.name,
+                                   SpotCheckForEntrezGeneId.name,
+                                   CheckEntrezGeneIdCoverage.name,
+                                   CheckManeCoverage.name,
                                    ],
                 validation_results = [
                                      EnsureVatTableHasVariants.result,
@@ -305,6 +361,9 @@ workflow GvsValidateVat {
                                      DuplicateAnnotations.result,
                                      SchemaAAChangeAndExonNumberConsistent.result,
                                      SpotCheckForManeSelectTranscript.result,
+                                     SpotCheckForEntrezGeneId.result,
+                                     CheckEntrezGeneIdCoverage.result,
+                                     CheckManeCoverage.result,
                                      ],
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
@@ -320,6 +379,8 @@ task EnsureVatTableHasVariants {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -360,7 +421,7 @@ task EnsureVatTableHasVariants {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -375,6 +436,8 @@ task SpotCheckForExpectedTranscripts {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -427,7 +490,7 @@ task SpotCheckForExpectedTranscripts {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 
@@ -442,6 +505,8 @@ task SchemaNoNullRequiredFields {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -511,7 +576,7 @@ task SchemaNoNullRequiredFields {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -525,6 +590,8 @@ task SchemaOnlyOneRowPerNullTranscript {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -571,7 +638,7 @@ task SchemaOnlyOneRowPerNullTranscript {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -585,6 +652,8 @@ task SchemaPrimaryKey {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -631,7 +700,7 @@ task SchemaPrimaryKey {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -645,6 +714,8 @@ task SchemaEnsemblTranscripts {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -692,7 +763,7 @@ task SchemaEnsemblTranscripts {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -706,6 +777,8 @@ task SchemaNonzeroAcAn {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -756,7 +829,7 @@ task SchemaNonzeroAcAn {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -770,6 +843,8 @@ task SchemaNullTranscriptsExist {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -811,7 +886,7 @@ task SchemaNullTranscriptsExist {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -825,6 +900,8 @@ task SubpopulationMax {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -874,7 +951,7 @@ task SubpopulationMax {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -888,6 +965,8 @@ task SubpopulationAlleleCount {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -931,7 +1010,7 @@ task SubpopulationAlleleCount {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -945,6 +1024,8 @@ task SubpopulationAlleleNumber {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -988,7 +1069,7 @@ task SubpopulationAlleleNumber {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -1002,6 +1083,8 @@ task DuplicateAnnotations {
     input {
         String query_project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -1059,7 +1142,7 @@ task DuplicateAnnotations {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -1074,6 +1157,8 @@ task ClinvarSignificance {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -1144,7 +1229,7 @@ task ClinvarSignificance {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -1158,6 +1243,8 @@ task SchemaAAChangeAndExonNumberConsistent {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -1240,7 +1327,7 @@ task SchemaAAChangeAndExonNumberConsistent {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -1254,6 +1341,8 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -1354,7 +1443,7 @@ task SpotCheckForAAChangeAndExonNumberConsistency {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 
@@ -1369,6 +1458,8 @@ task SpotCheckForManeSelectTranscript {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String cloud_sdk_docker
     }
@@ -1398,7 +1489,7 @@ task SpotCheckForManeSelectTranscript {
             where mane_plus_clinical_name = "GNAS complex locus"
         )' > output.csv
 
-        NUMVARS=$(python3 -c "csvObj=open('output.csv','r');csvContents=csvObj.read();print(csvContents.split('\n')[1]);")
+        NUMVARS=$(tail -n +2 output.csv | head -n1 | tr -d '\r')
 
         echo "false" > ~{pf_file}
         # if the result of the bq call and the csv parsing is a series of digits, then check that it isn't 0
@@ -1422,7 +1513,7 @@ task SpotCheckForManeSelectTranscript {
         docker: cloud_sdk_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
 
@@ -1433,10 +1524,88 @@ task SpotCheckForManeSelectTranscript {
     }
 }
 
+task SpotCheckForEntrezGeneId {
+    input {
+        String project_id
+        String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
+        String last_modified_timestamp
+        String cloud_sdk_docker
+    }
+
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
+
+    # This test runs a spot check on the VAT table to verify that known Entrez Gene IDs are present.
+    # AAR2 (GeneID=25980, chr20) and ABCB7 (GeneID=22, chrX) are used as reference genes because both
+    # are present in the quickstart callset (chr20 and chrX only) as well as full callsets.
+    # If the quickstart data is refreshed and these genes are no longer covered, update the GeneIDs here
+    # to genes confirmed present in the new quickstart dataset.
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+        # entrez_gene_id is a repeated field, so membership is tested with `<id> IN UNNEST(entrez_gene_id)`
+        # rather than an equality comparison.
+        # bq query --max_rows check: ok single row
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv 'SELECT
+        COUNT (DISTINCT gene) FROM
+        (
+            SELECT 25980 AS gene
+            FROM `~{fq_vat_table}`
+            WHERE 25980 IN UNNEST(entrez_gene_id)
+        UNION ALL
+            SELECT 22 AS gene
+            FROM `~{fq_vat_table}`
+            WHERE 22 IN UNNEST(entrez_gene_id)
+        )' > output.csv
+
+        NUMVARS=$(tail -n +2 output.csv | head -n1 | tr -d '\r')
+
+        echo "false" > ~{pf_file}
+        # if the result of the bq call and the csv parsing is a series of digits, then check that it isn't 0
+        if [[ $NUMVARS =~ ^[0-9]+$ ]]; then
+            if [[ $NUMVARS -eq 2 ]]; then
+                echo "true" > ~{pf_file}
+                echo "The VAT table ~{fq_vat_table} has been successfully spot checked for known Entrez Gene IDs." > ~{results_file}
+            else
+                echo "The VAT table ~{fq_vat_table} has failed the spot check for known Entrez Gene IDs." > ~{results_file}
+            fi
+        # otherwise, something is off, so return the output from the bq query call
+        else
+            echo "Something went wrong. The attempt to count the spot checked entries returned: " $(cat output.csv) >&2
+            exit 1
+        fi
+    >>>
+
+    # ------------------------------------------------
+    # Runtime settings:
+    runtime {
+        docker: cloud_sdk_docker
+        memory: "1 GB"
+        preemptible: 3
+        cpu: 1
+        disks: "local-disk 100 HDD"
+    }
+
+    output {
+        Boolean pass = read_boolean(pf_file)
+        String name = "SpotCheckForEntrezGeneId"
+        String result = read_string(results_file)
+    }
+}
+
 task CheckForNullColumns {
     input {
         String project_id
         String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
         String last_modified_timestamp
         String variants_docker
     }
@@ -1462,6 +1631,86 @@ task CheckForNullColumns {
     output {
         Boolean pass = read_boolean(pf_file)
         String name = "CheckForNullColumns"
+        String result = read_string(results_file)
+    }
+}
+
+task CheckEntrezGeneIdCoverage {
+    input {
+        String project_id
+        String fq_vat_table
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
+        String last_modified_timestamp
+        String variants_docker
+    }
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
+
+    command <<<
+        # check_entrez_vat_annotations.py fails if entrez_gene_id coverage over gene-bearing rows falls below
+        # the threshold (guards against regressing to the sparse transcript-keyed join) or if any gene_id maps
+        # to more than one distinct entrez_gene_id array (entrez_gene_id is a gene-level attribute).
+        python3 /app/check_entrez_vat_annotations.py --fq_vat_table ~{fq_vat_table} \
+            --query_project ~{project_id} \
+            --pass_file_output ~{pf_file} \
+            --results_file_output ~{results_file}
+    >>>
+
+    runtime {
+        docker: variants_docker
+        memory: "3 GB"
+        disks: "local-disk 10 HDD"
+        preemptible: 3
+        cpu: 1
+    }
+
+    output {
+        Boolean pass = read_boolean(pf_file)
+        String name = "CheckEntrezGeneIdCoverage"
+        String result = read_string(results_file)
+    }
+}
+
+task CheckManeCoverage {
+    input {
+        String project_id
+        String fq_vat_table
+        String fq_mane_table
+        # 0 disables the catalog-utilization floor (still reported); > 0 enforces it (genome-wide only).
+        Float min_catalog_utilization = 0.0
+        # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+        #@ except: UnusedInput
+        String last_modified_timestamp
+        String variants_docker
+    }
+    String pf_file = "pf.txt"
+    String results_file = "results.txt"
+
+    command <<<
+        # check_mane_coverage.py fails if MANE Select / Plus Clinical coverage over the transcripts present in
+        # the callset falls below the threshold -- guards against regressing to the exact-version transcript
+        # join (VS-1970), which flagged only ~6% of the MANE transcripts it should have. On genome-wide
+        # callsets it also enforces a MANE catalog-utilization floor.
+        python3 /app/check_mane_coverage.py --fq_vat_table ~{fq_vat_table} \
+            --fq_mane_table ~{fq_mane_table} \
+            --query_project ~{project_id} \
+            --min_catalog_utilization ~{min_catalog_utilization} \
+            --pass_file_output ~{pf_file} \
+            --results_file_output ~{results_file}
+    >>>
+
+    runtime {
+        docker: variants_docker
+        memory: "3 GB"
+        disks: "local-disk 10 HDD"
+        preemptible: 3
+        cpu: 1
+    }
+
+    output {
+        Boolean pass = read_boolean(pf_file)
+        String name = "CheckManeCoverage"
         String result = read_string(results_file)
     }
 }

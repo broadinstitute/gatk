@@ -122,6 +122,7 @@ workflow GvsQuickstartHailIntegration {
         input:
             git_branch_or_tag = git_branch_or_tag,
             hail_version = effective_hail_version,
+            use_tiny_dataproc_cluster = true,
             avro_path = GvsExtractAvroFilesForHail.avro_path,
             vds_destination_path = vds_path,
             cluster_prefix = "vds-cluster",
@@ -131,9 +132,10 @@ workflow GvsQuickstartHailIntegration {
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
             cluster_max_age_minutes = 120,
             cluster_max_idle_minutes = 60,
-            leave_cluster_running_at_end = false,
     }
 
+    # Intentionally unused: runs for its side effect of validating VDS tieout; its output is not consumed downstream.
+    #@ except: UnusedCall
     call TieOutVDS.TieOutVDS {
         input:
             go = GvsCreateVDS.done,
@@ -161,6 +163,9 @@ workflow GvsQuickstartHailIntegration {
 
 task TieOutVds {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go
         String git_branch_or_tag
         String vds_path

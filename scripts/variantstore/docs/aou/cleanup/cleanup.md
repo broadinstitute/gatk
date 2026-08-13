@@ -37,7 +37,7 @@ for the relatively small but important "detritus" files that can be useful for f
 can be run in a terminal running in the appropriate AoU workspace. First enumerate all files under a submissions path:
 
 ```
-gsutil ls -r gs://<workspace bucket>/submissions[/<optional submission_id>] > submission_files.txt
+gcloud storage ls -r gs://<workspace bucket>/submissions[/<optional submission_id>] > submission_files.txt
 ```
 
 Without the `[/<optional submission_id>]` bit, all submissions in the workspace bucket would be enumerated for cleanup.
@@ -45,7 +45,7 @@ Without the `[/<optional submission_id>]` bit, all submissions in the workspace 
 Clean up selectively:
 
 ```
-grep -E -v '/rc$|/stdout$|/stderr$|\.log$|^$|:$' submissions_files.txt | (gsutil -m rm -I 2>/dev/null) &
+grep -E -v '/rc$|/stdout$|/stderr$|\.log$|^$|:$' submission_files.txt | (gcloud storage rm -I 2>/dev/null) &
 ```
 
 The `grep` above exempts the `rc`, `stdout`, `stderr` and `*.log` files from cleanup, and ignores blank and "directory"

@@ -1,0 +1,8 @@
+# Production dependencies for the Variants Docker image: the test-safe base plus deps that the unit
+# tests don't need and that can't be installed everywhere. The Docker build installs this file.
+-r requirements.txt
+
+# terra-notebook-utils is used only by get_columns_for_import's Terra-facing helpers (not exercised by
+# the unit tests) and drags in bgzip, a source-only C extension that fails to compile on darwin and
+# modern CPython. Production-only so `pip install -r requirements.txt` stays portable.
+terra-notebook-utils

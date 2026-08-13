@@ -3,11 +3,11 @@ version 1.0
 # This WDL will merge the Echo VDS with a VDS of only samples new to Foxtrot and apply the full Foxtrot filter created
 # from all samples to the merged result.
 import "GvsUtils.wdl" as Utils
-import "GvsValidateVDS.wdl" as ValidateVDS
 
 
 workflow GvsMergeAndRescoreVDSes {
     input {
+        Boolean use_tiny_dataproc_cluster = false
         String input_echo_vds_path
         String input_unmerged_foxtrot_vds_path
         String input_foxtrot_avro_path
@@ -36,6 +36,9 @@ workflow GvsMergeAndRescoreVDSes {
     }
 
     parameter_meta {
+        use_tiny_dataproc_cluster: {
+            help: "If true, use a small Dataproc autoscaling configuration suited for integration tests. Defaults to false (large configuration for production callsets)."
+        }
         input_foxtrot_avro_path : {
             help: "Input location for Foxtrot Avro files including the new Foxtrot filter data"
         }
@@ -119,6 +122,7 @@ workflow GvsMergeAndRescoreVDSes {
     call MergeAndRescoreVDS {
         input:
             prefix = cluster_prefix,
+            use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
             input_echo_vds_path = input_echo_vds_path,
             input_unmerged_foxtrot_vds_path = input_unmerged_foxtrot_vds_path,
             output_merged_and_rescored_foxtrot_vds_path = output_merged_and_rescored_foxtrot_vds_path,
@@ -152,12 +156,13 @@ workflow GvsMergeAndRescoreVDSes {
 task MergeAndRescoreVDS {
     input {
         String prefix
+        Boolean use_tiny_dataproc_cluster
         String input_echo_vds_path
         String input_unmerged_foxtrot_vds_path
         String input_foxtrot_avro_path
         String output_merged_and_rescored_foxtrot_vds_path
         String? samples_to_remove_path
-        Boolean skip_validate
+        Boolean skip_validate = false
         Boolean leave_cluster_running_at_end
         File merge_and_rescore_script
         File hail_gvs_util_script
@@ -214,21 +219,6 @@ task MergeAndRescoreVDS {
             hail_temp_path="~{hail_temp_path}"
         fi
 
-        # Set up the autoscaling policy
-        cat > auto-scale-policy.yaml <<FIN
-        workerConfig:
-            minInstances: 2
-            maxInstances: 2
-        secondaryWorkerConfig:
-            maxInstances: 200
-        basicAlgorithm:
-            cooldownPeriod: 120s
-            yarnConfig:
-                scaleUpFactor: 1.0
-                scaleDownFactor: 1.0
-                gracefulDecommissionTimeout: 120s
-        FIN
-        gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{workspace_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
 
         # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
@@ -251,9 +241,9 @@ task MergeAndRescoreVDS {
             --secondary-script-path-list ~{vds_validation_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
-            --autoscaling-policy gvs-autoscaling-policy \
+            ~{true='--use-tiny-dataproc-cluster' false='' use_tiny_dataproc_cluster} \
             --region ~{region} \
-            --gcs-project ~{workspace_project} \
+            --workspace-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \

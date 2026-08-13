@@ -22,10 +22,9 @@ In order to use this reference disk, the 'Use reference disks' option in Terra m
 configuration. If this option is not selected the `AnnotateVCF` tasks will fail because the Nirvana reference files will not be found. If you forget and it fails, re-run it with call-caching on and all the same inputs, and it will resume at the right point.
 - **Note:** due to an [open issue with GCP Batch](https://partnerissuetracker.corp.google.com/issues/449751210) it is expected that some shards of `GenerateVepAndLofteeAnnotations` will fail
 with 50002 errors that are caused by this task consuming all the memory on the VM, leaving the Batch agent unable to checkin with the Batch service.
-If and when the workflow fails in this manner, double the value in the `memory` runtime attribute of the `GenerateVepAndLofteeAnnotations` task  and rerun `GvsCreateVATfromVDS` with call caching enabled.
+If and when the workflow fails in this manner, adjust the value in the `memory` runtime attribute of the `GenerateVepAndLofteeAnnotations` task and rerun `GvsCreateVATfromVDS` with call caching enabled.
 Do not change any task inputs or call caching will break, just edit the value of the runtime attribute directly.
-Repeat as necessary. For the AnVIL 3K dataset, about 50 of 500 shards failed with 4 GiB of memory.
-Rerunning with 8 GiB of memory recovered most of these shards, but further runs of 16 GiB and 32 GiB were required for all shards to succeed.
+For the Foxtrot dataset, all but around 40 shards were able to complete with the baseline 8 GiB of memory; modifying this task to use 32 GiB of memory and rerunning the workflow enabled those remaining shards to succeed.
 - The `ancestry_file` input is the GCS path of the TSV file that maps samples (by `sample_name`) to subpopulations.
 - You will want to run this workflow with the same `dataset_name`, `project_id`, and `filter_set_name` as `GvsCreateVds.wdl`.
 - For `output_path` use a unique GCS path with a trailing slash (probably in the workspace bucket). This will be used to store the intermediate files for the pipeline.
@@ -43,7 +42,7 @@ There are several temporary tables that are created in addition to the main VAT 
 Variants may be filtered out of the VAT (that were in the VDS) for the following reasons:
 
 - they are hard-filtered out based on the initial soft filtering from the GVS extract (site- and GT-level filtering)
-- they have excess alternate alleles, currently that cut off is 50 alternate alleles
+- they have excess alternate alleles, currently this filters out sites with >= 100 alternate alleles
 - they are spanning deletions
 - they are duplicate variants; they are tracked via the `GvsCreateVATfromVDS` workflow's scattered `RemoveDuplicatesFromSitesOnlyVCF` task and then merged into one file by the `MergeTsvs` task
 

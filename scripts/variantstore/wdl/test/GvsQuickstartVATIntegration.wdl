@@ -14,8 +14,11 @@ workflow GvsQuickstartVATIntegration {
         String expected_output_prefix
         String dataset_suffix
         Boolean use_vds_as_input = true      # If true, use a VDS, otherwise use a sites only VCF.
+        # Mirrors GvsQuickstartIntegration.chr20_X_Y_only: when true the callset is restricted to a few
+        # contigs, so the genome-wide-only MANE catalog-utilization floor must not be enforced.
+        Boolean chr20_X_Y_only = false
         String output_path
-        String split_intervals_scatter_count = 10
+        Int split_intervals_scatter_count = 10
         String? basic_docker
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
@@ -66,6 +69,8 @@ workflow GvsQuickstartVATIntegration {
     call CreateVATFromVDS.GvsCreateVATfromVDS as CreateVATFromVDS {
         input:
             project_id = project_id,
+            use_tiny_dataproc_cluster = true,
+            use_tiny_vep_annotation_load_runtime = true,
             dataset_name = CreateDatasetForTest.dataset_name,
             reference_name = reference_name,
             ancestry_file = ancestry_path,
@@ -82,17 +87,22 @@ workflow GvsQuickstartVATIntegration {
             variants_nirvana_docker = effective_variants_nirvana_docker,
     }
 
+    # Intentionally unused: runs for its side effect of validating the VAT; its output is not consumed downstream.
+    #@ except: UnusedCall
     call ValidateVAT.GvsValidateVat {
         input:
             project_id = project_id,
             dataset_name = CreateDatasetForTest.dataset_name,
             vat_table_name = CreateVATFromVDS.vat_table_name,
             is_small_callset = true,
+            is_genome_wide = !chr20_X_Y_only,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             variants_docker = effective_variants_docker,
     }
 
     String expected_prefix = expected_output_prefix + dataset_suffix + "/"
+    # Intentionally unused: runs for its side effect of asserting test outputs match; its output is not consumed downstream.
+    #@ except: UnusedCall
     call AssertIdenticalOutputs {
         input:
             actual_file = select_first([CreateVATFromVDS.final_tsv_file]),
@@ -101,6 +111,8 @@ workflow GvsQuickstartVATIntegration {
     }
 
 
+    # Intentionally unused: runs for its side effect of asserting BQ table size; its output is not consumed downstream.
+    #@ except: UnusedCall
     call AssertTableSizeIsAsExpected {
         input:
             dataset_name = CreateDatasetForTest.dataset_name,

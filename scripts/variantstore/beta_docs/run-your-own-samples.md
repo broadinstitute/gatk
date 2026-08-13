@@ -116,7 +116,7 @@ If your data is already stored in the cloud, you’ll need to upload a TSV file 
 ---
 
 **Warning:**
-The workflow in the GVS beta workspace assumes the table with samples is called `sample`. If this is not the case for your data, set the `samples_table_name` variable in the inputs to your table name as a string in the format "*TABLE_NAME*".
+The workflow in the GVS beta workspace assumes the table with samples is called `sample`. When running `GvsJointVariantCalling`, the data table must be named `sample`. If you are running `GvsBulkIngestGenomes` directly, you can override this by setting the `data_table_name` parameter to your table name as a string in the format "*TABLE_NAME*".
 
 ---
 
@@ -134,7 +134,7 @@ If your data is living in one or more Terra workspaces, your data can stay in th
 ---
 
 **Warning:**
-The workflow in the GVS beta workspace assumes the table with samples is called `sample`. If this is not the case for your data, set the `samples_table_name` variable in the inputs to your table name as a string in the format "*TABLE_NAME*".
+The workflow in the GVS beta workspace assumes the table with samples is called `sample`. When running `GvsJointVariantCalling`, the data table must be named `sample`. If you are running `GvsBulkIngestGenomes` directly, you can override this by setting the `data_table_name` parameter to your table name as a string in the format "*TABLE_NAME*".
 
 ---
 
@@ -151,7 +151,7 @@ If your data is not stored in the cloud, you’ll need to upload it to your work
 ---
 
 **Warning:**        
-The workflow in the GVS beta workspace assumes the table with samples is called `sample`. If this is not the case for your data, set the `samples_table_name` variable in the inputs to your table name as a string in the format "*TABLE_NAME*".
+The workflow in the GVS beta workspace assumes the table with samples is called `sample`. When running `GvsJointVariantCalling`, the data table must be named `sample`. If you are running `GvsBulkIngestGenomes` directly, you can override this by setting the `data_table_name` parameter to your table name as a string in the format "*TABLE_NAME*".
 
 ---
 4. Follow the steps in [How to use the Data Uploader](https://support.terra.bio/hc/en-us/articles/4419428208411) to **upload your data and TSV file** to Terra.
@@ -175,10 +175,10 @@ You will need to delete the example sample data from your workspace so that it i
    1. **Warning: The workflows will fail without selecting this.**
 4. Choose the workspace created in Step 7 of the Setup instructions in [gvs-quickstart](./gvs-quickstart.md)
 
---- 
+---
 
 **Warning:**        
-The workflow in the GVS beta workspace assumes the table with samples is called `sample`. If this is not the case for your data, set the `samples_table_name` variable in the inputs to your table name as a string in the format "*TABLE_NAME*".
+The workflow in the GVS beta workspace assumes the table with samples is called `sample`. When running `GvsJointVariantCalling`, the data table must be named `sample`. If you are running `GvsBulkIngestGenomes` directly, you can override this by setting the `data_table_name` parameter to your table name as a string in the format "*TABLE_NAME*".
 
 ---
 ## Run the workflow
@@ -214,23 +214,24 @@ Below are several examples of the time and cost of running the workflow.
 
 **Genomes**
 
-| Number of Samples | Elapsed Time (hh:mm) | Terra Cost | BigQuery Cost | Total Cost | Approximate Cost per Sample |
-|-------------------|----------------------|------------|---------------|------------|-----------------------------|
-| 10                | 04:30                | $0.84      | $0.51         | $1.35      | $0.14                       |
-| 1000              | 07:24                | $13.02     | $46.62        | $59.64     | $0.06                       |
-| 2500              | 08:45                | $25.10     | $116.18       | $141.28    | $0.06                       |
-| 5000              | 12:00                | $54.00     | $232.71       | $286.71    | $0.06                       |
-| 10000             | 13:41                | $138.1     | $466.87       | $604.97    | $0.06                       |
+| Number of Samples | Wall Clock Time (hh:mm) | Cost $     | Cost per Sample |
+|-------------------|-------------------------|------------|-----------------|
+| 10                | 4:18                    | $3.88      | $0.39           |
+| 1000              | 9:40                    | $30.68     | $0.03           |
+| 2500              | 15:21                   | $76.60     | $0.03           |
+| 5000              | 13:46                   | $138.01    | $0.03           |
+| 10000             | 19:29                   | $382.63    | $0.04           |
+| 20000             | 38:55                   | $1,068.77  | $0.05           |
 
 **Exomes**
 
 | Number of Samples | Wall Clock Time (hh:mm) | Cost $    | Cost per Sample |
 |-------------------|-------------------------|-----------|-----------------|
-| 10                | 3:08:00                 | $0.76     | $0.07562        |
-| 5000              | 5:21:00                 | $20.41    | $0.00408        |
-| 20000             | 10:38:00                | $94.60    | $0.00473        |
-| 50000             | 20:29:00                | $250.07   | $0.00500        |
-| 100000            | 45:11:00                | $274.15   | $0.00274        |
+| 10                | 3:58                    | $3.99     | $0.39949        |
+| 5000              | 5:26                    | $18.47    | $0.00369        |
+| 20000             | 9:52                    | $65.08    | $0.00325        |
+| 50000             | 16:22                   | $189.81   | $0.00380        |
+| 100000            | 25:28                   | $505.12   | $0.00505        |
 
 **Note:** The time and cost listed above each represent a single run of the GVS workflow. Actual time and cost may vary depending on BigQuery and Terra load at the time of the callset creation.
 

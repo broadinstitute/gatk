@@ -2,10 +2,10 @@ version 1.0
 
 # This WDL will create a VDS in Hail running in a Dataproc cluster.
 import "GvsUtils.wdl" as Utils
-import "GvsValidateVDS.wdl" as ValidateVDS
 
 workflow GvsCreateVDS {
     input {
+        Boolean use_tiny_dataproc_cluster = false
         String avro_path
         String vds_destination_path
 
@@ -16,7 +16,6 @@ workflow GvsCreateVDS {
 
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
-        Boolean leave_cluster_running_at_end = false
         Float? master_memory_fraction
 
         String? git_branch_or_tag
@@ -30,6 +29,9 @@ workflow GvsCreateVDS {
     }
 
     parameter_meta {
+        use_tiny_dataproc_cluster: {
+            help: "If true, use a small Dataproc autoscaling configuration suited for integration tests. Defaults to false (large configuration for production callsets)."
+        }
         avro_path : {
             help: "Input location for the avro files"
         }
@@ -104,13 +106,13 @@ workflow GvsCreateVDS {
     call CreateVds {
         input:
             prefix = cluster_prefix,
+            use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
             vds_path = vds_destination_path,
             avro_path = avro_path,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
             hail_temp_path = hail_temp_path,
             run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
-            run_in_existing_hail_cluster_script = GetHailScripts.run_in_existing_hail_cluster_script,
             gvs_import_script = GetHailScripts.gvs_import_script,
             gvs_import_ploidy_script = GetHailScripts.gvs_import_ploidy_script,
             hail_gvs_import_script = GetHailScripts.hail_gvs_import_script,
@@ -121,7 +123,6 @@ workflow GvsCreateVDS {
             region = region,
             workspace_bucket = effective_workspace_bucket,
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
-            leave_cluster_running_at_end = leave_cluster_running_at_end,
             cluster_max_idle_minutes = cluster_max_idle_minutes,
             cluster_max_age_minutes = cluster_max_age_minutes,
             master_memory_fraction = master_memory_fraction,
@@ -136,12 +137,11 @@ workflow GvsCreateVDS {
 task CreateVds {
     input {
         String prefix
+        Boolean use_tiny_dataproc_cluster
         String vds_path
         String avro_path
-        Boolean leave_cluster_running_at_end
         Boolean run_validation = true
         File run_in_hail_cluster_script
-        File run_in_existing_hail_cluster_script
         File hail_gvs_import_script
         File hail_gvs_util_script
         File gvs_import_script
@@ -198,21 +198,6 @@ task CreateVds {
             hail_temp_path="~{hail_temp_path}"
         fi
 
-        # Set up the autoscaling policy
-        cat > auto-scale-policy.yaml <<FIN
-        workerConfig:
-            minInstances: 2
-            maxInstances: 2
-        secondaryWorkerConfig:
-            maxInstances: 200
-        basicAlgorithm:
-            cooldownPeriod: 120s
-            yarnConfig:
-                scaleUpFactor: 1.0
-                scaleDownFactor: 1.0
-                gracefulDecommissionTimeout: 120s
-        FIN
-        gcloud dataproc autoscaling-policies import gvs-autoscaling-policy --project=~{workspace_project} --source=auto-scale-policy.yaml --region=~{region} --quiet
 
         # construct a JSON of arguments for python script to be run in the hail cluster
         cat > script-arguments.json <<FIN
@@ -234,9 +219,9 @@ task CreateVds {
             --secondary-script-path-list ~{vds_validation_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
-            --autoscaling-policy gvs-autoscaling-policy \
+            ~{true='--use-tiny-dataproc-cluster' false='' use_tiny_dataproc_cluster} \
             --region ~{region} \
-            --gcs-project ~{workspace_project} \
+            --workspace-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \

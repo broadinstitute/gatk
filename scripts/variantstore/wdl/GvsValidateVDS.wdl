@@ -6,7 +6,13 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsValidateVDS {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go = true
+        Boolean use_tiny_dataproc_cluster = false
+        Int num_primary_workers = 4
+        Int max_secondary_workers = 300
         String vds_path
 
         String cluster_prefix = "vds-cluster"
@@ -29,6 +35,15 @@ workflow GvsValidateVDS {
     }
 
     parameter_meta {
+        use_tiny_dataproc_cluster: {
+            help: "If true, use a small Dataproc autoscaling configuration suited for integration tests. Defaults to false (large configuration for production callsets)."
+        }
+        num_primary_workers: {
+            help: "Number of primary workers for the non-tiny autoscaling policy. Ignored when use_tiny_dataproc_cluster is true. Defaults to 4."
+        }
+        max_secondary_workers: {
+            help: "Maximum number of secondary workers for the non-tiny autoscaling policy. Ignored when use_tiny_dataproc_cluster is true. Defaults to 300."
+        }
         vds_path: {
             help: "Location of the VDS to be validated"
         }
@@ -83,6 +98,9 @@ workflow GvsValidateVDS {
             run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
             vds_validation_script = GetHailScripts.vds_validation_script,
             prefix = cluster_prefix,
+            use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
+            num_primary_workers = num_primary_workers,
+            max_secondary_workers = max_secondary_workers,
             vds_path = vds_path,
             hail_version = effective_hail_version,
             hail_wheel = hail_wheel,
@@ -105,10 +123,16 @@ workflow GvsValidateVDS {
 
 task ValidateVds {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go = true
         File run_in_hail_cluster_script
         File vds_validation_script
         String prefix
+        Boolean use_tiny_dataproc_cluster
+        Int num_primary_workers
+        Int max_secondary_workers
         String vds_path
         String? hail_version
         File? hail_wheel
@@ -135,6 +159,7 @@ task ValidateVds {
 
         account_name=$(gcloud config list account --format "value(core.account)")
 
+        apt-get update
         apt install --assume-yes python3.11-venv
         python3 -m venv ./localvenv
         . ./localvenv/bin/activate
@@ -176,9 +201,11 @@ task ValidateVds {
             --script-path ~{vds_validation_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
-            --autoscaling-policy gvs-autoscaling-policy \
+            ~{true='--use-tiny-dataproc-cluster' false='' use_tiny_dataproc_cluster} \
+            --num-primary-workers ~{num_primary_workers} \
+            --max-secondary-workers ~{max_secondary_workers} \
             --region ~{region} \
-            --gcs-project ~{workspace_project} \
+            --workspace-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
             ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
