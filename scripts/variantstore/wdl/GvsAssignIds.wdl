@@ -49,11 +49,22 @@ workflow GvsAssignIds {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  # Preflight: fail fast with one actionable message if the dataset does not exist. GvsAssignIds
+  # creates tables but not the dataset itself; without this check a missing dataset surfaces as many
+  # simultaneous, cryptic `bq mk` "Not found: Dataset" failures across the table-creation tasks below.
+  call ValidateDatasetExists {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      go = ValidateSamples.done,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
   call GvsCreateTables.CreateTables as CreateSampleInfoTable {
   	input:
       project_id = project_id,
       dataset_name = dataset_name,
-      go = ValidateSamples.done,
+      go = ValidateDatasetExists.done,
       datatype = "sample_info",
       schema_json = sample_info_schema_json,
       max_table_id = 1,
@@ -68,7 +79,7 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
-      go = ValidateSamples.done,
+      go = ValidateDatasetExists.done,
       datatype = "sample_load_status",
       schema_json = sample_load_status_schema_json,
       max_table_id = 1,
@@ -83,7 +94,7 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
-      go = ValidateSamples.done,
+      go = ValidateDatasetExists.done,
       datatype = "sample_chromosome_ploidy",
       schema_json = sample_chromosome_ploidy_schema_json,
       max_table_id = 1,
@@ -98,7 +109,7 @@ workflow GvsAssignIds {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
-        go = ValidateSamples.done,
+        go = ValidateDatasetExists.done,
         datatype = "vcf_header_lines_scratch",
         schema_json = vcf_header_lines_scratch_schema_json,
         max_table_id = 1,
@@ -111,7 +122,7 @@ workflow GvsAssignIds {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
-        go = ValidateSamples.done,
+        go = ValidateDatasetExists.done,
         datatype = "vcf_header_lines",
         schema_json = vcf_header_lines_schema_json,
         max_table_id = 1,
@@ -124,7 +135,7 @@ workflow GvsAssignIds {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
-        go = ValidateSamples.done,
+        go = ValidateDatasetExists.done,
         datatype = "sample_vcf_header",
         schema_json = sample_vcf_header_schema_json,
         max_table_id = 1,
@@ -140,7 +151,7 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
-      go = ValidateSamples.done,
+      go = ValidateDatasetExists.done,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -322,6 +333,65 @@ task CreateCostObservabilityTable {
   runtime {
     docker: cloud_sdk_docker
   }
+  output {
+    Boolean done = true
+  }
+}
+
+task ValidateDatasetExists {
+  input {
+    String project_id
+    String dataset_name
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
+    Boolean go
+    String cloud_sdk_docker
+  }
+
+  meta {
+    description: "Preflight check that the target BigQuery dataset exists, failing fast with an actionable message if it does not."
+    volatile: true
+  }
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+    set +o errexit
+    bq --apilog=false --project_id=~{project_id} show ~{dataset_name} > /dev/null 2>&1
+    BQ_SHOW_RC=$?
+    set -o errexit
+
+    if [ $BQ_SHOW_RC -ne 0 ]; then
+      # Turn off xtrace so the message below is easy to read in the task log.
+      set +o xtrace
+      echo "ERROR: BigQuery dataset '~{project_id}:~{dataset_name}' was not found." >&2
+      echo "" >&2
+      echo "GvsAssignIds creates the tables within a dataset, but it does not create the dataset itself." >&2
+      echo "The dataset must already exist before running this workflow." >&2
+      echo "" >&2
+      echo "To create it (GVS datasets live in the US multi-region):" >&2
+      echo "    bq --location=US mk --dataset ~{project_id}:~{dataset_name}" >&2
+      echo "" >&2
+      echo "If you believe the dataset already exists, double-check the 'dataset_name' and 'project_id'" >&2
+      echo "inputs for typos and confirm you have access to it." >&2
+      exit 1
+    fi
+  >>>
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    cpu: 1
+    preemptible: 1
+    maxRetries: 0
+    disks: "local-disk 100 HDD"
+  }
+
   output {
     Boolean done = true
   }
