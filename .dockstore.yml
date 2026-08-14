@@ -285,7 +285,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - pr-9375-docker-size-only
          tags:
              - /.*/
    - name: GvsBeta
@@ -323,7 +322,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - pr-9375-docker-size-only
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -342,7 +340,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - pr-9375-docker-size-only
+             - vs_1980_1992_storage_write_api_fixes
          tags:
              - /.*/
    - name: GvsIngestTieout
