@@ -146,8 +146,12 @@ public class LoadStatus {
 
                 switch (se.getStatus().getCode()) {
                     case ALREADY_EXISTS:
-                        // This is okay, no need to retry
-                        break;
+                        // The row was already written, so this is okay and must not be retried. `return`
+                        // rather than `break`: a `break` here leaves only the switch, so the enclosing
+                        // `while (true)` re-attempts the identical append, and because this branch never
+                        // increments `retryCount` the guard above can never trip. Matches how
+                        // CommittedBQWriter handles the same status code.
+                        return;
                     case INVALID_ARGUMENT:
                     case NOT_FOUND:
                     case OUT_OF_RANGE:
