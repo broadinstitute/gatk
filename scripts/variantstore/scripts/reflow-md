@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+"""Unwrap hard-wrapped Markdown paragraphs so the renderer soft-wraps them itself.
+
+Some Markdown renderers treat a newline inside a paragraph as a hard line break
+rather than as a soft wrap. Source wrapped at ~100 columns then arrives looking
+ragged -- broken mid-sentence at every wrap point, no matter how much horizontal
+space the reader actually has. Known offenders:
+
+  * JIRA -- ticket descriptions and comments
+  * GitHub -- PR descriptions, PR comments, code review write-ups
+
+and the same treatment applies to any other destination that hard-breaks
+newlines in Markdown source. This joins each paragraph and each list item onto
+one line and lets the renderer decide where to wrap.
+
+Preserved verbatim:
+  * fenced code blocks (``` ... ```), including indentation
+  * table rows (lines beginning with |)
+  * headings (lines beginning with #)
+  * blank lines, so block structure is unchanged
+
+List items keep their marker and indent; continuation lines are folded in.
+
+Safety: the whitespace-normalized token stream is compared before and after, and
+nothing is written if it differs. Running twice is a no-op.
+
+Usage:
+  reflow-md FILE...            rewrite in place
+  reflow-md --dry-run FILE...  report what would change, write nothing
+"""
+import re
+import sys
+
+LIST_RE = re.compile(r"^\s*([-*+]|\d+\.)\s")
+
+
+def transform(text):
+    out, buf = [], []
+    in_fence = False
+
+    def flush():
+        if not buf:
+            return
+        first = buf[0].rstrip()
+        indent = first[: len(first) - len(first.lstrip())]
+        parts = [first.strip()] + [x.strip() for x in buf[1:]]
+        out.append(indent + " ".join(p for p in parts if p))
+        buf.clear()
+
+    for raw in text.split("\n"):
+        s = raw.strip()
+        if s.startswith("```"):
+            flush()
+            out.append(raw)
+            in_fence = not in_fence
+        elif in_fence:
+            out.append(raw)
+        elif s == "":
+            flush()
+            out.append("")
+        elif s.startswith("|") or s.startswith("#"):
+            flush()
+            out.append(raw)
+        elif LIST_RE.match(raw):
+            flush()
+            buf.append(raw.rstrip())
+        else:
+            buf.append(s)
+
+    flush()
+    if in_fence:
+        raise ValueError("unbalanced code fence")
+    return "\n".join(out)
+
+
+def main(argv):
+    dry = "--dry-run" in argv
+    paths = [a for a in argv if not a.startswith("-")]
+    if not paths:
+        print(__doc__.strip())
+        return 2
+
+    status = 0
+    for path in paths:
+        try:
+            with open(path) as fh:
+                before = fh.read()
+            after = transform(before)
+        except (OSError, ValueError) as exc:
+            print(f"{path}: SKIPPED — {exc}", file=sys.stderr)
+            status = 1
+            continue
+
+        if before.split() != after.split():
+            print(f"{path}: REFUSED — content would change, not just wrapping", file=sys.stderr)
+            status = 1
+            continue
+
+        nb, na = len(before.split("\n")), len(after.split("\n"))
+        if before == after:
+            print(f"{path}: already unwrapped ({nb} lines)")
+            continue
+        if dry:
+            print(f"{path}: would reflow {nb} -> {na} lines")
+            continue
+        with open(path, "w") as fh:
+            fh.write(after)
+        print(f"{path}: {nb} -> {na} lines")
+
+    return status
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

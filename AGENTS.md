@@ -407,14 +407,31 @@ as a single unwrapped line, however long it ends up. Headings, table rows, and
 fenced code blocks are unaffected — those are already one line each by
 construction, and their line breaks are significant.
 
-To convert a document that is already wrapped, run `reflow-md <file>` (installed
-at `~/.local/bin/reflow-md`; `--dry-run` previews the line-count change). It
-folds paragraphs and list continuations while leaving fences, tables, and
-headings alone, and it verifies the whitespace-delimited token stream is
-unchanged before writing, so it will refuse rather than corrupt content.
+Author these documents unwrapped from the start where you can. To convert a
+draft that is already wrapped, use the `reflow-md` helper checked into this
+repo:
 
-JIRA hard-breaks intra-paragraph newlines the same way, so the same rule and the
-same tool apply to anything destined for a JIRA description or comment.
+```
+scripts/variantstore/scripts/reflow-md FILE...            # rewrite in place
+scripts/variantstore/scripts/reflow-md --dry-run FILE...  # report only
+```
+
+It folds paragraphs and list-item continuations onto single lines while leaving
+headings, table rows, blank lines, and fenced-block contents alone. It compares
+the whitespace-delimited token stream before and after and refuses to write if
+anything other than wrapping changed, and it is idempotent — a second run
+reports `already unwrapped`. Prefer it to joining lines by hand, which is easy
+to get wrong around list indentation and fences, where a mistake corrupts
+content rather than merely rewrapping it.
+
+The script is deliberately named without a `.py` extension: the Dockerfile in
+that directory does `COPY *.py /app/`, so an extensionless name keeps this
+dev-only helper out of the Variants image and out of the rebuild-and-bump
+obligation described in the Variants Docker Image section above. It is a
+dependency-free Python 3 script; do not rename it to `reflow_md.py`.
+
+JIRA hard-breaks intra-paragraph newlines the same way, so the same rule applies
+to anything destined for a JIRA description or comment.
 
 ## Development scaffolding is not a review finding
 
