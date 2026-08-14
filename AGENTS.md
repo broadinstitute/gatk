@@ -352,3 +352,69 @@ and never touches content inside fenced code blocks.
 Some existing docs predate this and are still ragged. Only format files you are
 already modifying; reformatting untouched docs adds diff noise that obscures the
 actual change.
+
+# Code Review Conventions
+
+## Lead with action items
+
+A code review write-up opens with an `## Action items` section, before the scope
+summary and before the findings themselves. It lists what the developer should
+actually do, in the order it should be done, each entry pointing at the numbered
+finding that justifies it. Note explicitly when an early item gates the ability
+to verify the later ones.
+
+Every finding must be accounted for in that list, including the ones needing no
+work — group those into a short "discretionary" line rather than dropping them,
+so nothing looks accidentally omitted.
+
+The rationale, evidence, and reproduction detail stay in the numbered findings
+below. Do not put a duplicate ordered list at the end of the document.
+
+## One line per paragraph — do not hard-wrap
+
+Code review write-ups get pasted into GitHub PR comments and descriptions, and
+GitHub renders a newline inside a paragraph as a hard line break regardless of
+how much horizontal space is available. A source document wrapped at 100 columns
+therefore renders as a ragged column on GitHub rather than as flowing text.
+
+So in a generated code review document, write each paragraph and each list item
+as a single unwrapped line, however long it ends up. Headings, table rows, and
+fenced code blocks are unaffected — those are already one line each by
+construction, and their line breaks are significant.
+
+To convert a document that is already wrapped, run `reflow-md <file>` (installed
+at `~/.local/bin/reflow-md`; `--dry-run` previews the line-count change). It
+folds paragraphs and list continuations while leaving fences, tables, and
+headings alone, and it verifies the whitespace-delimited token stream is
+unchanged before writing, so it will refuse rather than corrupt content.
+
+JIRA hard-breaks intra-paragraph newlines the same way, so the same rule and the
+same tool apply to anything destined for a JIRA description or comment.
+
+## Development scaffolding is not a review finding
+
+Do not report temporary "point this at my feature branch so I can test it"
+changes as code review findings. The most common example is adding a feature
+branch name to the `branches:` filters in `.dockstore.yml` — Dockstore will not
+expose a workflow for a branch that is not registered, so this edit is a
+prerequisite for testing any WDL change on a branch, not an oversight.
+Developers are reliable about removing these before merge, and a leftover
+registration is harmless: it makes a stale branch visible in Dockstore and
+nothing more.
+
+This exclusion covers branch- and tag-registration scaffolding only. It does
+**not** extend to a reference that will actually break or mislead at runtime
+once merged, which remains a legitimate (and usually serious) finding:
+
+- a Docker image tag — `variants_docker`, `gatk_docker`, etc. in `GvsUtils.wdl`'s
+  `GetToolVersions` — left pointing at a personal, unpublished, or stale image
+  (see the Variants Docker Image section above: a new or edited script under
+  `scripts/variantstore/scripts/` does not reach a running workflow until the
+  image is rebuilt and the tag is updated);
+- a hardcoded project, dataset, or GCS path pointing at a developer's scratch
+  resources in a code path that production runs;
+- a `git_branch_or_tag` default left set to the feature branch.
+
+The distinction is whether the leftover changes what a merged workflow does. If
+it only affects what is visible or runnable on the developer's own branch, leave
+it alone.
