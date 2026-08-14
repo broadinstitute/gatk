@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.read;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.*;
+import htsjdk.samtools.cram.common.CramVersions;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
 import htsjdk.samtools.util.SequenceUtil;
@@ -581,6 +582,46 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
     // NM/MD on the inputs so the FULL record - including NM/MD - survives the CRAM strip-and-regenerate
     // round-trip. Unlike testCreate*SAMWriter (which normalizes NM/MD/TLEN away), this asserts the
     // regenerated tags are correct rather than merely tolerated. CRAM cases only (needs a reference).
+    @DataProvider(name = "cramVersions")
+    public Object[][] cramVersions() {
+        return new Object[][] {
+                {CramVersions.CRAM_v3,   (byte) 3, (byte) 0},
+                {CramVersions.CRAM_v3_1, (byte) 3, (byte) 1},
+        };
+    }
+
+    // createCommonSAMWriter must honor the requested CRAM version (verified by the on-disk CRAM magic bytes).
+    @Test(dataProvider = "cramVersions")
+    public void testCreateCommonSAMWriterHonorsCramVersion(final htsjdk.samtools.cram.common.CRAMVersion requested,
+                                                           final byte expectedMajor, final byte expectedMinor) throws Exception {
+        final File sam = getTestFile("print_reads.sam");
+        final File ref = getTestFile("print_reads.fasta");
+        final File out = createTempFile("cramVersion", ".cram");
+        try (final SamReader reader = SamReaderFactory.makeDefault().referenceSequence(ref).open(sam);
+             final SAMFileWriter writer = ReadUtils.createCommonSAMWriter(
+                     out.toPath(), ref.toPath(), reader.getFileHeader(), false, false, false, requested)) {
+            for (final SAMRecord rec : reader) {
+                writer.addAlignment(rec);
+            }
+        }
+        final byte[] magic = new byte[6];
+        try (final java.io.InputStream is = new java.io.FileInputStream(out)) { is.read(magic); }
+        Assert.assertEquals(new String(magic, 0, 4), "CRAM");
+        Assert.assertEquals(magic[4], expectedMajor, "CRAM major version");
+        Assert.assertEquals(magic[5], expectedMinor, "CRAM minor version");
+    }
+
+    @Test
+    public void testGetCRAMVersionMapping() {
+        Assert.assertSame(ReadUtils.getCRAMVersion("3.0"), CramVersions.CRAM_v3);
+        Assert.assertSame(ReadUtils.getCRAMVersion("3.1"), CramVersions.CRAM_v3_1);
+    }
+
+    @Test(expectedExceptions = org.broadinstitute.hellbender.exceptions.UserException.BadInput.class)
+    public void testGetCRAMVersionRejectsBadValue() {
+        ReadUtils.getCRAMVersion("3.2");
+    }
+
     @Test(dataProvider = "createSAMWriter")
     public void testCreateSAMWriterCramLosslessNmMd(
             final File bamFile,

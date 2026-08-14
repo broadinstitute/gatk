@@ -26,6 +26,7 @@ public final class StandardArgumentDefinitions {
     public static final String ENABLE_ALL_ANNOTATIONS = "enable-all-annotations";
     public static final String CREATE_OUTPUT_BAM_INDEX_LONG_NAME = "create-output-bam-index";
     public static final String CREATE_OUTPUT_BAM_MD5_LONG_NAME = "create-output-bam-md5";
+    public static final String OUTPUT_CRAM_VERSION_LONG_NAME = "output-cram-version";
     public static final String CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME = "create-output-variant-index";
     public static final String CREATE_OUTPUT_VARIANT_MD5_LONG_NAME = "create-output-variant-md5";
     public static final String MAX_VARIANTS_PER_SHARD_LONG_NAME = "max-variants-per-shard";

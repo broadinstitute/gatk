@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SBIIndexWriter;
 import htsjdk.samtools.SamFileHeaderMerger;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import htsjdk.samtools.cram.common.CramVersions;
 import htsjdk.samtools.util.FileExtensions;
 import htsjdk.samtools.util.GZIIndex;
 import htsjdk.variant.vcf.VCFHeaderLine;
@@ -16,6 +17,7 @@ import org.broadinstitute.barclay.argparser.CommandLinePluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKAnnotationPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.GATKPlugin.GATKReadFilterPluginDescriptor;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.*;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.FeatureManager;
@@ -133,6 +135,11 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
             shortName = StandardArgumentDefinitions.CREATE_OUTPUT_BAM_INDEX_SHORT_NAME,
             doc = "If true, create a BAM index when writing a coordinate-sorted BAM file.", optional = true, common = true)
     public boolean createOutputBamIndex = ConfigFactory.getInstance().getGATKConfig().createOutputBamIndex();
+
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_CRAM_VERSION_LONG_NAME,
+            doc = "The CRAM version to write for CRAM output. Spark tools can only write CRAM 3.1; specifying 3.0 will cause the tool to fail.",
+            optional = true, common = true)
+    public String outputCramVersion = ConfigFactory.getInstance().getGATKConfig().outputCramVersion();
 
     @Argument(fullName = CREATE_OUTPUT_BAM_SPLITTING_INDEX_LONG_NAME,
             doc = "If true, create a BAM splitting index (SBI) when writing a coordinate-sorted BAM file.", optional = true, common = true)
@@ -359,6 +366,17 @@ public abstract class GATKSparkTool extends SparkCommandLineProgram {
      * @param header the header to write.
      */
     public void writeReads(final JavaSparkContext ctx, final String outputFile, JavaRDD<GATKRead> reads, SAMFileHeader header, final boolean sortReadsToHeader) {
+        // The Spark CRAM writer (via disq) can only produce CRAM 3.1; it cannot honor a 3.0 request. Fail loudly
+        // rather than silently writing 3.1 when the user asked for 3.0. (getCRAMVersion also validates the value.)
+        if (outputFile.endsWith(FileExtensions.CRAM) && ReadUtils.getCRAMVersion(outputCramVersion) == CramVersions.CRAM_v3) {
+            throw new UserException(String.format(
+                    "CRAM 3.0 output is not supported by GATK Spark tools.%n" +
+                    "The Spark CRAM writer can only produce CRAM 3.1, but '3.0' was requested via --%s.%n" +
+                    "To write CRAM 3.0, use the equivalent non-Spark tool (e.g. PrintReads instead of PrintReadsSpark); " +
+                    "otherwise omit --%s (or set it to 3.1) to write CRAM 3.1.",
+                    StandardArgumentDefinitions.OUTPUT_CRAM_VERSION_LONG_NAME,
+                    StandardArgumentDefinitions.OUTPUT_CRAM_VERSION_LONG_NAME));
+        }
         try {
             ReadsSparkSink.writeReads(ctx, outputFile,
                     hasReference() ? referenceArguments.getReferenceSpecifier() : null,
