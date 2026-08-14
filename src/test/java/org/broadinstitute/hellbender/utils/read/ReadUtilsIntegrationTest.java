@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.read;
 import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMFileWriter;
 import htsjdk.samtools.SAMRecord;
+import htsjdk.samtools.SAMTag;
 import htsjdk.samtools.SamFiles;
 import htsjdk.samtools.SamReader;
 import htsjdk.samtools.SamReaderFactory;
@@ -51,6 +52,7 @@ public class ReadUtilsIntegrationTest extends GATKBaseTest {
     final String outputPathName = BucketUtils.getTempFilePath(getGCPTestStaging() + "samWriterTest", outputExtension);
     final Path outputPath = BucketUtils.getPathOnGcs(outputPathName);
     final Path md5Path = BucketUtils.getPathOnGcs(outputPathName + ".md5");
+    final Path referencePath = referenceFile == null ? null : referenceFile.toPath();
 
     try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile)) {
 
@@ -58,8 +60,6 @@ public class ReadUtilsIntegrationTest extends GATKBaseTest {
       if (expectIndex) { // ensure test condition
         Assert.assertEquals(expectIndex, header.getSortOrder() == SAMFileHeader.SortOrder.coordinate);
       }
-
-      final Path referencePath = referenceFile == null ? null : referenceFile.toPath();
 
       try (final SAMFileWriter samWriter = ReadUtils.createCommonSAMWriter
           (outputPath, referencePath, samReader.getFileHeader(), preSorted, createIndex, createMD5)) {
@@ -73,12 +73,24 @@ public class ReadUtilsIntegrationTest extends GATKBaseTest {
       Assert.assertEquals(createMD5, Files.exists(md5Path));
     }
 
-    // now check the contents are the same
+    // Check the written reads round-trip back to the original SAM. htsjdk 5.0.0 (htslib-compatible)
+    // regenerates NM/MD and recomputes TLEN when reading CRAM, so those derived fields are normalized
+    // before comparison; everything else must survive the round-trip unchanged.
     try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile);
         final SamReader outputReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(outputPath)) {
-      final Iterator<SAMRecord> samRecIt = samReader.iterator();
-      final Iterator<SAMRecord> outRecIt = outputReader.iterator();
-      Assert.assertEquals(samRecIt, outRecIt);
+      final Iterator<SAMRecord> expectedIt = samReader.iterator();
+      final Iterator<SAMRecord> actualIt = outputReader.iterator();
+      while (expectedIt.hasNext() && actualIt.hasNext()) {
+        final SAMRecord expectedRec = expectedIt.next();
+        final SAMRecord actualRec = actualIt.next();
+        for (final SAMRecord rec : new SAMRecord[]{expectedRec, actualRec}) {
+          rec.setAttribute(SAMTag.NM, null);
+          rec.setAttribute(SAMTag.MD, null);
+          rec.setInferredInsertSize(0);
+        }
+        Assert.assertEquals(actualRec, expectedRec);
+      }
+      Assert.assertEquals(actualIt.hasNext(), expectedIt.hasNext(), "record count mismatch");
     }
   }
 
