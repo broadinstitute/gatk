@@ -361,24 +361,37 @@ task ValidateDatasetExists {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
+    # Capture bq's stderr (discarding stdout) so we can both surface the real error and tell a
+    # missing dataset apart from a permissions problem -- the two need very different fixes.
     set +o errexit
-    bq --apilog=false --project_id=~{project_id} show ~{dataset_name} > /dev/null 2>&1
+    BQ_SHOW_ERR=$(bq --apilog=false --project_id=~{project_id} show ~{dataset_name} 2>&1 >/dev/null)
     BQ_SHOW_RC=$?
     set -o errexit
 
     if [ $BQ_SHOW_RC -ne 0 ]; then
       # Turn off xtrace so the message below is easy to read in the task log.
       set +o xtrace
-      echo "ERROR: BigQuery dataset '~{project_id}:~{dataset_name}' was not found." >&2
+      # Surface the raw bq error first, to aid triage of anything the heuristics below don't cover.
+      echo "bq show failed (rc=${BQ_SHOW_RC}): ${BQ_SHOW_ERR}" >&2
       echo "" >&2
-      echo "GvsAssignIds creates the tables within a dataset, but it does not create the dataset itself." >&2
-      echo "The dataset must already exist before running this workflow." >&2
-      echo "" >&2
-      echo "To create it (GVS datasets live in the US multi-region):" >&2
-      echo "    bq --location=US mk --dataset ~{project_id}:~{dataset_name}" >&2
-      echo "" >&2
-      echo "If you believe the dataset already exists, double-check the 'dataset_name' and 'project_id'" >&2
-      echo "inputs for typos and confirm you have access to it." >&2
+      if echo "${BQ_SHOW_ERR}" | grep -qiE 'access denied|permission|not authorized|forbidden|403'; then
+        echo "ERROR: BigQuery dataset '~{project_id}:~{dataset_name}' could not be accessed -- this looks" >&2
+        echo "like a permissions problem, not a missing dataset." >&2
+        echo "" >&2
+        echo "Confirm the account running this workflow has read access to the dataset or project" >&2
+        echo "(the 'bigquery.datasets.get' permission, e.g. via the BigQuery Data Viewer role), then re-run." >&2
+      else
+        echo "ERROR: BigQuery dataset '~{project_id}:~{dataset_name}' was not found." >&2
+        echo "" >&2
+        echo "GvsAssignIds creates the tables within a dataset, but it does not create the dataset itself." >&2
+        echo "The dataset must already exist before running this workflow." >&2
+        echo "" >&2
+        echo "To create it (GVS datasets live in the US multi-region):" >&2
+        echo "    bq --location=US mk --dataset ~{project_id}:~{dataset_name}" >&2
+        echo "" >&2
+        echo "If you believe the dataset already exists, double-check the 'dataset_name' and 'project_id'" >&2
+        echo "inputs for typos and confirm you have access to it." >&2
+      fi
       exit 1
     fi
   >>>
