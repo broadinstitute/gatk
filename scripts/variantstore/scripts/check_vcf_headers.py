@@ -187,6 +187,25 @@ def _version_key(version):
     return tuple(int(n) for n in nums)
 
 
+# A well-formed, user-supplied version token: plain dotted-numeric, e.g. '3', '3.7', '3.7.8'.
+_STRICT_VERSION_RE = re.compile(r'^[0-9]+(?:\.[0-9]+)*$')
+
+
+def _require_version(token, original):
+    """Strictly validate a *user-supplied* version token and return its int-tuple key.
+
+    Unlike ``_version_key`` (lenient ``findall``, used on trusted sample data), this rejects
+    anything that is not a plain dotted-numeric version -- e.g. '3.7,8', '3.7.8x', embedded
+    spaces -- so a typo in ``--expected_dragen_version`` fails loudly here rather than silently
+    never matching any sample. ``original`` is the full spec, quoted in the error for context.
+    """
+    t = token.strip()
+    if not _STRICT_VERSION_RE.match(t):
+        raise ValueError(
+            f"invalid DRAGEN version '{original}': '{t}' is not a dotted-numeric version (e.g. '3.7.8')")
+    return tuple(int(n) for n in t.split('.'))
+
+
 def parse_expected_dragen_spec(expected_dragen_version):
     """Interpret the ``--expected_dragen_version`` value as either an exact version or a range.
 
@@ -204,12 +223,15 @@ def parse_expected_dragen_spec(expected_dragen_version):
       * ``('range', VersionRange)`` -- range mode.
 
     Raises ``ValueError`` if the value is malformed (bracket without a range, wrong shape,
-    non-numeric bound, or an empty/inverted interval). Versions are dot-separated digits, so the
-    ``-`` separator and the bracket characters are unambiguous.
+    a bound that is not a plain dotted-numeric version -- e.g. a typo like '3.7,8' or stray
+    characters/whitespace -- or an empty/inverted interval). Versions are dot-separated digits, so
+    the ``-`` separator and the bracket characters are unambiguous.
     """
     if not expected_dragen_version:
         return None, None
     spec = expected_dragen_version.strip()
+    if not spec:  # whitespace-only -- treat as unspecified rather than a never-matching exact value
+        return None, None
 
     has_bracket = any(c in '[]()' for c in spec)
     if '-' not in spec:
@@ -217,6 +239,7 @@ def parse_expected_dragen_spec(expected_dragen_version):
             raise ValueError(
                 f"invalid DRAGEN version '{expected_dragen_version}': looks like an interval but has "
                 f"no 'LOW-HIGH' separator, e.g. '[3.7.8-3.8)'")
+        _require_version(spec, expected_dragen_version)  # reject typos (e.g. '3.7,8') loudly
         return 'exact', spec
 
     # Peel off optional interval-notation brackets to determine each end's inclusivity.
@@ -235,12 +258,8 @@ def parse_expected_dragen_spec(expected_dragen_version):
         raise ValueError(
             f"invalid DRAGEN version range '{expected_dragen_version}' "
             f"(expected 'LOW-HIGH', e.g. '3.4.12-3.7.8' or '[3.7.8-3.8)')")
-    low = _version_key(parts[0])
-    high = _version_key(parts[1])
-    if low is None or high is None:
-        raise ValueError(
-            f"invalid DRAGEN version range '{expected_dragen_version}': both bounds must be "
-            f"numeric versions, e.g. '3.4.12-3.7.8'")
+    low = _require_version(parts[0], expected_dragen_version)
+    high = _require_version(parts[1], expected_dragen_version)
     if low > high or (low == high and not (low_inclusive and high_inclusive)):
         raise ValueError(
             f"invalid DRAGEN version range '{expected_dragen_version}': empty or inverted interval")
@@ -480,6 +499,25 @@ def compose_report(project_id, dataset_name, expected_dragen_version, overall_pa
 # --- Execution (imports the BigQuery client lazily so the SQL builders / evaluators stay
 #     dependency-free for unit tests) -----------------------------------------------------------
 
+# project_id and dataset_name are interpolated directly into the SQL builders, so reject anything
+# outside a conservative allowlist before they reach a query (guards against malformed identifiers
+# and SQL injection, mirroring _validate_table_prefixes in parse_and_group_files.py). GCP project
+# ids may contain letters, digits, hyphens; BigQuery dataset names allow only letters, digits, and
+# underscores.
+_PROJECT_ID_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]*$')
+_DATASET_NAME_RE = re.compile(r'^[A-Za-z0-9_]+$')
+
+
+def _validate_bq_identifiers(project_id, dataset_name):
+    """Raise ``ValueError`` if project_id / dataset_name are unsafe to embed in SQL."""
+    if not _PROJECT_ID_RE.match(project_id or ''):
+        raise ValueError(
+            f"invalid project_id '{project_id}': must match {_PROJECT_ID_RE.pattern}")
+    if not _DATASET_NAME_RE.match(dataset_name or ''):
+        raise ValueError(
+            f"invalid dataset_name '{dataset_name}': must match {_DATASET_NAME_RE.pattern}")
+
+
 def _make_client(project_id):
     from google.cloud import bigquery
     from google.cloud.bigquery.job import QueryJobConfig
@@ -492,6 +530,7 @@ def run_checks(project_id, dataset_name, expected_dragen_version=None, require_r
                client=None):
     """Execute all queries and evaluate them. Returns ``(overall_passed, [CheckResult, ...])``."""
     import utils
+    _validate_bq_identifiers(project_id, dataset_name)
     if client is None:
         client = _make_client(project_id)
 

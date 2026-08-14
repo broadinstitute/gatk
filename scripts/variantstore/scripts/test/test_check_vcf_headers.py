@@ -103,6 +103,41 @@ class TestExpectedDragenSpec(unittest.TestCase):
         with self.assertRaises(ValueError):
             cvh.parse_expected_dragen_spec("[3.7.8-3.7.8)")
 
+    def test_whitespace_only_is_none(self):
+        # A blank/whitespace-only value is treated as unspecified, not a never-matching exact value.
+        self.assertEqual(cvh.parse_expected_dragen_spec("   "), (None, None))
+
+    def test_exact_rejects_malformed(self):
+        # Typos / stray characters in an exact value must fail loudly, not silently never match.
+        for bad in ("3.7,8", "3.7.8x", "v3.7.8", "3.7 .8", "3..7", "abc"):
+            with self.assertRaises(ValueError):
+                cvh.parse_expected_dragen_spec(bad)
+
+    def test_range_rejects_malformed_bound(self):
+        for bad in ("3.x-3.7.8", "3.7.8-3.8y", "3.7,8-3.8", "[3.a-3.8)"):
+            with self.assertRaises(ValueError):
+                cvh.parse_expected_dragen_spec(bad)
+
+
+class TestIdentifierValidation(unittest.TestCase):
+    """project_id / dataset_name are interpolated into SQL, so they must be validated first."""
+
+    def test_valid_identifiers_pass(self):
+        # No exception for typical GVS identifiers.
+        cvh._validate_bq_identifiers("broad-dsde-methods", "ng_trial_ingest_1")
+        cvh._validate_bq_identifiers("gvs.internal", "dataset123")
+
+    def test_bad_project_raises(self):
+        for bad in ("proj; DROP TABLE x", "proj`", "bad project", "-leading-hyphen", ""):
+            with self.assertRaises(ValueError):
+                cvh._validate_bq_identifiers(bad, "good_dataset")
+
+    def test_bad_dataset_raises(self):
+        # BigQuery dataset names disallow hyphens, spaces, and punctuation.
+        for bad in ("ds-with-dash", "ds;DROP", "bad dataset", "ds`", ""):
+            with self.assertRaises(ValueError):
+                cvh._validate_bq_identifiers("good-project", bad)
+
 
 def _summary(**overrides):
     base = {
