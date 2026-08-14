@@ -355,6 +355,31 @@ actual change.
 
 # Code Review Conventions
 
+## Do the review inline — do not use the `code-review` skill
+
+When asked to review a branch, PR, or diff, read the diff and write the review
+directly in the conversation, following the conventions in this section. Do not
+invoke the `code-review` skill, and do not otherwise fork the review into a
+subagent.
+
+The skill is packaged to run forked, and what comes back does not follow the
+conventions below: it leads with findings instead of an `## Action items`
+section, and it does not produce the durable write-up under
+`~/claude-artifacts/<project>/`. Restructuring its output afterwards costs more
+than doing the review inline from the start.
+
+A forked reviewer also cannot see the context already gathered in the
+conversation — the established base ref, the diff, the surrounding files — so it
+re-derives them, and its supporting claims still have to be checked against the
+repo before they can be reported. In the VS-1983 review its findings were sound,
+but one rested on a partial survey of the repo: it correctly noted that
+`CreateDatasetForTest` in `GvsUtils.wdl` passes no `--location`, while missing
+`run_header_loading_e2e.sh`, which uses `--location=US` and cuts the other way.
+
+Whoever writes the review — inline or otherwise — verify each finding's
+supporting claims against the repo, and reproduce a finding directly where that
+is cheap, before reporting it.
+
 ## Lead with action items
 
 A code review write-up opens with an `## Action items` section, before the scope
