@@ -340,7 +340,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1980_1992_storage_write_api_fixes
          tags:
              - /.*/
    - name: GvsIngestTieout
