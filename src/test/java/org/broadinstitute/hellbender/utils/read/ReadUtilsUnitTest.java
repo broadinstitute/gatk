@@ -3,7 +3,9 @@ package org.broadinstitute.hellbender.utils.read;
 import com.google.common.jimfs.Configuration;
 import com.google.common.jimfs.Jimfs;
 import htsjdk.samtools.*;
+import htsjdk.samtools.reference.ReferenceSequenceFile;
 import htsjdk.samtools.reference.ReferenceSequenceFileFactory;
+import htsjdk.samtools.util.SequenceUtil;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReadsContext;
@@ -514,12 +516,12 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(expectIndex, null != SamFiles.findIndex(outputFile));
         Assert.assertEquals(createMD5, md5File.exists());
 
-        // now check the contents are the same
+        // Check the written reads round-trip back to the original SAM. htsjdk 5.0.0 (htslib-compatible)
+        // regenerates NM/MD and recomputes TLEN when reading CRAM, so those derived fields are
+        // normalized before comparison; everything else must survive the round-trip unchanged.
         try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile);
             final SamReader outputReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(outputFile)) {
-            final Iterator<SAMRecord> samRecIt = samReader.iterator();
-            final Iterator<SAMRecord> outRecIt = outputReader.iterator();
-            Assert.assertEquals(samRecIt, outRecIt);
+            assertSameReadsIgnoringCramDerivedFields(samReader, outputReader);
         }
     }
 
@@ -565,14 +567,86 @@ public final class ReadUtilsUnitTest extends GATKBaseTest {
                 Assert.assertEquals(createMD5, Files.exists(md5Path));
             }
 
-            // now check the contents are the same
+            // Check the written reads round-trip back to the original SAM. htsjdk 5.0.0
+            // (htslib-compatible) regenerates NM/MD and recomputes TLEN when reading CRAM, so those
+            // derived fields are normalized before comparison; everything else must round-trip unchanged.
             try (final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile);
                 final SamReader outputReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(outputPath)) {
-                final Iterator<SAMRecord> samRecIt = samReader.iterator();
-                final Iterator<SAMRecord> outRecIt = outputReader.iterator();
-                Assert.assertEquals(samRecIt, outRecIt);
+                assertSameReadsIgnoringCramDerivedFields(samReader, outputReader);
             }
         }
+    }
+
+    // Pattern-1 lossless round-trip (mirrors htsjdk's LosslessRoundTripTest): pre-set canonical
+    // NM/MD on the inputs so the FULL record - including NM/MD - survives the CRAM strip-and-regenerate
+    // round-trip. Unlike testCreate*SAMWriter (which normalizes NM/MD/TLEN away), this asserts the
+    // regenerated tags are correct rather than merely tolerated. CRAM cases only (needs a reference).
+    @Test(dataProvider = "createSAMWriter")
+    public void testCreateSAMWriterCramLosslessNmMd(
+            final File bamFile,
+            final File referenceFile,
+            final String outputExtension,
+            final boolean preSorted,
+            final boolean createIndex,
+            final boolean createMD5,
+            final boolean expectIndex) throws Exception {
+        if (referenceFile == null || !outputExtension.equals(".cram")) {
+            return; // canonicalizing NM/MD requires a reference; the round-trip effect is CRAM-specific
+        }
+
+        final File outputFile = createTempFile("samWriterLossless", outputExtension);
+
+        // Read the input and set canonical NM/MD from the reference on every mapped record.
+        final List<SAMRecord> canonicalRecords = new ArrayList<>();
+        final SAMFileHeader header;
+        try (final ReferenceSequenceFile ref = ReferenceSequenceFileFactory.getReferenceSequenceFile(referenceFile);
+             final SamReader samReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(bamFile)) {
+            header = samReader.getFileHeader();
+            final Map<String, byte[]> refBasesByContig = new HashMap<>();
+            for (final SAMRecord rec : samReader) {
+                if (!rec.getReadUnmappedFlag()) {
+                    final byte[] refBases = refBasesByContig.computeIfAbsent(
+                            rec.getReferenceName(), contig -> ref.getSequence(contig).getBases());
+                    SequenceUtil.calculateMdAndNmTags(rec, refBases, true, true);
+                }
+                canonicalRecords.add(rec);
+            }
+        }
+
+        try (final SAMFileWriter writer = ReadUtils.createCommonSAMWriter(
+                outputFile, referenceFile, header, preSorted, createIndex, createMD5)) {
+            for (final SAMRecord rec : canonicalRecords) {
+                writer.addAlignment(rec);
+            }
+        }
+
+        // Full equality, including NM/MD: the canonical tags must survive the CRAM round-trip.
+        try (final SamReader outputReader = SamReaderFactory.makeDefault().referenceSequence(referenceFile).open(outputFile)) {
+            final Iterator<SAMRecord> actualIt = outputReader.iterator();
+            for (final SAMRecord expected : canonicalRecords) {
+                Assert.assertTrue(actualIt.hasNext(), "too few records round-tripped through CRAM");
+                Assert.assertEquals(actualIt.next(), expected);
+            }
+            Assert.assertFalse(actualIt.hasNext(), "extra records round-tripped through CRAM");
+        }
+    }
+
+    // Compares reads for a round-trip while tolerating the derived fields htsjdk 5.0.0 regenerates
+    // when reading CRAM (NM/MD tags and the recomputed TLEN). All other fields must match exactly.
+    private static void assertSameReadsIgnoringCramDerivedFields(final SamReader expected, final SamReader actual) {
+        final Iterator<SAMRecord> expectedIt = expected.iterator();
+        final Iterator<SAMRecord> actualIt = actual.iterator();
+        while (expectedIt.hasNext() && actualIt.hasNext()) {
+            final SAMRecord expectedRec = expectedIt.next();
+            final SAMRecord actualRec = actualIt.next();
+            for (final SAMRecord rec : new SAMRecord[]{expectedRec, actualRec}) {
+                rec.setAttribute(SAMTag.NM, null);
+                rec.setAttribute(SAMTag.MD, null);
+                rec.setInferredInsertSize(0);
+            }
+            Assert.assertEquals(actualRec, expectedRec);
+        }
+        Assert.assertEquals(actualIt.hasNext(), expectedIt.hasNext(), "record count mismatch");
     }
 
     @DataProvider(name="hasCRAMFileContents")
