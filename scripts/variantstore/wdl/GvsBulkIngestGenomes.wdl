@@ -202,6 +202,9 @@ workflow GvsBulkIngestGenomes {
         Boolean done = true
         String recorded_git_hash = effective_git_hash
         Boolean used_tighter_gcp_quotas = ImportGenomes.used_tighter_gcp_quotas
+        # Optional because the ValidateHeaders call is conditional (validate_vcf_headers): Cromwell
+        # surfaces an un-run conditional call's outputs as None, so consumers must treat these as
+        # optional (defined()/select_first). This is the same pattern GvsValidateVDS uses.
         Boolean? vcf_headers_validation_passed = ValidateHeaders.validation_passed
         File? vcf_headers_validation_report = ValidateHeaders.validation_report
     }

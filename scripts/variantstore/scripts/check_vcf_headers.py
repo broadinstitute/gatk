@@ -50,7 +50,7 @@ EXAMPLE_LIMIT = 20
 
 # The SW version string in a DRAGEN command line, e.g. "SW: 05.021.604.3.7.8". A '.' inside a
 # character class is a literal, so no escaping is needed.
-SW_VERSION_REGEX = 'SW: [0-9.]+'
+SW_VERSION_REGEX = r'SW: [0-9.]+'
 
 # name:  short identifier for the check
 # passed: bool -- did the check pass
@@ -393,8 +393,9 @@ def evaluate_dragen_version(dragen_rows, expected_dragen_version=None):
     try:
         kind, payload = parse_expected_dragen_spec(expected_dragen_version)
     except ValueError as e:
+        # Name the offending input so the WDL log points the operator straight at what to fix.
         return CheckResult(name='dragen_version', passed=False, fatal=True,
-                           lines=lines + [f"    FAIL: {e}"])
+                           lines=lines + [f"    FAIL: malformed --expected_dragen_version: {e}"])
 
     distinct_triplets = sorted(t for t in triplet_counts if t is not None)
 
@@ -528,7 +529,13 @@ def _make_client(project_id):
 
 def run_checks(project_id, dataset_name, expected_dragen_version=None, require_reblocking=True,
                client=None):
-    """Execute all queries and evaluate them. Returns ``(overall_passed, [CheckResult, ...])``."""
+    """Execute all queries and evaluate them. Returns ``(overall_passed, [CheckResult, ...])``.
+
+    ``project_id`` and ``dataset_name`` are interpolated directly into the SQL, so they are first
+    validated with ``_validate_bq_identifiers`` (project ids: letters/digits and ``. _ -``; dataset
+    names: letters/digits/``_`` only). A value outside that allowlist raises ``ValueError`` before
+    any query runs. Example: ``run_checks('broad-dsde-methods', 'aou_wgs_ingest', '3.7.8')``.
+    """
     import utils
     _validate_bq_identifiers(project_id, dataset_name)
     if client is None:
