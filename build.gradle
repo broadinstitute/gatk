@@ -16,6 +16,7 @@ plugins {
     id "com.gradleup.shadow" version "8.3.3"    //used to build the shadow and sparkJars
     id 'com.palantir.git-version' version '3.1.0' //version helper
     id 'org.sonatype.gradle.plugins.scan' version '3.0.0' // scans for security vulnerabilities in our dependencies
+    id 'com.gradleup.nmcp' version '1.6.1' // publishes releases to the Sonatype Central Portal (OSSRH was retired)
 }
 
 
@@ -1069,7 +1070,8 @@ configurations.archives.artifacts.removeAll {it.file =~ '.tar$'}
  * Sign non-snapshot releases with our secret key.  This should never need to be invoked directly.
  */
 signing {
-    required { isRelease && gradle.taskGraph.hasTask("publish") }
+    useGpgCmd() // sign via the gpg command line (gpg2, supports ed25519), rather than a secret keyring file
+    required { isRelease }
     sign publishing.publications
 }
 
@@ -1146,6 +1148,21 @@ publishing {
 publish {
     doFirst {
         println "Attempting to upload version:$version"
+    }
+}
+
+/**
+ * Publish releases to Maven Central via the Sonatype Central Portal (the legacy OSSRH staging host,
+ * oss.sonatype.org, was retired in 2025). Credentials come from a Central Portal user token stored as
+ * sonatypeUsername/sonatypePassword in ~/.gradle/gradle.properties.
+ *
+ * Release: ./gradlew clean publishAllPublicationsToCentralPortal -Drelease=true
+ */
+nmcp {
+    publishAllPublicationsToCentralPortal {
+        username = project.findProperty("sonatypeUsername")
+        password = project.findProperty("sonatypePassword")
+        publishingType = "AUTOMATIC"
     }
 }
 
