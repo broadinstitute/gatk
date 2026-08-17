@@ -371,26 +371,42 @@ task ValidateDatasetExists {
     if [ $BQ_SHOW_RC -ne 0 ]; then
       # Turn off xtrace so the message below is easy to read in the task log.
       set +o xtrace
-      # Surface the raw bq error first, to aid triage of anything the heuristics below don't cover.
+      # Surface the raw bq error first, to aid triage of anything the checks below don't cover.
       echo "bq show failed (rc=${BQ_SHOW_RC}): ${BQ_SHOW_ERR}" >&2
       echo "" >&2
-      if echo "${BQ_SHOW_ERR}" | grep -qiE 'access denied|permission|not authorized|forbidden|403'; then
+      # Classify by bq's own error-class markers. 'Not found: Dataset' and 'Access Denied' each contain a
+      # space (illegal in a project or dataset id), so they come from bq itself -- not from the caller's
+      # identifiers echoed back into the message (e.g. a Terra project like 'terra-4038a1c9' or a dataset
+      # named 'permissions_test'). Match the missing case affirmatively and fall through to a neutral
+      # message for anything else (invalid id, BigQuery API disabled, transient/credential error) rather
+      # than misdiagnosing it.
+      if echo "${BQ_SHOW_ERR}" | grep -qiE 'not found: dataset'; then
+        echo "ERROR: BigQuery dataset '~{project_id}:~{dataset_name}' was not found." >&2
+        echo "" >&2
+        echo "GvsAssignIds creates the tables within a dataset, but it does not create the dataset itself." >&2
+        echo "The dataset must already exist before running this workflow." >&2
+        echo "" >&2
+        echo "To create it (use a multi-region that matches where your data lives; AoU callsets use the US multi-region):" >&2
+        echo "    bq --location=US mk --dataset ~{project_id}:~{dataset_name}" >&2
+        echo "" >&2
+        echo "If you believe the dataset already exists, double-check the 'dataset_name' and 'project_id'" >&2
+        echo "inputs for typos and confirm you have access to it." >&2
+      elif echo "${BQ_SHOW_ERR}" | grep -qiE 'access denied|permission denied|permission_denied'; then
         echo "ERROR: BigQuery dataset '~{project_id}:~{dataset_name}' could not be accessed -- this looks" >&2
         echo "like a permissions problem, not a missing dataset." >&2
         echo "" >&2
         echo "Confirm the account running this workflow has read access to the dataset or project" >&2
         echo "(the 'bigquery.datasets.get' permission, e.g. via the BigQuery Data Viewer role), then re-run." >&2
       else
-        echo "ERROR: BigQuery dataset '~{project_id}:~{dataset_name}' was not found." >&2
+        echo "ERROR: could not verify BigQuery dataset '~{project_id}:~{dataset_name}' -- 'bq show' failed" >&2
+        echo "for a reason that is neither a plain missing dataset nor a permissions problem." >&2
         echo "" >&2
-        echo "GvsAssignIds creates the tables within a dataset, but it does not create the dataset itself." >&2
-        echo "The dataset must already exist before running this workflow." >&2
+        echo "See the raw 'bq show' error above for the specific cause. Common ones:" >&2
+        echo "  * Invalid dataset id -- BigQuery dataset ids allow only letters, digits, and underscores" >&2
+        echo "    (no hyphens, unlike GCP project ids); rename the dataset if so." >&2
+        echo "  * The BigQuery API is not enabled on the project, or a transient/credential error." >&2
         echo "" >&2
-        echo "To create it (GVS datasets live in the US multi-region):" >&2
-        echo "    bq --location=US mk --dataset ~{project_id}:~{dataset_name}" >&2
-        echo "" >&2
-        echo "If you believe the dataset already exists, double-check the 'dataset_name' and 'project_id'" >&2
-        echo "inputs for typos and confirm you have access to it." >&2
+        echo "Double-check the 'dataset_name' and 'project_id' inputs, then re-run." >&2
       fi
       exit 1
     fi
