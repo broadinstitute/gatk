@@ -386,8 +386,9 @@ task ValidateDatasetExists {
         echo "GvsAssignIds creates the tables within a dataset, but it does not create the dataset itself." >&2
         echo "The dataset must already exist before running this workflow." >&2
         echo "" >&2
-        echo "To create it (use a multi-region that matches where your data lives; AoU callsets use the US multi-region):" >&2
-        echo "    bq --location=US mk --dataset ~{project_id}:~{dataset_name}" >&2
+        echo "To create it, choose the multi-region that matches where your data lives:" >&2
+        echo "    bq --location=YOUR_MULTI_REGION mk --dataset ~{project_id}:~{dataset_name}   # e.g. --location=US or --location=EU" >&2
+        echo "(AoU callsets use the US multi-region, i.e. --location=US. If --location is omitted, bq will use whatever default location is configured for your environment; do not rely on this.)" >&2
         echo "" >&2
         echo "If you believe the dataset already exists, double-check the 'dataset_name' and 'project_id'" >&2
         echo "inputs for typos and confirm you have access to it." >&2
