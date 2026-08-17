@@ -361,10 +361,14 @@ task ValidateDatasetExists {
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
 
-    # Capture bq's stderr (discarding stdout) so we can both surface the real error and tell a
-    # missing dataset apart from a permissions problem -- the two need very different fixes.
+    # Capture bq's combined output so we can both surface the real error and tell a missing dataset
+    # apart from a permissions problem -- the two need very different fixes. bq writes its error
+    # messages ('Not found: Dataset ...', 'Access Denied: ...') to stdout, not stderr, so capturing
+    # stderr alone ('2>&1 >/dev/null') comes back empty and every failure falls through to the neutral
+    # branch. '2>&1' merges both streams into the variable; on success (rc=0) the captured dataset
+    # description is simply unused.
     set +o errexit
-    BQ_SHOW_ERR=$(bq --apilog=false --project_id=~{project_id} show ~{dataset_name} 2>&1 >/dev/null)
+    BQ_SHOW_ERR=$(bq --apilog=false --project_id=~{project_id} show ~{dataset_name} 2>&1)
     BQ_SHOW_RC=$?
     set -o errexit
 
