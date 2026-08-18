@@ -8,6 +8,8 @@ import java.nio.file.Path;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
@@ -98,15 +100,10 @@ public class PileupSummary implements Locatable {
         return FastMath.min(altFraction, 1 - altFraction);
     }
 
-
-    //----- The following two public static methods read and write pileup summary files
-    public static void writeToFile(final String sample, final List<PileupSummary> records, final File outputTable) {
-        try ( PileupSummaryTableWriter writer = new PileupSummaryTableWriter(IOUtils.fileToPath(outputTable)) ) {
-            writer.writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
-            writer.writeAllRecords(records);
-        } catch (IOException e){
-            throw new UserException(String.format("Encountered an IO exception while writing to %s.", outputTable));
-        }
+    // useful for tests when we want to write without worrying about the header stuff
+    public static void writeWithEmptySequenceDictionary(final String sample, final List<PileupSummary> records, final File outputFile) {
+        final SampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata(sample, new SAMSequenceDictionary());
+        new PileupSummaryCollection(metadata, records).write(outputFile);
     }
 
     // Takes a list of PileupSummaryTable files and write them all in one output file in order
@@ -141,12 +138,10 @@ public class PileupSummary implements Locatable {
     }
 
     public static ImmutablePair<String, List<PileupSummary>> readFromFile(final File tableFile) {
-        try( PileupSummaryTableReader reader = new PileupSummaryTableReader(IOUtils.fileToPath(tableFile)) ) {
-            final List<PileupSummary> pileupSummaries = reader.toList();
-            return ImmutablePair.of(reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG), pileupSummaries);
-        } catch (IOException e){
-            throw new UserException(String.format("Encountered an IO exception while reading from %s.", tableFile));
-        }
+        final PileupSummaryCollection collection = new PileupSummaryCollection(tableFile);
+        final List<PileupSummary> pileupSummaries = collection.getRecords();
+        final String sample = collection.getMetadata().getSampleName();
+        return ImmutablePair.of(sample, pileupSummaries);
     }
 
     public static class PileupSummaryComparator implements Comparator<PileupSummary> {

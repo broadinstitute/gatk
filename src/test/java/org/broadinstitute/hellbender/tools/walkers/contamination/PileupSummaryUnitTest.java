@@ -30,7 +30,7 @@ public class PileupSummaryUnitTest extends GATKBaseTest {
         final List<PileupSummary> ps = Arrays.asList(new PileupSummary(contig, position, refCount, altCount, otherAltCount, Nucleotide.A.encodeAsByte(), Nucleotide.C.encodeAsByte(), alleleFrequency));
 
         final File file = IOUtils.createTempFile("pileup_sumary", ".table");
-        PileupSummary.writeToFile("sample", ps, file);
+        PileupSummary.writeWithEmptySequenceDictionary("sample", ps, file);
         final List<PileupSummary> psCopy = PileupSummary.readFromFile(file).getRight();
 
         Assert.assertEquals(psCopy.size(), 1);
