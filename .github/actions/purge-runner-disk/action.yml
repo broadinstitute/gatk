@@ -7,6 +7,12 @@ runs:
     #https://github.com/actions/runner-images/issues/2840
     - name: Reclaim some runner disk space
       run: |
+        sudo df -h
+        echo "$AGENT_TOOLSDIRECTORY"
         sudo rm -rf /usr/share/dotnet
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+        sudo rm -rf /usr/local/lib/android
+        sudo rm -rf /opt/ghc
+        sudo docker image prune --all --force
+        sudo df -h
       shell: bash

@@ -1,5 +1,5 @@
 #!/bin/bash -l
-set -e
+#set -e
 
 MODE=$1
 # We split up the test into CASE in COHORT to reduce overall test runtime
@@ -42,7 +42,10 @@ echo "Running ========"
 # Cohort WES w/ explicit GC correction
 if [[ "$MODE" == "COHORT" ]]; then
   java -jar ${CROMWELL_JAR} run $WORKING_DIR/gatk/scripts/cnv_wdl/germline/cnv_germline_cohort_workflow.wdl -i cnv_germline_cohort_workflow_mod.json ;
-  find /home/runner/work/gatk/gatk/scripts/cnv_cromwell_tests/germline/cromwell-executions/CNVGermlineCohortWorkflow/ | grep 'stdout\|stderr' | xargs cat ;
+  if [[ "$?" != 0 ]]; then
+    find /home/runner/work/gatk/gatk/scripts/cnv_cromwell_tests/germline/cromwell-executions/CNVGermlineCohortWorkflow/ | grep 'stdout\|stderr' | xargs cat ;
+    exit 1 ;
+  fi
 fi
 
 # Scattered case WES w/ explicit GC correction
