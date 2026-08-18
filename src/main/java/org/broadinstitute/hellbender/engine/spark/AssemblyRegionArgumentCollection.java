@@ -4,12 +4,14 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 
 import java.io.Serializable;
 
 public class AssemblyRegionArgumentCollection implements Serializable {
     public static final String ASSEMBLY_REGION_OUT_LONG_NAME = "assembly-region-out";
     public static final String FORCE_ACTIVE_REGIONS_LONG_NAME = "force-active";
+    public static final String ACTIVITY_PROFILE_TYPE_LONG_NAME = "activity-profile-type";
     private static final long serialVersionUID = 1L;
 
     public static final String MIN_ASSEMBLY_LONG_NAME = "min-assembly-region-size";
@@ -18,6 +20,7 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public static final String MAX_STARTS_LONG_NAME = "max-reads-per-alignment-start";
     public static final String THRESHOLD_LONG_NAME = "active-probability-threshold";
     public static final String PROPAGATION_LONG_NAME = "max-prob-propagation-distance";
+    public static final String GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME = "genotype-germline-sites-fraction";
 
     public static final int DEFAULT_MIN_ASSEMBLY_REGION_SIZE = 50;
     public static final int DEFAULT_MAX_ASSEMBLY_REGION_SIZE = 300;
@@ -67,6 +70,9 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      * Parameters that control active regions
      */
 
+    @Argument(fullName = ACTIVITY_PROFILE_TYPE_LONG_NAME, doc = "Activity profile type", optional = true)
+    public ActivityProfile.ProfileType activityProfileType = defaultActivityProfileType();
+
     @Argument(fullName = MIN_ASSEMBLY_LONG_NAME, doc = "Minimum size of an assembly region", optional = true)
     public int minAssemblyRegionSize = defaultMinAssemblyRegionSize();
 
@@ -84,6 +90,7 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     @Advanced
     @Argument(fullName = FORCE_ACTIVE_REGIONS_LONG_NAME, doc = "If provided, all regions will be marked as active", optional = true)
     public boolean forceActive = false;
+
 
     /**
      * Parameters that control assembly regions
@@ -109,6 +116,15 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public int strPaddingForGenotyping = 75;
 
     /**
+     * For the purposes of learning some parameters in Permutect it may be useful to genotype *some* germline variants
+     * and emit them as Permutect tensors.  When --genotypeGermlineSites is true, etting this parameter to a value less
+     * than the default of 1.0 causes only some germline sites to be genotyped.  When --genotypeGermlineSites is false
+     * this argument has no effect and no germline sites are genotyped.
+     */
+    @Argument(fullName= GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, doc="Fraction of germline sites to be genotyped randomly.", optional = true)
+    public double genotypeGermlineSitesFraction = defaultGenotypeGermlineSitesFraction();
+
+    /**
      * The maximum extent into the full active region extension that we're willing to go in genotyping our events
      * NOTE: this is only applicable to the legacy assembly region trimming currently
      */
@@ -126,6 +142,11 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     @Hidden
     @Argument(fullName = "enable-legacy-assembly-region-trimming", doc = "Revert changes to the assembly region windows, this will result in less consistent results for assembly window boundaries", optional = true)
     public boolean enableLegacyAssemblyRegionTrimming = false;
+
+    /**
+     * @return Default value for the {@link #activityProfileType} parameter, if none is provided on the command line
+     */
+    protected ActivityProfile.ProfileType defaultActivityProfileType() { return ActivityProfile.ProfileType.BAND_PASS; }
 
     /**
      * @return Default value for the {@link #minAssemblyRegionSize} parameter, if none is provided on the command line
@@ -151,6 +172,8 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      * @return Default value for the {@link #activeProbThreshold} parameter, if none is provided on the command line
      */
     protected double defaultActiveProbThreshold() { return DEFAULT_ACTIVE_PROB_THRESHOLD; }
+
+    protected double defaultGenotypeGermlineSitesFraction() { return 1.0; }
 
     /**
      * @return Default value for the {@link #maxProbPropagationDistance} parameter, if none is provided on the command line

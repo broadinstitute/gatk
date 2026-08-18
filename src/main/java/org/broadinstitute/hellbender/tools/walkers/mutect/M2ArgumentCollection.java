@@ -9,11 +9,13 @@ import org.broadinstitute.barclay.argparser.DeprecatedFeature;
 import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureInput;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.FlowBasedAlignmentArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.tools.walkers.readorientation.CollectF1R2CountsArgumentCollection;
 import org.broadinstitute.hellbender.utils.MathUtils;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 
 import java.io.File;
 import java.io.Serializable;
@@ -30,7 +32,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String PANEL_OF_NORMALS_SHORT_NAME = "pon";
     public static final String GENOTYPE_PON_SITES_LONG_NAME = "genotype-pon-sites";
     public static final String GENOTYPE_GERMLINE_SITES_LONG_NAME = "genotype-germline-sites";
-    public static final String GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME = "genotype-germline-sites-fraction";
     public static final String GERMLINE_RESOURCE_LONG_NAME = "germline-resource";
     public static final String DEFAULT_AF_LONG_NAME = "af-of-alleles-not-in-resource";
     public static final String DEFAULT_AF_SHORT_NAME = "default-af";
@@ -139,15 +140,6 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public boolean genotypeGermlineSites = false;
 
     /**
-     * For the purposes of learning some parameters in Permutect it may be useful to genotype *some* germline variants
-     * and emit them as Permutect tensors.  When --genotypeGermlineSites is true, etting this parameter to a value less
-     * than the default of 1.0 causes only some germline sites to be genotyped.  When --genotypeGermlineSites is false
-     * this argument has no effect and no germline sites are genotyped.
-     */
-    @Argument(fullName= GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, doc="Fraction of germline sites to be genotyped randomly.", optional = true)
-    public double genotypeGermlineSitesFraction = 1.0;
-
-    /**
      * A resource, such as gnomAD, containing population allele frequencies of common and rare variants.
      */
     @Argument(fullName= GERMLINE_RESOURCE_LONG_NAME, doc="Population vcf of germline sequencing containing allele fractions.", optional = true)
@@ -182,6 +174,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
                 DEFAULT_AF_LONG_NAME, String.valueOf(DEFAULT_AF_FOR_MITO_CALLING),
                 EMISSION_LOD_LONG_NAME, String.valueOf(DEFAULT_MITO_EMISSION_LOD),
                 INITIAL_TUMOR_LOG_10_ODDS_LONG_NAME, String.valueOf(DEFAULT_MITO_INITIAL_LOG_10_ODDS),
+                AssemblyRegionArgumentCollection.ACTIVITY_PROFILE_TYPE_LONG_NAME, ActivityProfile.ProfileType.BAND_PASS.name(),
                 ReadThreadingAssemblerArgumentCollection.RECOVER_ALL_DANGLING_BRANCHES_LONG_NAME, "true",
                 ReadThreadingAssemblerArgumentCollection.PRUNING_LOD_THRESHOLD_LONG_NAME, String.valueOf(DEFAULT_MITO_PRUNING_LOG_ODDS_THRESHOLD),
                 StandardArgumentDefinitions.ANNOTATION_LONG_NAME, "OriginalAlignment"
@@ -305,7 +298,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      * In tumor-only mode, we discard variants with population allele frequencies greater than this threshold.
      */
     @Argument(fullName = MAX_POPULATION_AF_LONG_NAME, shortName = MAX_POPULATION_AF_SHORT_NAME, optional = true, doc = "Maximum population allele frequency in tumor-only mode.")
-    public double maxPopulationAlleleFrequency = 0.01;
+    public double maxPopulationAlleleFrequency = 0.001;
 
     /**
      * Downsample a pool of reads starting within a range of one or more bases.
