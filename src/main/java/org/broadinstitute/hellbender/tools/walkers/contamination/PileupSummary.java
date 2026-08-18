@@ -1,27 +1,24 @@
 package org.broadinstitute.hellbender.tools.walkers.contamination;
 
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFConstants;
-import java.nio.file.Path;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.math3.util.FastMath;
-import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
-import org.broadinstitute.hellbender.utils.tsv.*;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -79,9 +76,7 @@ public class PileupSummary implements Locatable {
     public int getRefCount() {
         return refCount;
     }
-    public int getOtherAltCount() {
-        return otherAltsCount;
-    }
+    public int getOtherAltCount() { return otherAltsCount; }
     public int getTotalCount() {
         return totalCount;
     }
@@ -102,8 +97,15 @@ public class PileupSummary implements Locatable {
     }
 
     // useful for tests when we want to write without worrying about the header stuff
-    public static void writeWithEmptySequenceDictionary(final String sample, final List<PileupSummary> records, final File outputFile) {
-        final SampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata(sample, new SAMSequenceDictionary());
+    public static void writeWithAutomaticSequenceDictionary(final String sample, final List<PileupSummary> records, final File outputFile) {
+        final SAMSequenceDictionary seqDict = new SAMSequenceDictionary();
+        final Map<String, List<PileupSummary>> recordsByContig = records.stream().collect(Collectors.groupingBy(PileupSummary::getContig));
+        for (final Map.Entry<String, List<PileupSummary>> entry : recordsByContig.entrySet()) {
+            final String contig = entry.getKey();
+            final int maxPosition = entry.getValue().stream().mapToInt(PileupSummary::getEnd).max().orElse(1);
+            seqDict.addSequence(new SAMSequenceRecord(contig, maxPosition));
+        }
+        final SampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata(sample, seqDict);
         new PileupSummaryCollection(metadata, records).write(outputFile);
     }
 

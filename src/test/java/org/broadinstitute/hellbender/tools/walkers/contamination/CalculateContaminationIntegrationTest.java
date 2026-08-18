@@ -85,7 +85,7 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
         }
 
         final File psTable = createTempFile("pileups", ".table");
-        PileupSummary.writeWithEmptySequenceDictionary("SAMPLE", ps, psTable);
+        PileupSummary.writeWithAutomaticSequenceDictionary("SAMPLE", ps, psTable);
         final File contaminationTable = createTempFile("contamination", ".table");
         final File segmentationsTable = createTempFile("segments", ".table");
 

@@ -37,7 +37,7 @@ public final class PileupSummaryCollection extends AbstractSampleLocatableCollec
         final int position = dataLine.getInt(PileupSummaryTableColumn.POSITION);
         final int refReadCount = dataLine.getInt(PileupSummaryTableColumn.REF_COUNT);
         final int altReadCount = dataLine.getInt(PileupSummaryTableColumn.ALT_COUNT);
-        final int otherAltReadCount = dataLine.getInt(PileupSummaryTableColumn.ALT_COUNT);
+        final int otherAltReadCount = dataLine.getInt(PileupSummaryTableColumn.OTHER_ALT_COUNT);
         final byte refAllele = dataLine.get(PileupSummaryTableColumn.REF_BASE).getBytes()[0];
         final byte altAllele = dataLine.get(PileupSummaryTableColumn.ALT_BASE).getBytes()[0];
         final double alleleFrequency = dataLine.getDouble(PileupSummaryTableColumn.ALLELE_FREQUENCY);

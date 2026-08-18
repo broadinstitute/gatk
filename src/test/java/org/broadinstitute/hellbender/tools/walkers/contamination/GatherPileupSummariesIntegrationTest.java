@@ -58,7 +58,7 @@ public class GatherPileupSummariesIntegrationTest extends CommandLineProgramTest
             }
 
             final Path file = Files.createTempFile(directory, "pileupSummary", ".tsv");
-            PileupSummary.writeWithEmptySequenceDictionary(sampleName, records, file.toFile());
+            PileupSummary.writeWithAutomaticSequenceDictionary(sampleName, records, file.toFile());
         }
 
         final File combinedPileupSummary = createTempFile("combined", "tsv");
