@@ -1,7 +1,7 @@
 package org.broadinstitute.hellbender.utils.recalibration;
 
 import org.broadinstitute.hellbender.utils.recalibration.covariates.Covariate;
-import org.broadinstitute.hellbender.utils.recalibration.covariates.StandardCovariateList;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.BQSRCovariateList;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.collections.NestedIntegerArray;
 
@@ -21,7 +21,7 @@ public final class RecalibrationTables implements Serializable, Iterable<NestedI
     private final int eventDimension = EventType.values().length;
     private final int numReadGroups;
 
-    final StandardCovariateList covariates;  // save the covariates this was created with
+    final BQSRCovariateList covariates;  // save the covariates this was created with
 
     //These two tables are special
     private final NestedIntegerArray<RecalDatum> readGroupTable;
@@ -36,11 +36,11 @@ public final class RecalibrationTables implements Serializable, Iterable<NestedI
 
 
 
-    public RecalibrationTables(final StandardCovariateList covariates) {
+    public RecalibrationTables(final BQSRCovariateList covariates) {
         this(covariates, covariates.getReadGroupCovariate().maximumKeyValue() + 1);
     }
 
-    public RecalibrationTables(StandardCovariateList covariates, final int numReadGroups) {
+    public RecalibrationTables( BQSRCovariateList covariates, final int numReadGroups) {
         this.covariates = covariates;
         this.additionalTables = new ArrayList<>();
         this.allTables = new ArrayList<>();
