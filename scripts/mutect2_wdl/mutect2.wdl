@@ -267,6 +267,13 @@ workflow Mutect2 {
             }
         }
 
+        call ModelSegments {
+            input:
+                tumor_pileups = MergeTumorPileups.merged_table,
+                normal_pileups = MergeNormalPileups.merged_table,
+                runtime_params = standard_runtime
+        }
+
         call CalculateContamination {
             input:
                 tumor_pileups = MergeTumorPileups.merged_table,
@@ -737,6 +744,59 @@ task LearnReadOrientationModel {
         File artifact_prior_table = "artifact-priors.tar.gz"
     }
 
+}
+
+task ModelSegments {
+    input {
+        String? intervals
+        File tumor_pileups
+        File? normal_pileups
+        Runtime runtime_params
+    }
+
+    command {
+        set -e
+
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+
+        # header lines with leading @ are the sequence dictionary
+        # below this, omit the other alt count and allele frequency columns
+        grep ^@ ~{tumor_pileups} > seq_dict.txt
+        grep -v ^@ ~{tumor_pileups} | cut -f 1,2,3,4,6,7 > the_rest.txt
+        cat seq_dict.txt the_rest.txt > tumor.allelicCounts.tsv
+
+        if [[ ! -z "~{normal_pileups}" ]]; then
+            grep ^@ ~{normal_pileups} > seq_dict.txt
+            grep -v ^@ ~{normal_pileups} | cut -f 1,2,3,4,6,7 > the_rest.txt
+            cat seq_dict.txt the_rest.txt > normal.allelicCounts.tsv
+
+            gatk ModelSegments \
+                --allelic-counts tumor.allelicCounts.tsv \
+                --normal-allelic-counts normal.allelicCounts.tsv \
+                --output-prefix tumor \
+                -O output_dir
+        else
+            gatk ModelSegments \
+                --allelic-counts tumor.allelicCounts.tsv \
+                --output-prefix tumor \
+                -O output_dir
+        fi
+    }
+
+    runtime {
+        docker: runtime_params.gatk_docker
+        bootDiskSizeGb: runtime_params.boot_disk_size
+        memory: runtime_params.machine_mem + " MB"
+        disks: "local-disk " + runtime_params.disk + " HDD"
+        preemptible: runtime_params.preemptible
+        maxRetries: runtime_params.max_retries
+        cpu: runtime_params.cpu
+    }
+
+    output {
+        File contamination_table = "contamination.table"
+        File maf_segments = "segments.table"
+    }
 }
 
 task CalculateContamination {
