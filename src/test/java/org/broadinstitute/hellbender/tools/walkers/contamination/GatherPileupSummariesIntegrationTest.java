@@ -1,10 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.contamination;
 
+import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SimpleSampleLocatableMetadata;
 import org.broadinstitute.hellbender.tools.walkers.SplitIntervals;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.testng.Assert;
@@ -38,6 +42,13 @@ public class GatherPileupSummariesIntegrationTest extends CommandLineProgramTest
                 new ImmutablePair<>("14", 30_000_000),
                 new ImmutablePair<>("X", 20_000_000));
         final List<String> contigsOrdered = Arrays.asList("1", "14", "21", "X", "MT");
+
+        final SAMSequenceDictionary seqDict = new SAMSequenceDictionary();
+        for (final String contig : contigsOrdered) {
+            seqDict.addSequence(new SAMSequenceRecord(contig, 100_000_000));
+        }
+        final SampleLocatableMetadata metadata = new SimpleSampleLocatableMetadata("sample", seqDict);
+
         final int numEntriesPerFile = 100;
 
         final Path directory = Files.createTempDirectory("GPS-test");
@@ -58,7 +69,7 @@ public class GatherPileupSummariesIntegrationTest extends CommandLineProgramTest
             }
 
             final Path file = Files.createTempFile(directory, "pileupSummary", ".tsv");
-            PileupSummary.writeWithAutomaticSequenceDictionary(sampleName, records, file.toFile());
+            new PileupSummaryCollection(metadata, records).write(file.toFile());
         }
 
         final File combinedPileupSummary = createTempFile("combined", "tsv");

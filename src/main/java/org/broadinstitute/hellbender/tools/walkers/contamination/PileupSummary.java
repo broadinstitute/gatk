@@ -120,7 +120,7 @@ public class PileupSummary implements Locatable {
             final SampleLocatableMetadata fileMetadata = collection.getMetadata();
             metadata = metadata == null ? fileMetadata : metadata;
 
-            Utils.validate(metadata.getSampleName() == fileMetadata.getSampleName(), "different sample names");
+            Utils.validate(metadata.getSampleName().equals(fileMetadata.getSampleName()), "different sample names");
             metadata.getSequenceDictionary().assertSameDictionary(fileMetadata.getSequenceDictionary());
         }
 
