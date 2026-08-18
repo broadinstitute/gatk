@@ -6,6 +6,7 @@ import org.apache.commons.math3.random.RandomGenerator;
 import org.apache.commons.math3.random.RandomGeneratorFactory;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -80,7 +81,7 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
                 //do nothing -- no alts from the sample
             }
             final int totalRefCount = totalDepth - totalAltCount;
-            ps.add(new PileupSummary(contig, position, totalRefCount, totalAltCount, 0, alleleFrequency));
+            ps.add(new PileupSummary(contig, position, totalRefCount, totalAltCount, 0, Nucleotide.A.encodeAsByte(), Nucleotide.C.encodeAsByte(), alleleFrequency));
         }
 
         final File psTable = createTempFile("pileups", ".table");

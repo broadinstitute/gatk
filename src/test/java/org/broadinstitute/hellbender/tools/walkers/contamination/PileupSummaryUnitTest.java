@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.contamination;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -26,7 +27,7 @@ public class PileupSummaryUnitTest extends GATKBaseTest {
         final int otherAltCount = 2;
         final double alleleFrequency = 0.3;
 
-        final List<PileupSummary> ps = Arrays.asList(new PileupSummary(contig, position, refCount, altCount, otherAltCount, alleleFrequency));
+        final List<PileupSummary> ps = Arrays.asList(new PileupSummary(contig, position, refCount, altCount, otherAltCount, Nucleotide.A.encodeAsByte(), Nucleotide.C.encodeAsByte(), alleleFrequency));
 
         final File file = IOUtils.createTempFile("pileup_sumary", ".table");
         PileupSummary.writeToFile("sample", ps, file);
@@ -59,8 +60,8 @@ public class PileupSummaryUnitTest extends GATKBaseTest {
                                final String contig2, final int position2,
                                int expected){
         final SAMSequenceDictionary dict = new ReferenceFileSource(new File(b37Reference).toPath()).getSequenceDictionary();
-        final PileupSummary ps1 = new PileupSummary(contig1, position1, 0,0,0, 0);
-        final PileupSummary ps2 = new PileupSummary(contig2, position2, 0,0,0, 0);
+        final PileupSummary ps1 = new PileupSummary(contig1, position1, 0,0,0, Nucleotide.A.encodeAsByte(), Nucleotide.C.encodeAsByte(), 0);
+        final PileupSummary ps2 = new PileupSummary(contig2, position2, 0,0,0, Nucleotide.A.encodeAsByte(), Nucleotide.C.encodeAsByte(), 0);
 
         // They must both be positive or negative - so use exlusive-OR
         Assert.assertFalse(new PileupSummary.PileupSummaryComparator(dict).compare(ps1, ps2) < 0 ^ expected < 0);

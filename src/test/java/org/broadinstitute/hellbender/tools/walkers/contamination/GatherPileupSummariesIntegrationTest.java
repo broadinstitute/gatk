@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.walkers.SplitIntervals;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -52,7 +53,7 @@ public class GatherPileupSummariesIntegrationTest extends CommandLineProgramTest
             int position = firstPosition;
             final List<PileupSummary> records = new ArrayList<>();
             for (int i = 0; i < numEntriesPerFile; i++){
-                records.add(new PileupSummary(contig, position, refCount, altCount, 0, af));
+                records.add(new PileupSummary(contig, position, refCount, altCount, 0, Nucleotide.A.encodeAsByte(), Nucleotide.C.encodeAsByte(), af));
                 position += 1;
             }
 

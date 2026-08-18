@@ -31,16 +31,20 @@ public class PileupSummary implements Locatable {
     private final int altCount;
     private final int otherAltsCount;
     private final int totalCount;
+    private final byte refBase;
+    private final byte altBase;
 
     private final double alleleFrequency;
 
-    public PileupSummary(String contig, int position, int refCount, int altCount, int otherAltsCount, double alleleFrequency) {
+    public PileupSummary(String contig, int position, int refCount, int altCount, int otherAltsCount, byte refBase, byte altBase, double alleleFrequency) {
         this.contig = contig;
         this.position = position;
         this.altCount = altCount;
         this.refCount = refCount;
         this.otherAltsCount = otherAltsCount;
         this.totalCount = refCount + altCount + otherAltsCount;
+        this.refBase = refBase;
+        this.altBase = altBase;
         this.alleleFrequency = alleleFrequency;
     }
 
@@ -48,8 +52,8 @@ public class PileupSummary implements Locatable {
         contig = vc.getContig();
         position = vc.getStart();
         alleleFrequency = vc.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, 0);
-        final byte altBase = vc.getAlternateAllele(0).getBases()[0];
-        final byte refBase = vc.getReference().getBases()[0];
+        altBase = vc.getAlternateAllele(0).getBases()[0];
+        refBase = vc.getReference().getBases()[0];
         final int[] baseCounts = pileup.getBaseCounts();
         altCount = baseCounts[BaseUtils.simpleBaseToBaseIndex(altBase)];
         refCount = baseCounts[BaseUtils.simpleBaseToBaseIndex(refBase)];
@@ -78,6 +82,8 @@ public class PileupSummary implements Locatable {
     public int getTotalCount() {
         return totalCount;
     }
+    public byte getRefBase() { return refBase; }
+    public byte getAltBase() { return altBase; }
     public double getAlleleFrequency() {
         return alleleFrequency;
     }
@@ -167,56 +173,4 @@ public class PileupSummary implements Locatable {
             }
         }
     }
-
-    //-------- The following methods are boilerplate for reading and writing pileup summary tables
-    public static class PileupSummaryTableWriter extends TableWriter<PileupSummary> {
-        public PileupSummaryTableWriter(final Path output) throws IOException {
-            super(output, PileupSummaryTableColumn.COLUMNS);
-        }
-
-        @Override
-        protected void composeLine(final PileupSummary record, final DataLine dataLine) {
-            dataLine.set(PileupSummaryTableColumn.CONTIG.toString(), record.getContig())
-                    .set(PileupSummaryTableColumn.POSITION.toString(), record.getStart())
-                    .set(PileupSummaryTableColumn.REF_COUNT.toString(), record.getRefCount())
-                    .set(PileupSummaryTableColumn.ALT_COUNT.toString(), record.getAltCount())
-                    .set(PileupSummaryTableColumn.OTHER_ALT_COUNT.toString(), record.getOtherAltCount())
-                    .set(PileupSummaryTableColumn.ALT_ALLELE_FREQUENCY.toString(), record.getAlleleFrequency());
-        }
-    }
-
-    private static class PileupSummaryTableReader extends TableReader<PileupSummary> {
-        public PileupSummaryTableReader(final Path path) throws IOException { super(path); }
-
-        @Override
-        protected PileupSummary createRecord(final DataLine dataLine) {
-            final String contig = dataLine.get(PileupSummaryTableColumn.CONTIG);
-            final int position = dataLine.getInt(PileupSummaryTableColumn.POSITION);
-            final int refCount = dataLine.getInt(PileupSummaryTableColumn.REF_COUNT);
-            final int altCount = dataLine.getInt(PileupSummaryTableColumn.ALT_COUNT);
-            final int otherAltCount = dataLine.getInt(PileupSummaryTableColumn.OTHER_ALT_COUNT);
-            final double alleleFrequency = dataLine.getDouble(PileupSummaryTableColumn.ALT_ALLELE_FREQUENCY);
-
-            return new PileupSummary(contig, position, refCount, altCount, otherAltCount, alleleFrequency);
-        }
-    }
-
-    private enum PileupSummaryTableColumn {
-        CONTIG("contig"),
-        POSITION("position"),
-        REF_COUNT("ref_count"),
-        ALT_COUNT("alt_count"),
-        OTHER_ALT_COUNT("other_alt_count"),
-        ALT_ALLELE_FREQUENCY("allele_frequency");
-
-        private final String columnName;
-
-        PileupSummaryTableColumn(final String columnName) { this.columnName = Utils.nonNull(columnName); }
-
-        @Override
-        public String toString() { return columnName; }
-
-        public static final TableColumnCollection COLUMNS = new TableColumnCollection((Object[]) values());
-    }
-
 }

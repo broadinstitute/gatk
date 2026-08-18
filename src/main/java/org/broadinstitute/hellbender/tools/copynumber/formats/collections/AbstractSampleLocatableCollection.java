@@ -26,21 +26,21 @@ public abstract class AbstractSampleLocatableCollection<RECORD extends Locatable
     /**
      * @param metadata records are sorted using the contained {@link SAMSequenceDictionary}
      */
-    AbstractSampleLocatableCollection(final SampleLocatableMetadata metadata,
-                                      final List<RECORD> records,
-                                      final TableColumnCollection mandatoryColumns,
-                                      final Function<DataLine, RECORD> recordFromDataLineDecoder,
-                                      final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
+    protected AbstractSampleLocatableCollection(final SampleLocatableMetadata metadata,
+                                                final List<RECORD> records,
+                                                final TableColumnCollection mandatoryColumns,
+                                                final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                                                final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         super(metadata, records, mandatoryColumns, recordFromDataLineDecoder, recordToDataLineEncoder);
     }
 
     /**
      * @throws IllegalArgumentException if records are not sorted according to the {@link SAMSequenceDictionary} contained in the input file
      */
-    AbstractSampleLocatableCollection(final File inputFile,
-                                      final TableColumnCollection mandatoryColumns,
-                                      final Function<DataLine, RECORD> recordFromDataLineDecoder,
-                                      final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
+    protected AbstractSampleLocatableCollection(final File inputFile,
+                                                final TableColumnCollection mandatoryColumns,
+                                                final Function<DataLine, RECORD> recordFromDataLineDecoder,
+                                                final BiConsumer<RECORD, DataLine> recordToDataLineEncoder) {
         super(inputFile, mandatoryColumns, recordFromDataLineDecoder, recordToDataLineEncoder);
     }
 

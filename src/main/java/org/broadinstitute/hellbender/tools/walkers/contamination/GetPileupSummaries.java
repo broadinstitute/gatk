@@ -14,6 +14,9 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.Metadata;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.MetadataUtils;
+import org.broadinstitute.hellbender.tools.copynumber.formats.metadata.SampleLocatableMetadata;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
@@ -21,8 +24,10 @@ import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * <p>Summarizes counts of reads that support reference, alternate and other alleles for given sites. Results can be used with {@link CalculateContamination}.</p>
@@ -195,9 +200,12 @@ public class GetPileupSummaries extends LocusWalker {
         }
 
         try {
+            final SampleLocatableMetadata metadata = MetadataUtils.fromHeader(getHeaderForReads(), Metadata.Type.SAMPLE_LOCATABLE);
+            final List<String> lines = metadata.toHeader().getSAMString().lines().toList();
+            // Overwrites the file if it exists, or creates a new one
+            Files.write(outputTable.toPath(), lines);
+
             writer = new PileupSummary.PileupSummaryTableWriter(IOUtils.fileToPath(outputTable));
-            final String sampleName = ReadUtils.getSamplesFromHeader(getHeaderForReads()).stream().findFirst().get();
-            writer.writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sampleName);
         } catch (IOException ex) {
             throw new UserException.CouldNotCreateOutputFile(outputTable, ex);
         }
