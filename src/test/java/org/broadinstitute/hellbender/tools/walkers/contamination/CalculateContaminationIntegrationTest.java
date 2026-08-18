@@ -60,7 +60,7 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
         final List<PileupSummary> ps = new ArrayList<>();
 
         for (int n = 0; n < numSites; n++) {
-            final int position = n * spacing;
+            final int position = n * spacing + 1;
             final double alleleFrequency = alleleFrequencyDistribution.sample();
 
             // get the contaminant "genotype"
