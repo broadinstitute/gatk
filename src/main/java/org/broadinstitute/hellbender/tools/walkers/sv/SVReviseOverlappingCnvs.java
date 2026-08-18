@@ -362,12 +362,12 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
 
             final String sampleName = entry.getKey();
             final Genotype genotype = variant.getGenotype(sampleName);
-            
-            // Skip no-call genotypes (e.g., females on chrY)
-            if (genotype.isNoCall()) {
+
+            // Skip true no-call genotypes (e.g., females on chrY); depth-only no-calls are haploid and still eligible
+            if (genotype.getPloidy() == 2 && genotype.isNoCall()) {
                 continue;
             }
-            
+
             final String largerId = event.getLeft();
             final String largerSvType = event.getRight();
             final int currentRdCn = currentCopyNumbers.get(variantId).getOrDefault(sampleName, 0);
@@ -383,10 +383,11 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
             if (newVal != -1) {
                 final GenotypeBuilder gb = new GenotypeBuilder(genotype);
                 gb.alleles(Arrays.asList(variant.getReference(), variant.getAlternateAllele(0)));
-                if (!genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_CN)) continue;
-
-                final int rdCn = Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_CN).toString());
-                gb.GQ(rdCn);
+                if (genotype.hasExtendedAttribute(GATKSVVCFConstants.RD_GQ)) {
+                    gb.GQ(Integer.parseInt(genotype.getExtendedAttribute(GATKSVVCFConstants.RD_GQ).toString()));
+                } else {
+                    gb.noGQ();
+                }
                 revisedGenotypes.put(sampleName, gb.make());
             }
         }
@@ -409,9 +410,9 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
         // Replace revised alleles and copy numbers
         for (final Genotype genotype : genotypes) {
             final String sampleName = genotype.getSampleName();
-            
-            // Skip no-call genotypes (e.g., females on chrY)
-            if (genotype.isNoCall()) {
+
+            // Skip true no-call genotypes (e.g., females on chrY); depth-only no-calls are haploid and still eligible
+            if (genotype.getPloidy() == 2 && genotype.isNoCall()) {
                 updatedGenotypes.add(genotype);
                 continue;
             }
@@ -469,11 +470,15 @@ public class SVReviseOverlappingCnvs extends MultiplePassVariantWalker {
 
         Map<String, Set<String>> supportMap = new HashMap<>();
         for (final Genotype genotype : variant.getGenotypes()) {
-            final String supportStr = genotype.hasExtendedAttribute(GATKSVVCFConstants.EV)
+            final String rawEv = genotype.hasExtendedAttribute(GATKSVVCFConstants.EV)
                     ? genotype.getExtendedAttribute(GATKSVVCFConstants.EV).toString()
                     : "";
+            // EV may be a numeric index into GATKSVVCFConstants.EV_VALUES instead of the resolved support string
+            final String supportStr = rawEv.matches("\\d+")
+                    ? GATKSVVCFConstants.EV_VALUES.get(Integer.parseInt(rawEv))
+                    : rawEv;
             final Set<String> supportSet = new HashSet<>();
-            if (!supportStr.isEmpty()) {
+            if (supportStr != null && !supportStr.isEmpty()) {
                 supportSet.addAll(Arrays.asList(supportStr.split(",")));
             }
             supportMap.put(genotype.getSampleName(), supportSet);

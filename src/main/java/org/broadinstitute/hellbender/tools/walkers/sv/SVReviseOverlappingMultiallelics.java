@@ -36,13 +36,36 @@ public class SVReviseOverlappingMultiallelics extends MultiplePassVariantWalker 
     private VariantContextWriter vcfWriter;
 
     private final List<VariantContext> overlappingVariantsBuffer = new ArrayList<>();
+    private final List<OverlapCandidate> overlapCandidates = new ArrayList<>();
     private final Set<String> filteredVariantIds = new HashSet<>();
 
     @Override
     protected int numberOfPasses() { return 2; }
 
     @Override
-    protected void afterNthPass(int n) {}
+    protected void afterNthPass(final int n) {
+        if (n == 0) {
+            resolveRedundantMultiallelics();
+        }
+    }
+
+    // Resolves redundant multiallelic pairs, processing largest driving variant first so status settles before use
+    private void resolveRedundantMultiallelics() {
+        overlapCandidates.sort((a, b) -> {
+            final int cmp = Integer.compare(b.largerLength, a.largerLength);
+            if (cmp != 0) {
+                return cmp;
+            }
+            return Integer.compare(b.smallerLength, a.smallerLength);
+        });
+        for (final OverlapCandidate candidate : overlapCandidates) {
+            if (!filteredVariantIds.contains(candidate.largerId)) {
+                filteredVariantIds.add(candidate.smallerId);
+            }
+        }
+        overlapCandidates.clear();
+        overlappingVariantsBuffer.clear();
+    }
 
     @Override
     public void onTraversalStart() {
@@ -79,7 +102,7 @@ public class SVReviseOverlappingMultiallelics extends MultiplePassVariantWalker 
                 || (vc.getStart() + vc.getAttributeAsInt(GATKSVVCFConstants.SVLEN, 0)) < variant.getStart());
         for (final VariantContext bufferedVariant : overlappingVariantsBuffer) {
             if (overlaps(bufferedVariant, variant)) {
-                processVariantPair(bufferedVariant, variant);
+                collectVariantPair(bufferedVariant, variant);
             }
         }
         overlappingVariantsBuffer.add(variant);
@@ -94,7 +117,7 @@ public class SVReviseOverlappingMultiallelics extends MultiplePassVariantWalker 
         vcfWriter.add(builder.make());
     }
 
-    private void processVariantPair(final VariantContext v1, final VariantContext v2) {
+    private void collectVariantPair(final VariantContext v1, final VariantContext v2) {
         // Determine larger variant, swapping if necessary
         VariantContext largerVariant = v1;
         VariantContext smallerVariant = v2;
@@ -111,9 +134,22 @@ public class SVReviseOverlappingMultiallelics extends MultiplePassVariantWalker 
             return;
         }
 
-        // Filter variant based on conditions
-        if (!filteredVariantIds.contains(largerVariant.getID())) {
-            filteredVariantIds.add(smallerVariant.getID());
+        overlapCandidates.add(new OverlapCandidate(largerVariant.getID(), smallerVariant.getID(),
+                Math.max(length1, length2), Math.min(length1, length2)));
+    }
+
+    private static final class OverlapCandidate {
+        private final String largerId;
+        private final String smallerId;
+        private final int largerLength;
+        private final int smallerLength;
+
+        private OverlapCandidate(final String largerId, final String smallerId,
+                                  final int largerLength, final int smallerLength) {
+            this.largerId = largerId;
+            this.smallerId = smallerId;
+            this.largerLength = largerLength;
+            this.smallerLength = smallerLength;
         }
     }
 
