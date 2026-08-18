@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.utils.tsv.*;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -108,33 +109,20 @@ public class PileupSummary implements Locatable {
 
     // Takes a list of PileupSummaryTable files and write them all in one output file in order
     public static void writeToFile(final List<File> inputFiles, final File output) {
-        boolean headerWritten = false;
-        String sample = "";
-        try ( PileupSummaryTableWriter writer = new PileupSummaryTableWriter(output.toPath()) ) {
-            for (final File inputFile : inputFiles){
-                try ( PileupSummaryTableReader reader = new PileupSummaryTableReader(inputFile.toPath())){
-                    if (! headerWritten){
-                        sample = reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG);
-                        writer.writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
-                        headerWritten = true;
-                    }
+        Utils.nonEmpty(inputFiles);
+        SampleLocatableMetadata metadata = null;
+        final List<PileupSummary> records = new ArrayList<>();
+        for (final File inputFile : inputFiles) {
+            final PileupSummaryCollection collection = new PileupSummaryCollection(inputFile);
+            records.addAll(collection.getRecords());
+            final SampleLocatableMetadata fileMetadata = collection.getMetadata();
+            metadata = metadata == null ? fileMetadata : metadata;
 
-                    final String thisSample = reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG);
-                    if (! thisSample.equals(sample)){
-                        throw new UserException.BadInput(String.format("Combining PileupSummaryTables from different samples is not supported. Got samples %s and %s",
-                                sample, thisSample));
-                    }
-
-                    final List<PileupSummary> pileupSummaries = reader.toList();
-                    writer.writeAllRecords(pileupSummaries);
-                } catch (IOException e){
-                    throw new UserException(String.format("Encountered an IO exception while reading from %s.", inputFile));
-                }
-            }
-
-        } catch (IOException e){
-            throw new UserException(String.format("Encountered an IO exception while writing to %s.", output));
+            Utils.validate(metadata.getSampleName() == fileMetadata.getSampleName(), "different sample names");
+            metadata.getSequenceDictionary().assertSameDictionary(fileMetadata.getSequenceDictionary());
         }
+
+        new PileupSummaryCollection(metadata, records).write(output);
     }
 
     public static ImmutablePair<String, List<PileupSummary>> readFromFile(final File tableFile) {
