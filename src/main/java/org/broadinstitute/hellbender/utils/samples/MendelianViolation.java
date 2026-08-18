@@ -177,8 +177,15 @@ public class MendelianViolation {
         }
         //Both parents have genotype information
         final Allele childRef = gChild.getAlleles().get(0);
-        return !(gMom.getAlleles().contains(childRef) && gDad.getAlleles().contains(gChild.getAlleles().get(1)) ||
-            gMom.getAlleles().contains(gChild.getAlleles().get(1)) && gDad.getAlleles().contains(childRef));
+        switch (gChild.getPloidy()) {
+            case 1:
+                return !(gMom.getAlleles().contains(childRef) || gDad.getAlleles().contains(childRef));
+            case 2:
+                final Allele childAlt = gChild.getAlleles().get(1);
+                return !(gMom.getAlleles().contains(childRef) && gDad.getAlleles().contains(childAlt) ||
+                    gMom.getAlleles().contains(childAlt) && gDad.getAlleles().contains(childRef));
+            default: return false;
+        }
     }
 
     private void createInheritanceMap(){
