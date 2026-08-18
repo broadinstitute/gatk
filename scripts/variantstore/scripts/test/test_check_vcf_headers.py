@@ -271,6 +271,44 @@ class TestEvaluate(unittest.TestCase):
         self.assertTrue(dragen.fatal)
         self.assertFalse(dragen.passed)
 
+    def test_unparseable_triplet_masked_by_match_fails_exact_mode(self):
+        # Regression (VS-1966): a few matching samples must not wave through samples whose DRAGEN
+        # version could not be parsed. 2 at 3.7.8 + 5 unreadable, expected '3.7.8' -> FAIL, not PASS.
+        rows = [{'sw_version': 'SW: 05.021.604.3.7.8', 'n_samples': 2},
+                {'sw_version': 'SW: 3.7', 'n_samples': 5}]  # only two numeric components -> None triplet
+        ok, checks = cvh.evaluate(_summary(), rows, _NO_ORPHANS, _ONE_BLOB,
+                                  expected_dragen_version='3.7.8')
+        self.assertFalse(ok)
+        self.assertFalse(self._names(checks)['dragen_version'].passed)
+
+    def test_unparseable_triplet_fails_consistency_only(self):
+        # Even with no expected version, an unreadable DRAGEN version fails: consistency is unconfirmable.
+        rows = [{'sw_version': None, 'n_samples': 3}]
+        ok, checks = cvh.evaluate(_summary(), rows, _NO_ORPHANS, _ONE_BLOB)
+        self.assertFalse(ok)
+        self.assertFalse(self._names(checks)['dragen_version'].passed)
+
+    def test_all_unparseable_range_no_misleading_ok(self):
+        # All rows unparseable in range mode: FAIL, and no empty 'OK: all triplet(s) within range:' line.
+        rows = [{'sw_version': 'SW: 3.7', 'n_samples': 4}]
+        ok, checks = cvh.evaluate(_summary(), rows, _NO_ORPHANS, _ONE_BLOB,
+                                  expected_dragen_version='3.4.0-3.9.0')
+        self.assertFalse(ok)
+        report = cvh.compose_report(PROJECT, DATASET, '3.4.0-3.9.0', ok, checks)
+        self.assertNotIn("OK: all triplet(s) within range", report)
+        self.assertIn("could not be parsed", report)
+
+    def test_all_unparseable_exact_no_misleading_span(self):
+        # All rows unparseable in exact mode: FAIL via the unparseable message, not a bogus empty
+        # 'samples span multiple DRAGEN version triplets:' line.
+        rows = [{'sw_version': 'SW: 3.7', 'n_samples': 4}]
+        ok, checks = cvh.evaluate(_summary(), rows, _NO_ORPHANS, _ONE_BLOB,
+                                  expected_dragen_version='3.7.8')
+        self.assertFalse(ok)
+        report = cvh.compose_report(PROJECT, DATASET, '3.7.8', ok, checks)
+        self.assertNotIn("span multiple DRAGEN version triplets", report)
+        self.assertIn("could not be parsed", report)
+
     def test_orphan_hashes_fail(self):
         ok, checks = cvh.evaluate(_summary(), _DRAGEN_378,
                                   {'orphan_associations': 5, 'affected_samples': 2},

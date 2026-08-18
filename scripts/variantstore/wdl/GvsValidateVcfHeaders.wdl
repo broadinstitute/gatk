@@ -37,7 +37,7 @@ workflow GvsValidateVcfHeaders {
             help: "Google project for the GVS dataset."
         }
         expected_dragen_version: {
-            help: "Optional expected DRAGEN version. A single triplet, e.g. '3.7.8', requires every sample to match it exactly (AoU); a range requires every sample's triplet to fall within it. Ranges accept interval notation: '3.4.12-3.7.8' (both inclusive), '[3.7.8-3.8)' (inclusive-exclusive), '(3.7-3.8)' (both exclusive). If unset, only cross-sample consistency is enforced."
+            help: "Optional expected DRAGEN version. A single triplet, e.g. '3.7.8', requires every sample to match it exactly (AoU); a range requires every sample's triplet to fall within it. Ranges accept interval notation: '3.4.12-3.7.8' (both inclusive), '[3.7.8-3.8)' (inclusive-exclusive), '(3.7-3.8)' (both exclusive). Bounds compare positionally, so an inclusive two-component upper bound is not 'all of that minor' -- '3.7.8-3.8' excludes 3.8.1; use the exclusive form '3.7.8-3.8)' for 'everything below 3.8'. If unset, only cross-sample consistency is enforced."
         }
         require_reblocking: {
             help: "If true (default), a sample without a ReblockGVCF command line fails validation (AoU fails fast on non-reblocked input). Set to false to report non-reblocked samples without failing."
@@ -106,10 +106,14 @@ task ValidateVcfHeaders {
         # The script writes 'true'/'false' to pass.txt and a human-readable report to report.txt.
         # It exits 0 even on a failed validation (the pass/fail is surfaced via pass.txt), so the
         # workflow -- not this task -- decides whether a failure should abort the pipeline.
+        # expected_dragen_version is single-quoted because interval-notation values contain shell
+        # metacharacters -- e.g. unquoted '(3.7-3.8)' is a bash syntax error. Cromwell does not quote
+        # interpolated values, so the quotes must be inside the placeholder. The whole placeholder
+        # still drops to an empty string when this optional input is undefined.
         python3 /app/check_vcf_headers.py \
             --project_id ~{project_id} \
             --dataset_name ~{dataset_name} \
-            ~{"--expected_dragen_version " + expected_dragen_version} \
+            ~{"--expected_dragen_version '" + expected_dragen_version + "'"} \
             ~{if require_reblocking then "" else "--allow_non_reblocked"} \
             --pass_file_output pass.txt \
             --report_file_output report.txt

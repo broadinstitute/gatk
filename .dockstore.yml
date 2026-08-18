@@ -343,6 +343,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - ng_vs_1966_explicit_header_checks
          tags:
              - /.*/
    - name: GvsQuickstartIntegration

@@ -71,7 +71,9 @@ def per_sample_summary_sql(project_id, dataset_name, example_limit=EXAMPLE_LIMIT
     Returns a single summary row: the expected sample count, how many have header data, and the
     counts + example sample names for each fatal integrity / reblocking condition. ``COUNTIF`` over
     a LEFT JOIN treats a sample with no header rows as all-zero counts, so missing-header samples
-    surface as ``chunk_count = 0``.
+    surface as ``chunk_count = 0``. Each example array is capped at ``example_limit + 1`` -- one more
+    than we display -- so the report can tell "exactly N offenders" from "more than N" (see
+    ``_examples``).
     """
     return f"""
         WITH expected AS (
@@ -99,9 +101,9 @@ def per_sample_summary_sql(project_id, dataset_name, example_limit=EXAMPLE_LIMIT
             COUNTIF(chunk_count = 0) AS samples_missing_headers,
             COUNTIF(unique_chunk_count = 0) AS samples_missing_unique_chunk,
             COUNTIF(reblock_chunk_count = 0) AS samples_not_reblocked,
-            ARRAY_AGG(IF(chunk_count = 0, sample_name, NULL) IGNORE NULLS LIMIT {example_limit}) AS example_missing_headers,
-            ARRAY_AGG(IF(unique_chunk_count = 0, sample_name, NULL) IGNORE NULLS LIMIT {example_limit}) AS example_missing_unique_chunk,
-            ARRAY_AGG(IF(reblock_chunk_count = 0, sample_name, NULL) IGNORE NULLS LIMIT {example_limit}) AS example_not_reblocked
+            ARRAY_AGG(IF(chunk_count = 0, sample_name, NULL) IGNORE NULLS LIMIT {example_limit + 1}) AS example_missing_headers,
+            ARRAY_AGG(IF(unique_chunk_count = 0, sample_name, NULL) IGNORE NULLS LIMIT {example_limit + 1}) AS example_missing_unique_chunk,
+            ARRAY_AGG(IF(reblock_chunk_count = 0, sample_name, NULL) IGNORE NULLS LIMIT {example_limit + 1}) AS example_not_reblocked
         FROM per_sample
     """
 
@@ -176,8 +178,11 @@ def dragen_version_triplet(sw_version):
 def _version_key(version):
     """Turn a dotted numeric version like ``3.7.8`` into a tuple of ints for ordering.
 
-    Returns ``None`` if there are no numeric components. Comparisons use tuple ordering, so
-    ``(3, 7, 8) <= (3, 7, 8)`` etc. behaves as expected for equal-length version triplets.
+    Returns ``None`` if there are no numeric components. Comparisons use tuple ordering over exactly
+    the components present, so bounds are matched *positionally*: a short bound is NOT shorthand for
+    "all of that minor". An inclusive upper bound of ``3.8`` -> ``(3, 8)`` excludes ``3.8.1`` ->
+    ``(3, 8, 1)`` because ``(3, 8, 1) > (3, 8)``. For "everything below 3.8" use the exclusive form
+    ``...-3.8)``; for "through all of 3.8.x" use an exclusive next-minor bound, ``...-3.9)``.
     """
     if version is None:
         return None
@@ -267,12 +272,17 @@ def parse_expected_dragen_spec(expected_dragen_version):
 
 
 def _examples(names):
-    """Render a (possibly truncated) list of example sample names for the report."""
+    """Render a (possibly truncated) list of example sample names for the report.
+
+    The SQL fetches one more name than ``EXAMPLE_LIMIT`` (see ``per_sample_summary_sql``), so
+    ``len(names) > EXAMPLE_LIMIT`` distinguishes "more than EXAMPLE_LIMIT offenders" from "exactly
+    EXAMPLE_LIMIT"; either way only the first ``EXAMPLE_LIMIT`` are shown.
+    """
     names = list(names or [])
     if not names:
         return ""
     shown = ", ".join(names[:EXAMPLE_LIMIT])
-    suffix = f" (showing first {EXAMPLE_LIMIT})" if len(names) >= EXAMPLE_LIMIT else ""
+    suffix = f" (showing first {EXAMPLE_LIMIT})" if len(names) > EXAMPLE_LIMIT else ""
     return f"    e.g. {shown}{suffix}"
 
 
@@ -398,6 +408,10 @@ def evaluate_dragen_version(dragen_rows, expected_dragen_version=None):
                            lines=lines + [f"    FAIL: malformed --expected_dragen_version: {e}"])
 
     distinct_triplets = sorted(t for t in triplet_counts if t is not None)
+    # DRAGEN rows whose SW string we could not reduce to a numeric triplet: fewer than three numeric
+    # components, or a NULL sw_version -- dragen_version_breakdown_sql matches ID=dragen command lines
+    # but extracts the 'SW: X.Y.Z' field, which a differently-shaped DRAGEN line can leave NULL.
+    unparseable = sum(n for t, n in triplet_counts.items() if t is None)
 
     if not version_counts:
         if kind is not None:
@@ -415,6 +429,16 @@ def evaluate_dragen_version(dragen_rows, expected_dragen_version=None):
         )
 
     passed = True
+
+    # An unparseable DRAGEN version is a hole in the check, not a pass. Filtering these rows out of the
+    # comparison would let real version drift (or a NULL SW field) slip through the very check meant to
+    # catch it -- in exact mode a handful of matching samples could otherwise mask thousands of
+    # unreadable ones. Fatal in every mode.
+    if unparseable:
+        passed = False
+        lines.append(f"    FAIL: {unparseable} sample(s) have a DRAGEN command line whose SW version "
+                     f"could not be parsed to a numeric triplet")
+
     if kind == 'range':
         # Range mode: every triplet must lie within the interval (inclusivity per the brackets);
         # multiple triplets are fine.
@@ -430,12 +454,14 @@ def evaluate_dragen_version(dragen_rows, expected_dragen_version=None):
             passed = False
             lines.append(f"    FAIL: expected DRAGEN version within range {expected_dragen_version}, "
                          f"out-of-range triplet(s): {', '.join(out_of_range)}")
-        else:
+        elif distinct_triplets:  # empty means every row was unparseable (already failed above)
             lines.append(f"    OK: all triplet(s) within range {expected_dragen_version}: "
                          f"{', '.join(distinct_triplets)}")
     else:
-        # Exact or consistency-only mode: all samples must share a single triplet.
-        if len(distinct_triplets) != 1:
+        # Exact or consistency-only mode: all samples must share a single triplet. An empty
+        # distinct_triplets means every row was unparseable (already failed above), so guard against
+        # emitting the 'span multiple triplets:' line with nothing after the colon.
+        if len(distinct_triplets) > 1:
             passed = False
             lines.append(f"    FAIL: samples span multiple DRAGEN version triplets: {', '.join(distinct_triplets)}")
         if kind == 'exact':
@@ -572,7 +598,10 @@ if __name__ == '__main__':
                              "sample to match it exactly; a range requires every sample's triplet to "
                              "fall within it. Ranges accept interval notation: '3.4.12-3.7.8' (both "
                              "inclusive), '[3.7.8-3.8)' (inclusive-exclusive), '(3.7-3.8)' (both "
-                             "exclusive). If unset, only cross-sample consistency is checked.")
+                             "exclusive). Bounds compare positionally, so an inclusive two-component "
+                             "upper bound is not 'all of that minor': '3.7.8-3.8' excludes 3.8.1. For "
+                             "'everything below 3.8' use the exclusive form '3.7.8-3.8)'. If unset, "
+                             "only cross-sample consistency is checked.")
     parser.add_argument('--allow_non_reblocked', action='store_true',
                         help='Downgrade the reblocking check from fatal to informational. By default '
                              '(flag absent) a sample without a ReblockGVCF command line fails validation.')
