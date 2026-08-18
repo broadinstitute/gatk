@@ -241,7 +241,7 @@ public class Main {
      */
     protected void handleResult(final Object result) {
         if (result != null) {
-            System.out.println("Tool returned:\n" + result);
+            System.err.println("Tool returned:\n" + result);
         }
     }
 
