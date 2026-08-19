@@ -383,10 +383,31 @@ is cheap, before reporting it.
 ## Lead with action items
 
 A code review write-up opens with an `## Action items` section, before the scope
-summary and before the findings themselves. It lists what the developer should
-actually do, in the order it should be done, each entry pointing at the numbered
-finding that justifies it. Note explicitly when an early item gates the ability
-to verify the later ones.
+summary and before the findings themselves. It lists what should actually be
+done, each entry pointing at the numbered finding that justifies it.
+
+Order that list by what the PR's author can act on directly, not by strict
+execution order. Their own work comes first, with the discretionary line closing
+that group. Anything the branch merely runs into — pre-existing debt, a problem
+in files the PR does not touch, something needing a team decision or
+coordination with another branch — goes in a separate group afterward, under a
+heading that says so, introduced by a sentence establishing provenance: that it
+was not introduced by this branch and has not come up before, so it is something
+for the team to discuss. Frame that as a shared next step, not as a limit on the
+author's authority — "so we should discuss these as a team" rather than "this is
+not the author's to decide".
+
+Write those cross-cutting entries to be comprehensible cold. The author has not
+been part of the conversation that produced them, so lead with the symptom and
+arrive at the proposed remedy; an entry that opens with the remedy reads as an
+unexplained directive. "The validation only runs on the non-Parquet ingest path,
+which is not what production uses" works where "relocate the non-Parquet
+coverage" does not.
+
+When one action genuinely gates another, say so inline in the entries affected
+rather than reordering the list to express it — ordering for the reader and
+recording a dependency are separate jobs, and the dependency note costs a
+clause.
 
 Every finding must be accounted for in that list, including the ones needing no
 work — group those into a short "discretionary" line rather than dropping them,
@@ -394,6 +415,13 @@ so nothing looks accidentally omitted.
 
 The rationale, evidence, and reproduction detail stay in the numbered findings
 below. Do not put a duplicate ordered list at the end of the document.
+
+Both lists are numbered, so keep the two vocabularies distinct: the entries in
+`## Action items` are "action N" and the write-ups below are "finding N". Never
+call either one "item N" — a reference like "(item 4)" inside action item 1 is
+ambiguous between the two sequences, and the reader has no way to tell which is
+meant. Label the write-ups with a `## Findings` heading so the second sequence is
+visibly its own list.
 
 ## One line per paragraph — do not hard-wrap
 
