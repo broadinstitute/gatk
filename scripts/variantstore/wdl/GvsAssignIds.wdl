@@ -392,11 +392,12 @@ task ValidateDatasetExists {
         echo "" >&2
         echo "To create it, choose the multi-region that matches where your data lives:" >&2
         echo "    bq --location=YOUR_MULTI_REGION mk --dataset ~{project_id}:~{dataset_name}   # e.g. --location=US or --location=EU" >&2
-        echo "(AoU callsets use the US multi-region, i.e. --location=US. If --location is omitted, bq will use whatever default location is configured for your environment; do not rely on this.)" >&2
+        echo "(AoU callsets use the US multi-region, i.e. --location=US. If --location is omitted," >&2
+        echo "bq uses whatever default location is configured for your environment; do not rely on this.)" >&2
         echo "" >&2
         echo "If you believe the dataset already exists, double-check the 'dataset_name' and 'project_id'" >&2
         echo "inputs for typos and confirm you have access to it." >&2
-      elif echo "${BQ_SHOW_ERR}" | grep -qiE 'access denied|permission denied|permission_denied'; then
+      elif echo "${BQ_SHOW_ERR}" | grep -qiE 'access denied|permission denied'; then
         echo "ERROR: BigQuery dataset '~{project_id}:~{dataset_name}' could not be accessed -- this looks" >&2
         echo "like a permissions problem, not a missing dataset." >&2
         echo "" >&2
