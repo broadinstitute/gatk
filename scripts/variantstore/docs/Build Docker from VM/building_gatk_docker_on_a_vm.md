@@ -47,29 +47,34 @@ cd gatk
 # Log in to Google Cloud
 gcloud init
 
-FULL_IMAGE_ID=$(cat /tmp/idfile.txt)
-
-# Take the slice of this full Docker image ID that corresponds with the output of `docker images`:
-IMAGE_ID=${FULL_IMAGE_ID:7:12}
-
-# The GATK Docker image is based on gatkbase.
-IMAGE_TYPE="gatkbase"
-TAG=$(python3 ./scripts/variantstore/scripts/build_docker_tag.py --image-id "${IMAGE_ID}" --image-type "${IMAGE_TYPE}")
-
-BASE_REPO="broad-dsde-methods/gvs"
-REPO_WITH_TAG="${BASE_REPO}/gatk:${TAG}"
-docker tag "${IMAGE_ID}" "${REPO_WITH_TAG}"
-
-# Configure the credential helper for GAR
+# Configure the credential helper for GAR (only needs to be done once)
 gcloud auth configure-docker us-central1-docker.pkg.dev
 
-# Tag and push
-GAR_TAG="us-central1-docker.pkg.dev/${REPO_WITH_TAG}"
-docker tag "${REPO_WITH_TAG}" "${GAR_TAG}"
+BASE_REPO="broad-dsde-methods/gvs"
 
-docker push "${GAR_TAG}"
+# --- Lite image (gatk_docker: no Conda/ML stack, used for most GVS tasks) ---
+FULL_IMAGE_ID_LITE=$(cat /tmp/idfile_lite.txt)
+IMAGE_ID_LITE=${FULL_IMAGE_ID_LITE:7:12}
+IMAGE_TYPE_LITE="gatkbase-lite"
+TAG_LITE=$(python3 ./scripts/variantstore/scripts/build_docker_tag.py --image-id "${IMAGE_ID_LITE}" --image-type "${IMAGE_TYPE_LITE}")
+REPO_WITH_TAG_LITE="${BASE_REPO}/gatk:${TAG_LITE}"
+docker tag "${IMAGE_ID_LITE}" "${REPO_WITH_TAG_LITE}"
+GAR_TAG_LITE="us-central1-docker.pkg.dev/${REPO_WITH_TAG_LITE}"
+docker tag "${REPO_WITH_TAG_LITE}" "${GAR_TAG_LITE}"
+docker push "${GAR_TAG_LITE}"
+echo "Lite image pushed to \"${GAR_TAG_LITE}\""
 
-echo "Docker image pushed to \"${GAR_TAG}\""
+# --- Heavy image (gatk_heavy_docker: full gatkbase with Conda/ML stack, used for VETS/VQSR) ---
+FULL_IMAGE_ID_HEAVY=$(cat /tmp/idfile_heavy.txt)
+IMAGE_ID_HEAVY=${FULL_IMAGE_ID_HEAVY:7:12}
+IMAGE_TYPE_HEAVY="gatkbase"
+TAG_HEAVY=$(python3 ./scripts/variantstore/scripts/build_docker_tag.py --image-id "${IMAGE_ID_HEAVY}" --image-type "${IMAGE_TYPE_HEAVY}")
+REPO_WITH_TAG_HEAVY="${BASE_REPO}/gatk:${TAG_HEAVY}"
+docker tag "${IMAGE_ID_HEAVY}" "${REPO_WITH_TAG_HEAVY}"
+GAR_TAG_HEAVY="us-central1-docker.pkg.dev/${REPO_WITH_TAG_HEAVY}"
+docker tag "${REPO_WITH_TAG_HEAVY}" "${GAR_TAG_HEAVY}"
+docker push "${GAR_TAG_HEAVY}"
+echo "Heavy image pushed to \"${GAR_TAG_HEAVY}\""
 ```
 
 Don't forget to shut down (and possibly delete) your VM once you're done!

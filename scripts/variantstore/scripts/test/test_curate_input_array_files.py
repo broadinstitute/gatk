@@ -1,20 +1,32 @@
 # -*- coding: utf-8 -*-
-import numpy as np
+import os
+import tempfile
 import unittest
 
-from curate_input_array_files import curate_input_arrays, read_single_column_file
+from curate_input_array_files import curate_input_arrays, read_single_column_file, write_single_column_file
 
 dir= 'test/curate_input_array_test_files/'
 
 class TestCurateInputArrays(unittest.TestCase):
+    def test_write_single_column_file_writes_one_value_per_line(self):
+        values = ["sampleA", "sampleB", "sampleC"]
+        with tempfile.TemporaryDirectory() as temp_dir:
+            output_path = os.path.join(temp_dir, "output.txt")
+            write_single_column_file(output_path, values)
+
+            with open(output_path, "r") as fd:
+                self.assertEqual(fd.read(), "sampleA\nsampleB\nsampleC\n")
+
+            self.assertEqual(read_single_column_file(output_path), values)
+
     def test_curate_input_array_files_success(self):
         with open(dir + "output_sample_name_list_file_correct") as samples, \
              open(dir + "output_vcf_list_file_correct") as vcfs, \
              open(dir + "output_vcf_index_list_file_correct") as vcf_indexes:
 
-            output_sample_name_list_correct = np.loadtxt(samples, dtype=str).tolist()
-            output_vcf_list_correct = np.loadtxt(vcfs, dtype=str).tolist()
-            output_vcf_index_list_correct = np.loadtxt(vcf_indexes, dtype=str).tolist()
+            output_sample_name_list_correct = [line.strip() for line in samples if line.strip()]
+            output_vcf_list_correct = [line.strip() for line in vcfs if line.strip()]
+            output_vcf_index_list_correct = [line.strip() for line in vcf_indexes if line.strip()]
 
             actual = curate_input_arrays(
                 sample_map_to_be_loaded_file_name=dir + 'input_samples_to_be_loaded_map_file',
