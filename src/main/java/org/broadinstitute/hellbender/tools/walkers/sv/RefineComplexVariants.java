@@ -75,7 +75,6 @@ public final class RefineComplexVariants extends VariantWalker {
 
     private static final int PE_FLANK_BACK = 1000;
     private static final int PE_FLANK_FRONT = 100;
-    private static final int SMALL_SV_SIZE_THRESHOLD = 250;
     private static final int LARGE_DEPTH_INTERVAL_THRESHOLD = 5000;
     private static final double MIN_DEPTH_COVERAGE = 0.5;
 
@@ -341,7 +340,7 @@ public final class RefineComplexVariants extends VariantWalker {
                                       final int queryStart,
                                       final int queryEnd,
                                       final String pathForError) {
-        final int regionStart = Math.max(1, queryStart);
+        final int regionStart = Math.max(1, queryStart - 1); // TabixReader uses 0-based half-open coordinates
         final int regionEnd = Math.max(regionStart, queryEnd);
         final String region = contig + ":" + regionStart + "-" + regionEnd;
 
@@ -378,7 +377,7 @@ public final class RefineComplexVariants extends VariantWalker {
         }
 
         intervals.sort(Comparator.comparingInt(interval -> interval.start));
-        return computeCoverageFraction(intervals, queryStart, queryEnd);
+        return computeCoverageFraction(intervals, regionStart, regionEnd);
     }
 
     private static BufferedReader openBufferedReader(final String path) throws IOException {
@@ -430,9 +429,7 @@ public final class RefineComplexVariants extends VariantWalker {
             if (evidence.getStart() < query.startMin || evidence.getStart() > query.startMax) {
                 return;
             }
-            // The PE codec stores end as 1-based, so convert back before applying exclusive bounds.
-            final int endPositionZeroBased = evidence.getEndPosition() - 1;
-            if (endPositionZeroBased <= query.endLowerExclusive || endPositionZeroBased >= query.endUpperExclusive) {
+            if (evidence.getEndPosition() <= query.endLowerExclusive || evidence.getEndPosition() >= query.endUpperExclusive) {
                 return;
             }
             counts.merge(evidence.getSample(), 1, Integer::sum);
@@ -582,7 +579,7 @@ public final class RefineComplexVariants extends VariantWalker {
         if (rewrittenSubtype == GATKSVVCFConstants.ComplexVariantSubtype.dDUP_iDEL) {
             rewrittenIntervals.add(new SVCallRecord.ComplexEventInterval(
                     GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
-                    new SimpleInterval(variant.getContig(), variant.getStart(), variant.getEnd())).encode());
+                    new SimpleInterval(variant)).encode());
         }
 
         attributes.put(GATKSVVCFConstants.SVTYPE, GATKSVVCFConstants.StructuralVariantAnnotationType.CPX);
@@ -648,79 +645,61 @@ public final class RefineComplexVariants extends VariantWalker {
     private static EvaluationPlan createDispersedDuplicationPlan(final VariantContext variant,
                                                                  final List<SVSegment> complexIntervals,
                                                                  final SAMSequenceDictionary dictionary) {
-        final SVSegment duplicationInterval = getRequiredSegment(
-                complexIntervals,
-                GATKSVVCFConstants.StructuralVariantAnnotationType.DUP,
-                "dDUP complex variant is missing a DUP interval");
-        if (!duplicationInterval.getContig().equals(variant.getContig())) {
-            return createSourceSinkInterchromPlan(
-                    new SimpleInterval(variant.getContig(), variant.getStart(), variant.getEnd()),
-                    duplicationInterval.getInterval(),
-                    false,
-                    EvaluatedVariantType.CPX,
-                    dictionary);
-        }
-
-        final SVSegment sinkInterval = findFirstSegment(complexIntervals, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL);
-        return createSourceSinkIntrachromPlan(
-                variant.getID(),
-                sinkInterval == null
-                        ? new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
-                                new SimpleInterval(variant.getContig(), variant.getStart(), variant.getEnd()))
-                        : sinkInterval,
-                duplicationInterval,
-                findFirstSegment(complexIntervals, GATKSVVCFConstants.StructuralVariantAnnotationType.INV) != null);
+        final SVSegment sourceDuplicationSegment = getRequiredSegment(
+            complexIntervals,
+            GATKSVVCFConstants.StructuralVariantAnnotationType.DUP,
+            "dDUP complex variant is missing a DUP interval");
+        final boolean sourceHasInversion =
+            findFirstSegment(complexIntervals, GATKSVVCFConstants.StructuralVariantAnnotationType.INV) != null;
+        final SVSegment sinkDeletionSegment =
+            findFirstSegment(complexIntervals, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL);
+        final SimpleInterval sinkInterval = sinkDeletionSegment == null
+            ? new SimpleInterval(variant)
+            : sinkDeletionSegment.getInterval();
+        return createSourceSinkCpxEvaluationPlan(
+            variant.getID(),
+            sinkInterval,
+            sourceDuplicationSegment.getInterval(),
+            sourceHasInversion,
+            dictionary);
     }
 
     private static EvaluationPlan createInsertionDeletionPlan(final VariantContext variant,
                                                               final List<SVSegment> complexIntervals,
                                                               final SAMSequenceDictionary dictionary) {
-        final List<SVSegment> sourceSegments = SVAnnotateEngine.parseComplexIntervals(Arrays.asList(variant.getAttributeAsString(SOURCE_ATTRIBUTE, null)));
-        final SVSegment insertedSegment = getRequiredSegment(
-                sourceSegments,
-                GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
-                "INS_iDEL variant is missing an INS source interval");
-        if (!insertedSegment.getContig().equals(variant.getContig())) {
-            return createSourceSinkInterchromPlan(
-                    new SimpleInterval(variant.getContig(), variant.getStart(), variant.getEnd()),
-                    insertedSegment.getInterval(),
-                    false,
-                    EvaluatedVariantType.CPX,
-                    dictionary);
-        }
-
-        final SVSegment deletedSegment = getRequiredSegment(
-                complexIntervals,
-                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
-                "INS_iDEL variant is missing a DEL interval in CPX_INTERVALS");
-        return createSourceSinkIntrachromPlan(
-                variant.getID(),
-                deletedSegment,
-                insertedSegment,
-                findFirstSegment(sourceSegments, GATKSVVCFConstants.StructuralVariantAnnotationType.INV) != null);
+        final List<SVSegment> sourceSegments = SVAnnotateEngine.parseComplexIntervals(
+            Arrays.asList(variant.getAttributeAsString(SOURCE_ATTRIBUTE, null)));
+        final SVSegment sourceInsertionSegment = getRequiredSegment(
+            sourceSegments,
+            GATKSVVCFConstants.StructuralVariantAnnotationType.INS,
+            "INS_iDEL variant is missing an INS source interval");
+        final SVSegment sinkDeletionSegment = getRequiredSegment(
+            complexIntervals,
+            GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+            "INS_iDEL variant is missing a DEL interval in CPX_INTERVALS");
+        final boolean sourceHasInversion =
+            findFirstSegment(sourceSegments, GATKSVVCFConstants.StructuralVariantAnnotationType.INV) != null;
+        return createSourceSinkCpxEvaluationPlan(
+            variant.getID(),
+            sinkDeletionSegment.getInterval(),
+            sourceInsertionSegment.getInterval(),
+            sourceHasInversion,
+            dictionary);
     }
 
     private static EvaluationPlan createInsertionWithInversionEvaluationPlan(final VariantContext variant,
                                                                              final SAMSequenceDictionary dictionary,
                                                                              final List<SVSegment> sourceSegments) {
-        final SVSegment inversionSegment = getRequiredSegment(
-                sourceSegments,
-                GATKSVVCFConstants.StructuralVariantAnnotationType.INV,
-                "Insertion-with-inversion record is missing an INV source interval");
-        if (!inversionSegment.getContig().equals(variant.getContig())) {
-            return createSourceSinkInterchromPlan(
-                    new SimpleInterval(variant.getContig(), variant.getStart(), variant.getEnd()),
-                    inversionSegment.getInterval(),
-                    true,
-                    EvaluatedVariantType.CPX,
-                    dictionary);
-        }
-        return createSourceSinkIntrachromPlan(
-                variant.getID(),
-                new SVSegment(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
-                        new SimpleInterval(variant.getContig(), variant.getStart(), variant.getEnd())),
-                inversionSegment,
-                true);
+        final SVSegment sourceInversionSegment = getRequiredSegment(
+            sourceSegments,
+            GATKSVVCFConstants.StructuralVariantAnnotationType.INV,
+            "Insertion-with-inversion record is missing an INV source interval");
+        return createSourceSinkCpxEvaluationPlan(
+            variant.getID(),
+            new SimpleInterval(variant),
+            sourceInversionSegment.getInterval(),
+            true,
+            dictionary);
     }
 
     private static EvaluationPlan createInversionCnvPlan(final VariantContext variant,
@@ -732,52 +711,36 @@ public final class RefineComplexVariants extends VariantWalker {
 
         switch (complexSubtype) {
             case delINV:
-                queries.add(new DiscordantPairQuery(contig, breakpoints[0] - PE_FLANK_BACK, breakpoints[0] + PE_FLANK_FRONT, true,
-                        contig, breakpoints[2] - PE_FLANK_BACK, breakpoints[2] + PE_FLANK_FRONT, true));
-                queries.add(new DiscordantPairQuery(contig, breakpoints[1] - PE_FLANK_FRONT, breakpoints[1] + PE_FLANK_BACK, false,
-                        contig, breakpoints[2] - PE_FLANK_FRONT, breakpoints[2] + PE_FLANK_BACK, false));
+                queries.add(createBreakpointQuery(contig, breakpoints[0], true, contig, breakpoints[2], true));
+                queries.add(createBreakpointQuery(contig, breakpoints[1], false, contig, breakpoints[2], false));
                 break;
             case INVdel:
-                queries.add(new DiscordantPairQuery(contig, breakpoints[0] - PE_FLANK_BACK, breakpoints[0] + PE_FLANK_FRONT, true,
-                        contig, breakpoints[1] - PE_FLANK_BACK, breakpoints[1] + PE_FLANK_FRONT, true));
-                queries.add(new DiscordantPairQuery(contig, breakpoints[0] - PE_FLANK_FRONT, breakpoints[0] + PE_FLANK_BACK, false,
-                        contig, breakpoints[2] - PE_FLANK_FRONT, breakpoints[2] + PE_FLANK_BACK, false));
+                queries.add(createBreakpointQuery(contig, breakpoints[0], true, contig, breakpoints[1], true));
+                queries.add(createBreakpointQuery(contig, breakpoints[0], false, contig, breakpoints[2], false));
                 break;
             case dupINV:
-                queries.add(new DiscordantPairQuery(contig, breakpoints[1] - PE_FLANK_BACK, breakpoints[1] + PE_FLANK_FRONT, true,
-                        contig, breakpoints[2] - PE_FLANK_BACK, breakpoints[2] + PE_FLANK_FRONT, true));
-                queries.add(new DiscordantPairQuery(contig, breakpoints[0] - PE_FLANK_FRONT, breakpoints[0] + PE_FLANK_BACK, false,
-                        contig, breakpoints[2] - PE_FLANK_FRONT, breakpoints[2] + PE_FLANK_BACK, false));
+                queries.add(createBreakpointQuery(contig, breakpoints[1], true, contig, breakpoints[2], true));
+                queries.add(createBreakpointQuery(contig, breakpoints[0], false, contig, breakpoints[2], false));
                 break;
             case INVdup:
-                queries.add(new DiscordantPairQuery(contig, breakpoints[0] - PE_FLANK_BACK, breakpoints[0] + PE_FLANK_FRONT, true,
-                        contig, breakpoints[2] - PE_FLANK_BACK, breakpoints[2] + PE_FLANK_FRONT, true));
-                queries.add(new DiscordantPairQuery(contig, breakpoints[0] - PE_FLANK_FRONT, breakpoints[0] + PE_FLANK_BACK, false,
-                        contig, breakpoints[1] - PE_FLANK_FRONT, breakpoints[1] + PE_FLANK_BACK, false));
+                queries.add(createBreakpointQuery(contig, breakpoints[0], true, contig, breakpoints[2], true));
+                queries.add(createBreakpointQuery(contig, breakpoints[0], false, contig, breakpoints[1], false));
                 break;
             case delINVdel:
-                queries.add(new DiscordantPairQuery(contig, breakpoints[0] - PE_FLANK_BACK, breakpoints[0] + PE_FLANK_FRONT, true,
-                        contig, breakpoints[2] - PE_FLANK_BACK, breakpoints[2] + PE_FLANK_FRONT, true));
-                queries.add(new DiscordantPairQuery(contig, breakpoints[1] - PE_FLANK_FRONT, breakpoints[1] + PE_FLANK_BACK, false,
-                        contig, breakpoints[3] - PE_FLANK_FRONT, breakpoints[3] + PE_FLANK_BACK, false));
+                queries.add(createBreakpointQuery(contig, breakpoints[0], true, contig, breakpoints[2], true));
+                queries.add(createBreakpointQuery(contig, breakpoints[1], false, contig, breakpoints[3], false));
                 break;
             case delINVdup:
-                queries.add(new DiscordantPairQuery(contig, breakpoints[0] - PE_FLANK_BACK, breakpoints[0] + PE_FLANK_FRONT, true,
-                    contig, breakpoints[2] - PE_FLANK_BACK, breakpoints[2] + PE_FLANK_FRONT, true));
-                queries.add(new DiscordantPairQuery(contig, breakpoints[1] - PE_FLANK_FRONT, breakpoints[1] + PE_FLANK_BACK, false,
-                    contig, breakpoints[4] - PE_FLANK_FRONT, breakpoints[4] + PE_FLANK_BACK, false));
+                queries.add(createBreakpointQuery(contig, breakpoints[0], true, contig, breakpoints[2], true));
+                queries.add(createBreakpointQuery(contig, breakpoints[1], false, contig, breakpoints[4], false));
                 break;
             case dupINVdel:
-                queries.add(new DiscordantPairQuery(contig, breakpoints[1] - PE_FLANK_BACK, breakpoints[1] + PE_FLANK_FRONT, true,
-                        contig, breakpoints[2] - PE_FLANK_BACK, breakpoints[2] + PE_FLANK_FRONT, true));
-                queries.add(new DiscordantPairQuery(contig, breakpoints[0] - PE_FLANK_FRONT, breakpoints[0] + PE_FLANK_BACK, false,
-                        contig, breakpoints[3] - PE_FLANK_FRONT, breakpoints[3] + PE_FLANK_BACK, false));
+                queries.add(createBreakpointQuery(contig, breakpoints[1], true, contig, breakpoints[2], true));
+                queries.add(createBreakpointQuery(contig, breakpoints[0], false, contig, breakpoints[3], false));
                 break;
             case dupINVdup:
-                queries.add(new DiscordantPairQuery(contig, breakpoints[1] - PE_FLANK_BACK, breakpoints[1] + PE_FLANK_FRONT, true,
-                        contig, breakpoints[3] - PE_FLANK_BACK, breakpoints[3] + PE_FLANK_FRONT, true));
-                queries.add(new DiscordantPairQuery(contig, breakpoints[0] - PE_FLANK_FRONT, breakpoints[0] + PE_FLANK_BACK, false,
-                    contig, breakpoints[4] - PE_FLANK_FRONT, breakpoints[4] + PE_FLANK_BACK, false));
+                queries.add(createBreakpointQuery(contig, breakpoints[1], true, contig, breakpoints[3], true));
+                queries.add(createBreakpointQuery(contig, breakpoints[0], false, contig, breakpoints[4], false));
                 break;
             default:
                 return EvaluationPlan.structuralUnresolved(EvaluatedVariantType.CPX);
@@ -799,7 +762,7 @@ public final class RefineComplexVariants extends VariantWalker {
         final int secondPosition = variant.getAttributeAsInt(GATKSVVCFConstants.END2_ATTRIBUTE, 0);
         if (secondContig == null || secondPosition <= 0) {
             throw new UserException.BadInput(
-                    "CTX variant " + variant.getID() + " is missing required CHR2/END2 attributes");
+                "CTX variant " + variant.getID() + " is missing required CHR2/END2 attributes");
         }
         final SimpleInterval second = new SimpleInterval(secondContig, secondPosition, secondPosition);
         final boolean firstComesFirst = compareContigs(first.getContig(), second.getContig(), dictionary) <= 0;
@@ -808,137 +771,118 @@ public final class RefineComplexVariants extends VariantWalker {
         final SimpleInterval right = firstComesFirst ? second : first;
         final List<DiscordantPairQuery> queries = new ArrayList<>(2);
         if (complexSubtype == GATKSVVCFConstants.ComplexVariantSubtype.CTX_PQ_QP) {
-            queries.add(new DiscordantPairQuery(left.getContig(), left.getStart() - PE_FLANK_BACK, left.getStart() + PE_FLANK_FRONT, true,
-                    right.getContig(), right.getStart() - PE_FLANK_BACK, right.getStart() + PE_FLANK_FRONT, true));
-            queries.add(new DiscordantPairQuery(left.getContig(), left.getEnd() - PE_FLANK_FRONT, left.getEnd() + PE_FLANK_BACK, false,
-                    right.getContig(), right.getEnd() - PE_FLANK_FRONT, right.getEnd() + PE_FLANK_BACK, false));
+            queries.add(createBreakpointQuery(left.getContig(), left.getStart(), true, right.getContig(), right.getStart(), true));
+            queries.add(createBreakpointQuery(left.getContig(), left.getEnd(), false, right.getContig(), right.getEnd(), false));
         } else {
-            queries.add(new DiscordantPairQuery(left.getContig(), left.getStart() - PE_FLANK_BACK, left.getStart() + PE_FLANK_FRONT, true,
-                    right.getContig(), right.getStart() - PE_FLANK_FRONT, right.getStart() + PE_FLANK_BACK, false));
-            queries.add(new DiscordantPairQuery(left.getContig(), left.getEnd() - PE_FLANK_FRONT, left.getEnd() + PE_FLANK_BACK, false,
-                    right.getContig(), right.getEnd() - PE_FLANK_BACK, right.getEnd() + PE_FLANK_FRONT, true));
+            queries.add(createBreakpointQuery(left.getContig(), left.getStart(), true, right.getContig(), right.getStart(), false));
+            queries.add(createBreakpointQuery(left.getContig(), left.getEnd(), false, right.getContig(), right.getEnd(), true));
         }
         return new EvaluationPlan(EvaluatedVariantType.CTX, queries, false, false);
     }
 
-    private static EvaluationPlan createSourceSinkInterchromPlan(final SimpleInterval firstInterval,
-                                                                 final SimpleInterval secondInterval,
-                                                                 final boolean invertedSource,
-                                                                 final EvaluatedVariantType variantType,
-                                                                 final SAMSequenceDictionary dictionary) {
-        final boolean firstComesFirst = compareContigs(firstInterval.getContig(), secondInterval.getContig(), dictionary) <= 0;
-        final SimpleInterval left = firstComesFirst ? firstInterval : secondInterval;
-        final SimpleInterval right = firstComesFirst ? secondInterval : firstInterval;
+    private static EvaluationPlan createSourceSinkCpxEvaluationPlan(final String variantId,
+                                                                    final SimpleInterval sinkInterval,
+                                                                    final SimpleInterval sourceInterval,
+                                                                    final boolean sourceHasInversion,
+                                                                    final SAMSequenceDictionary dictionary) {
+        final SinkPositionRelativeToSource sinkPosition =
+            getSinkPositionRelativeToSource(sinkInterval, sourceInterval, dictionary);
         final List<DiscordantPairQuery> queries = new ArrayList<>(2);
 
-        if (!invertedSource && firstComesFirst) {
-            queries.add(new DiscordantPairQuery(left.getContig(), left.getStart() - PE_FLANK_BACK, left.getStart() + PE_FLANK_FRONT, true,
-                    right.getContig(), right.getStart() - PE_FLANK_FRONT, right.getStart() + PE_FLANK_BACK, false));
-            queries.add(new DiscordantPairQuery(left.getContig(), left.getEnd() - PE_FLANK_FRONT, left.getEnd() + PE_FLANK_BACK, false,
-                    right.getContig(), right.getEnd() - PE_FLANK_BACK, right.getEnd() + PE_FLANK_FRONT, true));
-        } else if (!invertedSource) {
-            queries.add(new DiscordantPairQuery(left.getContig(), left.getStart() - PE_FLANK_FRONT, left.getStart() + PE_FLANK_BACK, false,
-                    right.getContig(), right.getStart() - PE_FLANK_BACK, right.getStart() + PE_FLANK_FRONT, true));
-            queries.add(new DiscordantPairQuery(left.getContig(), left.getEnd() - PE_FLANK_BACK, left.getEnd() + PE_FLANK_FRONT, true,
-                    right.getContig(), right.getEnd() - PE_FLANK_FRONT, right.getEnd() + PE_FLANK_BACK, false));
-        } else if (firstComesFirst) {
-            queries.add(new DiscordantPairQuery(left.getContig(), left.getStart() - PE_FLANK_BACK, left.getStart() + PE_FLANK_FRONT, true,
-                    right.getContig(), right.getEnd() - PE_FLANK_BACK, right.getEnd() + PE_FLANK_FRONT, true));
-            queries.add(new DiscordantPairQuery(left.getContig(), left.getEnd() - PE_FLANK_FRONT, left.getEnd() + PE_FLANK_BACK, false,
-                    right.getContig(), right.getStart() - PE_FLANK_FRONT, right.getStart() + PE_FLANK_BACK, false));
-        } else {
-            queries.add(new DiscordantPairQuery(left.getContig(), left.getStart() - PE_FLANK_FRONT, left.getStart() + PE_FLANK_BACK, false,
-                    right.getContig(), right.getEnd() - PE_FLANK_FRONT, right.getEnd() + PE_FLANK_BACK, false));
-            queries.add(new DiscordantPairQuery(left.getContig(), left.getEnd() - PE_FLANK_BACK, left.getEnd() + PE_FLANK_FRONT, true,
-                    right.getContig(), right.getStart() - PE_FLANK_BACK, right.getStart() + PE_FLANK_FRONT, true));
-        }
-
-        return new EvaluationPlan(variantType, queries, variantType == EvaluatedVariantType.CPX, false);
-    }
-
-    private static EvaluationPlan createSourceSinkIntrachromPlan(final String variantId,
-                                                                 final SVSegment sinkSegment,
-                                                                 final SVSegment sourceSegment,
-                                                                 final boolean hasInversion) {
-        if (!sinkSegment.getContig().equals(sourceSegment.getContig())) {
-            return EvaluationPlan.structuralUnresolved(EvaluatedVariantType.CPX);
-        }
-
-        final String contig = sinkSegment.getContig();
-        final int sinkStart = sinkSegment.getStart();
-        final int sinkEnd = sinkSegment.getEnd();
-        final int sourceStart = sourceSegment.getStart();
-        final int sourceEnd = sourceSegment.getEnd();
-        final boolean largeSinkInterval = sinkEnd - sinkStart > SMALL_SV_SIZE_THRESHOLD;
-        final List<DiscordantPairQuery> queries = new ArrayList<>(2);
-
-        if (sinkEnd < sourceStart) {
-            if (hasInversion && largeSinkInterval) {
-                queries.add(new DiscordantPairQuery(contig, sinkStart - PE_FLANK_BACK, sinkStart + PE_FLANK_FRONT, true,
-                        contig, sourceEnd - PE_FLANK_BACK, sourceEnd + PE_FLANK_FRONT, true));
-                queries.add(new DiscordantPairQuery(contig, sinkEnd - PE_FLANK_FRONT, sinkEnd + PE_FLANK_BACK, false,
-                        contig, sourceStart - PE_FLANK_FRONT, sourceStart + PE_FLANK_BACK, false));
-            } else if (hasInversion) {
-                queries.add(new DiscordantPairQuery(contig, sinkStart - PE_FLANK_BACK, sinkStart + PE_FLANK_FRONT, true,
-                        contig, sourceStart - PE_FLANK_BACK, sourceStart + PE_FLANK_FRONT, true));
-                queries.add(new DiscordantPairQuery(contig, sinkStart - PE_FLANK_FRONT, sinkStart + PE_FLANK_BACK, false,
-                        contig, sinkEnd - PE_FLANK_FRONT, sinkEnd + PE_FLANK_BACK, false));
-            } else if (largeSinkInterval) {
-                queries.add(new DiscordantPairQuery(contig, sinkStart - PE_FLANK_BACK, sinkStart + PE_FLANK_FRONT, true,
-                        contig, sourceStart - PE_FLANK_FRONT, sourceStart + PE_FLANK_BACK, false));
-                queries.add(new DiscordantPairQuery(contig, sinkEnd - PE_FLANK_FRONT, sinkEnd + PE_FLANK_BACK, false,
-                        contig, sourceEnd - PE_FLANK_BACK, sourceEnd + PE_FLANK_FRONT, true));
-            } else {
-                queries.add(new DiscordantPairQuery(contig, sinkStart - PE_FLANK_BACK, sinkStart + PE_FLANK_FRONT, true,
-                        contig, sinkEnd - PE_FLANK_FRONT, sinkEnd + PE_FLANK_BACK, false));
-                queries.add(new DiscordantPairQuery(contig, sinkStart - PE_FLANK_FRONT, sinkStart + PE_FLANK_BACK, false,
-                        contig, sourceStart - PE_FLANK_BACK, sourceStart + PE_FLANK_FRONT, true));
-            }
-        } else if (sinkStart > sourceEnd) {
-            if (hasInversion && largeSinkInterval) {
-                queries.add(new DiscordantPairQuery(contig, sourceEnd - PE_FLANK_BACK, sourceEnd + PE_FLANK_FRONT, true,
-                        contig, sinkStart - PE_FLANK_BACK, sinkStart + PE_FLANK_FRONT, true));
-                queries.add(new DiscordantPairQuery(contig, sourceStart - PE_FLANK_FRONT, sourceStart + PE_FLANK_BACK, false,
-                        contig, sinkEnd - PE_FLANK_FRONT, sinkEnd + PE_FLANK_BACK, false));
-            } else if (hasInversion) {
-                queries.add(new DiscordantPairQuery(contig, sourceEnd - PE_FLANK_BACK, sourceEnd + PE_FLANK_FRONT, true,
-                        contig, sinkStart - PE_FLANK_BACK, sinkStart + PE_FLANK_FRONT, true));
-                queries.add(new DiscordantPairQuery(contig, sourceStart - PE_FLANK_FRONT, sourceStart + PE_FLANK_BACK, false,
-                        contig, sinkStart - PE_FLANK_FRONT, sinkStart + PE_FLANK_BACK, false));
-            } else if (largeSinkInterval) {
-                queries.add(new DiscordantPairQuery(contig, sourceEnd - PE_FLANK_BACK, sourceEnd + PE_FLANK_FRONT, true,
-                        contig, sinkEnd - PE_FLANK_FRONT, sinkEnd + PE_FLANK_BACK, false));
-                queries.add(new DiscordantPairQuery(contig, sourceStart - PE_FLANK_FRONT, sourceStart + PE_FLANK_BACK, false,
-                        contig, sinkStart - PE_FLANK_BACK, sinkStart + PE_FLANK_FRONT, true));
-            } else {
-                queries.add(new DiscordantPairQuery(contig, sourceEnd - PE_FLANK_BACK, sourceEnd + PE_FLANK_FRONT, true,
-                        contig, sinkStart - PE_FLANK_FRONT, sinkStart + PE_FLANK_BACK, false));
-                queries.add(new DiscordantPairQuery(contig, sourceStart - PE_FLANK_FRONT, sourceStart + PE_FLANK_BACK, false,
-                        contig, sinkStart - PE_FLANK_BACK, sinkStart + PE_FLANK_FRONT, true));
-            }
-        } else if (sinkStart < sourceStart && sinkEnd >= sourceStart) {
-            if (hasInversion) {
-                throw new UserException.BadInput(
-                        "Unsupported complex-variant PE topology for variant " + variantId + ": overlapping inversion source");
-            }
-            queries.add(new DiscordantPairQuery(contig, sinkStart - PE_FLANK_BACK, sinkStart + PE_FLANK_FRONT, true,
-                    contig, sourceStart - PE_FLANK_FRONT, sourceStart + PE_FLANK_BACK, false));
-            queries.add(new DiscordantPairQuery(contig, sourceStart - PE_FLANK_FRONT, sourceStart + PE_FLANK_BACK, false,
-                    contig, sourceEnd - PE_FLANK_BACK, sourceEnd + PE_FLANK_FRONT, true));
-        } else if (sinkStart < sourceEnd && sinkEnd >= sourceEnd) {
-            if (hasInversion) {
-                throw new UserException.BadInput(
-                        "Unsupported complex-variant PE topology for variant " + variantId + ": overlapping inversion source");
-            }
-            queries.add(new DiscordantPairQuery(contig, sourceEnd - PE_FLANK_BACK, sourceEnd + PE_FLANK_FRONT, true,
-                    contig, sinkEnd - PE_FLANK_FRONT, sinkEnd + PE_FLANK_BACK, false));
-            queries.add(new DiscordantPairQuery(contig, sourceStart - PE_FLANK_FRONT, sourceStart + PE_FLANK_BACK, false,
-                    contig, sourceEnd - PE_FLANK_BACK, sourceEnd + PE_FLANK_FRONT, true));
-        } else {
-            return EvaluationPlan.structuralUnresolved(EvaluatedVariantType.CPX);
+        switch (sinkPosition) {
+            case BEFORE_SOURCE:
+                addQueriesForSinkBeforeSource(queries, sinkInterval, sourceInterval, sourceHasInversion);
+                break;
+            case AFTER_SOURCE:
+                addQueriesForSinkAfterSource(queries, sinkInterval, sourceInterval, sourceHasInversion);
+                break;
+            case WITHIN_SOURCE:
+                addQueriesForSinkWithinSource(queries, sinkInterval, sourceInterval, sourceHasInversion);
+                break;
+            default:
+                throw new IllegalStateException("Unhandled sink/source ordering: " + sinkPosition);
         }
 
         return new EvaluationPlan(EvaluatedVariantType.CPX, queries, true, false);
+    }
+
+    private static void addQueriesForSinkBeforeSource(final List<DiscordantPairQuery> queries,
+                                                      final SimpleInterval sinkInterval,
+                                                      final SimpleInterval sourceInterval,
+                                                      final boolean sourceHasInversion) {
+        if (sourceHasInversion) {
+            queries.add(createBreakpointQuery(
+                    sinkInterval.getContig(), sinkInterval.getStart(), true,
+                    sourceInterval.getContig(), sourceInterval.getEnd(), true));
+            queries.add(createBreakpointQuery(
+                    sinkInterval.getContig(), sinkInterval.getEnd(), false,
+                    sourceInterval.getContig(), sourceInterval.getStart(), false));
+            return;
+        }
+
+        queries.add(createBreakpointQuery(
+                sinkInterval.getContig(), sinkInterval.getStart(), true,
+                sourceInterval.getContig(), sourceInterval.getStart(), false));
+        queries.add(createBreakpointQuery(
+                sinkInterval.getContig(), sinkInterval.getEnd(), false,
+                sourceInterval.getContig(), sourceInterval.getEnd(), true));
+    }
+
+    private static void addQueriesForSinkAfterSource(final List<DiscordantPairQuery> queries,
+                                                     final SimpleInterval sinkInterval,
+                                                     final SimpleInterval sourceInterval,
+                                                     final boolean sourceHasInversion) {
+        if (sourceHasInversion) {
+            queries.add(createBreakpointQuery(
+                    sourceInterval.getContig(), sourceInterval.getEnd(), true,
+                    sinkInterval.getContig(), sinkInterval.getStart(), true));
+            queries.add(createBreakpointQuery(
+                    sourceInterval.getContig(), sourceInterval.getStart(), false,
+                    sinkInterval.getContig(), sinkInterval.getEnd(), false));
+            return;
+        }
+
+        queries.add(createBreakpointQuery(
+                sourceInterval.getContig(), sourceInterval.getEnd(), true,
+                sinkInterval.getContig(), sinkInterval.getEnd(), false));
+        queries.add(createBreakpointQuery(
+                sourceInterval.getContig(), sourceInterval.getStart(), false,
+                sinkInterval.getContig(), sinkInterval.getStart(), true));
+    }
+
+    private static void addQueriesForSinkWithinSource(final List<DiscordantPairQuery> queries,
+                                                      final SimpleInterval sinkInterval,
+                                                      final SimpleInterval sourceInterval,
+                                                      final boolean sourceHasInversion) {
+        final String contig = sinkInterval.getContig();
+        if (sourceHasInversion) {
+            queries.add(createBreakpointQuery(contig, sinkInterval.getStart(), false, contig, sourceInterval.getEnd(), false));
+            queries.add(createBreakpointQuery(contig, sourceInterval.getStart(), true, contig, sinkInterval.getEnd(), true));
+            return;
+        }
+        queries.add(createBreakpointQuery(contig, sourceInterval.getStart(), false, contig, sinkInterval.getStart(), true));
+        queries.add(createBreakpointQuery(contig, sinkInterval.getEnd(), false, contig, sourceInterval.getEnd(), true));
+    }
+
+    private static DiscordantPairQuery createBreakpointQuery(final String startContig,
+                                                             final int startBreakpoint,
+                                                             final boolean startStrand,
+                                                             final String endContig,
+                                                             final int endBreakpoint,
+                                                             final boolean endStrand) {
+        final int startMin = startStrand ? startBreakpoint - PE_FLANK_BACK : startBreakpoint - PE_FLANK_FRONT;
+        final int startMax = startStrand ? startBreakpoint + PE_FLANK_FRONT : startBreakpoint + PE_FLANK_BACK;
+        final int endLowerExclusive = endStrand ? endBreakpoint - PE_FLANK_BACK : endBreakpoint - PE_FLANK_FRONT;
+        final int endUpperExclusive = endStrand ? endBreakpoint + PE_FLANK_FRONT : endBreakpoint + PE_FLANK_BACK;
+        return new DiscordantPairQuery(
+                startContig,
+                startMin,
+                startMax,
+                startStrand,
+                endContig,
+                endLowerExclusive,
+                endUpperExclusive,
+                endStrand);
     }
 
     private static int[] getInversionCnvBreakpoints(final List<SVSegment> complexIntervals,
@@ -1027,6 +971,26 @@ public final class RefineComplexVariants extends VariantWalker {
         return Integer.compare(dictionary.getSequenceIndex(left), dictionary.getSequenceIndex(right));
     }
 
+    static SinkPositionRelativeToSource getSinkPositionRelativeToSource(final SimpleInterval sinkInterval,
+                                                                        final SimpleInterval sourceInterval,
+                                                                        final SAMSequenceDictionary dictionary) {
+        final int contigComparison = compareContigs(sinkInterval.getContig(), sourceInterval.getContig(), dictionary);
+        if (contigComparison < 0) {
+            return SinkPositionRelativeToSource.BEFORE_SOURCE;
+        }
+        if (contigComparison > 0) {
+            return SinkPositionRelativeToSource.AFTER_SOURCE;
+        }
+        if (sinkInterval.getStart() <= sourceInterval.getStart()) {
+            return SinkPositionRelativeToSource.BEFORE_SOURCE;
+        }
+        if (sinkInterval.getEnd() >= sourceInterval.getEnd()) {
+            return SinkPositionRelativeToSource.AFTER_SOURCE;
+        }
+        return SinkPositionRelativeToSource.WITHIN_SOURCE;
+    }
+
+
     private static SVSegment findFirstSegment(final List<SVSegment> segments,
                                               final GATKSVVCFConstants.StructuralVariantAnnotationType type) {
         return segments.stream()
@@ -1049,6 +1013,12 @@ public final class RefineComplexVariants extends VariantWalker {
         CPX,
         CTX,
         NONE
+    }
+
+    enum SinkPositionRelativeToSource {
+        BEFORE_SOURCE,
+        AFTER_SOURCE,
+        WITHIN_SOURCE
     }
 
     static final class EvaluationPlan {
