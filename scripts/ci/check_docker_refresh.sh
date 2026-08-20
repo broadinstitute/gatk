@@ -23,11 +23,7 @@ triggered_gatk_files=()
 while IFS= read -r changed_file; do
   [[ -z "${changed_file}" ]] && continue
 
-  # Any change to scripts baked into the variants image should trigger a variants refresh.
-  if [[ "${changed_file}" == scripts/variantstore/scripts/* ]]; then
-    needs_variants_refresh=true
-    triggered_variants_files+=("${changed_file}")
-  fi
+  if [[ "${changed_file}" == scripts/variantstore/scripts/* && "${changed_file}" != scripts/variantstore/scripts/test/* ]]; then
 
   # Core Java/runtime changes that typically require a GATK image rebuild.
   if [[ "${changed_file}" == src/main/* ]] ||
