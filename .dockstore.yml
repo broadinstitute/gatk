@@ -97,7 +97,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - ng_vs_1983_gvs_assign_ids_check_dataset_created
          tags:
              - /.*/
    - name: GvsBenchmarkExtractTask
@@ -219,7 +218,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - ng_vs_1983_gvs_assign_ids_check_dataset_created
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
