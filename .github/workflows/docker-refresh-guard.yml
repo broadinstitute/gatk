@@ -1,0 +1,189 @@
+name: Docker Refresh Guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+jobs:
+  docker-refresh-guard:
+    name: Detect missing Docker image tag updates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect override label
+        id: override
+        run: |
+          if [[ "${{ contains(github.event.pull_request.labels.*.name, 'docker-refresh-not-needed') }}" == "true" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run Docker refresh checker
+        id: check
+        run: |
+          bash scripts/ci/check_docker_refresh.sh \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}"
+
+      - name: Emit workflow warnings when updates are missing
+        if: steps.check.outputs.missing_count != '0' && steps.override.outputs.enabled != 'true'
+        run: |
+          echo "::warning file=scripts/variantstore/wdl/GvsUtils.wdl::Potential missing Docker tag updates detected."
+
+          if [[ "${{ steps.check.outputs.needs_variants_refresh }}" == "true" && "${{ steps.check.outputs.updated_variants_tag }}" != "true" ]]; then
+            echo "::warning file=scripts/variantstore/wdl/GvsUtils.wdl::Expected update to String variants_docker in GetToolVersions after changes under scripts/variantstore/scripts/."
+          fi
+
+          if [[ "${{ steps.check.outputs.needs_gatk_refresh }}" == "true" && "${{ steps.check.outputs.updated_gatk_lite_tag }}" != "true" ]]; then
+            echo "::warning file=scripts/variantstore/wdl/GvsUtils.wdl::Expected update to String gatk_docker in GetToolVersions after GATK Java/runtime changes."
+          fi
+
+          if [[ "${{ steps.check.outputs.needs_gatk_refresh }}" == "true" && "${{ steps.check.outputs.updated_gatk_heavy_tag }}" != "true" ]]; then
+            echo "::warning file=scripts/variantstore/wdl/GvsUtils.wdl::Expected update to String gatk_heavy_docker in GetToolVersions after GATK Java/runtime changes."
+          fi
+
+      - name: Upsert PR comment and maintain labels
+        uses: actions/github-script@v7
+        env:
+          MARKER: "<!-- docker-refresh-guard -->"
+          OVERRIDE_ENABLED: ${{ steps.override.outputs.enabled }}
+          MISSING_COUNT: ${{ steps.check.outputs.missing_count }}
+          NEEDS_VARIANTS_REFRESH: ${{ steps.check.outputs.needs_variants_refresh }}
+          NEEDS_GATK_REFRESH: ${{ steps.check.outputs.needs_gatk_refresh }}
+          UPDATED_VARIANTS_TAG: ${{ steps.check.outputs.updated_variants_tag }}
+          UPDATED_GATK_LITE_TAG: ${{ steps.check.outputs.updated_gatk_lite_tag }}
+          UPDATED_GATK_HEAVY_TAG: ${{ steps.check.outputs.updated_gatk_heavy_tag }}
+          MISSING_ITEMS: ${{ steps.check.outputs.missing_items }}
+          TRIGGERED_VARIANTS_FILES: ${{ steps.check.outputs.triggered_variants_files }}
+          TRIGGERED_GATK_FILES: ${{ steps.check.outputs.triggered_gatk_files }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const marker = process.env.MARKER;
+            const needsLabel = 'needs-docker-refresh';
+            const overrideLabel = 'docker-refresh-not-needed';
+
+            const overrideEnabled = process.env.OVERRIDE_ENABLED === 'true';
+            const missingCount = Number(process.env.MISSING_COUNT || '0');
+            const missingItems = (process.env.MISSING_ITEMS || '').split('\n').map(s => s.trim()).filter(Boolean);
+
+            const needsVariants = process.env.NEEDS_VARIANTS_REFRESH === 'true';
+            const needsGatk = process.env.NEEDS_GATK_REFRESH === 'true';
+
+            const updatedVariants = process.env.UPDATED_VARIANTS_TAG === 'true';
+            const updatedGatkLite = process.env.UPDATED_GATK_LITE_TAG === 'true';
+            const updatedGatkHeavy = process.env.UPDATED_GATK_HEAVY_TAG === 'true';
+
+            const triggeredVariantsFiles = (process.env.TRIGGERED_VARIANTS_FILES || '').split('\n').map(s => s.trim()).filter(Boolean);
+            const triggeredGatkFiles = (process.env.TRIGGERED_GATK_FILES || '').split('\n').map(s => s.trim()).filter(Boolean);
+
+            const formatFileList = (files) => {
+              if (!files.length) return '_none_';
+              const maxToShow = 8;
+              const shown = files.slice(0, maxToShow).map(f => `- \`${f}\``).join('\n');
+              const remaining = files.length - maxToShow;
+              return remaining > 0 ? `${shown}\n- ...and ${remaining} more` : shown;
+            };
+
+            let headline;
+            if (missingCount === 0) {
+              headline = 'Docker refresh guard: no missing image tag updates detected.';
+            } else if (overrideEnabled) {
+              headline = 'Docker refresh guard: missing image tag updates detected, but override label is set.';
+            } else {
+              headline = 'Docker refresh guard: possible missing image tag updates detected.';
+            }
+
+            const recommendationLines = [];
+            if (missingItems.includes('variants_docker')) {
+              recommendationLines.push('- Update `String variants_docker = ...` in `scripts/variantstore/wdl/GvsUtils.wdl` after rebuilding the variants image.');
+            }
+            if (missingItems.includes('gatk_docker')) {
+              recommendationLines.push('- Update `String gatk_docker = ...` in `scripts/variantstore/wdl/GvsUtils.wdl` after rebuilding/publishing the GATK lite image.');
+            }
+            if (missingItems.includes('gatk_heavy_docker')) {
+              recommendationLines.push('- Update `String gatk_heavy_docker = ...` in `scripts/variantstore/wdl/GvsUtils.wdl` after rebuilding/publishing the GATK heavy image.');
+            }
+
+            const body = `${marker}
+            ${headline}
+
+            **Signals from this PR**
+            - Variants refresh expected: ${needsVariants ? 'yes' : 'no'}
+            - GATK refresh expected: ${needsGatk ? 'yes' : 'no'}
+            - variants_docker updated in PR: ${updatedVariants ? 'yes' : 'no'}
+            - gatk_docker updated in PR: ${updatedGatkLite ? 'yes' : 'no'}
+            - gatk_heavy_docker updated in PR: ${updatedGatkHeavy ? 'yes' : 'no'}
+
+            **Triggering file changes (variants)**
+            ${formatFileList(triggeredVariantsFiles)}
+
+            **Triggering file changes (GATK)**
+            ${formatFileList(triggeredGatkFiles)}
+
+            ${missingCount > 0 ? `**Recommended updates**\n${recommendationLines.join('\n')}` : '**Recommended updates**\n- None.'}
+
+            ${overrideEnabled ? `Override label \`${overrideLabel}\` is present, so this is informational only.` : `If this warning is not applicable, add label \`${overrideLabel}\` to suppress and acknowledge.`}
+            `;
+
+            const { owner, repo } = context.repo;
+            const issue_number = context.issue.number;
+
+            try {
+              const comments = await github.paginate(github.rest.issues.listComments, {
+                owner,
+                repo,
+                issue_number,
+                per_page: 100,
+              });
+
+              const existing = comments.find(c => c.user?.type === 'Bot' && c.body?.includes(marker));
+
+              if (existing) {
+                await github.rest.issues.updateComment({
+                  owner,
+                  repo,
+                  comment_id: existing.id,
+                  body,
+                });
+              } else {
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number,
+                  body,
+                });
+              }
+
+              if (missingCount > 0 && !overrideEnabled) {
+                await github.rest.issues.addLabels({
+                  owner,
+                  repo,
+                  issue_number,
+                  labels: [needsLabel],
+                });
+              } else {
+                try {
+                  await github.rest.issues.removeLabel({
+                    owner,
+                    repo,
+                    issue_number,
+                    name: needsLabel,
+                  });
+                } catch (e) {
+                  core.info(`No ${needsLabel} label to remove (or insufficient permission).`);
+                }
+              }
+            } catch (e) {
+              core.warning(`Could not update PR comment/labels: ${e.message}`);
+            }
