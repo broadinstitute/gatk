@@ -49,11 +49,22 @@ workflow GvsAssignIds {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
+  # Preflight: fail fast with one actionable message if the dataset does not exist. GvsAssignIds
+  # creates tables but not the dataset itself; without this check a missing dataset surfaces as many
+  # simultaneous, cryptic `bq mk` "Not found: Dataset" failures across the table-creation tasks below.
+  call ValidateDatasetExists {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      go = ValidateSamples.done,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
   call GvsCreateTables.CreateTables as CreateSampleInfoTable {
   	input:
       project_id = project_id,
       dataset_name = dataset_name,
-      go = ValidateSamples.done,
+      go = ValidateDatasetExists.done,
       datatype = "sample_info",
       schema_json = sample_info_schema_json,
       max_table_id = 1,
@@ -68,7 +79,7 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
-      go = ValidateSamples.done,
+      go = ValidateDatasetExists.done,
       datatype = "sample_load_status",
       schema_json = sample_load_status_schema_json,
       max_table_id = 1,
@@ -83,7 +94,7 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
-      go = ValidateSamples.done,
+      go = ValidateDatasetExists.done,
       datatype = "sample_chromosome_ploidy",
       schema_json = sample_chromosome_ploidy_schema_json,
       max_table_id = 1,
@@ -98,7 +109,7 @@ workflow GvsAssignIds {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
-        go = ValidateSamples.done,
+        go = ValidateDatasetExists.done,
         datatype = "vcf_header_lines_scratch",
         schema_json = vcf_header_lines_scratch_schema_json,
         max_table_id = 1,
@@ -111,7 +122,7 @@ workflow GvsAssignIds {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
-        go = ValidateSamples.done,
+        go = ValidateDatasetExists.done,
         datatype = "vcf_header_lines",
         schema_json = vcf_header_lines_schema_json,
         max_table_id = 1,
@@ -124,7 +135,7 @@ workflow GvsAssignIds {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
-        go = ValidateSamples.done,
+        go = ValidateDatasetExists.done,
         datatype = "sample_vcf_header",
         schema_json = sample_vcf_header_schema_json,
         max_table_id = 1,
@@ -140,7 +151,7 @@ workflow GvsAssignIds {
     input:
       project_id = project_id,
       dataset_name = dataset_name,
-      go = ValidateSamples.done,
+      go = ValidateDatasetExists.done,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -322,6 +333,100 @@ task CreateCostObservabilityTable {
   runtime {
     docker: cloud_sdk_docker
   }
+  output {
+    Boolean done = true
+  }
+}
+
+task ValidateDatasetExists {
+  input {
+    String project_id
+    String dataset_name
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
+    Boolean go
+    String cloud_sdk_docker
+  }
+
+  meta {
+    description: "Preflight check that the target BigQuery dataset exists, failing fast with an actionable message if it does not."
+    volatile: true
+  }
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+    # Capture bq's combined output so we can both surface the real error and tell a missing dataset
+    # apart from a permissions problem -- the two need very different fixes. bq writes its error
+    # messages ('Not found: Dataset ...', 'Access Denied: ...') to stdout, not stderr, so capturing
+    # stderr alone ('2>&1 >/dev/null') comes back empty and every failure falls through to the neutral
+    # branch. '2>&1' merges both streams into the variable; on success (rc=0) the captured dataset
+    # description is simply unused.
+    set +o errexit
+    BQ_SHOW_ERR=$(bq --apilog=false --project_id=~{project_id} show ~{dataset_name} 2>&1)
+    BQ_SHOW_RC=$?
+    set -o errexit
+
+    if [ $BQ_SHOW_RC -ne 0 ]; then
+      # Turn off xtrace so the message below is easy to read in the task log.
+      set +o xtrace
+      # Surface the raw bq error first, to aid triage of anything the checks below don't cover.
+      echo "bq show failed (rc=${BQ_SHOW_RC}): ${BQ_SHOW_ERR}" >&2
+      echo "" >&2
+      # Classify by bq's own error-class markers. 'Not found: Dataset' and 'Access Denied' each contain a
+      # space (illegal in a project or dataset id), so they come from bq itself -- not from the caller's
+      # identifiers echoed back into the message (e.g. a Terra project like 'terra-4038a1c9' or a dataset
+      # named 'permissions_test'). Match the missing case affirmatively and fall through to a neutral
+      # message for anything else (invalid id, BigQuery API disabled, transient/credential error) rather
+      # than misdiagnosing it.
+      if echo "${BQ_SHOW_ERR}" | grep -qiE 'not found: dataset'; then
+        echo "ERROR: BigQuery dataset '~{project_id}:~{dataset_name}' was not found." >&2
+        echo "" >&2
+        echo "GvsAssignIds creates the tables within a dataset, but it does not create the dataset itself." >&2
+        echo "The dataset must already exist before running this workflow." >&2
+        echo "" >&2
+        echo "To create it, choose the multi-region that matches where your data lives:" >&2
+        echo "    bq --location=YOUR_MULTI_REGION mk --dataset ~{project_id}:~{dataset_name}   # e.g. --location=US or --location=EU" >&2
+        echo "(AoU callsets use the US multi-region, i.e. --location=US. If --location is omitted," >&2
+        echo "bq uses whatever default location is configured for your environment; do not rely on this.)" >&2
+        echo "" >&2
+        echo "If you believe the dataset already exists, double-check the 'dataset_name' and 'project_id'" >&2
+        echo "inputs for typos and confirm you have access to it." >&2
+      elif echo "${BQ_SHOW_ERR}" | grep -qiE 'access denied|permission denied'; then
+        echo "ERROR: BigQuery dataset '~{project_id}:~{dataset_name}' could not be accessed -- this looks" >&2
+        echo "like a permissions problem, not a missing dataset." >&2
+        echo "" >&2
+        echo "Confirm the account running this workflow has read access to the dataset or project" >&2
+        echo "(the 'bigquery.datasets.get' permission, e.g. via the BigQuery Data Viewer role), then re-run." >&2
+      else
+        echo "ERROR: could not verify BigQuery dataset '~{project_id}:~{dataset_name}' -- 'bq show' failed" >&2
+        echo "for a reason that is neither a plain missing dataset nor a permissions problem." >&2
+        echo "" >&2
+        echo "See the raw 'bq show' error above for the specific cause. Common ones:" >&2
+        echo "  * Invalid dataset id -- BigQuery dataset ids allow only letters, digits, and underscores" >&2
+        echo "    (no hyphens, unlike GCP project ids); rename the dataset if so." >&2
+        echo "  * The BigQuery API is not enabled on the project, or a transient/credential error." >&2
+        echo "" >&2
+        echo "Double-check the 'dataset_name' and 'project_id' inputs, then re-run." >&2
+      fi
+      exit 1
+    fi
+  >>>
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    cpu: 1
+    preemptible: 1
+    maxRetries: 0
+    disks: "local-disk 100 HDD"
+  }
+
   output {
     Boolean done = true
   }
