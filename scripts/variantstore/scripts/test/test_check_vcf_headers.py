@@ -271,6 +271,54 @@ class TestEvaluate(unittest.TestCase):
         self.assertTrue(dragen.fatal)
         self.assertFalse(dragen.passed)
 
+    def test_partial_dragen_cohort_with_expected_fails(self):
+        # Finding 12 (VS-1966): exact-match mode must FAIL when only part of the cohort carries a
+        # DRAGEN command line. This mirrors the round-3 report: 11 DRAGEN samples (8 + 3) in a
+        # 25-sample cohort, expected '3.7.8'. The 14 samples with no DRAGEN line produce no breakdown
+        # row, so cross-referencing expected_samples is the only thing that catches them.
+        rows = [{'sw_version': 'SW: 05.021.604.3.7.8', 'n_samples': 8},
+                {'sw_version': 'SW: 07.021.604.3.7.8', 'n_samples': 3}]
+        ok, checks = cvh.evaluate(_summary(expected_samples=25, samples_with_headers=25),
+                                  rows, _NO_ORPHANS, _ONE_BLOB, expected_dragen_version='3.7.8')
+        self.assertFalse(ok)
+        dragen = self._names(checks)['dragen_version']
+        self.assertTrue(dragen.fatal)
+        self.assertFalse(dragen.passed)
+        report = cvh.compose_report(PROJECT, DATASET, '3.7.8', ok, checks)
+        self.assertIn("14 non-control sample(s) have no DRAGEN command line", report)
+
+    def test_partial_dragen_cohort_in_range_mode_fails(self):
+        # The shortfall is fatal in range mode too, not just exact mode.
+        rows = [{'sw_version': 'SW: 05.021.604.3.7.8', 'n_samples': 8},
+                {'sw_version': 'SW: 07.021.604.3.7.8', 'n_samples': 3}]
+        ok, checks = cvh.evaluate(_summary(expected_samples=25, samples_with_headers=25),
+                                  rows, _NO_ORPHANS, _ONE_BLOB, expected_dragen_version='3.4.0-3.8.0')
+        self.assertFalse(ok)
+        self.assertFalse(self._names(checks)['dragen_version'].passed)
+
+    def test_partial_dragen_cohort_is_informational_without_expected(self):
+        # Without an asserted version the shortfall is reported but NOT fatal: a mixed/partial cohort
+        # is legitimate when no DRAGEN version was required (e.g. the pre-DRAGEN quickstart inputs).
+        rows = [{'sw_version': 'SW: 05.021.604.3.7.8', 'n_samples': 8},
+                {'sw_version': 'SW: 07.021.604.3.7.8', 'n_samples': 3}]
+        ok, checks = cvh.evaluate(_summary(expected_samples=25, samples_with_headers=25),
+                                  rows, _NO_ORPHANS, _ONE_BLOB)
+        self.assertTrue(ok, [(c.name, c.passed) for c in checks])
+        self.assertTrue(self._names(checks)['dragen_version'].passed)
+        report = cvh.compose_report(PROJECT, DATASET, None, ok, checks)
+        self.assertIn("14 non-control sample(s) have no DRAGEN command line", report)
+        self.assertIn("informational", report)
+
+    def test_full_dragen_cohort_with_expected_passes(self):
+        # Full coverage (11 DRAGEN / 11 expected) still passes exact mode -- the coverage check only
+        # fires on a shortfall, so it must not regress a clean, fully-DRAGEN cohort.
+        rows = [{'sw_version': 'SW: 05.021.604.3.7.8', 'n_samples': 8},
+                {'sw_version': 'SW: 07.021.604.3.7.8', 'n_samples': 3}]
+        ok, checks = cvh.evaluate(_summary(expected_samples=11, samples_with_headers=11),
+                                  rows, _NO_ORPHANS, _ONE_BLOB, expected_dragen_version='3.7.8')
+        self.assertTrue(ok, [(c.name, c.passed) for c in checks])
+        self.assertTrue(self._names(checks)['dragen_version'].passed)
+
     def test_unparseable_triplet_masked_by_match_fails_exact_mode(self):
         # Regression (VS-1966): a few matching samples must not wave through samples whose DRAGEN
         # version could not be parsed. 2 at 3.7.8 + 5 unreadable, expected '3.7.8' -> FAIL, not PASS.
@@ -454,6 +502,24 @@ class TestValidateIntegration(unittest.TestCase):
         by_name = {c.name: c for c in checks}
         self.assertFalse(by_name['reblocking'].passed)
         self.assertFalse(by_name['dragen_version'].passed)
+
+    def test_fails_when_only_some_samples_are_dragen(self):
+        # Finding 12 (VS-1966): sample 2 is reblocked but carries NO DRAGEN command line, so the
+        # breakdown query returns no row for it. Exact-match mode must still fail because the cohort
+        # coverage falls short of the expected sample count. This is the end-to-end proof that the
+        # cross-reference against expected_samples catches a shortfall the breakdown alone cannot see.
+        self._create_tables()
+        self._load_cohort({
+            1: [(self.BLOB, False), (self.DRAGEN_378, True), (self.REBLOCK, True)],
+            2: [(self.BLOB, False), (self.REBLOCK, True)],
+        })
+        ok, checks = cvh.run_checks(self.project, self.dataset,
+                                    expected_dragen_version='3.7.8', client=self.client)
+        self.assertFalse(ok)
+        by_name = {c.name: c for c in checks}
+        self.assertFalse(by_name['dragen_version'].passed)
+        # Reblocking is fine for both, so only the DRAGEN coverage should have tripped.
+        self.assertTrue(by_name['reblocking'].passed)
 
     @classmethod
     def tearDownClass(cls):

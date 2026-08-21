@@ -279,6 +279,12 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = vcf_index_files_column_name,
                 sample_set_name = bge_sample_set_name,
                 drop_state = "FORTY",
+                # Exercise header loading + validation on the BGE (Parquet-ingest) path so the check
+                # gets integration coverage on a real cohort. The BGE samples (SM-13QO7/SM-3A2WA/
+                # SM-14YML) are GATK-reblocked and each carry DRAGEN "SW: 07.021.604.3.7.8" (triplet
+                # 3.7.8), so assert that exact version.
+                load_vcf_headers = true,
+                expected_dragen_version = "3.7.8",
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,

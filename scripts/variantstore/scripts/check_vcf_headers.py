@@ -31,7 +31,11 @@ Checks (all fatal unless noted):
     (AoU), or as a range every sample's triplet must fall within it. Ranges accept interval
     notation -- ``3.4.12-3.7.8`` (both inclusive), ``[3.7.8-3.8)`` (inclusive-exclusive),
     ``(3.7-3.8)`` (both exclusive). A DRAGEN command line whose SW version cannot be reduced to a
-    numeric triplet fails the check in every mode -- such rows are never silently dropped.
+    numeric triplet fails the check in every mode -- such rows are never silently dropped. When
+    ``--expected_dragen_version`` is set, every non-control sample must actually carry a DRAGEN
+    command line: a cohort where only some samples are DRAGEN fails, because the breakdown query
+    returns no row for a non-DRAGEN sample, so the shortfall is caught by cross-referencing the
+    expected cohort count (finding 12).
   * Shared-blob distribution (informational): how many distinct ``is_expected_unique = FALSE``
     blobs there are and how many samples carry each (> 1 indicates distinct delivery batches).
 
@@ -368,14 +372,21 @@ def evaluate_reblocking(summary, require_reblocking=True):
     )
 
 
-def evaluate_dragen_version(dragen_rows, expected_dragen_version=None):
+def evaluate_dragen_version(dragen_rows, expected_dragen_version=None, expected_samples=None):
     """Consistency (and optionally an exact match or inclusive range) of the DRAGEN version.
 
-    ``dragen_rows``: iterable of rows with ``sw_version`` and ``n_samples``.
+    ``dragen_rows``: iterable of rows with ``sw_version`` and ``n_samples`` -- one row per distinct
+    SW version, covering only samples that carry a ``DRAGENCommandLine=<ID=dragen, ...>`` line.
     ``expected_dragen_version`` accepts either a single triplet (``'3.7.8'`` -- exact match, as AoU
     requires) or a range with optional interval-notation brackets (``'3.4.12-3.7.8'``,
-    ``'[3.7.8-3.8)'``, ``'(3.7-3.8)'``); see ``parse_expected_dragen_spec``. Failures:
+    ``'[3.7.8-3.8)'``, ``'(3.7-3.8)'``); see ``parse_expected_dragen_spec``. ``expected_samples`` is
+    the size of the expected (non-control, non-withdrawn) cohort; it is compared against the number
+    of samples that actually carry a DRAGEN line so a partial cohort cannot slip through (finding 12).
+    Failures:
       * expected version given but no DRAGEN command lines found;
+      * expected version given but only part of the cohort carries a DRAGEN command line -- the
+        breakdown query returns no row for a non-DRAGEN sample, so these are invisible to the triplet
+        checks and are caught here by comparing against ``expected_samples`` (finding 12);
       * any DRAGEN command line whose SW version cannot be reduced to a numeric triplet (fatal in
         every mode -- these rows are never silently dropped from the comparison);
       * exact / consistency-only mode: more than one distinct version triplet across the cohort;
@@ -383,7 +394,8 @@ def evaluate_dragen_version(dragen_rows, expected_dragen_version=None):
       * range mode: any triplet falls outside the interval (multiple triplets inside the range are
         allowed -- relaxing a range but still requiring a single triplet would be pointless);
       * ``expected_dragen_version`` is a malformed range.
-    With no DRAGEN lines and no expected version, this is informational (a non-DRAGEN cohort).
+    With no expected version a partial/absent DRAGEN cohort is reported but not fatal (a legitimately
+    non-DRAGEN or mixed cohort). With no DRAGEN lines and no expected version, this is informational.
     """
     # Aggregate sample counts by full SW version and by triplet.
     version_counts = {}
@@ -434,9 +446,27 @@ def evaluate_dragen_version(dragen_rows, expected_dragen_version=None):
     # Invariant past the guard above: version_counts is non-empty, and every DRAGEN row (a GROUP BY
     # row, so n_samples >= 1) lands in exactly one of distinct_triplets (parseable) or `unparseable`
     # (not). The two therefore cannot both be empty, so the ``> 1`` and ``elif distinct_triplets``
-    # guards below never leave the cohort silently unchecked. That edge only reopens if the shape of
-    # dragen_version_breakdown_sql changes to admit an all-zero/NULL-count row.
+    # guards below never leave the *returned rows* silently unchecked. Samples with no DRAGEN row at
+    # all are invisible to those rows; they are handled by the cohort-coverage check just below.
     passed = True
+
+    # Cohort coverage (finding 12): dragen_version_breakdown_sql returns a row only for samples that
+    # carry a DRAGENCommandLine=<ID=dragen, ...> line, so a sample with no DRAGEN line contributes no
+    # row and is invisible to the triplet checks. Cross-reference the number of DRAGEN samples against
+    # the full expected cohort: if a version was asserted, every sample must actually be DRAGEN, so a
+    # shortfall is fatal (the AoU case -- a tranche arriving without DRAGEN headers must not pass
+    # silently). With no expected version a partial cohort is legitimate, so report it but do not fail.
+    dragen_sample_count = sum(version_counts.values())
+    if expected_samples is not None and dragen_sample_count < expected_samples:
+        missing = expected_samples - dragen_sample_count
+        lines.append(f"Samples with a DRAGEN command line: {dragen_sample_count} / {expected_samples}")
+        if kind is not None:
+            passed = False
+            lines.append(f"    FAIL: {missing} non-control sample(s) have no DRAGEN command line, but "
+                         f"--expected_dragen_version {expected_dragen_version} requires every sample to be DRAGEN")
+        else:
+            lines.append(f"    {missing} non-control sample(s) have no DRAGEN command line "
+                         f"(informational; no --expected_dragen_version specified)")
 
     # An unparseable DRAGEN version is a hole in the check, not a pass. Filtering these rows out of the
     # comparison would let real version drift (or a NULL SW field) slip through the very check meant to
@@ -501,7 +531,8 @@ def evaluate(summary, dragen_rows, orphan, blob_rows, expected_dragen_version=No
     checks = []
     checks.extend(evaluate_integrity(summary))
     checks.append(evaluate_reblocking(summary, require_reblocking))
-    checks.append(evaluate_dragen_version(dragen_rows, expected_dragen_version))
+    checks.append(evaluate_dragen_version(dragen_rows, expected_dragen_version,
+                                          summary.get('expected_samples')))
     checks.append(evaluate_referential_integrity(orphan))
     checks.append(evaluate_shared_blob_distribution(blob_rows))
 
