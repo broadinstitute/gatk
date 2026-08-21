@@ -327,3 +327,164 @@ Note that for the past Echo callset there may need to be an additional step to
 patch this table for a set of VIDs that did not have corresponding Participant
 IDs. See the directory `pseudo_vids_only_in_vat` for more information on
 unmatched VIDs that were discovered in the VATs of the Delta and Echo callsets.
+
+# Documentation Conventions
+
+## Markdown tables must be rectangular
+
+IntelliJ wants Markdown tables to be rectangular (cell padded to its column's
+widest content). A table left ragged therefore reappears as a spurious
+whitespace-only diff the next time anyone opens the file in IntelliJ, and the IDE
+flags it. A single cell one character wider than its column is enough to cause
+this, which is nearly invisible in review — and editing one cell of an
+already-aligned table is the usual way it happens.
+
+After adding or editing a table, run:
+
+```shell
+python3 scripts/variantstore/utils/format_markdown_tables.py <file.md>
+```
+
+Add `--check` to report without rewriting (exit status 1 if anything would
+change), and pass a directory to search it recursively. The script is idempotent
+and never touches content inside fenced code blocks.
+
+Some existing docs predate this and are still ragged. Only format files you are
+already modifying; reformatting untouched docs adds diff noise that obscures the
+actual change.
+
+# Code Review Conventions
+
+## Do the review inline — do not use the `code-review` skill
+
+When asked to review a branch, PR, or diff, read the diff and write the review
+directly in the conversation, following the conventions in this section. Do not
+invoke the `code-review` skill, and do not otherwise fork the review into a
+subagent.
+
+The skill is packaged to run forked, and what comes back does not follow the
+conventions below: it leads with findings instead of an `## Action items`
+section, and it does not produce the durable write-up under
+`~/claude-artifacts/<project>/`. Restructuring its output afterwards costs more
+than doing the review inline from the start.
+
+A forked reviewer also cannot see the context already gathered in the
+conversation — the established base ref, the diff, the surrounding files — so it
+re-derives them, and its supporting claims still have to be checked against the
+repo before they can be reported. In the VS-1983 review its findings were sound,
+but one rested on a partial survey of the repo: it correctly noted that
+`CreateDatasetForTest` in `GvsUtils.wdl` passes no `--location`, while missing
+`run_header_loading_e2e.sh`, which uses `--location=US` and cuts the other way.
+
+Whoever writes the review — inline or otherwise — verify each finding's
+supporting claims against the repo, and reproduce a finding directly where that
+is cheap, before reporting it.
+
+## Lead with action items
+
+A code review write-up opens with an `## Action items` section, before the scope
+summary and before the findings themselves. It lists what should actually be
+done, each entry pointing at the numbered finding that justifies it.
+
+Order that list by what the PR's author can act on directly, not by strict
+execution order. Their own work comes first, with the discretionary line closing
+that group. Anything the branch merely runs into — pre-existing debt, a problem
+in files the PR does not touch, something needing a team decision or
+coordination with another branch — goes in a separate group afterward, under a
+heading that says so, introduced by a sentence establishing provenance: that it
+was not introduced by this branch and has not come up before, so it is something
+for the team to discuss. Frame that as a shared next step, not as a limit on the
+author's authority — "so we should discuss these as a team" rather than "this is
+not the author's to decide".
+
+Write those cross-cutting entries to be comprehensible cold. The author has not
+been part of the conversation that produced them, so lead with the symptom and
+arrive at the proposed remedy; an entry that opens with the remedy reads as an
+unexplained directive. "The validation only runs on the non-Parquet ingest path,
+which is not what production uses" works where "relocate the non-Parquet
+coverage" does not.
+
+When one action genuinely gates another, say so inline in the entries affected
+rather than reordering the list to express it — ordering for the reader and
+recording a dependency are separate jobs, and the dependency note costs a
+clause.
+
+Every finding must be accounted for in that list, including the ones needing no
+work — group those into a short "discretionary" line rather than dropping them,
+so nothing looks accidentally omitted.
+
+The rationale, evidence, and reproduction detail stay in the numbered findings
+below. Do not put a duplicate ordered list at the end of the document.
+
+Both lists are numbered, so keep the two vocabularies distinct: the entries in
+`## Action items` are "action N" and the write-ups below are "finding N". Never
+call either one "item N" — a reference like "(item 4)" inside action item 1 is
+ambiguous between the two sequences, and the reader has no way to tell which is
+meant. Label the write-ups with a `## Findings` heading so the second sequence is
+visibly its own list.
+
+## One line per paragraph — do not hard-wrap
+
+Code review write-ups get pasted into GitHub PR comments and descriptions, and
+GitHub renders a newline inside a paragraph as a hard line break regardless of
+how much horizontal space is available. A source document wrapped at 100 columns
+therefore renders as a ragged column on GitHub rather than as flowing text.
+
+So in a generated code review document, write each paragraph and each list item
+as a single unwrapped line, however long it ends up. Headings, table rows, and
+fenced code blocks are unaffected — those are already one line each by
+construction, and their line breaks are significant.
+
+Author these documents unwrapped from the start where you can. To convert a
+draft that is already wrapped, use the `reflow-md` helper checked into this
+repo:
+
+```
+scripts/variantstore/scripts/reflow-md FILE...            # rewrite in place
+scripts/variantstore/scripts/reflow-md --dry-run FILE...  # report only
+```
+
+It folds paragraphs and list-item continuations onto single lines while leaving
+headings, table rows, blank lines, and fenced-block contents alone. It compares
+the whitespace-delimited token stream before and after and refuses to write if
+anything other than wrapping changed, and it is idempotent — a second run
+reports `already unwrapped`. Prefer it to joining lines by hand, which is easy
+to get wrong around list indentation and fences, where a mistake corrupts
+content rather than merely rewrapping it.
+
+The script is deliberately named without a `.py` extension: the Dockerfile in
+that directory does `COPY *.py /app/`, so an extensionless name keeps this
+dev-only helper out of the Variants image and out of the rebuild-and-bump
+obligation described in the Variants Docker Image section above. It is a
+dependency-free Python 3 script; do not rename it to `reflow_md.py`.
+
+JIRA hard-breaks intra-paragraph newlines the same way, so the same rule applies
+to anything destined for a JIRA description or comment.
+
+## Development scaffolding is not a review finding
+
+Do not report temporary "point this at my feature branch so I can test it"
+changes as code review findings. The most common example is adding a feature
+branch name to the `branches:` filters in `.dockstore.yml` — Dockstore will not
+expose a workflow for a branch that is not registered, so this edit is a
+prerequisite for testing any WDL change on a branch, not an oversight.
+Developers are reliable about removing these before merge, and a leftover
+registration is harmless: it makes a stale branch visible in Dockstore and
+nothing more.
+
+This exclusion covers branch- and tag-registration scaffolding only. It does
+**not** extend to a reference that will actually break or mislead at runtime
+once merged, which remains a legitimate (and usually serious) finding:
+
+- a Docker image tag — `variants_docker`, `gatk_docker`, etc. in `GvsUtils.wdl`'s
+  `GetToolVersions` — left pointing at a personal, unpublished, or stale image
+  (see the Variants Docker Image section above: a new or edited script under
+  `scripts/variantstore/scripts/` does not reach a running workflow until the
+  image is rebuilt and the tag is updated);
+- a hardcoded project, dataset, or GCS path pointing at a developer's scratch
+  resources in a code path that production runs;
+- a `git_branch_or_tag` default left set to the feature branch.
+
+The distinction is whether the leftover changes what a merged workflow does. If
+it only affects what is visible or runnable on the developer's own branch, leave
+it alone.
