@@ -7,7 +7,7 @@ HEAD_SHA="${2:-}"
 
 if [[ -z "${BASE_SHA}" || -z "${HEAD_SHA}" ]]; then
   echo "Usage: $0 <base_sha> <head_sha>" >&2
-  exit 0
+  exit 1
 fi
 
 DIFF_RANGE="${BASE_SHA}...${HEAD_SHA}"
