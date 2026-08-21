@@ -770,9 +770,25 @@ task ModelSegments {
             grep -v ^@ ~{normal_pileups} | cut -f 1,2,3,4,6,7 > the_rest.txt
             cat seq_dict.txt the_rest.txt > normal.allelicCounts.tsv
 
+
+            grep -v ^@ tumor.allelicCounts.tsv | cut -f 1,2 > TUM
+            grep -v ^@ normal.allelicCounts.tsv | cut -f 1,2 > NORM
+            grep -nxvFf NORM TUM | tr ":" "\t" | cut -f 1 > tumor_delete.lines
+            grep -nxvFf TUM NORM | tr ":" "\t" | cut -f 1 > normal_delete.lines
+
+            grep -v ^@ tumor.allelicCounts.tsv > tumor_body
+            grep -v ^@ normal.allelicCounts.tsv > normal_body
+            sed 's/$/d/' tumor_delete.lines | sed -f - tumor_body > tumor_body_deleted
+            sed 's/$/d/' normal_delete.lines | sed -f - normal_body > normal_body_deleted
+
+            grep ^@ tumor.allelicCounts.tsv > tumor_head
+            grep ^@ normal.allelicCounts.tsv > normal_head
+            cat tumor_head tumor_body_deleted > new-tumor.allelicCounts.tsv
+            cat normal_head normal_body_deleted > new-normal.allelicCounts.tsv
+
             gatk ModelSegments \
-                --allelic-counts tumor.allelicCounts.tsv \
-                --normal-allelic-counts normal.allelicCounts.tsv \
+                --allelic-counts new-tumor.allelicCounts.tsv \
+                --normal-allelic-counts new-normal.allelicCounts.tsv \
                 --output-prefix tumor \
                 -O output_dir
         else
