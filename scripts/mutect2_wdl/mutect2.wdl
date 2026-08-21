@@ -742,7 +742,7 @@ task LearnReadOrientationModel {
 
     output {
         File artifact_prior_table = "artifact-priors.tar.gz"
-    }
+    }x
 
 }
 
@@ -810,8 +810,7 @@ task ModelSegments {
     }
 
     output {
-        File contamination_table = "contamination.table"
-        File maf_segments = "segments.table"
+        File segments = "output_dir/tumor.cr.seg"
     }
 }
 
