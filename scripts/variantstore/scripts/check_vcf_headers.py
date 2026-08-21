@@ -31,11 +31,12 @@ Checks (all fatal unless noted):
     (AoU), or as a range every sample's triplet must fall within it. Ranges accept interval
     notation -- ``3.4.12-3.7.8`` (both inclusive), ``[3.7.8-3.8)`` (inclusive-exclusive),
     ``(3.7-3.8)`` (both exclusive). A DRAGEN command line whose SW version cannot be reduced to a
-    numeric triplet fails the check in every mode -- such rows are never silently dropped. When
-    ``--expected_dragen_version`` is set, every non-control sample must actually carry a DRAGEN
-    command line: a cohort where only some samples are DRAGEN fails, because the breakdown query
-    returns no row for a non-DRAGEN sample, so the shortfall is caught by cross-referencing the
-    expected cohort count (finding 12).
+    numeric triplet fails the check in every mode -- such rows are never silently dropped. A *mixed*
+    cohort, where some non-control samples carry a DRAGEN command line and some do not, also fails --
+    even with no ``--expected_dragen_version`` -- because mixing DRAGEN and non-DRAGEN provenance
+    risks batch effects. A non-DRAGEN sample yields no breakdown row, so the shortfall is caught
+    by cross-referencing the expected cohort count. A cohort with *no* DRAGEN command lines at all
+    is not mixed, so it is fine and reported informationally.
   * Shared-blob distribution (informational): how many distinct ``is_expected_unique = FALSE``
     blobs there are and how many samples carry each (> 1 indicates distinct delivery batches).
 
@@ -381,12 +382,13 @@ def evaluate_dragen_version(dragen_rows, expected_dragen_version=None, expected_
     requires) or a range with optional interval-notation brackets (``'3.4.12-3.7.8'``,
     ``'[3.7.8-3.8)'``, ``'(3.7-3.8)'``); see ``parse_expected_dragen_spec``. ``expected_samples`` is
     the size of the expected (non-control, non-withdrawn) cohort; it is compared against the number
-    of samples that actually carry a DRAGEN line so a partial cohort cannot slip through (finding 12).
+    of samples that actually carry a DRAGEN line so a partial cohort cannot slip through.
     Failures:
       * expected version given but no DRAGEN command lines found;
-      * expected version given but only part of the cohort carries a DRAGEN command line -- the
-        breakdown query returns no row for a non-DRAGEN sample, so these are invisible to the triplet
-        checks and are caught here by comparing against ``expected_samples`` (finding 12);
+      * a mixed cohort -- some samples carry a DRAGEN command line and some do not -- which is fatal
+        even with no expected version, because mixing DRAGEN and non-DRAGEN provenance risks batch
+        effects. A non-DRAGEN sample yields no breakdown row, so this is caught by comparing the
+        DRAGEN sample count against ``expected_samples``;
       * any DRAGEN command line whose SW version cannot be reduced to a numeric triplet (fatal in
         every mode -- these rows are never silently dropped from the comparison);
       * exact / consistency-only mode: more than one distinct version triplet across the cohort;
@@ -394,8 +396,9 @@ def evaluate_dragen_version(dragen_rows, expected_dragen_version=None, expected_
       * range mode: any triplet falls outside the interval (multiple triplets inside the range are
         allowed -- relaxing a range but still requiring a single triplet would be pointless);
       * ``expected_dragen_version`` is a malformed range.
-    With no expected version a partial/absent DRAGEN cohort is reported but not fatal (a legitimately
-    non-DRAGEN or mixed cohort). With no DRAGEN lines and no expected version, this is informational.
+    A cohort with NO DRAGEN command lines and no expected version is fine (a legitimately non-DRAGEN
+    cohort) and reported informationally; a cohort where only SOME samples are DRAGEN is a mixed
+    cohort and always fails.
     """
     # Aggregate sample counts by full SW version and by triplet.
     version_counts = {}
@@ -450,23 +453,29 @@ def evaluate_dragen_version(dragen_rows, expected_dragen_version=None, expected_
     # all are invisible to those rows; they are handled by the cohort-coverage check just below.
     passed = True
 
-    # Cohort coverage (finding 12): dragen_version_breakdown_sql returns a row only for samples that
+    # Cohort coverage: dragen_version_breakdown_sql returns a row only for samples that
     # carry a DRAGENCommandLine=<ID=dragen, ...> line, so a sample with no DRAGEN line contributes no
     # row and is invisible to the triplet checks. Cross-reference the number of DRAGEN samples against
-    # the full expected cohort: if a version was asserted, every sample must actually be DRAGEN, so a
-    # shortfall is fatal (the AoU case -- a tranche arriving without DRAGEN headers must not pass
-    # silently). With no expected version a partial cohort is legitimate, so report it but do not fail.
+    # the full expected cohort. We are past the `not version_counts` guard, so at least one sample IS
+    # DRAGEN; any shortfall here therefore means a MIXED cohort (some DRAGEN, some not). A mixed
+    # cohort is a hard error even with no expected version, because silently mixing DRAGEN and
+    # non-DRAGEN provenance risks batch effects -- the operator must split the cohort by provenance
+    # or otherwise confirm intent. (A cohort with no DRAGEN lines at all is not mixed; it was
+    # handled by the informational path above.) This may be revisited later (e.g. an explicit
+    # opt-in flag).
     dragen_sample_count = sum(version_counts.values())
     if expected_samples is not None and dragen_sample_count < expected_samples:
         missing = expected_samples - dragen_sample_count
+        passed = False
         lines.append(f"Samples with a DRAGEN command line: {dragen_sample_count} / {expected_samples}")
         if kind is not None:
-            passed = False
             lines.append(f"    FAIL: {missing} non-control sample(s) have no DRAGEN command line, but "
                          f"--expected_dragen_version {expected_dragen_version} requires every sample to be DRAGEN")
         else:
-            lines.append(f"    {missing} non-control sample(s) have no DRAGEN command line "
-                         f"(informational; no --expected_dragen_version specified)")
+            lines.append(f"    FAIL: mixed cohort -- {missing} of {expected_samples} non-control "
+                         f"sample(s) have no DRAGEN command line while others do; mixing DRAGEN and "
+                         f"non-DRAGEN samples is not allowed (batch effects). Split the cohort by "
+                         f"provenance.")
 
     # An unparseable DRAGEN version is a hole in the check, not a pass. Filtering these rows out of the
     # comparison would let real version drift (or a NULL SW field) slip through the very check meant to
@@ -541,9 +550,9 @@ def evaluate(summary, dragen_rows, orphan, blob_rows, expected_dragen_version=No
 
 
 def compose_report(project_id, dataset_name, expected_dragen_version, overall_passed, checks):
-    """Render the human-readable report (the VS-1215 "small report")."""
+    """Render the human-readable report."""
     header = [
-        "GVS VCF Header Validation Report (VS-1966)",
+        "GVS VCF Header Validation Report",
         "==========================================",
         f"Dataset: {project_id}.{dataset_name}",
         f"Expected DRAGEN version: {expected_dragen_version or '(not specified -- consistency only)'}",
@@ -627,7 +636,7 @@ def write_output_files(overall_passed, report_text, pass_file_output, report_fil
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(allow_abbrev=False,
-                                     description='Validate ingested GVS VCF headers (VS-1966).')
+                                     description='Validate ingested GVS VCF headers.')
     parser.add_argument('--project_id', type=str, required=True,
                         help='Google project for the GVS dataset')
     parser.add_argument('--dataset_name', type=str, required=True,

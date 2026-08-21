@@ -296,18 +296,33 @@ class TestEvaluate(unittest.TestCase):
         self.assertFalse(ok)
         self.assertFalse(self._names(checks)['dragen_version'].passed)
 
-    def test_partial_dragen_cohort_is_informational_without_expected(self):
-        # Without an asserted version the shortfall is reported but NOT fatal: a mixed/partial cohort
-        # is legitimate when no DRAGEN version was required (e.g. the pre-DRAGEN quickstart inputs).
+    def test_mixed_cohort_without_expected_fails(self):
+        # VS-1966 team decision (2026-08-21): a mixed cohort -- some samples DRAGEN, some not -- is a
+        # hard error EVEN WITH NO expected version, because mixing DRAGEN and non-DRAGEN provenance
+        # risks batch effects. Here 11 of 25 samples carry a DRAGEN line; the other 14 yield no
+        # breakdown row, so the shortfall is caught by cross-referencing expected_samples.
         rows = [{'sw_version': 'SW: 05.021.604.3.7.8', 'n_samples': 8},
                 {'sw_version': 'SW: 07.021.604.3.7.8', 'n_samples': 3}]
         ok, checks = cvh.evaluate(_summary(expected_samples=25, samples_with_headers=25),
                                   rows, _NO_ORPHANS, _ONE_BLOB)
-        self.assertTrue(ok, [(c.name, c.passed) for c in checks])
-        self.assertTrue(self._names(checks)['dragen_version'].passed)
+        self.assertFalse(ok)
+        dragen = self._names(checks)['dragen_version']
+        self.assertTrue(dragen.fatal)
+        self.assertFalse(dragen.passed)
         report = cvh.compose_report(PROJECT, DATASET, None, ok, checks)
-        self.assertIn("14 non-control sample(s) have no DRAGEN command line", report)
-        self.assertIn("informational", report)
+        self.assertIn("mixed cohort", report)
+        self.assertIn("14 of 25 non-control", report)
+
+    def test_uniform_non_dragen_cohort_without_expected_passes(self):
+        # A cohort with NO DRAGEN command lines at all is not mixed -- it is uniformly non-DRAGEN, so
+        # with no expected version it stays informational and passes. This is the boundary that keeps
+        # the mixed-cohort rule from rejecting a legitimate all-non-DRAGEN cohort.
+        ok, checks = cvh.evaluate(_summary(expected_samples=25, samples_with_headers=25),
+                                  [], _NO_ORPHANS, _ONE_BLOB)
+        self.assertTrue(ok, [(c.name, c.passed) for c in checks])
+        dragen = self._names(checks)['dragen_version']
+        self.assertFalse(dragen.fatal)
+        self.assertTrue(dragen.passed)
 
     def test_full_dragen_cohort_with_expected_passes(self):
         # Full coverage (11 DRAGEN / 11 expected) still passes exact mode -- the coverage check only
@@ -519,6 +534,21 @@ class TestValidateIntegration(unittest.TestCase):
         by_name = {c.name: c for c in checks}
         self.assertFalse(by_name['dragen_version'].passed)
         # Reblocking is fine for both, so only the DRAGEN coverage should have tripped.
+        self.assertTrue(by_name['reblocking'].passed)
+
+    def test_fails_on_mixed_cohort_without_expected_version(self):
+        # VS-1966 team decision (2026-08-21): a mixed cohort fails even with NO expected version.
+        # Sample 2 is reblocked but carries no DRAGEN line; without an asserted version the DRAGEN
+        # check must still fail because the cohort is mixed provenance (batch-effect risk).
+        self._create_tables()
+        self._load_cohort({
+            1: [(self.BLOB, False), (self.DRAGEN_378, True), (self.REBLOCK, True)],
+            2: [(self.BLOB, False), (self.REBLOCK, True)],
+        })
+        ok, checks = cvh.run_checks(self.project, self.dataset, client=self.client)
+        self.assertFalse(ok)
+        by_name = {c.name: c for c in checks}
+        self.assertFalse(by_name['dragen_version'].passed)
         self.assertTrue(by_name['reblocking'].passed)
 
     @classmethod
