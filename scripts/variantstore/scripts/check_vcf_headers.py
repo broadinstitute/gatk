@@ -30,7 +30,8 @@ Checks (all fatal unless noted):
     ``--expected_dragen_version`` is given as a single value every sample must match it exactly
     (AoU), or as a range every sample's triplet must fall within it. Ranges accept interval
     notation -- ``3.4.12-3.7.8`` (both inclusive), ``[3.7.8-3.8)`` (inclusive-exclusive),
-    ``(3.7-3.8)`` (both exclusive).
+    ``(3.7-3.8)`` (both exclusive). A DRAGEN command line whose SW version cannot be reduced to a
+    numeric triplet fails the check in every mode -- such rows are never silently dropped.
   * Shared-blob distribution (informational): how many distinct ``is_expected_unique = FALSE``
     blobs there are and how many samples carry each (> 1 indicates distinct delivery batches).
 
@@ -65,13 +66,13 @@ VersionRange = namedtuple('VersionRange', ['low', 'low_inclusive', 'high', 'high
 
 # --- SQL builders (pure functions, no BigQuery client needed -- unit-testable) ---------------------
 
-def per_sample_summary_sql(project_id, dataset_name, example_limit=EXAMPLE_LIMIT):
+def per_sample_summary_sql(project_id, dataset_name):
     """One-pass per-sample rollup over the expected (non-control, non-withdrawn) cohort.
 
     Returns a single summary row: the expected sample count, how many have header data, and the
     counts + example sample names for each fatal integrity / reblocking condition. ``COUNTIF`` over
     a LEFT JOIN treats a sample with no header rows as all-zero counts, so missing-header samples
-    surface as ``chunk_count = 0``. Each example array is capped at ``example_limit + 1`` -- one more
+    surface as ``chunk_count = 0``. Each example array is capped at ``EXAMPLE_LIMIT + 1`` -- one more
     than we display -- so the report can tell "exactly N offenders" from "more than N" (see
     ``_examples``).
     """
@@ -101,9 +102,9 @@ def per_sample_summary_sql(project_id, dataset_name, example_limit=EXAMPLE_LIMIT
             COUNTIF(chunk_count = 0) AS samples_missing_headers,
             COUNTIF(unique_chunk_count = 0) AS samples_missing_unique_chunk,
             COUNTIF(reblock_chunk_count = 0) AS samples_not_reblocked,
-            ARRAY_AGG(IF(chunk_count = 0, sample_name, NULL) IGNORE NULLS LIMIT {example_limit + 1}) AS example_missing_headers,
-            ARRAY_AGG(IF(unique_chunk_count = 0, sample_name, NULL) IGNORE NULLS LIMIT {example_limit + 1}) AS example_missing_unique_chunk,
-            ARRAY_AGG(IF(reblock_chunk_count = 0, sample_name, NULL) IGNORE NULLS LIMIT {example_limit + 1}) AS example_not_reblocked
+            ARRAY_AGG(IF(chunk_count = 0, sample_name, NULL) IGNORE NULLS LIMIT {EXAMPLE_LIMIT + 1}) AS example_missing_headers,
+            ARRAY_AGG(IF(unique_chunk_count = 0, sample_name, NULL) IGNORE NULLS LIMIT {EXAMPLE_LIMIT + 1}) AS example_missing_unique_chunk,
+            ARRAY_AGG(IF(reblock_chunk_count = 0, sample_name, NULL) IGNORE NULLS LIMIT {EXAMPLE_LIMIT + 1}) AS example_not_reblocked
         FROM per_sample
     """
 
@@ -375,6 +376,8 @@ def evaluate_dragen_version(dragen_rows, expected_dragen_version=None):
     requires) or a range with optional interval-notation brackets (``'3.4.12-3.7.8'``,
     ``'[3.7.8-3.8)'``, ``'(3.7-3.8)'``); see ``parse_expected_dragen_spec``. Failures:
       * expected version given but no DRAGEN command lines found;
+      * any DRAGEN command line whose SW version cannot be reduced to a numeric triplet (fatal in
+        every mode -- these rows are never silently dropped from the comparison);
       * exact / consistency-only mode: more than one distinct version triplet across the cohort;
       * exact mode: any triplet differs from the expected version;
       * range mode: any triplet falls outside the interval (multiple triplets inside the range are
@@ -428,6 +431,11 @@ def evaluate_dragen_version(dragen_rows, expected_dragen_version=None):
             lines=lines + ["    No DRAGEN command lines found; skipping DRAGEN version check"],
         )
 
+    # Invariant past the guard above: version_counts is non-empty, and every DRAGEN row (a GROUP BY
+    # row, so n_samples >= 1) lands in exactly one of distinct_triplets (parseable) or `unparseable`
+    # (not). The two therefore cannot both be empty, so the ``> 1`` and ``elif distinct_triplets``
+    # guards below never leave the cohort silently unchecked. That edge only reopens if the shape of
+    # dragen_version_breakdown_sql changes to admit an all-zero/NULL-count row.
     passed = True
 
     # An unparseable DRAGEN version is a hole in the check, not a pass. Filtering these rows out of the
