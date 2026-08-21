@@ -76,15 +76,30 @@ fi
 
 missing_count="${#missing_items[@]}"
 status="ok"
+result_state="no_image_changes"
 if [[ "${missing_count}" -gt 0 ]]; then
   status="warn"
+  result_state="missing_required_updates"
+elif [[ "${needs_variants_refresh}" == "true" || "${needs_gatk_refresh}" == "true" ]]; then
+  result_state="required_updates_present"
 fi
 
-summary="Docker refresh check: ${status}."
+case "${result_state}" in
+  no_image_changes)
+    summary="Docker refresh check: no image-affecting changes detected."
+    ;;
+  required_updates_present)
+    summary="Docker refresh check: image-affecting changes detected and required Docker tag updates are present."
+    ;;
+  missing_required_updates)
+    summary="Docker refresh check: possible missing Docker tag updates detected."
+    ;;
+esac
 
 if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
   {
     echo "status=${status}"
+    echo "result_state=${result_state}"
     echo "missing_count=${missing_count}"
     echo "needs_variants_refresh=${needs_variants_refresh}"
     echo "needs_gatk_refresh=${needs_gatk_refresh}"

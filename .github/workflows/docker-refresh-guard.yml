@@ -57,6 +57,7 @@ jobs:
         env:
           MARKER: "<!-- docker-refresh-guard -->"
           OVERRIDE_ENABLED: ${{ steps.override.outputs.enabled }}
+          RESULT_STATE: ${{ steps.check.outputs.result_state }}
           MISSING_COUNT: ${{ steps.check.outputs.missing_count }}
           NEEDS_VARIANTS_REFRESH: ${{ steps.check.outputs.needs_variants_refresh }}
           NEEDS_GATK_REFRESH: ${{ steps.check.outputs.needs_gatk_refresh }}
@@ -74,6 +75,7 @@ jobs:
             const overrideLabel = 'docker-refresh-not-needed';
 
             const overrideEnabled = process.env.OVERRIDE_ENABLED === 'true';
+            const resultState = process.env.RESULT_STATE || 'missing_required_updates';
             const missingCount = Number(process.env.MISSING_COUNT || '0');
             const missingItems = (process.env.MISSING_ITEMS || '').split('\n').map(s => s.trim()).filter(Boolean);
 
@@ -96,8 +98,10 @@ jobs:
             };
 
             let headline;
-            if (missingCount === 0) {
-              headline = 'Docker refresh guard: no missing image tag updates detected.';
+            if (resultState === 'no_image_changes') {
+              headline = 'Docker refresh guard: no image-affecting changes were detected in this PR.';
+            } else if (resultState === 'required_updates_present') {
+              headline = 'Docker refresh guard: image-affecting changes were detected, and the required Docker tag updates are present.';
             } else if (overrideEnabled) {
               headline = 'Docker refresh guard: missing image tag updates detected, but override label is set.';
             } else {
@@ -115,26 +119,35 @@ jobs:
               recommendationLines.push('- Update `String gatk_heavy_docker = ...` in `scripts/variantstore/wdl/GvsUtils.wdl` after rebuilding/publishing the GATK heavy image.');
             }
 
-            const body = `${marker}
-            ${headline}
+            let body;
+            if (resultState === 'no_image_changes') {
+              body = `${marker}
+${headline}`;
+            } else if (resultState === 'required_updates_present') {
+              body = `${marker}
+${headline}`;
+            } else {
+              body = `${marker}
+${headline}
 
-            **Signals from this PR**
-            - Variants refresh expected: ${needsVariants ? 'yes' : 'no'}
-            - GATK refresh expected: ${needsGatk ? 'yes' : 'no'}
-            - variants_docker updated in PR: ${updatedVariants ? 'yes' : 'no'}
-            - gatk_docker updated in PR: ${updatedGatkLite ? 'yes' : 'no'}
-            - gatk_heavy_docker updated in PR: ${updatedGatkHeavy ? 'yes' : 'no'}
+**Signals from this PR**
+- Variants refresh expected: ${needsVariants ? 'yes' : 'no'}
+- GATK refresh expected: ${needsGatk ? 'yes' : 'no'}
+- variants_docker updated in PR: ${updatedVariants ? 'yes' : 'no'}
+- gatk_docker updated in PR: ${updatedGatkLite ? 'yes' : 'no'}
+- gatk_heavy_docker updated in PR: ${updatedGatkHeavy ? 'yes' : 'no'}
 
-            **Triggering file changes (variants)**
-            ${formatFileList(triggeredVariantsFiles)}
+**Triggering file changes (variants)**
+${formatFileList(triggeredVariantsFiles)}
 
-            **Triggering file changes (GATK)**
-            ${formatFileList(triggeredGatkFiles)}
+**Triggering file changes (GATK)**
+${formatFileList(triggeredGatkFiles)}
 
-            ${missingCount > 0 ? `**Recommended updates**\n${recommendationLines.join('\n')}` : '**Recommended updates**\n- None.'}
+**Recommended updates**
+${recommendationLines.join('\n')}
 
-            ${overrideEnabled ? `Override label \`${overrideLabel}\` is present, so this is informational only.` : `If this warning is not applicable, add label \`${overrideLabel}\` to suppress and acknowledge.`}
-            `;
+${overrideEnabled ? `Override label \`${overrideLabel}\` is present, so this is informational only.` : `If this warning is not applicable, add label \`${overrideLabel}\` to suppress and acknowledge.`}`;
+            }
 
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
