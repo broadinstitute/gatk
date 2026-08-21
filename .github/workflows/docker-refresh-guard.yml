@@ -121,32 +121,34 @@ jobs:
 
             let body;
             if (resultState === 'no_image_changes') {
-              body = `${marker}
-${headline}`;
+              body = [marker, headline].join('\n');
             } else if (resultState === 'required_updates_present') {
-              body = `${marker}
-${headline}`;
+              body = [marker, headline].join('\n');
             } else {
-              body = `${marker}
-${headline}
-
-**Signals from this PR**
-- Variants refresh expected: ${needsVariants ? 'yes' : 'no'}
-- GATK refresh expected: ${needsGatk ? 'yes' : 'no'}
-- variants_docker updated in PR: ${updatedVariants ? 'yes' : 'no'}
-- gatk_docker updated in PR: ${updatedGatkLite ? 'yes' : 'no'}
-- gatk_heavy_docker updated in PR: ${updatedGatkHeavy ? 'yes' : 'no'}
-
-**Triggering file changes (variants)**
-${formatFileList(triggeredVariantsFiles)}
-
-**Triggering file changes (GATK)**
-${formatFileList(triggeredGatkFiles)}
-
-**Recommended updates**
-${recommendationLines.join('\n')}
-
-${overrideEnabled ? `Override label \`${overrideLabel}\` is present, so this is informational only.` : `If this warning is not applicable, add label \`${overrideLabel}\` to suppress and acknowledge.`}`;
+              body = [
+                marker,
+                headline,
+                '',
+                '**Signals from this PR**',
+                `- Variants refresh expected: ${needsVariants ? 'yes' : 'no'}`,
+                `- GATK refresh expected: ${needsGatk ? 'yes' : 'no'}`,
+                `- variants_docker updated in PR: ${updatedVariants ? 'yes' : 'no'}`,
+                `- gatk_docker updated in PR: ${updatedGatkLite ? 'yes' : 'no'}`,
+                `- gatk_heavy_docker updated in PR: ${updatedGatkHeavy ? 'yes' : 'no'}`,
+                '',
+                '**Triggering file changes (variants)**',
+                formatFileList(triggeredVariantsFiles),
+                '',
+                '**Triggering file changes (GATK)**',
+                formatFileList(triggeredGatkFiles),
+                '',
+                '**Recommended updates**',
+                recommendationLines.join('\n'),
+                '',
+                overrideEnabled
+                  ? `Override label \`${overrideLabel}\` is present, so this is informational only.`
+                  : `If this warning is not applicable, add label \`${overrideLabel}\` to suppress and acknowledge.`,
+              ].join('\n');
             }
 
             const { owner, repo } = context.repo;
