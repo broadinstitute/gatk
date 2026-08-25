@@ -166,6 +166,16 @@ workflows:
          - ah_var_store
        tags:
          - /.*/
+   - name: GvsValidateVdsCompleteness
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsValidateVdsCompleteness.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1998_vds_repair_validation
+       tags:
+         - /.*/
    - name: GvsMergeAndRescoreVDSes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsMergeAndRescoreVDSes.wdl
