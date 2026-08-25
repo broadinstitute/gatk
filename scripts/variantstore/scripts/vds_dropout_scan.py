@@ -477,21 +477,38 @@ def read_sample_list(path: str) -> dict[str, int]:
 
 
 def build_intervals(contigs: Sequence[str], interval_strings: Sequence[str]):
-    """Build Hail locus intervals from explicit interval strings or whole contigs."""
+    """Build Hail locus intervals from explicit interval strings or whole contigs.
+
+    Returns concrete ``hail.utils.Interval`` objects, not ``IntervalExpression``s.  That
+    distinction is load-bearing: ``hl.parse_locus_interval`` yields an expression, but the
+    ``intervals`` argument of ``read_vds`` / ``read_matrix_table`` requires evaluated
+    intervals, and handing it expressions fails deep inside Hail with
+
+        TypeError: __init__: parameter 'includes_start': expected bool,
+                   found BooleanExpression
+
+    which points at Hail internals rather than at the caller.
+
+    The whole list is evaluated in a single ``hl.eval`` rather than one per interval,
+    since the default is every primary contig and each ``hl.eval`` is its own job.
+    """
     _require_hail()
-    if interval_strings:
-        return [hl.parse_locus_interval(s, reference_genome='GRCh38') for s in interval_strings]
-    return [hl.parse_locus_interval(c, reference_genome='GRCh38') for c in contigs]
+    strings = list(interval_strings) if interval_strings else list(contigs)
+    if not strings:
+        return []
+    return list(hl.eval(hl.array(
+        [hl.parse_locus_interval(s, reference_genome='GRCh38') for s in strings])))
 
 
 def interval_span(intervals) -> int:
-    """Total base span of a list of Hail locus intervals."""
-    _require_hail()
+    """Total base span of a list of Hail locus intervals.
+
+    ``build_intervals`` returns evaluated intervals, so the endpoints are plain ``Locus``
+    objects with integer positions and need no further ``hl.eval``.
+    """
     total = 0
     for interval in intervals:
-        start = hl.eval(interval.start.position)
-        end = hl.eval(interval.end.position)
-        total += max(0, end - start)
+        total += max(0, interval.end.position - interval.start.position)
     return total
 
 
@@ -513,14 +530,36 @@ def vds_sample_names(vds) -> list[str]:
     return vds.variant_data.cols().s.collect()
 
 
+def superpartition_column_table(sample_to_superpartition: Mapping[str, int]):
+    """The sample -> superpartition mapping as a Table keyed by sample name.
+
+    A keyed Table rather than ``hl.literal(dict)``: against a full-width VDS the mapping
+    runs to ~535K entries, and a literal that size is embedded directly in the query IR.
+    Probing the source VDS -- the first step of the usual sequence -- is exactly the case
+    that hits it.
+    """
+    _require_hail()
+    rows = [{'s': name, 'sp': int(superpartition)}
+            for name, superpartition in sample_to_superpartition.items()]
+    return hl.Table.parallelize(
+        rows, schema=hl.tstruct(s=hl.tstr, sp=hl.tint32)).key_by('s')
+
+
 def _annotated_matrix(vds, mode: str, sample_to_superpartition: Mapping[str, int],
                       bin_size: int, stride: int):
-    """Return the mode-appropriate matrix annotated with superpartition and bin."""
+    """Return the mode-appropriate matrix annotated with superpartition and bin.
+
+    Columns absent from the mapping are dropped rather than carried with a missing
+    superpartition, which would otherwise collect into a null group in the aggregation.
+    That is also what restricts a scan to the recorded sample list when it is pointed at a
+    full-width VDS.
+    """
     _require_hail()
     matrix = vds.variant_data if mode == 'variants' else vds.reference_data
 
-    lookup = hl.literal(dict(sample_to_superpartition), dtype=hl.tdict(hl.tstr, hl.tint32))
-    matrix = matrix.annotate_cols(_sp=lookup[matrix.s])
+    mapping = superpartition_column_table(sample_to_superpartition)
+    matrix = matrix.annotate_cols(_sp=mapping[matrix.s].sp)
+    matrix = matrix.filter_cols(hl.is_defined(matrix._sp))
     matrix = matrix.annotate_rows(
         _bin=(matrix.locus.position - 1) // bin_size,
     )
@@ -720,9 +759,9 @@ def action_full_depth(args) -> int:
             if target is None or superpartition in target:
                 grouped[superpartition].append(name)
 
-        contig = hl.eval(intervals[0].start.contig)
-        start = hl.eval(intervals[0].start.position)
-        end = hl.eval(intervals[0].end.position)
+        contig = intervals[0].start.contig
+        start = intervals[0].start.position
+        end = intervals[0].end.position
 
         for superpartition in sorted(grouped):
             names = grouped[superpartition]
