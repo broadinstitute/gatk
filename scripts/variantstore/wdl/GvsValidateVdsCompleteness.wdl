@@ -14,10 +14,20 @@ version 1.0
 # repeatable. Run one action per invocation.
 #
 # Typical sequence for a callset:
-#   1. action = "materialize"  on the source VDS      -> narrow copy + sample list
-#   2. action = "probe"        on the narrow copy     -> measured throughput, cost estimate
+#   0. run scripts/variantstore/bq/vds_dropout_sample_map.sql -> sample_map.tsv in GCS.
+#      This is the only input you generate by hand; the sample list is produced by step 2.
+#   1. action = "probe"        on the SOURCE VDS      -> sizes the materialize pass
+#   2. action = "materialize"  on the source VDS      -> narrow copy + sample list
+#      Steps 1 and 2 take sample_map_path; steps 3 and 4 take the sample_list_path that
+#      step 2 wrote, so that every later run screens exactly the same samples.
 #   3. action = "scan"         on the narrow copy     -> summary + candidate rectangles + SQL
 #   4. action = "full-depth"   on the source VDS      -> per-sample detail for flagged windows
+#
+# Note step 1: probing measures whatever VDS it is given, so pointing it at the source
+# full-width VDS is what estimates the one expensive pass, and it is worth doing before
+# materializing rather than after. Probing the narrow copy afterwards only estimates the
+# already-cheap screening cost. The estimate covers reading and aggregating but not
+# writing, so treat it as a floor for materialize.
 #
 # The BigQuery adjudication SQL that `scan` emits is deliberately not executed here. The screen
 # produces candidates; running the queries against the callset dataset is a separate, deliberate
@@ -51,7 +61,9 @@ workflow GvsValidateVdsCompleteness {
         String? contigs
         String? intervals
         String? target_superpartitions
-        String probe_interval = "chr20:30000000-40000000"
+        # Fully callable 10 Mb window on chr20, clear of the centromere gap
+        # (chr20:26,386,232-30,088,349), the telomere, and the smaller gaps near 31 Mb.
+        String probe_interval = "chr20:37000000-47000000"
         Boolean overwrite = false
 
         # Detection thresholds. Cheap to revisit: the detector runs against the small summary
@@ -128,6 +140,9 @@ workflow GvsValidateVdsCompleteness {
         }
         bq_project_id: {
             help: "BigQuery project used only to generate adjudication SQL. No queries are run by this workflow."
+        }
+        probe_interval: {
+            help: "Interval used when action is probe. Defaults to a fully callable 10 Mb window on chr20; pick a gap-free interval, since one overlapping a centromere reads faster than average and skews the extrapolation."
         }
         reference_schema: {
             help: "Override for the ref_ranges schema, either compressed or uncompressed. Leave unset to detect it from the dataset. AoU callsets are compressed, where reference adjudication filters on packed_ref_data, the clustering field."

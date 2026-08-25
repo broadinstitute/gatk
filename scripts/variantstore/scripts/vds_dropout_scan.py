@@ -33,6 +33,17 @@ Actions
     genome-wide extrapolation.  Cheap way to size the real runs before committing to
     them, and to check the Hail log for shuffle stages before paying for a big one.
 
+    Which VDS this is pointed at decides which question it answers, and the more valuable
+    use is the less obvious one:
+
+    * Against the **source, full-width VDS** it measures full-width read throughput, which
+      is what ``materialize`` costs.  That is the project's one large bill, so this is the
+      run worth doing *first* -- before materializing, not after.
+    * Against the **narrow copy** it estimates ongoing screening cost, which is small.
+
+    Either way the estimate covers reading and aggregating, not writing, so it is a floor
+    for ``materialize`` rather than a full prediction of it.
+
 ``--action full-depth``
     For named intervals and superpartitions, count per-sample data at full width and
     report how many samples carry nothing.  Meant for the handful of windows the screen
@@ -58,18 +69,28 @@ Metrics
     the Avro rows, and `update_reference_data_ploidy` only annotates `GT` on entries that
     already exist.
 
-Sample map
-----------
-Superpartition membership comes from a TSV of sample name to sample ID, since the VDS
-knows only names.  Generate it once with::
+Sample map and sample list
+--------------------------
+Superpartition membership comes from a TSV of sample name to sample ID, since a VDS knows
+only names.  Two queries in ``scripts/variantstore/bq/`` produce the inputs:
 
-    bq query --project_id=<project> --format=csv --use_legacy_sql=false --max_rows=10000000 \\
-      'SELECT sample_name, sample_id FROM `<project>.<dataset>.sample_info`
-       WHERE withdrawn IS NULL AND is_control = false' \\
-      | tr ',' '\\t' > sample_map.tsv
+``vds_dropout_sample_map.sql``
+    The ``--sample-map-path`` input: every non-withdrawn, non-control sample, using the
+    same filter GvsExtractAvroFilesForHail.wdl applies when exporting Avro.  Either tab-
+    or comma-separated is accepted, so ``bq query --format=csv`` output works as-is.
 
-The header must be ``sample_name<TAB>sample_id``.  Samples in the map but absent from
-the VDS are ignored, so a map generated after a withdrawal is still usable.
+``vds_dropout_sample_list.sql``
+    The ``--sample-list-path`` input, reproducing ``stratified_sample`` below in SQL.
+    ``materialize`` already writes this file, so the query is for inspecting the selection
+    before spending cluster time, fixing the sample set before an r3 VDS exists, and
+    cross-checking the Python.  That last one matters: the recorded list is what makes r2
+    and r3 figures comparable, so two independent implementations agreeing is the evidence
+    that reproducibility actually holds.  Output format and row order match what
+    ``materialize`` writes, so the two can be diffed directly.
+
+Samples in the map but absent from the VDS are ignored, so a map generated after a
+withdrawal is still usable.  A VDS sample *missing* from the map is a hard error instead,
+because silently excluding it would bias the superpartition totals.
 """
 
 from __future__ import annotations
@@ -92,7 +113,14 @@ DEFAULT_BIN_SIZE = 50_000
 DEFAULT_SAMPLES_PER_SUPERPARTITION = 100
 DEFAULT_STRIDE = 1
 DEFAULT_SEED = 'vs-1998'
-DEFAULT_PROBE_INTERVAL = 'chr20:30000000-40000000'
+# A 10 Mb window on chr20 that is 100% callable: comfortably clear of the centromere gap
+# (chr20:26,386,232-30,088,349) and of the telomere, and free of the smaller assembly gaps
+# near 31 Mb. Verified against
+# wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list. An interval overlapping
+# a gap would make the probe's timing optimistic and emit confusing empty bins.
+DEFAULT_PROBE_INTERVAL = 'chr20:37000000-47000000'
+# End of the chr20 centromere gap, from the same interval list. Used to keep the default honest.
+CHR20_CENTROMERE_END = 30_088_349
 
 MODES = ('variants', 'references')
 ACTIONS = ('materialize', 'scan', 'probe', 'full-depth')
@@ -175,7 +203,11 @@ def stratified_sample(
 
     chosen: dict[int, list[str]] = {}
     for superpartition, names in grouped.items():
-        names.sort(key=lambda name: sample_sort_key(name, seed))
+        # Tie-break on the name itself rather than leaning on sort stability, which would
+        # make the result depend on input order. This also makes the selection provably
+        # identical to the SQL in bq/vds_dropout_sample_list.sql, whose ORDER BY needs an
+        # explicit second key; see that file's header for the equivalence argument.
+        names.sort(key=lambda name: (sample_sort_key(name, seed), name))
         chosen[superpartition] = sorted(names[:samples_per_superpartition])
     return chosen
 
@@ -348,22 +380,36 @@ def format_probe_report(
         scanned_bases: int,
         n_cells: int,
         n_bins: int,
+        n_samples: int | None = None,
 ) -> str:
     """Human-readable probe result, including the genome-wide extrapolation."""
     projected = extrapolate_runtime(elapsed_seconds, scanned_bases)
-    return '\n'.join([
+    lines = [
         'Probe result',
         f'  interval span:        {scanned_bases:,} bp',
         f'  bins produced:        {n_bins:,}',
         f'  non-zero cells:       {n_cells:,}',
+    ]
+    if n_samples is not None:
+        lines.append(f'  samples screened:     {n_samples:,}')
+    lines += [
         f'  elapsed:              {elapsed_seconds:,.1f} s',
         f'  genome-wide estimate: {projected / 3600:,.2f} h '
         f'({projected / 60:,.1f} min) at this throughput',
         '',
+        'What this estimate covers: reading and aggregating, not writing. Against a',
+        'full-width VDS it is therefore a floor for the materialize pass, not a full',
+        'prediction of it. Against a narrow copy it estimates ongoing screening cost.',
+        '',
+        'Extrapolation assumes uniform density genome-wide, which is approximate: this',
+        'interval is fully callable, while the real genome includes centromeres and other',
+        'gaps that read faster than average.',
+        '',
         'Check the Hail log for shuffle stages before committing to a genome-wide run.',
         'A single streaming pass is expected; a shuffle means the aggregation did not',
         'fuse, and the two-stage fallback should be used instead.',
-    ])
+    ]
+    return '\n'.join(lines)
 
 
 # ---------------------------------------------------------------------------
@@ -644,7 +690,7 @@ def action_probe(args) -> int:
 
     n_cells = sum(len(v) for v in totals.values())
     print()
-    print(format_probe_report(elapsed, span, n_cells, len(totals)))
+    print(format_probe_report(elapsed, span, n_cells, len(totals), len(assigned)))
     return 0
 
 
@@ -760,7 +806,10 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--target-superpartitions', default=None,
                         help='Comma-separated superpartitions to restrict full-depth to.')
     parser.add_argument('--probe-interval', default=DEFAULT_PROBE_INTERVAL,
-                        help=f'Interval used by --action probe. Default: {DEFAULT_PROBE_INTERVAL}.')
+                        help='Interval used by --action probe. Default: '
+                             f'{DEFAULT_PROBE_INTERVAL}, a fully callable 10 Mb window on '
+                             'chr20. Pick a gap-free interval; one overlapping a centromere '
+                             'reads faster than average and skews the extrapolation.')
 
     parser.add_argument('--temp-path', default=None, help='Hail temporary directory.')
     parser.add_argument('--overwrite', type=parse_bool, default=False,

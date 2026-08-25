@@ -12,8 +12,12 @@ real data.
 """
 
 import argparse
+import collections
 import contextlib
+import hashlib
 import io
+import pathlib
+import re
 import unittest
 
 import vds_dropout_scan as vds
@@ -170,6 +174,193 @@ class TestSampleSelection(unittest.TestCase):
             vds.sample_sort_key('1234567', seed='vs-1998'),
             vds.sample_sort_key('1234567', seed='other'),
         )
+
+
+class TestSqlEquivalence(unittest.TestCase):
+    """The SQL in bq/ must select exactly what the Python selects.
+
+    The recorded sample list is what makes r2 and r3 figures comparable, so reproducibility
+    is load-bearing rather than a nicety. One implementation agreeing with itself proves
+    nothing; here the SQL's window-function semantics are re-implemented independently and
+    checked against the production function.
+    """
+
+    BQ_DIR = pathlib.Path(__file__).resolve().parents[2] / 'bq'
+
+    def bq_file(self, name):
+        path = self.BQ_DIR / name
+        if not path.exists():
+            # The Docker test run mounts only the scripts directory, so bq/ is absent there.
+            self.skipTest(f'{path} not available in this test environment')
+        return path.read_text()
+
+    @staticmethod
+    def sql_semantics_selection(sample_map, depth, seed):
+        """Independent re-implementation of the SQL, not a call into the module.
+
+        Mirrors:
+            ROW_NUMBER() OVER (PARTITION BY CAST(CEIL(sample_id / 4000.0) AS INT64)
+                               ORDER BY TO_HEX(SHA256(CONCAT(seed, ':', sample_name))),
+                                        sample_name)
+        """
+        buckets = collections.defaultdict(list)
+        for name, sample_id in sample_map.items():
+            superpartition = -(-sample_id // 4000)  # CAST(CEIL(x / 4000.0) AS INT64)
+            digest = hashlib.sha256(f'{seed}:{name}'.encode('utf-8')).hexdigest()
+            buckets[superpartition].append((digest, name))
+        selected = {}
+        for superpartition, rows in buckets.items():
+            rows.sort()  # ORDER BY hex, then name
+            selected[superpartition] = sorted(name for _, name in rows[:depth])
+        return selected
+
+    def make_map(self, n_superpartitions=6, per_superpartition=500):
+        return {
+            f'{(sp - 1) * per_superpartition + i:07d}': (sp - 1) * 4000 + i + 1
+            for sp in range(1, n_superpartitions + 1)
+            for i in range(per_superpartition)
+        }
+
+    def test_python_and_sql_semantics_agree(self):
+        sample_map = self.make_map()
+        assigned = {n: vds.superpartition_for(i) for n, i in sample_map.items()}
+        self.assertEqual(
+            self.sql_semantics_selection(sample_map, 100, vds.DEFAULT_SEED),
+            vds.stratified_sample(assigned, 100, vds.DEFAULT_SEED),
+        )
+
+    def test_agreement_holds_at_other_depths_and_seeds(self):
+        sample_map = self.make_map(n_superpartitions=4, per_superpartition=300)
+        assigned = {n: vds.superpartition_for(i) for n, i in sample_map.items()}
+        for depth in (1, 10, 200):
+            for seed in (vds.DEFAULT_SEED, 'other-seed'):
+                self.assertEqual(
+                    self.sql_semantics_selection(sample_map, depth, seed),
+                    vds.stratified_sample(assigned, depth, seed),
+                    msg=f'depth={depth} seed={seed}',
+                )
+
+    def test_agreement_holds_for_short_superpartitions(self):
+        """The last superpartition of a callset holds fewer than the sampling depth."""
+        sample_map = self.make_map(n_superpartitions=2, per_superpartition=400)
+        sample_map.update({f'tail{i}': 8000 + i + 1 for i in range(15)})
+        assigned = {n: vds.superpartition_for(i) for n, i in sample_map.items()}
+        self.assertEqual(
+            self.sql_semantics_selection(sample_map, 100, vds.DEFAULT_SEED),
+            vds.stratified_sample(assigned, 100, vds.DEFAULT_SEED),
+        )
+
+    def test_hex_ordering_equals_byte_ordering(self):
+        """Underpins ordering by TO_HEX rather than by the raw digest."""
+        digests = [hashlib.sha256(f'x:{i}'.encode()).digest() for i in range(400)]
+        hexes = [d.hex() for d in digests]
+        self.assertEqual(
+            sorted(range(len(digests)), key=lambda i: hexes[i]),
+            sorted(range(len(digests)), key=lambda i: digests[i]),
+        )
+
+    def test_selection_does_not_depend_on_input_order(self):
+        """The explicit name tie-break is what makes this true on both sides."""
+        sample_map = self.make_map(n_superpartitions=3, per_superpartition=200)
+        assigned = {n: vds.superpartition_for(i) for n, i in sample_map.items()}
+        shuffled = dict(reversed(list(assigned.items())))
+        self.assertEqual(
+            vds.stratified_sample(assigned, 50),
+            vds.stratified_sample(shuffled, 50),
+        )
+
+    def test_sql_seed_matches_python_default(self):
+        sql = self.bq_file('vds_dropout_sample_list.sql')
+        match = re.search(r"DECLARE SEED STRING DEFAULT '([^']*)'", sql)
+        self.assertIsNotNone(match, 'SEED declaration not found')
+        self.assertEqual(vds.DEFAULT_SEED, match.group(1))
+
+    def test_sql_depth_matches_python_default(self):
+        sql = self.bq_file('vds_dropout_sample_list.sql')
+        match = re.search(r'DECLARE SAMPLES_PER_SUPERPARTITION INT64 DEFAULT (\d+)', sql)
+        self.assertIsNotNone(match, 'depth declaration not found')
+        self.assertEqual(vds.DEFAULT_SAMPLES_PER_SUPERPARTITION, int(match.group(1)))
+
+    def test_sql_superpartition_size_matches_python_default(self):
+        sql = self.bq_file('vds_dropout_sample_list.sql')
+        self.assertIn(f'CEIL(sample_id / {vds.DEFAULT_SUPERPARTITION_SIZE}.0)', sql)
+
+    def test_sql_column_order_matches_the_sample_list_header(self):
+        """So the two outputs can be diffed directly.
+
+        Ordering is read out of the SQL by position rather than by membership; checking
+        only that each name appears would pass regardless of the order they appear in.
+        """
+        sql = self.bq_file('vds_dropout_sample_list.sql')
+        block = sql.split('CREATE TEMP TABLE stratified_selection AS')[1].split('FROM (')[0]
+        names = ('sample_name', 'sample_id', 'superpartition')
+        for name in names:
+            self.assertIn(name, block)
+        self.assertEqual(
+            vds.SAMPLE_LIST_HEADER.split('\t'),
+            sorted(names, key=block.index),
+        )
+
+    def test_both_output_paths_read_from_the_same_temp_table(self):
+        """The returning SELECT and the EXPORT must not re-derive the selection.
+
+        Two copies of the window function would be free to drift, which is the one thing
+        this file exists to rule out.
+        """
+        sql = self.bq_file('vds_dropout_sample_list.sql')
+        self.assertEqual(1, sql.count('ROW_NUMBER() OVER'),
+                         'the selection should be defined exactly once')
+        self.assertEqual(1, sql.count('CREATE TEMP TABLE stratified_selection'))
+        export = sql.split('EXPORT DATA OPTIONS')[1]
+        self.assertIn('FROM stratified_selection', export,
+                      'the EXPORT should read the temp table, not re-derive the selection')
+
+    def test_export_path_is_consumable_by_read_sample_list(self):
+        """Tab-delimited with a header is exactly what read_sample_list expects."""
+        sql = self.bq_file('vds_dropout_sample_list.sql')
+        export = sql.split('EXPORT DATA OPTIONS')[1]
+        self.assertIn("field_delimiter='\\t'", export)
+        self.assertIn('header=true', export)
+        self.assertIn('overwrite=true', export)
+
+    def test_export_uri_has_exactly_one_wildcard(self):
+        """EXPORT DATA requires precisely one wildcard in the uri."""
+        for name in ('vds_dropout_sample_map.sql', 'vds_dropout_sample_list.sql'):
+            sql = self.bq_file(name)
+            uris = re.findall(r"uri='([^']*)'", sql)
+            self.assertTrue(uris, msg=f'{name} has no EXPORT uri')
+            for uri in uris:
+                self.assertEqual(1, uri.count('*'), msg=f'{name}: {uri}')
+
+    def test_export_path_preserves_the_diffable_ordering(self):
+        sql = self.bq_file('vds_dropout_sample_list.sql')
+        export = sql.split('EXPORT DATA OPTIONS')[1]
+        self.assertIn('ORDER BY superpartition, sample_name', export)
+
+    def test_only_one_output_path_is_live(self):
+        """Running the file should produce one output, not two.
+
+        Both output paths read the temp table, so counting live references to it counts
+        live output paths directly.
+        """
+        sql = self.bq_file('vds_dropout_sample_list.sql')
+        live = '\n'.join(line for line in sql.splitlines()
+                         if line.strip() and not line.lstrip().startswith('--'))
+        self.assertEqual(1, live.count('FROM stratified_selection'))
+        self.assertNotIn('EXPORT DATA', live,
+                         'the EXPORT path ships commented out; the returning SELECT is default')
+
+    def test_sample_map_sql_selects_the_expected_columns(self):
+        sql = self.bq_file('vds_dropout_sample_map.sql')
+        self.assertIn('sample_name', sql)
+        self.assertIn('sample_id', sql)
+        self.assertIn('withdrawn IS NULL', sql)
+        self.assertIn('is_control = false', sql)
+
+    def test_both_sql_files_use_substitutable_placeholders(self):
+        for name in ('vds_dropout_sample_map.sql', 'vds_dropout_sample_list.sql'):
+            sql = self.bq_file(name)
+            self.assertIn('PROJECT_ID.DATASET_NAME.sample_info', sql, msg=name)
 
 
 class TestSampleMapParsing(unittest.TestCase):
@@ -356,6 +547,34 @@ class TestProbeExtrapolation(unittest.TestCase):
     def test_zero_span_raises(self):
         with self.assertRaises(ValueError):
             vds.extrapolate_runtime(1.0, 0)
+
+    def test_default_probe_interval_clears_the_centromere(self):
+        """A probe interval overlapping an assembly gap skews the extrapolation.
+
+        The chr20 centromere gap ends at 30,088,349 per
+        wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list, so a window
+        starting at 30,000,000 would begin 88 kb inside it.
+        """
+        contig, _, span = vds.DEFAULT_PROBE_INTERVAL.partition(':')
+        start, _, end = span.partition('-')
+        self.assertEqual('chr20', contig)
+        self.assertGreater(int(start), vds.CHR20_CENTROMERE_END)
+        self.assertEqual(10_000_000, int(end) - int(start))
+
+    def test_default_probe_interval_stays_within_chr20(self):
+        _, _, span = vds.DEFAULT_PROBE_INTERVAL.partition(':')
+        _, _, end = span.partition('-')
+        self.assertLess(int(end), 64_334_167)  # chr20 length
+
+    def test_report_states_what_the_estimate_excludes(self):
+        """Readers must not mistake the figure for a materialize prediction."""
+        report = vds.format_probe_report(60.0, 10_000_000, 1_340, 200)
+        self.assertIn('not writing', report)
+        self.assertIn('floor for the materialize pass', report)
+
+    def test_report_includes_sample_count_when_given(self):
+        report = vds.format_probe_report(60.0, 10_000_000, 1_340, 200, n_samples=13_400)
+        self.assertIn('13,400', report)
 
     def test_report_mentions_shuffle_check(self):
         report = vds.format_probe_report(60.0, 10_000_000, 1_340, 200)
