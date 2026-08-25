@@ -1,1 +1,0 @@
-/Users/mcovarr/claude-artifacts/gatk.git/vs-1998-vds-completeness-validation.md
