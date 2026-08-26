@@ -42,7 +42,7 @@ class VariationalParameterTracker:
             self._var_trans_dict[var_name] = (inv_trans, inv_trans_var_name)
             self.tracked_var_values_dict[inv_trans_var_name] = []
 
-    def _extract_param_mean(self, approx: pm.approximations.MeanField) -> Dict[str, np.ndarray]:
+    def _extract_param_mean(self, approx: pm.MeanField) -> Dict[str, np.ndarray]:
         mu_flat_view = approx.mean.get_value(borrow=True)
         vmap_list = io_commons.get_var_map_list_from_mean_field_approx(approx)
         out = dict()

@@ -36,7 +36,7 @@ class Sampler:
         self.hybrid_inference_params = hybrid_inference_params
 
     @abstractmethod
-    def update_approximation(self, approx: pm.approximations.MeanField) -> None:
+    def update_approximation(self, approx: pm.MeanField) -> None:
         """Take a new mean-field approximation and update the sampler routine accordingly.
 
         Args:

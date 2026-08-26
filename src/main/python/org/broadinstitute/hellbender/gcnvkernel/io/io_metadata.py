@@ -43,7 +43,8 @@ def write_sample_coverage_metadata(sample_metadata_collection: SampleMetadataCol
         writer.writerow(header)
         for sample_name in sample_names:
             sample_coverage_metadata = sample_metadata_collection.get_sample_coverage_metadata(sample_name)
-            row = ([sample_name] + [repr(sample_coverage_metadata.n_j[j]) for j in range(len(contig_list))])
+            row = ([sample_name] + [io_commons.scalar_to_str(sample_coverage_metadata.n_j[j])
+                                    for j in range(len(contig_list))])
             writer.writerow(row)
 
 

@@ -1,7 +1,7 @@
 from typing import Optional
 
 from .. import config
-from ..io import io_consts
+from ..io import io_commons, io_consts
 
 
 class IntegerCopyNumberSegment:
@@ -60,11 +60,11 @@ class IntegerCopyNumberSegment:
 
     def __repr__(self):
         return '\t'.join([self.contig,
-                          repr(self.start),
-                          repr(self.end),
-                          repr(self.num_points),
-                          repr(self.call_copy_number),
-                          repr(self.baseline_copy_number),
+                          io_commons.scalar_to_str(self.start),
+                          io_commons.scalar_to_str(self.end),
+                          io_commons.scalar_to_str(self.num_points),
+                          io_commons.scalar_to_str(self.call_copy_number),
+                          io_commons.scalar_to_str(self.baseline_copy_number),
                           self._repr_quality(self.quality_some_called),
                           self._repr_quality(self.quality_all_called),
                           self._repr_quality(self.quality_start),

@@ -211,6 +211,7 @@ def write_interval_list_to_tsv_file(output_file: str, interval_list: List[Interv
                            + mutual_annotation_key_list)
         out.write(header + '\n')
         for interval in interval_list:
-            row = '\t'.join([interval.contig, repr(interval.start), repr(interval.end)] +
+            row = '\t'.join([interval.contig, io_commons.scalar_to_str(interval.start),
+                            io_commons.scalar_to_str(interval.end)] +
                             [str(interval.annotations[key]) for key in mutual_annotation_key_list])
             out.write(row + '\n')
