@@ -435,6 +435,9 @@ def format_probe_report(
         n_bins: int,
         n_samples: int | None = None,
         n_partitions: int | None = None,
+        n_total_partitions: int | None = None,
+        parallelism: int | None = None,
+        full_parallelism: int | None = None,
 ) -> str:
     """Human-readable probe result.
 
@@ -455,15 +458,33 @@ def format_probe_report(
 
     if n_partitions:
         per_partition = elapsed_seconds / n_partitions
+        lines.append(f'  per partition:        {per_partition:,.1f} s')
+        if parallelism:
+            lines.append(f'  concurrent tasks:     ~{parallelism:,}')
+
+        if n_total_partitions:
+            same_width = elapsed_seconds * (n_total_partitions / n_partitions)
+            lines += [
+                '',
+                f'Genome-wide estimate ({n_total_partitions:,} partitions, '
+                f'{100 * n_partitions / n_total_partitions:.2f}% covered here):',
+                f'  at this cluster width: {same_width / 3600:,.1f} h',
+            ]
+            if parallelism and full_parallelism and full_parallelism > parallelism:
+                scaled = same_width * parallelism / full_parallelism
+                lines += [
+                    f'  at ~{full_parallelism:,} concurrent tasks: {scaled / 3600:,.1f} h',
+                    '',
+                    'The wider figure is the one to plan against: a probe covering a small',
+                    'share of partitions often completes before autoscaling ramps, so its',
+                    'observed concurrency understates a full run and its per-partition cost',
+                    'is conservative.',
+                ]
         lines += [
-            f'  per partition:        {per_partition:,.1f} s',
             '',
-            'To estimate a full run, multiply the per-partition figure by the partitions it',
-            'covers and divide by the tasks running at once (roughly workers x cores per',
-            'worker). Do not scale by base pairs: a partition is the unit of work, one task',
-            'streams one partition end to end, and a narrow probe touching few partitions is',
-            'close to serial. Scaling its wall clock by genomic span overstates a genome-wide',
-            'run by roughly the width of the cluster.',
+            'Do not scale by base pairs. A partition is the unit of work, one task streams',
+            'one partition end to end, and a narrow probe touching few partitions is close',
+            'to serial, so span-scaling overstates a full run by the width of the cluster.',
         ]
         if n_partitions < MIN_HEALTHY_PARTITIONS:
             lines += [
@@ -732,6 +753,20 @@ def _metric_expression(matrix, mode: str):
     )
 
 
+def observed_parallelism() -> int | None:
+    """Roughly how many tasks can run at once, or None if it cannot be determined.
+
+    ``defaultParallelism`` tracks total executor cores, which is the right order of
+    magnitude for turning a probe's wall clock into an estimate. Best-effort: it is only
+    used to annotate a report, so any failure degrades the message rather than the run.
+    """
+    _require_hail()
+    try:
+        return int(hl.spark_context().defaultParallelism)
+    except Exception:  # pragma: no cover - depends on a live Spark context
+        return None
+
+
 def matrix_partition_count(matrix) -> int:
     """Partitions the aggregation will run over, i.e. its maximum parallelism.
 
@@ -896,6 +931,11 @@ def _screening_matrix(args, vds):
 
     with step('Counting partitions'):
         n_partitions = matrix_partition_count(matrix)
+    n_total_partitions = total_partition_count(args.vds_path, args.mode)
+    parallelism = observed_parallelism()
+    # Peak width once the autoscaling policy has added its secondary workers.
+    full_parallelism = (args.max_secondary_workers * args.worker_cores
+                        if args.max_secondary_workers else None)
     with step('Counting partitions in the whole VDS'):
         n_total = total_partition_count(args.vds_path, args.mode)
     announce(f'Aggregation will run over {n_partitions:,} of {n_total:,} total partition(s)')
@@ -962,7 +1002,8 @@ def action_probe(args) -> int:
 
     n_cells = sum(len(v) for v in totals.values())
     print()
-    print(format_probe_report(elapsed, span, n_cells, len(totals), n_samples, n_partitions))
+    print(format_probe_report(elapsed, span, n_cells, len(totals), n_samples, n_partitions,
+                              n_total_partitions, parallelism, full_parallelism))
     return 0
 
 
@@ -1073,6 +1114,12 @@ def build_parser() -> argparse.ArgumentParser:
                              'comma-separated list. Overrides --contigs.')
     parser.add_argument('--target-superpartitions', default=None,
                         help='Comma-separated superpartitions to restrict full-depth to.')
+    parser.add_argument('--max-secondary-workers', type=int, default=None,
+                        help='Peak secondary workers the autoscaling policy may add. Used '
+                             'only to annotate the probe report with the concurrency a full '
+                             'run could reach.')
+    parser.add_argument('--worker-cores', type=int, default=4,
+                        help='Cores per worker, for the same estimate. Default: 4.')
     parser.add_argument('--probe-interval', default=DEFAULT_PROBE_INTERVAL,
                         help='Interval used by --action probe. Default: '
                              f'{DEFAULT_PROBE_INTERVAL}, a fully callable 10 Mb window on '

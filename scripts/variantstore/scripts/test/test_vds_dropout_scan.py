@@ -585,6 +585,40 @@ class TestProbeExtrapolation(unittest.TestCase):
         report = vds.format_probe_report(600.0, 10_000_000, 1_340, 200, n_partitions=500)
         self.assertNotIn('CAUTION', report)
 
+    def test_report_extrapolates_to_the_whole_vds(self):
+        """The real geometry: 411 of 119,189 partitions, the probe that finally worked."""
+        report = vds.format_probe_report(
+            1200.0, 10_000_000, 1_340, 200, n_samples=535_662,
+            n_partitions=411, n_total_partitions=119_189,
+            parallelism=16, full_parallelism=1200)
+        self.assertIn('119,189 partitions', report)
+        self.assertIn('0.34% covered here', report)
+        # 1200s * (119189/411) / 3600 = 96.67h at this width
+        self.assertIn('96.7 h', report)
+        # scaled by 16/1200 -> ~1.3h
+        self.assertIn('1.3 h', report)
+
+    def test_report_prefers_the_wider_estimate_explicitly(self):
+        report = vds.format_probe_report(
+            1200.0, 10_000_000, 1_340, 200, n_partitions=411,
+            n_total_partitions=119_189, parallelism=16, full_parallelism=1200)
+        self.assertIn('wider figure is the one to plan against', report)
+
+    def test_report_omits_scaling_when_no_wider_width_is_known(self):
+        report = vds.format_probe_report(
+            1200.0, 10_000_000, 1_340, 200, n_partitions=411,
+            n_total_partitions=119_189, parallelism=16)
+        self.assertIn('at this cluster width', report)
+        self.assertNotIn('concurrent tasks:', report.split('Genome-wide')[1])
+
+    def test_report_omits_extrapolation_without_a_total(self):
+        report = vds.format_probe_report(1200.0, 10_000_000, 1_340, 200, n_partitions=411)
+        self.assertNotIn('Genome-wide estimate', report)
+
+    def test_report_always_warns_against_span_scaling(self):
+        report = vds.format_probe_report(600.0, 10_000_000, 1_340, 200, n_partitions=411)
+        self.assertIn('Do not scale by base pairs', report)
+
     def test_report_states_what_the_estimate_excludes(self):
         report = vds.format_probe_report(60.0, 10_000_000, 1_340, 200, n_partitions=10)
         self.assertIn('not writing', report)
