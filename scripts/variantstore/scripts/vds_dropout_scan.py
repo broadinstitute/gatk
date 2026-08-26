@@ -455,27 +455,6 @@ def read_sample_map(path: str) -> dict[str, int]:
         return parse_sample_map(handle)
 
 
-def read_sample_list(path: str) -> dict[str, int]:
-    """Read a previously written sample list back as a name -> sample_id map.
-
-    Reusing the recorded list is what keeps the r3 comparison honest: the headline
-    figures are only comparable across VDSes if they cover the same samples.
-    """
-    result: dict[str, int] = {}
-    with _open_read(path) as handle:
-        for lineno, raw in enumerate(handle, start=1):
-            line = raw.strip()
-            if not line or line.startswith('sample_name\t'):
-                continue
-            fields = line.split('\t')
-            if len(fields) < 2:
-                raise ValueError(f"sample list line {lineno}: expected at least 2 columns")
-            result[fields[0]] = int(fields[1])
-    if not result:
-        raise ValueError(f'{path} contained no samples')
-    return result
-
-
 def build_intervals(contigs: Sequence[str], interval_strings: Sequence[str]):
     """Build Hail locus intervals from explicit interval strings or whole contigs.
 
@@ -530,42 +509,63 @@ def vds_sample_names(vds) -> list[str]:
     return vds.variant_data.cols().s.collect()
 
 
-def superpartition_column_table(sample_to_superpartition: Mapping[str, int]):
-    """The sample -> superpartition mapping as a Table keyed by sample name.
+def sniff_delimiter(path: str) -> str:
+    """Guess a table's delimiter from its header line.
 
-    A keyed Table rather than ``hl.literal(dict)``: against a full-width VDS the mapping
-    runs to ~535K entries, and a literal that size is embedded directly in the query IR.
-    Probing the source VDS -- the first step of the usual sequence -- is exactly the case
-    that hits it.
+    The documented recipe for the sample map allows either tab- or comma-separated input,
+    so the Hail reader has to agree with the Python parser about which it got.
+    """
+    with _open_read(path) as handle:
+        header = handle.readline()
+    return '\t' if '\t' in header else ','
+
+
+def superpartition_column_table(path: str,
+                                superpartition_size: int = DEFAULT_SUPERPARTITION_SIZE):
+    """Read the sample -> superpartition mapping as a distributed Hail Table.
+
+    ``hl.import_table`` rather than ``hl.Table.parallelize`` or ``hl.literal``: both of the
+    latter inline every row into the query IR, and for a full-width VDS that is ~535K rows
+    embedded in the plan. The driver then stalls before any real work begins, which reads
+    as a job hung on its first stage rather than as an obviously bad query.
+
+    Works for both input files: the sample map and the recorded sample list both carry
+    ``sample_name`` and ``sample_id``, and the superpartition is recomputed from the id in
+    either case rather than trusting a column that only one of them has.
     """
     _require_hail()
-    rows = [{'s': name, 'sp': int(superpartition)}
-            for name, superpartition in sample_to_superpartition.items()]
-    return hl.Table.parallelize(
-        rows, schema=hl.tstruct(s=hl.tstr, sp=hl.tint32)).key_by('s')
+    table = hl.import_table(
+        path, delimiter=sniff_delimiter(path), types={'sample_id': hl.tint64})
+    table = table.key_by(s=table.sample_name)
+    # Integer ceiling division, matching superpartition_for and the Avro export WDL.
+    return table.select(
+        sp=hl.int32((table.sample_id + superpartition_size - 1) // superpartition_size))
 
 
-def _annotated_matrix(vds, mode: str, sample_to_superpartition: Mapping[str, int],
-                      bin_size: int, stride: int):
+def annotated_matrix(vds, mode: str, mapping, bin_size: int, stride: int):
     """Return the mode-appropriate matrix annotated with superpartition and bin.
 
     Columns absent from the mapping are dropped rather than carried with a missing
     superpartition, which would otherwise collect into a null group in the aggregation.
     That is also what restricts a scan to the recorded sample list when it is pointed at a
     full-width VDS.
+
+    Returns the matrix and how many columns found no match, so the caller can decide
+    whether that is expected. It is for a recorded sample list, which is deliberately a
+    subset, and it is not for a sample map, which should cover the whole callset.
     """
     _require_hail()
     matrix = vds.variant_data if mode == 'variants' else vds.reference_data
 
-    mapping = superpartition_column_table(sample_to_superpartition)
     matrix = matrix.annotate_cols(_sp=mapping[matrix.s].sp)
+    n_unmatched = int(matrix.aggregate_cols(hl.agg.count_where(hl.is_missing(matrix._sp))))
     matrix = matrix.filter_cols(hl.is_defined(matrix._sp))
     matrix = matrix.annotate_rows(
         _bin=(matrix.locus.position - 1) // bin_size,
     )
     if stride > 1:
         matrix = matrix.filter_rows(matrix._bin % stride == 0)
-    return matrix
+    return matrix, n_unmatched
 
 
 def _metric_expression(matrix, mode: str):
@@ -581,8 +581,20 @@ def _metric_expression(matrix, mode: str):
     )
 
 
-def aggregate_totals(vds, mode: str, sample_to_superpartition: Mapping[str, int],
-                     bin_size: int, stride: int) -> dict[tuple[str, int], dict[int, float]]:
+def superpartition_sample_counts(matrix) -> dict[int, int]:
+    """Samples actually screened per superpartition, aggregated over columns.
+
+    Counted from the matrix rather than from the mapping file so the figure reflects the
+    intersection that was really screened -- a recorded sample list can name samples a
+    later VDS no longer has. Columns only, so this is cheap.
+    """
+    _require_hail()
+    counter = matrix.aggregate_cols(hl.agg.counter(matrix._sp))
+    return {int(sp): int(n) for sp, n in counter.items() if sp is not None}
+
+
+def aggregate_totals(matrix, mode: str,
+                     bin_size: int) -> dict[tuple[str, int], dict[int, float]]:
     """Aggregate a VDS into per-(bin, superpartition) totals.
 
     Expressed as one nested ``hl.agg.group_by`` inside a single ``aggregate_entries`` so
@@ -592,8 +604,6 @@ def aggregate_totals(vds, mode: str, sample_to_superpartition: Mapping[str, int]
     partition's accumulator stays small because a partition spans few bins.
     """
     _require_hail()
-    matrix = _annotated_matrix(vds, mode, sample_to_superpartition, bin_size, stride)
-
     raw = matrix.aggregate_entries(
         hl.agg.group_by(
             hl.tuple([matrix.locus.contig, matrix._bin]),
@@ -608,14 +618,26 @@ def aggregate_totals(vds, mode: str, sample_to_superpartition: Mapping[str, int]
     return totals
 
 
-def per_sample_counts(vds, mode: str, samples: Sequence[str]) -> dict[str, float]:
-    """Full-width per-sample totals over whatever the VDS is already restricted to."""
+def per_superpartition_sample_counts(vds, mode: str, mapping,
+                                     target: set[int] | None = None,
+                                     ) -> dict[int, dict[str, float]]:
+    """Per-sample totals within the VDS's current interval, grouped by superpartition.
+
+    Column filtering happens in Hail, so only the requested superpartitions are ever
+    brought back to the driver -- a few thousand samples rather than the whole callset.
+    """
     _require_hail()
     matrix = vds.variant_data if mode == 'variants' else vds.reference_data
-    matrix = matrix.filter_cols(hl.literal(set(samples)).contains(matrix.s))
+    matrix = matrix.annotate_cols(_sp=mapping[matrix.s].sp)
+    matrix = matrix.filter_cols(hl.is_defined(matrix._sp))
+    if target:
+        matrix = matrix.filter_cols(hl.literal(sorted(target)).contains(matrix._sp))
     matrix = matrix.annotate_cols(_observed=_metric_expression(matrix, mode))
-    collected = matrix.cols().select('_observed').collect()
-    return {row.s: float(row._observed) for row in collected}
+
+    grouped: dict[int, dict[str, float]] = defaultdict(dict)
+    for row in matrix.cols().select('_sp', '_observed').collect():
+        grouped[int(row._sp)][row.s] = float(row._observed)
+    return dict(sorted(grouped.items()))
 
 
 # ---------------------------------------------------------------------------
@@ -666,30 +688,38 @@ def action_materialize(args) -> int:
     return 0
 
 
-def _resolve_sample_assignment(args, vds) -> tuple[dict[str, int], dict[int, list[str]]]:
-    """Work out each retained sample's superpartition, preferring a recorded sample list."""
-    present = vds_sample_names(vds)
-    if args.sample_list_path:
-        sample_map = read_sample_list(args.sample_list_path)
-        # The recorded list may name samples a later VDS no longer has; screen against
-        # the intersection rather than failing, and report the shortfall.
-        usable = [s for s in present if s in sample_map]
-        if len(usable) < len(present):
-            print(
-                f'Note: {len(present) - len(usable):,} VDS sample(s) are absent from the '
-                'recorded sample list and will not be screened'
-            )
-        assigned = {
-            s: superpartition_for(sample_map[s], args.superpartition_size) for s in usable
-        }
-    else:
-        sample_map = read_sample_map(args.sample_map_path)
-        assigned = assign_superpartitions(sample_map, present, args.superpartition_size)
+def sample_source_path(args) -> str:
+    """File the superpartition mapping is read from, preferring the recorded sample list.
 
-    grouped: dict[int, list[str]] = defaultdict(list)
-    for name, superpartition in assigned.items():
-        grouped[superpartition].append(name)
-    return assigned, {sp: sorted(names) for sp, names in grouped.items()}
+    The recorded list is preferred so that every VDS is screened on identical samples,
+    which is what makes figures comparable between r2 and r3.
+    """
+    return args.sample_list_path or args.sample_map_path
+
+
+def _screening_matrix(args, vds):
+    """Annotated matrix plus the per-superpartition sample counts it will be judged on."""
+    source = sample_source_path(args)
+    mapping = superpartition_column_table(source, args.superpartition_size)
+    matrix, n_unmatched = annotated_matrix(
+        vds, args.mode, mapping, args.bin_size, args.stride)
+
+    if n_unmatched:
+        detail = f'{n_unmatched:,} VDS sample(s) are absent from {source}'
+        if args.sample_list_path:
+            # A recorded list is deliberately a subset of the callset.
+            print(f'Note: {detail}; they will not be screened.')
+        else:
+            raise ValueError(
+                f'{detail}. A sample map is expected to cover every sample in the VDS, and '
+                'screening only part of a superpartition would bias the peer comparison the '
+                'detector relies on. Regenerate the map from sample_info, or pass a recorded '
+                'sample list if screening a subset is intended.')
+
+    counts = superpartition_sample_counts(matrix)
+    total = sum(counts.values())
+    print(f'Screening {total:,} samples across {len(counts):,} superpartitions')
+    return matrix, counts
 
 
 def action_scan(args) -> int:
@@ -698,14 +728,14 @@ def action_scan(args) -> int:
     intervals = build_intervals(parse_contig_list(args.contigs),
                                 parse_interval_list(args.intervals))
     vds = read_and_subset_vds(args.vds_path, intervals)
-    assigned, grouped = _resolve_sample_assignment(args, vds)
-    print(f'Screening {len(assigned):,} samples across {len(grouped):,} superpartitions')
+    matrix, counts = _screening_matrix(args, vds)
 
-    totals = aggregate_totals(vds, args.mode, assigned, args.bin_size, args.stride)
+    totals = aggregate_totals(matrix, args.mode, args.bin_size)
     rows = format_summary_rows(totals, args.bin_size)
     n_rows = write_lines(args.summary_path, SUMMARY_HEADER, rows)
     n_sp = write_lines(
-        args.superpartitions_path, SUPERPARTITION_HEADER, format_superpartition_rows(grouped))
+        args.superpartitions_path, SUPERPARTITION_HEADER,
+        [f'{sp}\t{counts[sp]}' for sp in sorted(counts)])
 
     print(f'Wrote {n_rows:,} summary rows ({len(totals):,} bins) to {args.summary_path}')
     print(f'Wrote {n_sp:,} superpartition rows to {args.superpartitions_path}')
@@ -721,15 +751,16 @@ def action_probe(args) -> int:
     print(f'Probing {interval_string} ({span:,} bp) in {args.mode} mode')
 
     vds = read_and_subset_vds(args.vds_path, intervals)
-    assigned, _ = _resolve_sample_assignment(args, vds)
+    matrix, counts = _screening_matrix(args, vds)
+    n_samples = sum(counts.values())
 
     started = time.monotonic()
-    totals = aggregate_totals(vds, args.mode, assigned, args.bin_size, args.stride)
+    totals = aggregate_totals(matrix, args.mode, args.bin_size)
     elapsed = time.monotonic() - started
 
     n_cells = sum(len(v) for v in totals.values())
     print()
-    print(format_probe_report(elapsed, span, n_cells, len(totals), len(assigned)))
+    print(format_probe_report(elapsed, span, n_cells, len(totals), n_samples))
     return 0
 
 
@@ -742,32 +773,24 @@ def action_full_depth(args) -> int:
     target = {int(s) for s in args.target_superpartitions.split(',')} \
         if args.target_superpartitions else None
 
-    sample_map = (read_sample_list(args.sample_list_path) if args.sample_list_path
-                  else read_sample_map(args.sample_map_path))
+    mapping = superpartition_column_table(sample_source_path(args), args.superpartition_size)
 
     rows: list[str] = []
     for interval_string in requested_intervals:
         intervals = build_intervals([], [interval_string])
         vds = read_and_subset_vds(args.vds_path, intervals)
-        present = [s for s in vds_sample_names(vds) if s in sample_map]
-        assigned = {
-            s: superpartition_for(sample_map[s], args.superpartition_size) for s in present
-        }
-
-        grouped: dict[int, list[str]] = defaultdict(list)
-        for name, superpartition in assigned.items():
-            if target is None or superpartition in target:
-                grouped[superpartition].append(name)
 
         contig = intervals[0].start.contig
         start = intervals[0].start.position
         end = intervals[0].end.position
 
-        for superpartition in sorted(grouped):
-            names = grouped[superpartition]
-            counts = per_sample_counts(vds, args.mode, names)
-            n_zero = sum(1 for name in names if counts.get(name, 0.0) <= 0)
-            total = sum(counts.get(name, 0.0) for name in names)
+        # Columns are narrowed in Hail before anything is brought back, so the driver only
+        # ever holds one superpartition's worth of samples rather than the whole callset.
+        for superpartition, observed in per_superpartition_sample_counts(
+                vds, args.mode, mapping, target).items():
+            n_zero = sum(1 for value in observed.values() if value <= 0)
+            total = sum(observed.values())
+            names = observed
             fraction = n_zero / len(names) if names else 0.0
             rows.append(
                 f'{contig}\t{start}\t{end}\t{superpartition}\t{len(names)}\t{n_zero}\t'

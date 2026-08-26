@@ -146,17 +146,27 @@ def zones_for_region(region, workspace_project):
     us-central1. On failure the caller falls back to Dataproc's own zone placement, since
     an inability to enumerate zones is not a reason to fail the workflow.
     """
+    # The format and filter expressions are quoted because this runs through /bin/sh, where
+    # the parentheses in value(name) are metacharacters. Unquoted they produce
+    # `Syntax error: "(" unexpected`, the command never runs, and the caller silently falls
+    # back to Dataproc's single-zone placement -- which is exactly the behaviour --zones
+    # exists to avoid.
     list_cmd = unwrap(f"""
         gcloud compute zones list
          --project={workspace_project}
-         --filter=region:{region}
-         --format=value(name)
+         --filter='region:{region}'
+         --format='value(name)'
          --quiet
     """)
-    pipe = os.popen(list_cmd + " 2>/dev/null")
+    # stderr is folded in rather than discarded so a failure here is visible in the log.
+    pipe = os.popen(list_cmd + " 2>&1")
     output = pipe.read()
     if pipe.close():
-        info(f"Could not list zones in {region}; falling back to automatic zone placement.")
+        info(f"Could not list zones in {region}; falling back to automatic zone placement. "
+             f"Output: {output.strip()}")
+        return []
+    if not output.strip():
+        info(f"No zones reported for {region}; falling back to automatic zone placement.")
         return []
     return sorted(zone.strip() for zone in output.split() if zone.strip())
 
@@ -186,7 +196,7 @@ def delete_failed_cluster(cluster_name, region, workspace_project):
          --project={workspace_project}
          --quiet
     """)
-    info(f"Removing failed cluster '{cluster_name}' before retrying.")
+    info(f"Removing failed cluster '{cluster_name}'.")
     pipe = os.popen(delete_cmd + " 2>&1")
     output = pipe.read()
     if pipe.close():
@@ -252,9 +262,16 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
 
             exit_code = os.waitstatus_to_exitcode(wait_status)
             more_zones_to_try = index + 1 < len(candidate_zones)
-            if more_zones_to_try and looks_like_stockout(output):
+            retrying = more_zones_to_try and looks_like_stockout(output)
+
+            # Always tear down after a failed create, whether or not another zone will be
+            # tried. A cluster that fails to create is left behind in ERROR state with its
+            # VMs running: it bills, and it holds regional CPU quota that the next attempt
+            # -- or an unrelated cluster in the same project -- then cannot get.
+            delete_failed_cluster(cluster_name, region, workspace_project)
+
+            if retrying:
                 info(f"{placement} is out of capacity. Retrying in {candidate_zones[index + 1]}.")
-                delete_failed_cluster(cluster_name, region, workspace_project)
                 continue
             raise RuntimeError(f"Unexpected exit code from cluster creation: {exit_code}")
 

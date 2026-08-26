@@ -315,8 +315,8 @@ class TestSqlEquivalence(unittest.TestCase):
         self.assertIn('FROM stratified_selection', export,
                       'the EXPORT should read the temp table, not re-derive the selection')
 
-    def test_export_path_is_consumable_by_read_sample_list(self):
-        """Tab-delimited with a header is exactly what read_sample_list expects."""
+    def test_export_path_is_consumable_by_the_hail_reader(self):
+        """Tab-delimited with a header is what sniff_delimiter and import_table expect."""
         sql = self.bq_file('vds_dropout_sample_list.sql')
         export = sql.split('EXPORT DATA OPTIONS')[1]
         self.assertIn("field_delimiter='\\t'", export)
