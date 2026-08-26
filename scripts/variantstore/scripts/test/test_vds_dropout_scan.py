@@ -15,8 +15,10 @@ import argparse
 import ast
 import contextlib
 import io
+import os
 import pathlib
 import re
+import tempfile
 import unittest
 
 import vds_dropout_scan as vds
@@ -252,6 +254,104 @@ class TestClusterRunnerCompatibility(unittest.TestCase):
         self.assertEqual([], vds.parse_interval_list(None))
         self.assertEqual([], vds.parse_interval_list([]))
         self.assertEqual([], vds.parse_interval_list(['  ,  ']))
+
+
+class TestContigCheckpointing(unittest.TestCase):
+    """A genome-wide scan runs for hours, so it checkpoints per contig and resumes.
+
+    The verification on merge is the load-bearing part: a resume that silently skipped a
+    contig would emit a summary that looks complete and reports the rest as clean. Building
+    a silent omission into a tool designed to detect silent omissions would be a poor
+    trade for restartability.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.summary = os.path.join(self.tmp.name, 'summary.tsv')
+
+    def write_shard(self, contig, rows, mark_done=True):
+        shard, marker = vds.shard_paths(self.summary, contig)
+        vds.write_lines(shard, vds.SUMMARY_HEADER, [
+            f'{contig}\t{i * 50000 + 1}\t{i * 50000 + 50001}\t83\t7500'
+            for i in range(rows)])
+        if mark_done:
+            vds.write_lines(marker, 'contig\trows', [f'{contig}\t{rows}'])
+        return shard
+
+    def test_shard_and_marker_are_distinct_paths(self):
+        shard, marker = vds.shard_paths('/x/summary.tsv', 'chr4')
+        self.assertEqual('/x/summary.tsv.chr4', shard)
+        self.assertEqual('/x/summary.tsv.chr4.done', marker)
+        self.assertNotEqual(shard, marker)
+
+    def test_marker_governs_resume_not_shard_existence(self):
+        """A shard truncated mid-write must not be mistaken for a finished one."""
+        shard = self.write_shard('chr1', 2, mark_done=False)
+        _, marker = vds.shard_paths(self.summary, 'chr1')
+        self.assertTrue(vds._path_exists(shard))
+        self.assertFalse(vds._path_exists(marker))
+
+    def test_merge_concatenates_all_shards(self):
+        shards = [self.write_shard('chr1', 3), self.write_shard('chr2', 2)]
+        total = vds.concatenate_shards(shards, self.summary, ['chr1', 'chr2'])
+        self.assertEqual(5, total)
+
+    def test_merged_file_has_one_header(self):
+        shards = [self.write_shard('chr1', 2), self.write_shard('chr2', 2)]
+        vds.concatenate_shards(shards, self.summary, ['chr1', 'chr2'])
+        with open(self.summary) as handle:
+            lines = [l for l in handle.read().split('\n') if l.strip()]
+        self.assertEqual(vds.SUMMARY_HEADER, lines[0])
+        self.assertEqual(1, sum(1 for l in lines if l == vds.SUMMARY_HEADER))
+        self.assertEqual(5, len(lines))
+
+    def test_missing_contig_aborts_the_merge(self):
+        """The safety net: an incomplete screen must never look complete."""
+        shards = [self.write_shard('chr1', 2)]
+        with self.assertRaises(RuntimeError) as ctx:
+            vds.concatenate_shards(shards, self.summary, ['chr1', 'chr2'])
+        self.assertIn('chr2', str(ctx.exception))
+        self.assertIn('incomplete', str(ctx.exception))
+
+    def test_error_says_how_to_recover(self):
+        shards = [self.write_shard('chr1', 2)]
+        with self.assertRaises(RuntimeError) as ctx:
+            vds.concatenate_shards(shards, self.summary, ['chr1', 'chr2'])
+        self.assertIn('.done', str(ctx.exception))
+
+    def test_shard_with_a_foreign_header_is_rejected(self):
+        shard = os.path.join(self.tmp.name, 'summary.tsv.chr9')
+        vds.write_lines(shard, 'something\telse', ['chr9\t1'])
+        with self.assertRaises(ValueError) as ctx:
+            vds.concatenate_shards([shard], self.summary, ['chr9'])
+        self.assertIn('corrupt or from another run', str(ctx.exception))
+
+    def test_empty_shard_is_tolerated_when_the_contig_is_not_expected(self):
+        """A contig with no data at all yields an empty shard; only expectation matters."""
+        shard = os.path.join(self.tmp.name, 'summary.tsv.chrY')
+        vds.write_lines(shard, vds.SUMMARY_HEADER, [])
+        self.assertEqual(0, vds.concatenate_shards([shard], self.summary, []))
+
+
+class TestWriteRetry(unittest.TestCase):
+    """The summary write is the last step of a multi-hour job."""
+
+    def test_rows_are_materialized_so_a_retry_can_repeat_them(self):
+        """A generator half-drained by a failed attempt would silently truncate the retry."""
+        import inspect
+        source = inspect.getsource(vds.write_lines)
+        self.assertIn('list(rows)', source)
+
+    def test_retry_budget_is_bounded_and_nonzero(self):
+        self.assertGreater(vds.WRITE_ATTEMPTS, 1)
+        self.assertLess(vds.WRITE_ATTEMPTS, 10)
+        self.assertGreater(vds.WRITE_RETRY_DELAY_SECONDS, 0)
+
+    def test_write_returns_the_row_count(self):
+        with tempfile.TemporaryDirectory() as d:
+            path = os.path.join(d, 'out.tsv')
+            self.assertEqual(3, vds.write_lines(path, 'h', ['a', 'b', 'c']))
 
 
 class TestOutputFormatting(unittest.TestCase):

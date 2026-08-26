@@ -87,6 +87,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import datetime
+import os
 import sys
 import time
 from collections import defaultdict
@@ -402,6 +403,13 @@ def _open_write(path: str) -> IO[str]:
     return open(path, 'wt')
 
 
+def _path_exists(path: str) -> bool:
+    """Whether a local or GCS path exists."""
+    if hl is not None and path.startswith('gs://'):
+        return bool(hl.hadoop_exists(path))
+    return os.path.exists(path)
+
+
 def _open_read(path: str) -> IO[str]:
     """Open a local or GCS path for reading text."""
     if hl is not None and path.startswith('gs://'):
@@ -409,15 +417,34 @@ def _open_read(path: str) -> IO[str]:
     return open(path, 'rt')
 
 
+WRITE_ATTEMPTS = 3
+WRITE_RETRY_DELAY_SECONDS = 15
+
+
 def write_lines(path: str, header: str, rows: Iterable[str]) -> int:
-    """Write a header plus rows, returning the number of rows written."""
-    count = 0
-    with _open_write(path) as handle:
-        handle.write(header + '\n')
-        for row in rows:
-            handle.write(row + '\n')
-            count += 1
-    return count
+    """Write a header plus rows, returning the number of rows written.
+
+    Retried, because this is the last step of a job that may have run for hours and a
+    transient GCS error here would discard all of it. ``rows`` is materialized first so a
+    retry cannot resume from a half-drained generator.
+    """
+    materialized = list(rows)
+    last_error = None
+    for attempt in range(WRITE_ATTEMPTS):
+        try:
+            with _open_write(path) as handle:
+                handle.write(header + '\n')
+                for row in materialized:
+                    handle.write(row + '\n')
+            return len(materialized)
+        except Exception as exc:  # pragma: no cover - needs a real filesystem failure
+            last_error = exc
+            if attempt + 1 < WRITE_ATTEMPTS:
+                announce(f'Writing {path} failed ({exc}); retrying in '
+                         f'{WRITE_RETRY_DELAY_SECONDS}s')
+                time.sleep(WRITE_RETRY_DELAY_SECONDS)
+    raise RuntimeError(
+        f'Could not write {path} after {WRITE_ATTEMPTS} attempts') from last_error
 
 
 def read_sample_map(path: str) -> dict[str, int]:
@@ -750,11 +777,83 @@ def _screening_matrix(args, vds):
     return matrix, counts, geometry
 
 
-def action_scan(args) -> int:
-    """Aggregate a VDS and write the summary and superpartition tables."""
-    _require_hail()
-    intervals = build_intervals(parse_contig_list(args.contigs),
-                                parse_interval_list(args.intervals))
+def shard_paths(summary_path: str, contig: str) -> tuple[str, str]:
+    """Per-contig summary shard and its completion marker.
+
+    A separate marker rather than the shard's own existence, because a write interrupted
+    part-way leaves a shard that looks finished. The marker is written only after the shard
+    closes cleanly, so a resume cannot mistake a truncated shard for a complete one -- which
+    would silently drop a contig and report the remainder as clean, the exact class of
+    omission this tool exists to find.
+    """
+    return f'{summary_path}.{contig}', f'{summary_path}.{contig}.done'
+
+
+def concatenate_shards(shards: Sequence[str], summary_path: str,
+                       expected_contigs: Sequence[str]) -> int:
+    """Merge per-contig shards into the final summary, verifying coverage.
+
+    The verification is the point: a resume that skipped a contig would otherwise produce a
+    summary that looks complete. Introducing a silent omission by way of the resume logic
+    would be a poor way to run a tool built to detect silent omissions.
+    """
+    seen = set()
+    total = 0
+    with _open_write(summary_path) as out:
+        out.write(SUMMARY_HEADER + '\n')
+        for shard in shards:
+            with _open_read(shard) as handle:
+                first = handle.readline()
+                if first.strip() != SUMMARY_HEADER:
+                    raise ValueError(
+                        f'{shard}: expected header {SUMMARY_HEADER!r}, found '
+                        f'{first.strip()!r}; the shard is corrupt or from another run')
+                for line in handle:
+                    if not line.strip():
+                        continue
+                    seen.add(line.split('\t', 1)[0])
+                    out.write(line if line.endswith('\n') else line + '\n')
+                    total += 1
+
+    missing = [c for c in expected_contigs if c not in seen]
+    if missing:
+        raise RuntimeError(
+            f'The merged summary has no rows for {missing}. Every requested contig must be '
+            'represented or the screen is incomplete while appearing clean. Delete the '
+            f'stale .done markers matching {summary_path}.* and re-run those contigs.')
+    return total
+
+
+def _scan_one_contig(args, contig: str):
+    """Aggregate one contig into its shard. Returns (shard path, sample counts or None)."""
+    shard, marker = shard_paths(args.summary_path, contig)
+    if _path_exists(marker):
+        announce(f'{contig}: already complete, skipping')
+        return shard, None
+
+    intervals = build_intervals([contig], [])
+    with step(f'{contig}: opening VDS'):
+        vds = read_and_subset_vds(args.vds_path, intervals)
+    matrix, counts, _ = _screening_matrix(args, vds)
+
+    announce(f'{contig}: cluster width {executor_summary()}')
+    with step(f'{contig}: aggregating {args.mode} into {args.bin_size:,} bp bins'):
+        totals = aggregate_totals(matrix, args.mode, args.bin_size)
+
+    n_rows = write_lines(shard, SUMMARY_HEADER,
+                         format_summary_rows(totals, args.bin_size))
+    write_lines(marker, 'contig\trows', [f'{contig}\t{n_rows}'])
+    announce(f'{contig}: wrote {n_rows:,} rows ({len(totals):,} bins)')
+    return shard, counts
+
+
+def _scan_intervals(args, requested_intervals: Sequence[str]) -> int:
+    """Single-pass scan over an explicit interval list, without checkpointing.
+
+    A targeted interval run is short enough not to need resuming, and has no natural
+    per-contig sharding.
+    """
+    intervals = build_intervals(parse_contig_list(args.contigs), requested_intervals)
     announce(f'Scanning {len(intervals):,} interval(s) of {args.vds_path}')
     with step(f'Opening VDS {args.vds_path}'):
         vds = read_and_subset_vds(args.vds_path, intervals)
@@ -763,17 +862,56 @@ def action_scan(args) -> int:
     announce(f'Cluster width at start of aggregation: {executor_summary()}')
     with step(f'Aggregating {args.mode} into {args.bin_size:,} bp bins'):
         totals = aggregate_totals(matrix, args.mode, args.bin_size)
-    # Logged again because autoscaling ramps: the two readings bracket the width the
-    # run actually had, which is what a cost estimate needs and what one reading misses.
     announce(f'Cluster width at end of aggregation:   {executor_summary()}')
-    rows = format_summary_rows(totals, args.bin_size)
-    n_rows = write_lines(args.summary_path, SUMMARY_HEADER, rows)
+
+    n_rows = write_lines(args.summary_path, SUMMARY_HEADER,
+                         format_summary_rows(totals, args.bin_size))
     n_sp = write_lines(
         args.superpartitions_path, SUPERPARTITION_HEADER,
         [f'{sp}\t{counts[sp]}' for sp in sorted(counts)])
+    announce(f'Wrote {n_rows:,} summary rows ({len(totals):,} bins) to {args.summary_path}')
+    announce(f'Wrote {n_sp:,} superpartition rows to {args.superpartitions_path}')
+    return 0
 
-    print(f'Wrote {n_rows:,} summary rows ({len(totals):,} bins) to {args.summary_path}')
-    print(f'Wrote {n_sp:,} superpartition rows to {args.superpartitions_path}')
+
+def action_scan(args) -> int:
+    """Aggregate a VDS and write the summary and superpartition tables.
+
+    Contigs are aggregated and written one at a time, each with a completion marker, so an
+    interrupted run resumes instead of restarting. A genome-wide scan of an AoU-scale VDS
+    runs for hours, and transient failures -- a capacity stockout, a metadata blip, a
+    preempted driver -- are frequent enough that discarding all of it on the last one is not
+    acceptable.
+    """
+    _require_hail()
+    requested_intervals = parse_interval_list(args.intervals)
+    if requested_intervals:
+        return _scan_intervals(args, requested_intervals)
+
+    contigs = parse_contig_list(args.contigs)
+    announce(f'Scanning {len(contigs)} contig(s) of {args.vds_path}, checkpointing each')
+
+    shards = []
+    counts = None
+    for contig in contigs:
+        shard, contig_counts = _scan_one_contig(args, contig)
+        shards.append(shard)
+        if contig_counts is not None:
+            counts = contig_counts
+
+    if counts is None:
+        # Every contig was already done, so nothing re-read the column table. The
+        # superpartition table from the original run is still correct; leave it be.
+        announce('All contigs were already complete; leaving the superpartition table as is')
+    else:
+        n_sp = write_lines(
+            args.superpartitions_path, SUPERPARTITION_HEADER,
+            [f'{sp}\t{counts[sp]}' for sp in sorted(counts)])
+        announce(f'Wrote {n_sp:,} superpartition rows to {args.superpartitions_path}')
+
+    with step('Merging per-contig shards'):
+        n_rows = concatenate_shards(shards, args.summary_path, contigs)
+    announce(f'Wrote {n_rows:,} summary rows to {args.summary_path}')
     return 0
 
 

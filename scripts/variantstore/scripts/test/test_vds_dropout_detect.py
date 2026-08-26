@@ -593,6 +593,42 @@ class TestPackedRefData(unittest.TestCase):
             vdd.packed_ref_data_bounds('chr4', 2000, 1000)
 
 
+class TestSqlQueryCap(unittest.TestCase):
+    """Generated SQL is capped so a loose threshold cannot bury the real findings.
+
+    A genome-wide scan examines millions of cells. If thresholds prove loose the report
+    could name thousands of rectangles, and generating a query for each produces a file
+    nobody will work through.
+    """
+
+    def test_default_cap_is_sane(self):
+        self.assertGreater(vdd.DEFAULT_MAX_SQL_QUERIES, 1)
+        self.assertLess(vdd.DEFAULT_MAX_SQL_QUERIES, 1000)
+
+    def test_report_still_lists_every_rectangle(self):
+        """The cap applies to SQL only; nothing is hidden from the report itself."""
+        import io
+        summary = build_summary(n_bins=80)
+        for sp in range(1, 40):
+            set_cell(summary, 10 + sp % 20, sp, 0.0)
+        report = vdd.analyze(summary)
+        self.assertGreater(len(report.rectangles), 10)
+        buffer = io.StringIO()
+        vdd.write_report(report, buffer)
+        rows = [l for l in buffer.getvalue().strip().split('\n')[1:] if l.strip()]
+        self.assertEqual(len(report.rectangles), len(rows))
+
+    def test_rectangles_are_ordered_worst_first_so_the_cap_keeps_the_worst(self):
+        summary = build_summary(n_bins=60)
+        for i in range(5, 8):
+            set_cell(summary, i, 83, CELL * 0.40)
+        for i in range(20, 23):
+            set_cell(summary, i, 64, 0.0)
+        report = vdd.analyze(summary)
+        scores = [r.score for r in report.rectangles]
+        self.assertEqual(scores, sorted(scores, reverse=True))
+
+
 class TestFileParsing(unittest.TestCase):
 
     def setUp(self):

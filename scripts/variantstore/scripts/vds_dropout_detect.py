@@ -118,6 +118,13 @@ DEFAULT_MIN_EXPECTED = 30.0
 # threshold most likely to need tuning against real data; it is deliberately loose.
 DEFAULT_SUPERPARTITION_SCALE_THRESHOLD = 0.7
 
+# Adjudication queries are generated for the worst candidates only. A genome-wide scan
+# examines millions of cells, and if thresholds turn out loose the report could name
+# thousands of rectangles -- more queries than anyone will run, burying the real findings.
+# The cap is on generated SQL only; every rectangle still appears in the report, and the
+# truncation is stated explicitly rather than left to be noticed.
+DEFAULT_MAX_SQL_QUERIES = 50
+
 SUMMARY_COLUMNS = ('contig', 'bin_start', 'bin_end', 'superpartition', 'observed')
 SUPERPARTITION_COLUMNS = ('superpartition', 'n_samples')
 
@@ -844,6 +851,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                         default=DEFAULT_SUPERPARTITION_SCALE_THRESHOLD,
                         help='Flag superpartitions whose global relative scale falls below '
                              f'this. Default: {DEFAULT_SUPERPARTITION_SCALE_THRESHOLD}.')
+    parser.add_argument('--max-sql-queries', type=int, default=DEFAULT_MAX_SQL_QUERIES,
+                        help='Generate adjudication SQL for at most this many rectangles, '
+                             'worst first. Every rectangle still appears in the report. '
+                             f'Default: {DEFAULT_MAX_SQL_QUERIES}. Use 0 for no limit.')
     parser.add_argument('--fail-on-findings', action='store_true', default=False,
                         help='Exit non-zero when any candidate is found, for use as a gate.')
 
@@ -871,10 +882,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"\nReport written to: {args.report_path}")
 
     if args.sql_path:
+        limit = args.max_sql_queries or len(report.rectangles)
+        selected = report.rectangles[:limit]
         with open(args.sql_path, 'wt') as handle:
             if not report.rectangles:
                 handle.write('-- No candidate dropouts to adjudicate.\n')
-            for rectangle in report.rectangles:
+            elif len(selected) < len(report.rectangles):
+                omitted = len(report.rectangles) - len(selected)
+                notice = (f'-- Showing the {len(selected)} most severe of '
+                          f'{len(report.rectangles)} rectangles; {omitted} omitted.\n'
+                          f'-- Raise --max-sql-queries to generate the rest. All '
+                          f'{len(report.rectangles)} appear in the report.\n\n')
+                handle.write(notice)
+                print(f'\nNote: generated SQL for the {len(selected)} most severe of '
+                      f'{len(report.rectangles)} rectangles; {omitted} omitted. '
+                      'Raise --max-sql-queries to generate the rest.')
+            for rectangle in selected:
                 handle.write(adjudication_sql(
                     rectangle,
                     project_id=args.project_id,
