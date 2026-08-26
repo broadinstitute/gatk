@@ -11,6 +11,18 @@ TINY_MAX_SECONDARY = 5
 DEFAULT_NUM_WORKERS = 2
 DEFAULT_MAX_SECONDARY = 200
 
+# Substrings identifying a Compute Engine capacity shortage. These are properties of a
+# single zone, not of the region: the same request commonly succeeds in a sibling zone. By
+# default Dataproc places a cluster with Auto Zone placement, which picks one zone and
+# fails outright rather than moving on, so a stockout there is a hard workflow failure.
+# Deliberately narrow -- the enclosing error code is UNAVAILABLE, which also covers
+# transient conditions that retrying in a different zone would not help.
+STOCKOUT_MARKERS = (
+    'STOCKOUT',
+    'does not have enough resources',
+    'ZONE_RESOURCE_POOL_EXHAUSTED',
+)
+
 
 def autoscaling_policy_name(num_workers, max_secondary):
     """Return a policy name that encodes its configuration, e.g. gvs-spark-autoscaling-w2-s200."""
@@ -122,9 +134,69 @@ def create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, regi
     return policy_name, num_workers
 
 
+def looks_like_stockout(output):
+    """Whether command output indicates a zone ran out of capacity."""
+    return any(marker in output for marker in STOCKOUT_MARKERS)
+
+
+def zones_for_region(region, workspace_project):
+    """List the zones of a region, for `--zones auto`.
+
+    Derived from the region rather than hardcoded so this stays correct outside
+    us-central1. On failure the caller falls back to Dataproc's own zone placement, since
+    an inability to enumerate zones is not a reason to fail the workflow.
+    """
+    list_cmd = unwrap(f"""
+        gcloud compute zones list
+         --project={workspace_project}
+         --filter=region:{region}
+         --format=value(name)
+         --quiet
+    """)
+    pipe = os.popen(list_cmd + " 2>/dev/null")
+    output = pipe.read()
+    if pipe.close():
+        info(f"Could not list zones in {region}; falling back to automatic zone placement.")
+        return []
+    return sorted(zone.strip() for zone in output.split() if zone.strip())
+
+
+def resolve_zones(zones, region, workspace_project):
+    """Turn the --zones argument into an ordered list of zones to try.
+
+    Empty means today's behavior: no --zone flag, and Dataproc places the cluster itself.
+    """
+    if not zones:
+        return []
+    if zones.strip().lower() == 'auto':
+        return zones_for_region(region, workspace_project)
+    return [zone.strip() for zone in zones.split(',') if zone.strip()]
+
+
+def delete_failed_cluster(cluster_name, region, workspace_project):
+    """Best-effort teardown so the cluster name is free for the next attempt.
+
+    A create that fails on capacity usually leaves the cluster behind in ERROR state, and
+    without this the retry would fail with ALREADY_EXISTS instead of surfacing the real
+    problem.
+    """
+    delete_cmd = unwrap(f"""
+        gcloud dataproc clusters delete {cluster_name}
+         --region={region}
+         --project={workspace_project}
+         --quiet
+    """)
+    info(f"Removing failed cluster '{cluster_name}' before retrying.")
+    pipe = os.popen(delete_cmd + " 2>&1")
+    output = pipe.read()
+    if pipe.close():
+        info(f"Nothing to remove, or removal failed (continuing anyway): {output.strip()}")
+
+
 def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_type, region, use_tiny_dataproc_cluster, workspace_project,
                    script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end, cluster_max_idle_minutes, cluster_max_age_minutes, master_memory_fraction,
-                   num_primary_workers=DEFAULT_NUM_WORKERS, max_secondary_workers=DEFAULT_MAX_SECONDARY):
+                   num_primary_workers=DEFAULT_NUM_WORKERS, max_secondary_workers=DEFAULT_MAX_SECONDARY,
+                   zones=None, num_local_ssds=1):
 
     cluster_max_idle_arg = f"--max-idle {cluster_max_idle_minutes}m" if cluster_max_idle_minutes else ""
     cluster_max_age_arg = f"--max-age {cluster_max_age_minutes}m" if cluster_max_age_minutes else ""
@@ -134,38 +206,56 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
                                                                      num_primary_workers=num_primary_workers,
                                                                      max_secondary_workers=max_secondary_workers)
 
-        cluster_start_cmd = unwrap(f"""
-        
-        hailctl dataproc start 
-         --autoscaling-policy={autoscaling_policy}
-         --num-workers {num_workers}
-         --worker-machine-type {worker_machine_type}
-         --master-machine-type {master_machine_type}
-         --master-memory-fraction {master_memory_fraction}
-         --enable-component-gateway
-         --region {region}
-         --project {workspace_project}
-         --service-account {account}
-         {cluster_max_idle_arg}
-         {cluster_max_age_arg}
-         --num-master-local-ssds 1
-         --num-worker-local-ssds 1 
-         --master-boot-disk-type=pd-ssd
-         --worker-boot-disk-type=pd-ssd
-         --subnet=projects/{workspace_project}/regions/{region}/subnetworks/subnetwork
-         --properties=dataproc:dataproc.monitoring.stackdriver.enable=true,dataproc:dataproc.logging.stackdriver.enable=true,core:fs.gs.outputstream.sync.min.interval=5
-         --packages=python-snappy
-         {cluster_name}
-         
-        """)
+        # An empty list means one attempt with no --zone, i.e. Dataproc's own placement.
+        candidate_zones = resolve_zones(zones, region, workspace_project) or [None]
 
-        info(f"Starting cluster '{cluster_name}'...")
-        info(cluster_start_cmd)
-        pipe = os.popen(cluster_start_cmd)
-        info(pipe.read())
-        wait_status = pipe.close()
-        if wait_status:
+        for index, zone in enumerate(candidate_zones):
+            zone_arg = f"--zone {zone}" if zone else ""
+            placement = f"zone {zone}" if zone else "an automatically placed zone"
+
+            cluster_start_cmd = unwrap(f"""
+
+            hailctl dataproc start 
+             --autoscaling-policy={autoscaling_policy}
+             --num-workers {num_workers}
+             --worker-machine-type {worker_machine_type}
+             --master-machine-type {master_machine_type}
+             --master-memory-fraction {master_memory_fraction}
+             --enable-component-gateway
+             --region {region}
+             {zone_arg}
+             --project {workspace_project}
+             --service-account {account}
+             {cluster_max_idle_arg}
+             {cluster_max_age_arg}
+             --num-master-local-ssds {num_local_ssds}
+             --num-worker-local-ssds {num_local_ssds} 
+             --master-boot-disk-type=pd-ssd
+             --worker-boot-disk-type=pd-ssd
+             --subnet=projects/{workspace_project}/regions/{region}/subnetworks/subnetwork
+             --properties=dataproc:dataproc.monitoring.stackdriver.enable=true,dataproc:dataproc.logging.stackdriver.enable=true,core:fs.gs.outputstream.sync.min.interval=5
+             --packages=python-snappy
+             {cluster_name}
+             
+            """)
+
+            info(f"Starting cluster '{cluster_name}' in {placement}...")
+            info(cluster_start_cmd)
+            # stderr is folded into stdout because gcloud reports capacity failures there,
+            # and the retry decision depends on reading them.
+            pipe = os.popen(cluster_start_cmd + " 2>&1")
+            output = pipe.read()
+            info(output)
+            wait_status = pipe.close()
+            if not wait_status:
+                break
+
             exit_code = os.waitstatus_to_exitcode(wait_status)
+            more_zones_to_try = index + 1 < len(candidate_zones)
+            if more_zones_to_try and looks_like_stockout(output):
+                info(f"{placement} is out of capacity. Retrying in {candidate_zones[index + 1]}.")
+                delete_failed_cluster(cluster_name, region, workspace_project)
+                continue
             raise RuntimeError(f"Unexpected exit code from cluster creation: {exit_code}")
 
         run_in_existing_cluster(cluster_name, account, region, workspace_project,
@@ -280,6 +370,31 @@ if __name__ == "__main__":
                         help=f'Maximum number of secondary workers for the non-tiny autoscaling policy (default: {DEFAULT_MAX_SECONDARY}). '
                              f'Ignored when --use-tiny-dataproc-cluster is set.')
 
+    parser.add_argument('--zones', type=str, required=False, default=None,
+
+                        help='Comma-separated zones to try in order when creating the '
+
+                             'cluster, or "auto" to use every zone in --region. A Compute '
+
+                             'Engine stockout is a per-zone condition, so a create that '
+
+                             'fails for capacity is retried in the next zone. Omit to keep '
+
+                             "Dataproc's own placement, which picks one zone and does not "
+
+                             'retry.')
+
+    parser.add_argument('--num-local-ssds', type=int, required=False, default=1,
+
+                        help='Local SSDs attached to the master and to each worker. Local '
+
+                             'SSD availability is zone-specific and a common stockout '
+
+                             'cause, so a workload that does not spill shuffle to disk can '
+
+                             'set 0 to widen the usable zones. Defaults to 1.')
+
+
     args = parser.parse_args()
 
     run_in_cluster(cluster_name=args.cluster_name,
@@ -298,4 +413,6 @@ if __name__ == "__main__":
                    master_memory_fraction=args.master_memory_fraction,
                    num_primary_workers=args.num_primary_workers,
                    max_secondary_workers=args.max_secondary_workers,
+            zones=args.zones,
+            num_local_ssds=args.num_local_ssds,
                    )

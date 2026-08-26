@@ -86,6 +86,18 @@ workflow GvsValidateVdsCompleteness {
         Int num_primary_workers = 4
         Int max_secondary_workers = 300
         String cluster_prefix = "vds-completeness"
+        # Compute Engine stockouts are per-zone, and Dataproc's default placement picks one
+        # zone and fails rather than moving on. "auto" tries every zone in the region.
+        String cluster_zones = "auto"
+        # The screen is a single streaming pass with no shuffle, so it has nothing to spill
+        # to local SSD. Local SSD availability is zone-specific and a common stockout cause,
+        # so asking for none widens the set of zones that can serve the request.
+        Int num_local_ssds = 0
+        String worker_machine_type = "n1-highmem-8"
+        # The driver collects a summary on the order of 62,000 x 134 numbers, so the large
+        # first-generation master the other GVS workflows use is oversized here, and large
+        # n1 shapes are among the most stockout-prone.
+        String master_machine_type = "n1-highmem-16"
         String? hail_temp_path
         String region = "us-central1"
         Int? cluster_max_idle_minutes
@@ -140,6 +152,12 @@ workflow GvsValidateVdsCompleteness {
         }
         bq_project_id: {
             help: "BigQuery project used only to generate adjudication SQL. No queries are run by this workflow."
+        }
+        cluster_zones: {
+            help: "Comma-separated zones to try in order, or auto for every zone in the region. A stockout is a per-zone condition, so a create that fails for capacity is retried in the next zone rather than failing the workflow."
+        }
+        num_local_ssds: {
+            help: "Local SSDs per master and worker. Defaults to 0 because this screen does not shuffle; raising it narrows the zones able to serve the request."
         }
         probe_interval: {
             help: "Interval used when action is probe. Defaults to a fully callable 10 Mb window on chr20; pick a gap-free interval, since one overlapping a centromere reads faster than average and skews the extrapolation."
@@ -292,6 +310,10 @@ workflow GvsValidateVdsCompleteness {
             bq_dataset_name = bq_dataset_name,
             reference_schema = effective_reference_schema,
             prefix = cluster_prefix,
+            cluster_zones = cluster_zones,
+            num_local_ssds = num_local_ssds,
+            worker_machine_type = worker_machine_type,
+            master_machine_type = master_machine_type,
             use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
             num_primary_workers = num_primary_workers,
             max_secondary_workers = max_secondary_workers,
@@ -356,6 +378,10 @@ task ScanVdsForDropouts {
         String reference_schema
 
         String prefix
+        String cluster_zones
+        Int num_local_ssds
+        String worker_machine_type
+        String master_machine_type
         Boolean use_tiny_dataproc_cluster
         Int num_primary_workers
         Int max_secondary_workers
@@ -486,6 +512,10 @@ task ScanVdsForDropouts {
             --num-primary-workers ~{num_primary_workers} \
             --max-secondary-workers ~{max_secondary_workers} \
             --region ~{region} \
+            --zones ~{cluster_zones} \
+            --num-local-ssds ~{num_local_ssds} \
+            --worker-machine-type ~{worker_machine_type} \
+            --master-machine-type ~{master_machine_type} \
             --workspace-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
