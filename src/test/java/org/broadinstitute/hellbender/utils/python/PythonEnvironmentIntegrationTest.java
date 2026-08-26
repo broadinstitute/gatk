@@ -1,10 +1,13 @@
 package org.broadinstitute.hellbender.utils.python;
 
+import org.broadinstitute.hellbender.utils.NativeUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 
 /**
  * Tests to nominally validate that the GATK conda environment is activated and that its dependencies are accessible.
@@ -14,26 +17,32 @@ public class PythonEnvironmentIntegrationTest {
 
     @DataProvider(name="dataPackagePresent")
     public Object[][] getDataPackagePresent() {
-        return new Object[][] {
-                // names of base packages that we should be able to import from within the GATK conda environment
-                // NOTE: these must be kept in sync with the versions in gatkcondaenv.yml.template
-                { "mkl",            "2.4.0" },
-                { "numpy",          "1.26.2" },
-                { "pytensor",       "2.18.1" },
-                { "torch",          "2.1.0.post100" },
-                { "scipy",          "1.11.4" },
-                { "pymc",           "5.10.0" },
-                { "h5py",           "3.10.0" },
-                { "sklearn",        "1.3.2" },
-                { "matplotlib",     "3.8.2" },
-                { "pandas",         "2.1.3" },
-                { "argparse",       null },
-                { "gcnvkernel",     null },
+        // names of base packages that we should be able to import from within the GATK conda environment
+        // NOTE: these must be kept in sync with the versions in gatkcondaenv.yml.template (x86) /
+        // gatkcondaenv.aarch64.yml.template (Apple Silicon).
+        final boolean aarch64 = NativeUtils.runningOnAarch64Architecture();
+        final List<Object[]> packages = new ArrayList<>();
+        // Intel MKL is x86-only; it is not part of the osx-arm64 environment.
+        if (!aarch64) {
+            packages.add(new Object[]{ "mkl", "2.4.0" });
+        }
+        packages.add(new Object[]{ "numpy", "1.26.2" });
+        packages.add(new Object[]{ "pytensor", "2.18.1" });
+        // The x86 (MKL) PyTorch build reports version "2.1.0.post100"; the osx-arm64 build reports "2.1.0".
+        packages.add(new Object[]{ "torch", aarch64 ? "2.1.0" : "2.1.0.post100" });
+        packages.add(new Object[]{ "scipy", "1.11.4" });
+        packages.add(new Object[]{ "pymc", "5.10.0" });
+        packages.add(new Object[]{ "h5py", "3.10.0" });
+        packages.add(new Object[]{ "sklearn", "1.3.2" });
+        packages.add(new Object[]{ "matplotlib", "3.8.2" });
+        packages.add(new Object[]{ "pandas", "2.1.3" });
+        packages.add(new Object[]{ "argparse", null });
+        packages.add(new Object[]{ "gcnvkernel", null });
 
-                // R packages
-                // Commented out since we can't check versions of R packages in this test
-                // { "r-backports",    "1.1.10" },
-        };
+        // R packages
+        // Commented out since we can't check versions of R packages in this test
+        // packages.add(new Object[]{ "r-backports", "1.1.10" });
+        return packages.toArray(new Object[0][]);
     }
 
     /**
@@ -41,6 +50,11 @@ public class PythonEnvironmentIntegrationTest {
      */
     @DataProvider(name="dataPackageMKLEnabled")
     public Object[][] getDataPackageMKLEnabled() {
+        // MKL is Intel-only; on aarch64 (Apple Silicon) the environment uses OpenBLAS/Accelerate, so
+        // there is nothing to assert and this data-driven test runs zero times.
+        if (NativeUtils.runningOnAarch64Architecture()) {
+            return new Object[0][];
+        }
         return new Object[][] {
                 // { "numpy",          "numpy.__config__.get_info('blas_mkl_info') != {} and numpy.__config__.get_info('lapack_mkl_info') != {}" },  TODO this check was removed after the update to conda-forge numpy 1.26.2, see https://github.com/broadinstitute/gatk/pull/8561
                 { "pytensor",       "'-lmkl_rt' in pytensor.config.blas__ldflags" },
