@@ -611,6 +611,20 @@ def interval_span(intervals) -> int:
     return total
 
 
+def total_partition_count(vds_path: str, mode: str) -> int:
+    """Partitions in the whole VDS component, ignoring any interval subset.
+
+    Metadata only, so it costs seconds. This is the denominator the cost model needs: a
+    full run's wall clock is roughly per-partition time multiplied by this and divided by
+    the tasks running concurrently. Without it, a timing from an interval subset cannot be
+    turned into an estimate of anything.
+    """
+    _require_hail()
+    vds = hl.vds.read_vds(vds_path)
+    matrix = vds.variant_data if mode == 'variants' else vds.reference_data
+    return int(matrix.n_partitions())
+
+
 def read_and_subset_vds(vds_path: str, intervals):
     """Read a VDS, restricted to ``intervals`` when any are given."""
     _require_hail()
@@ -864,14 +878,21 @@ def _screening_matrix(args, vds):
 
     with step('Counting partitions'):
         n_partitions = matrix_partition_count(matrix)
-    announce(f'Aggregation will run over {n_partitions:,} partition(s)')
+    with step('Counting partitions in the whole VDS'):
+        n_total = total_partition_count(args.vds_path, args.mode)
+    announce(f'Aggregation will run over {n_partitions:,} of {n_total:,} total partition(s)')
+
     if n_partitions < MIN_HEALTHY_PARTITIONS:
         announce(
-            f'WARNING: only {n_partitions} partition(s), so at most {n_partitions} task(s) '
-            'will run and the rest of the cluster will idle. On an AoU-scale VDS a single '
-            'partition can hold tens of GB of entry data, and one thread must stream all '
-            'of it. Widen the interval to span more partitions, or expect this to be slow '
-            'and unrepresentative of a genome-wide run.')
+            f'WARNING: only {n_partitions} partition(s) selected, so at most '
+            f'{n_partitions} task(s) will run and the rest of the cluster will idle. A '
+            'partition is the unit of work -- one task streams one end to end -- and on an '
+            'AoU-scale VDS a single partition can hold tens of GB of entry data.')
+        announce(
+            f'         Because there is no parallelism to divide by, this will take roughly '
+            f'what a fully parallel scan of all {n_total:,} partitions would. It is not a '
+            'cheap preview. Either widen the interval to span many partitions, or run the '
+            'real scan and let the cluster work.')
     return matrix, counts
 
 
