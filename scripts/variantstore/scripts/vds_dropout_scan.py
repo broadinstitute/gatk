@@ -72,21 +72,15 @@ Metrics
 Sample map and sample list
 --------------------------
 Superpartition membership comes from a TSV of sample name to sample ID, since a VDS knows
-only names.  Two queries in ``scripts/variantstore/bq/`` produce the inputs:
+only names.  ``GvsValidateVdsCompleteness.wdl`` generates that map itself when given a
+BigQuery project and dataset; ``scripts/variantstore/bq/vds_dropout_sample_map.sql`` is
+the hand-run copy, for building one outside the workflow.  Either tab- or comma-separated
+input is accepted, so ``bq query --format=csv`` output works as-is.
 
-``vds_dropout_sample_map.sql``
-    The ``--sample-map-path`` input: every non-withdrawn, non-control sample, using the
-    same filter GvsExtractAvroFilesForHail.wdl applies when exporting Avro.  Either tab-
-    or comma-separated is accepted, so ``bq query --format=csv`` output works as-is.
-
-``vds_dropout_sample_list.sql``
-    The ``--sample-list-path`` input, reproducing ``stratified_sample`` below in SQL.
-    ``materialize`` already writes this file, so the query is for inspecting the selection
-    before spending cluster time, fixing the sample set before an r3 VDS exists, and
-    cross-checking the Python.  That last one matters: the recorded list is what makes r2
-    and r3 figures comparable, so two independent implementations agreeing is the evidence
-    that reproducibility actually holds.  Output format and row order match what
-    ``materialize`` writes, so the two can be diffed directly.
+``--action materialize`` writes the ``--sample-list-path`` file as a side effect, recording
+which samples the stratified draw chose.  Later actions should be pointed at that file
+rather than at the map, so every VDS is screened on identical samples -- which is what
+makes figures comparable between r2 and r3.
 
 Samples in the map but absent from the VDS are ignored, so a map generated after a
 withdrawal is still usable.  A VDS sample *missing* from the map is a hard error instead,
@@ -209,9 +203,9 @@ def stratified_sample(
     chosen: dict[int, list[str]] = {}
     for superpartition, names in grouped.items():
         # Tie-break on the name itself rather than leaning on sort stability, which would
-        # make the result depend on input order. This also makes the selection provably
-        # identical to the SQL in bq/vds_dropout_sample_list.sql, whose ORDER BY needs an
-        # explicit second key; see that file's header for the equivalence argument.
+        # make the result depend on the order samples happen to arrive in. The selection has
+        # to be reproducible across runs and across VDSes for the r2/r3 comparison to mean
+        # anything, so it must not depend on dict iteration order.
         names.sort(key=lambda name: (sample_sort_key(name, seed), name))
         chosen[superpartition] = sorted(names[:samples_per_superpartition])
     return chosen

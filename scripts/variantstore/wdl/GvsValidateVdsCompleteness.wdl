@@ -14,8 +14,9 @@ version 1.0
 # repeatable. Run one action per invocation.
 #
 # Typical sequence for a callset:
-#   0. run scripts/variantstore/bq/vds_dropout_sample_map.sql -> sample_map.tsv in GCS.
-#      This is the only input you generate by hand; the sample list is produced by step 2.
+#   0. nothing, if bq_project_id and bq_dataset_name are supplied: the sample map is
+#      generated automatically. Pass sample_map_path instead to supply one yourself, or
+#      see scripts/variantstore/bq/vds_dropout_sample_map.sql to build it by hand.
 #   1. action = "probe"        on the SOURCE VDS      -> sizes the materialize pass
 #   2. action = "materialize"  on the source VDS      -> narrow copy + sample list
 #      Steps 1 and 2 take sample_map_path; steps 3 and 4 take the sample_list_path that
@@ -51,6 +52,9 @@ workflow GvsValidateVdsCompleteness {
         String? sample_map_path
         String? sample_list_path
         String? narrow_vds_path
+        # Supply these and the sample map is generated for you; the query is a two-line
+        # projection of sample_info, so there is little reason to run it by hand.
+        String bq_sample_table = "sample_info"
 
         Int samples_per_superpartition = 100
         String random_seed = "vs-1998"
@@ -137,7 +141,10 @@ workflow GvsValidateVdsCompleteness {
             help: "variants counts variant_data entries; references sums reference-block coverage."
         }
         sample_map_path: {
-            help: "TSV of sample_name and sample_id from sample_info. Required for materialize."
+            help: "TSV of sample_name and sample_id. Optional: if omitted and bq_project_id and bq_dataset_name are set, it is generated from sample_info automatically."
+        }
+        bq_sample_table: {
+            help: "Sample table or view the generated map reads from. Defaults to sample_info; use a view such as sample_info_new_to_foxtrot to restrict the sample universe."
         }
         sample_list_path: {
             help: "Chosen-sample TSV written by materialize. Preferred by later actions so every VDS is screened on exactly the same samples, which is what makes figures comparable across classic, r2 and r3."
@@ -222,20 +229,24 @@ workflow GvsValidateVdsCompleteness {
         }
     }
 
-    # materialize is the only action that derives the sample selection from scratch; every other
-    # action should reuse the recorded list so results stay comparable between VDSes.
-    if (action == "materialize" && !defined(sample_map_path)) {
+    # A sample map can be supplied directly, or generated from BigQuery. materialize is the
+    # only action that derives the sample selection from scratch; every other action should
+    # reuse the recorded list so results stay comparable between VDSes.
+    Boolean can_generate_sample_map = defined(bq_project_id) && defined(bq_dataset_name)
+
+    if (action == "materialize" && !defined(sample_map_path) && !can_generate_sample_map) {
         call Utils.TerminateWorkflow as MaterializeNeedsSampleMap {
             input:
-                message = "`sample_map_path` is required when action is materialize.",
+                message = "action materialize needs `sample_map_path`, or `bq_project_id` and `bq_dataset_name` so the map can be generated.",
                 basic_docker = effective_basic_docker,
         }
     }
 
-    if (action != "materialize" && !defined(sample_map_path) && !defined(sample_list_path)) {
+    if (action != "materialize" && !defined(sample_map_path) && !defined(sample_list_path) &&
+        !can_generate_sample_map) {
         call Utils.TerminateWorkflow as ScanNeedsSamples {
             input:
-                message = "action '" + action + "' requires either `sample_list_path` (preferred) or `sample_map_path`.",
+                message = "action '" + action + "' needs `sample_list_path` (preferred), or `sample_map_path`, or `bq_project_id` and `bq_dataset_name` so the map can be generated.",
                 basic_docker = effective_basic_docker,
         }
     }
@@ -281,6 +292,21 @@ workflow GvsValidateVdsCompleteness {
              then "compressed" else "uncompressed")
         else "compressed"
 
+    # A recorded sample list supersedes the map, so only generate one when neither exists.
+    if (!defined(sample_map_path) && !defined(sample_list_path) && can_generate_sample_map) {
+        call GenerateSampleMap {
+            input:
+                bq_project_id = select_first([bq_project_id]),
+                bq_dataset_name = select_first([bq_dataset_name]),
+                sample_table = bq_sample_table,
+                output_prefix = output_prefix,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+        }
+    }
+
+    String? effective_sample_map_path =
+        if defined(sample_map_path) then sample_map_path else GenerateSampleMap.sample_map_path
+
     call Utils.GetHailScripts {
         input:
             variants_docker = effective_variants_docker,
@@ -295,7 +321,7 @@ workflow GvsValidateVdsCompleteness {
             vds_path = vds_path,
             output_prefix = output_prefix,
             mode = mode,
-            sample_map_path = sample_map_path,
+            sample_map_path = effective_sample_map_path,
             sample_list_path = sample_list_path,
             narrow_vds_path = narrow_vds_path,
             samples_per_superpartition = samples_per_superpartition,
@@ -338,11 +364,100 @@ workflow GvsValidateVdsCompleteness {
     }
 
     output {
+        String? generated_sample_map = GenerateSampleMap.sample_map_path
         String cluster_name = ScanVdsForDropouts.cluster_name
         String scan_log = ScanVdsForDropouts.scan_log
         File report = ScanVdsForDropouts.report
         File adjudication_sql = ScanVdsForDropouts.adjudication_sql
         Boolean done = true
+    }
+}
+
+
+task GenerateSampleMap {
+    meta {
+        description: "Export sample_name and sample_id from sample_info as the --sample-map-path input."
+        # Not cached: sample_info changes as samples are withdrawn, and a stale map would
+        # be silently wrong. Regenerating costs seconds. A map that has fallen behind the
+        # VDS is caught loudly anyway -- vds_dropout_scan.py fails on a VDS sample it
+        # cannot place in a superpartition rather than screening a biased subset.
+        volatile: true
+    }
+
+    input {
+        String bq_project_id
+        String bq_dataset_name
+        String sample_table
+        String output_prefix
+        String cloud_sdk_docker
+    }
+
+    parameter_meta {
+        sample_table: {
+            help: "Table or view to read. sample_info for the whole callset; a view to restrict the sample universe."
+        }
+    }
+
+    String map_prefix = output_prefix + "/samples/sample_map"
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # The same filter GvsExtractAvroFilesForHail.wdl applies when exporting Avro, so the
+        # sample universe matches the one the VDS was built from. Kept in step with
+        # scripts/variantstore/bq/vds_dropout_sample_map.sql, which is the hand-run copy.
+        #
+        # EXPORT DATA rather than `bq query > file`: it writes tab-delimited with a header
+        # straight to GCS, which is the format the scan expects, and it does not depend on
+        # paging half a million rows through the CLI.
+        bq query \
+            --project_id=~{bq_project_id} \
+            --use_legacy_sql=false \
+            --nouse_cache \
+            --format=none \
+            "EXPORT DATA OPTIONS(
+                 uri='~{map_prefix}_*.tsv',
+                 format='CSV',
+                 field_delimiter='\t',
+                 header=true,
+                 overwrite=true) AS
+             SELECT sample_name, sample_id
+             FROM \`~{bq_project_id}.~{bq_dataset_name}.~{sample_table}\`
+             WHERE withdrawn IS NULL
+               AND is_control = false
+             ORDER BY sample_id"
+
+        # EXPORT DATA requires a wildcard and shards above 1GB. A sample map is a few MB, so
+        # exactly one file is expected; more than one means the downstream reader would
+        # silently see only part of the callset, so fail rather than guess.
+        gsutil ls "~{map_prefix}_*.tsv" > exported_files.txt
+        file_count=$(wc -l < exported_files.txt)
+        if [[ "${file_count}" -ne 1 ]]
+        then
+            echo "Expected exactly one exported sample map file, found ${file_count}:" >&2
+            cat exported_files.txt >&2
+            exit 1
+        fi
+        tr -d '\n' < exported_files.txt > sample_map_path.txt
+
+        # Report the row count so a suspiciously small map is obvious in the log.
+        gsutil cat "$(cat sample_map_path.txt)" | tail -n +2 | wc -l > sample_count.txt
+        echo "Exported $(cat sample_count.txt) samples to $(cat sample_map_path.txt)"
+    >>>
+
+    runtime {
+        docker: cloud_sdk_docker
+        memory: "3 GB"
+        disks: "local-disk 50 HDD"
+        cpu: 1
+        preemptible: 0
+    }
+
+    output {
+        String sample_map_path = read_string("sample_map_path.txt")
+        Int sample_count = read_int("sample_count.txt")
     }
 }
 

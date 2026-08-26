@@ -177,41 +177,31 @@ class TestSampleSelection(unittest.TestCase):
         )
 
 
-class TestSqlEquivalence(unittest.TestCase):
-    """The SQL in bq/ must select exactly what the Python selects.
+class TestSelectionAgainstIndependentImplementation(unittest.TestCase):
+    """Check stratified_sample against a second, separately written implementation.
 
-    The recorded sample list is what makes r2 and r3 figures comparable, so reproducibility
-    is load-bearing rather than a nicety. One implementation agreeing with itself proves
-    nothing; here the SQL's window-function semantics are re-implemented independently and
-    checked against the production function.
+    A test that re-uses the function under test can only confirm it is self-consistent.
+    Writing the selection out a second time from its specification is what caught the
+    original version relying on sort stability, which made the result depend on dict
+    iteration order -- fatal for an artifact whose whole purpose is being reproducible
+    across VDSes.
     """
 
-    BQ_DIR = pathlib.Path(__file__).resolve().parents[2] / 'bq'
-
-    def bq_file(self, name):
-        path = self.BQ_DIR / name
-        if not path.exists():
-            # The Docker test run mounts only the scripts directory, so bq/ is absent there.
-            self.skipTest(f'{path} not available in this test environment')
-        return path.read_text()
-
     @staticmethod
-    def sql_semantics_selection(sample_map, depth, seed):
-        """Independent re-implementation of the SQL, not a call into the module.
+    def independent_selection(sample_map, depth, seed):
+        """Re-derived from the documented algorithm, not by calling into the module.
 
-        Mirrors:
-            ROW_NUMBER() OVER (PARTITION BY CAST(CEIL(sample_id / 4000.0) AS INT64)
-                               ORDER BY TO_HEX(SHA256(CONCAT(seed, ':', sample_name))),
-                                        sample_name)
+        Per superpartition, order by SHA-256 of "seed:sample_name" then by name, and take
+        the first `depth`.
         """
         buckets = collections.defaultdict(list)
         for name, sample_id in sample_map.items():
-            superpartition = -(-sample_id // 4000)  # CAST(CEIL(x / 4000.0) AS INT64)
+            superpartition = -(-sample_id // 4000)  # integer ceiling division
             digest = hashlib.sha256(f'{seed}:{name}'.encode('utf-8')).hexdigest()
             buckets[superpartition].append((digest, name))
         selected = {}
         for superpartition, rows in buckets.items():
-            rows.sort()  # ORDER BY hex, then name
+            rows.sort()
             selected[superpartition] = sorted(name for _, name in rows[:depth])
         return selected
 
@@ -222,11 +212,11 @@ class TestSqlEquivalence(unittest.TestCase):
             for i in range(per_superpartition)
         }
 
-    def test_python_and_sql_semantics_agree(self):
+    def test_matches_the_independent_implementation(self):
         sample_map = self.make_map()
         assigned = {n: vds.superpartition_for(i) for n, i in sample_map.items()}
         self.assertEqual(
-            self.sql_semantics_selection(sample_map, 100, vds.DEFAULT_SEED),
+            self.independent_selection(sample_map, 100, vds.DEFAULT_SEED),
             vds.stratified_sample(assigned, 100, vds.DEFAULT_SEED),
         )
 
@@ -236,7 +226,7 @@ class TestSqlEquivalence(unittest.TestCase):
         for depth in (1, 10, 200):
             for seed in (vds.DEFAULT_SEED, 'other-seed'):
                 self.assertEqual(
-                    self.sql_semantics_selection(sample_map, depth, seed),
+                    self.independent_selection(sample_map, depth, seed),
                     vds.stratified_sample(assigned, depth, seed),
                     msg=f'depth={depth} seed={seed}',
                 )
@@ -247,121 +237,72 @@ class TestSqlEquivalence(unittest.TestCase):
         sample_map.update({f'tail{i}': 8000 + i + 1 for i in range(15)})
         assigned = {n: vds.superpartition_for(i) for n, i in sample_map.items()}
         self.assertEqual(
-            self.sql_semantics_selection(sample_map, 100, vds.DEFAULT_SEED),
+            self.independent_selection(sample_map, 100, vds.DEFAULT_SEED),
             vds.stratified_sample(assigned, 100, vds.DEFAULT_SEED),
         )
 
-    def test_hex_ordering_equals_byte_ordering(self):
-        """Underpins ordering by TO_HEX rather than by the raw digest."""
-        digests = [hashlib.sha256(f'x:{i}'.encode()).digest() for i in range(400)]
-        hexes = [d.hex() for d in digests]
-        self.assertEqual(
-            sorted(range(len(digests)), key=lambda i: hexes[i]),
-            sorted(range(len(digests)), key=lambda i: digests[i]),
-        )
 
-    def test_selection_does_not_depend_on_input_order(self):
-        """The explicit name tie-break is what makes this true on both sides."""
-        sample_map = self.make_map(n_superpartitions=3, per_superpartition=200)
-        assigned = {n: vds.superpartition_for(i) for n, i in sample_map.items()}
-        shuffled = dict(reversed(list(assigned.items())))
-        self.assertEqual(
-            vds.stratified_sample(assigned, 50),
-            vds.stratified_sample(shuffled, 50),
-        )
+class TestWdlGeneratedSampleMap(unittest.TestCase):
+    """The WDL generates the sample map itself, inlining a copy of the bq/ query.
 
-    def test_sql_seed_matches_python_default(self):
-        sql = self.bq_file('vds_dropout_sample_list.sql')
-        match = re.search(r"DECLARE SEED STRING DEFAULT '([^']*)'", sql)
-        self.assertIsNotNone(match, 'SEED declaration not found')
-        self.assertEqual(vds.DEFAULT_SEED, match.group(1))
+    Two copies of a predicate is two places to get it wrong, and getting it wrong here is
+    quiet: a mismatched sample universe changes which samples are screened without
+    erroring. So the essentials are asserted against both files.
+    """
 
-    def test_sql_depth_matches_python_default(self):
-        sql = self.bq_file('vds_dropout_sample_list.sql')
-        match = re.search(r'DECLARE SAMPLES_PER_SUPERPARTITION INT64 DEFAULT (\d+)', sql)
-        self.assertIsNotNone(match, 'depth declaration not found')
-        self.assertEqual(vds.DEFAULT_SAMPLES_PER_SUPERPARTITION, int(match.group(1)))
+    WDL = (pathlib.Path(__file__).resolve().parents[2]
+           / 'wdl' / 'GvsValidateVdsCompleteness.wdl')
+    SQL = (pathlib.Path(__file__).resolve().parents[2]
+           / 'bq' / 'vds_dropout_sample_map.sql')
 
-    def test_sql_superpartition_size_matches_python_default(self):
-        sql = self.bq_file('vds_dropout_sample_list.sql')
-        self.assertIn(f'CEIL(sample_id / {vds.DEFAULT_SUPERPARTITION_SIZE}.0)', sql)
+    def read(self, path):
+        if not path.exists():
+            # The Docker test run mounts only the scripts directory.
+            self.skipTest(f'{path} not available in this test environment')
+        return path.read_text()
 
-    def test_sql_column_order_matches_the_sample_list_header(self):
-        """So the two outputs can be diffed directly.
+    def generated_query(self):
+        wdl = self.read(self.WDL)
+        return wdl.split('task GenerateSampleMap', 1)[1].split('>>>', 1)[0]
 
-        Ordering is read out of the SQL by position rather than by membership; checking
-        only that each name appears would pass regardless of the order they appear in.
-        """
-        sql = self.bq_file('vds_dropout_sample_list.sql')
-        block = sql.split('CREATE TEMP TABLE stratified_selection AS')[1].split('FROM (')[0]
-        names = ('sample_name', 'sample_id', 'superpartition')
-        for name in names:
-            self.assertIn(name, block)
-        self.assertEqual(
-            vds.SAMPLE_LIST_HEADER.split('\t'),
-            sorted(names, key=block.index),
-        )
+    def test_selects_the_columns_the_scan_expects(self):
+        self.assertIn('SELECT sample_name, sample_id', self.generated_query())
 
-    def test_both_output_paths_read_from_the_same_temp_table(self):
-        """The returning SELECT and the EXPORT must not re-derive the selection.
+    def test_applies_the_same_filter_as_the_avro_export(self):
+        """A different sample universe would silently change what gets screened."""
+        query = self.generated_query()
+        self.assertIn('withdrawn IS NULL', query)
+        self.assertIn('is_control = false', query)
 
-        Two copies of the window function would be free to drift, which is the one thing
-        this file exists to rule out.
-        """
-        sql = self.bq_file('vds_dropout_sample_list.sql')
-        self.assertEqual(1, sql.count('ROW_NUMBER() OVER'),
-                         'the selection should be defined exactly once')
-        self.assertEqual(1, sql.count('CREATE TEMP TABLE stratified_selection'))
-        export = sql.split('EXPORT DATA OPTIONS')[1]
-        self.assertIn('FROM stratified_selection', export,
-                      'the EXPORT should read the temp table, not re-derive the selection')
+    def test_wdl_and_sql_file_agree_on_the_filter(self):
+        query = self.generated_query()
+        sql = self.read(self.SQL)
+        for predicate in ('withdrawn IS NULL', 'is_control = false'):
+            self.assertIn(predicate, query, msg='WDL')
+            self.assertIn(predicate, sql, msg='bq/ SQL')
 
-    def test_export_path_is_consumable_by_the_hail_reader(self):
+    def test_exports_in_the_format_the_scan_can_read(self):
         """Tab-delimited with a header is what sniff_delimiter and import_table expect."""
-        sql = self.bq_file('vds_dropout_sample_list.sql')
-        export = sql.split('EXPORT DATA OPTIONS')[1]
-        self.assertIn("field_delimiter='\\t'", export)
-        self.assertIn('header=true', export)
-        self.assertIn('overwrite=true', export)
+        query = self.generated_query()
+        self.assertIn('field_delimiter', query)
+        self.assertIn('header=true', query)
 
     def test_export_uri_has_exactly_one_wildcard(self):
-        """EXPORT DATA requires precisely one wildcard in the uri."""
-        for name in ('vds_dropout_sample_map.sql', 'vds_dropout_sample_list.sql'):
-            sql = self.bq_file(name)
-            uris = re.findall(r"uri='([^']*)'", sql)
-            self.assertTrue(uris, msg=f'{name} has no EXPORT uri')
-            for uri in uris:
-                self.assertEqual(1, uri.count('*'), msg=f'{name}: {uri}')
+        uris = re.findall(r"uri='([^']*)'", self.generated_query())
+        self.assertEqual(1, len(uris))
+        self.assertEqual(1, uris[0].count('*'))
 
-    def test_export_path_preserves_the_diffable_ordering(self):
-        sql = self.bq_file('vds_dropout_sample_list.sql')
-        export = sql.split('EXPORT DATA OPTIONS')[1]
-        self.assertIn('ORDER BY superpartition, sample_name', export)
+    def test_fails_rather_than_guessing_on_a_multi_file_export(self):
+        """Reading one shard of a sharded export would screen part of the callset."""
+        query = self.generated_query()
+        self.assertIn('-ne 1', query)
+        self.assertIn('Expected exactly one exported sample map file', query)
 
-    def test_only_one_output_path_is_live(self):
-        """Running the file should produce one output, not two.
-
-        Both output paths read the temp table, so counting live references to it counts
-        live output paths directly.
-        """
-        sql = self.bq_file('vds_dropout_sample_list.sql')
-        live = '\n'.join(line for line in sql.splitlines()
-                         if line.strip() and not line.lstrip().startswith('--'))
-        self.assertEqual(1, live.count('FROM stratified_selection'))
-        self.assertNotIn('EXPORT DATA', live,
-                         'the EXPORT path ships commented out; the returning SELECT is default')
-
-    def test_sample_map_sql_selects_the_expected_columns(self):
-        sql = self.bq_file('vds_dropout_sample_map.sql')
-        self.assertIn('sample_name', sql)
-        self.assertIn('sample_id', sql)
-        self.assertIn('withdrawn IS NULL', sql)
-        self.assertIn('is_control = false', sql)
-
-    def test_both_sql_files_use_substitutable_placeholders(self):
-        for name in ('vds_dropout_sample_map.sql', 'vds_dropout_sample_list.sql'):
-            sql = self.bq_file(name)
-            self.assertIn('PROJECT_ID.DATASET_NAME.sample_info', sql, msg=name)
+    def test_map_generation_is_not_cached(self):
+        """sample_info changes as samples are withdrawn; a stale map would be wrong."""
+        wdl = self.read(self.WDL)
+        task = wdl.split('task GenerateSampleMap', 1)[1].split('command <<<', 1)[0]
+        self.assertIn('volatile: true', task)
 
 
 class TestSampleMapParsing(unittest.TestCase):

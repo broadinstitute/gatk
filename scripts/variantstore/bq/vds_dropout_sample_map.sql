@@ -1,8 +1,12 @@
 -- Sample name to sample ID map for VDS dropout screening (VS-1998).
 --
--- RUN THIS ONE. It is the only input to the screening process you have to generate; the
--- sample list is written for you by `vds_dropout_scan.py --action materialize`. See
--- vds_dropout_sample_list.sql, which is an optional cross-check rather than a step.
+-- YOU PROBABLY DO NOT NEED TO RUN THIS. GvsValidateVdsCompleteness.wdl generates the map
+-- itself when given bq_project_id and bq_dataset_name, and the stratified sample list is
+-- written by `--action materialize`. This file is the hand-run copy, for building a map
+-- outside the workflow or inspecting the sample universe before committing to a run. The
+-- workflow's GenerateSampleMap task inlines the same projection and filter; a unit test
+-- asserts the two agree, because a divergent sample universe changes what gets screened
+-- without erroring.
 --
 -- Produces the `--sample-map-path` input to vds_dropout_scan.py, which needs it because a
 -- VDS knows only sample names while superpartition membership is a function of sample_id.
