@@ -13,9 +13,7 @@ real data.
 
 import argparse
 import ast
-import collections
 import contextlib
-import hashlib
 import io
 import pathlib
 import re
@@ -72,174 +70,6 @@ class TestBinArithmetic(unittest.TestCase):
         for position in (1, 49_999, 50_000, 50_001, 56_585_368):
             index = vds.bin_index_for(position)
             self.assertEqual(vds.bin_start_for(position), index * 50_000 + 1)
-
-
-class TestStride(unittest.TestCase):
-
-    def test_stride_one_keeps_everything(self):
-        self.assertTrue(all(vds.stride_keeps_bin(i, 1) for i in range(20)))
-
-    def test_stride_five_keeps_one_in_five(self):
-        kept = [i for i in range(20) if vds.stride_keeps_bin(i, 5)]
-        self.assertEqual([0, 5, 10, 15], kept)
-
-    def test_dropout_wider_than_stride_always_contains_a_scanned_bin(self):
-        """The pigeonhole guarantee striding rests on."""
-        stride, bin_size = 5, 50_000
-        span_bins = (550_000 // bin_size) + 1  # the real chr19 window
-        for offset in range(stride * 2):
-            window = range(offset, offset + span_bins)
-            self.assertTrue(any(vds.stride_keeps_bin(i, stride) for i in window))
-
-    def test_invalid_stride_raises(self):
-        with self.assertRaises(ValueError):
-            vds.stride_keeps_bin(0, 0)
-
-
-class TestSampleSelection(unittest.TestCase):
-
-    def make_assignment(self, n_superpartitions=10, per_superpartition=4000):
-        assignment = {}
-        for sp in range(1, n_superpartitions + 1):
-            for i in range(per_superpartition):
-                assignment[f's{(sp - 1) * per_superpartition + i:07d}'] = sp
-        return assignment
-
-    def test_takes_requested_depth_from_each_superpartition(self):
-        chosen = vds.stratified_sample(self.make_assignment(), 100)
-        self.assertEqual(10, len(chosen))
-        for sp, names in chosen.items():
-            self.assertEqual(100, len(names), msg=f'superpartition {sp}')
-
-    def test_selection_is_deterministic(self):
-        assignment = self.make_assignment()
-        self.assertEqual(
-            vds.stratified_sample(assignment, 100),
-            vds.stratified_sample(assignment, 100),
-        )
-
-    def test_selection_is_independent_of_input_ordering(self):
-        """Reproducibility must not depend on dict iteration order."""
-        assignment = self.make_assignment()
-        reversed_assignment = dict(reversed(list(assignment.items())))
-        self.assertEqual(
-            vds.stratified_sample(assignment, 100),
-            vds.stratified_sample(reversed_assignment, 100),
-        )
-
-    def test_different_seeds_select_differently(self):
-        assignment = self.make_assignment()
-        a = vds.stratified_sample(assignment, 100, seed='seed-a')
-        b = vds.stratified_sample(assignment, 100, seed='seed-b')
-        self.assertNotEqual(a, b)
-
-    def test_selection_is_stable_when_unrelated_samples_are_added(self):
-        """Adding a superpartition must not perturb the others' selections.
-
-        This is what lets a later callset be screened on the same samples as an earlier
-        one for the superpartitions they share.
-        """
-        base = self.make_assignment(n_superpartitions=5)
-        extended = dict(base)
-        for i in range(4000):
-            extended[f'new{i:07d}'] = 6
-
-        chosen_base = vds.stratified_sample(base, 100)
-        chosen_extended = vds.stratified_sample(extended, 100)
-        for sp in range(1, 6):
-            self.assertEqual(chosen_base[sp], chosen_extended[sp], msg=f'superpartition {sp}')
-
-    def test_short_superpartition_contributes_everything(self):
-        """The final superpartition of a callset holds fewer than 4000 samples."""
-        assignment = self.make_assignment(n_superpartitions=2)
-        assignment.update({f'tail{i}': 3 for i in range(20)})
-        chosen = vds.stratified_sample(assignment, 100)
-        self.assertEqual(20, len(chosen[3]))
-
-    def test_depth_exceeding_every_superpartition_keeps_all(self):
-        assignment = self.make_assignment(n_superpartitions=3, per_superpartition=10)
-        chosen = vds.stratified_sample(assignment, 100)
-        self.assertEqual({1: 10, 2: 10, 3: 10}, {k: len(v) for k, v in chosen.items()})
-
-    def test_invalid_depth_raises(self):
-        with self.assertRaises(ValueError):
-            vds.stratified_sample({'a': 1}, 0)
-
-    def test_sort_key_is_stable_across_processes(self):
-        """Hard-coded because a salted hash would break cross-run reproducibility."""
-        self.assertEqual(
-            vds.sample_sort_key('1234567', seed='vs-1998'),
-            vds.sample_sort_key('1234567', seed='vs-1998'),
-        )
-        self.assertNotEqual(
-            vds.sample_sort_key('1234567', seed='vs-1998'),
-            vds.sample_sort_key('1234567', seed='other'),
-        )
-
-
-class TestSelectionAgainstIndependentImplementation(unittest.TestCase):
-    """Check stratified_sample against a second, separately written implementation.
-
-    A test that re-uses the function under test can only confirm it is self-consistent.
-    Writing the selection out a second time from its specification is what caught the
-    original version relying on sort stability, which made the result depend on dict
-    iteration order -- fatal for an artifact whose whole purpose is being reproducible
-    across VDSes.
-    """
-
-    @staticmethod
-    def independent_selection(sample_map, depth, seed):
-        """Re-derived from the documented algorithm, not by calling into the module.
-
-        Per superpartition, order by SHA-256 of "seed:sample_name" then by name, and take
-        the first `depth`.
-        """
-        buckets = collections.defaultdict(list)
-        for name, sample_id in sample_map.items():
-            superpartition = -(-sample_id // 4000)  # integer ceiling division
-            digest = hashlib.sha256(f'{seed}:{name}'.encode('utf-8')).hexdigest()
-            buckets[superpartition].append((digest, name))
-        selected = {}
-        for superpartition, rows in buckets.items():
-            rows.sort()
-            selected[superpartition] = sorted(name for _, name in rows[:depth])
-        return selected
-
-    def make_map(self, n_superpartitions=6, per_superpartition=500):
-        return {
-            f'{(sp - 1) * per_superpartition + i:07d}': (sp - 1) * 4000 + i + 1
-            for sp in range(1, n_superpartitions + 1)
-            for i in range(per_superpartition)
-        }
-
-    def test_matches_the_independent_implementation(self):
-        sample_map = self.make_map()
-        assigned = {n: vds.superpartition_for(i) for n, i in sample_map.items()}
-        self.assertEqual(
-            self.independent_selection(sample_map, 100, vds.DEFAULT_SEED),
-            vds.stratified_sample(assigned, 100, vds.DEFAULT_SEED),
-        )
-
-    def test_agreement_holds_at_other_depths_and_seeds(self):
-        sample_map = self.make_map(n_superpartitions=4, per_superpartition=300)
-        assigned = {n: vds.superpartition_for(i) for n, i in sample_map.items()}
-        for depth in (1, 10, 200):
-            for seed in (vds.DEFAULT_SEED, 'other-seed'):
-                self.assertEqual(
-                    self.independent_selection(sample_map, depth, seed),
-                    vds.stratified_sample(assigned, depth, seed),
-                    msg=f'depth={depth} seed={seed}',
-                )
-
-    def test_agreement_holds_for_short_superpartitions(self):
-        """The last superpartition of a callset holds fewer than the sampling depth."""
-        sample_map = self.make_map(n_superpartitions=2, per_superpartition=400)
-        sample_map.update({f'tail{i}': 8000 + i + 1 for i in range(15)})
-        assigned = {n: vds.superpartition_for(i) for n, i in sample_map.items()}
-        self.assertEqual(
-            self.independent_selection(sample_map, 100, vds.DEFAULT_SEED),
-            vds.stratified_sample(assigned, 100, vds.DEFAULT_SEED),
-        )
 
 
 class TestWdlGeneratedSampleMap(unittest.TestCase):
@@ -334,18 +164,28 @@ class TestSampleMapParsing(unittest.TestCase):
             vds.parse_sample_map(io.StringIO('sample_name\tsample_id\nx\tnotanumber\n'))
 
 
-class TestSuperpartitionAssignment(unittest.TestCase):
+class TestMapCoverageIsEnforced(unittest.TestCase):
+    """A VDS sample absent from the map must abort the scan, not be skipped.
 
-    def test_restricts_to_present_samples(self):
-        sample_map = {'a': 1, 'b': 4001, 'c': 8001}
-        assigned = vds.assign_superpartitions(sample_map, ['a', 'b'])
-        self.assertEqual({'a': 1, 'b': 2}, assigned)
+    Screening part of a superpartition biases every peer comparison the detector makes, and
+    silently: the numbers still look plausible. The check itself now runs inside Hail, over
+    the annotated column table, so it is guarded here at the source level rather than by
+    calling it.
+    """
 
-    def test_sample_missing_from_map_raises(self):
-        """Silently dropping it would bias every superpartition total."""
-        with self.assertRaises(ValueError) as ctx:
-            vds.assign_superpartitions({'a': 1}, ['a', 'ghost'])
-        self.assertIn('ghost', str(ctx.exception))
+    SOURCE = pathlib.Path(__file__).resolve().parents[1] / 'vds_dropout_scan.py'
+
+    def test_unmatched_columns_raise(self):
+        body = self.SOURCE.read_text().split('def _screening_matrix', 1)[1]
+        body = body.split('\ndef ', 1)[0]
+        self.assertIn('if n_unmatched:', body)
+        self.assertIn('raise ValueError', body)
+
+    def test_the_reason_is_stated_where_it_is_enforced(self):
+        body = self.SOURCE.read_text().split('def _screening_matrix', 1)[1]
+        body = body.split('\ndef ', 1)[0]
+        self.assertIn('bias', body)
+        self.assertIn('silently', body)
 
 
 class TestContigParsing(unittest.TestCase):
@@ -377,29 +217,6 @@ class TestClusterRunnerCompatibility(unittest.TestCase):
     That rules out `store_true` flags, which would receive an argument they cannot take,
     and `action='append'` used alone, since the JSON holds one value per key.
     """
-
-    def test_boolean_flags_accept_explicit_values(self):
-        for text in ('true', 'True', 'TRUE', 't', 'yes', '1'):
-            self.assertTrue(vds.parse_bool(text), msg=text)
-        for text in ('false', 'False', 'f', 'no', '0'):
-            self.assertFalse(vds.parse_bool(text), msg=text)
-
-    def test_boolean_passthrough(self):
-        self.assertTrue(vds.parse_bool(True))
-        self.assertFalse(vds.parse_bool(False))
-
-    def test_bad_boolean_raises(self):
-        with self.assertRaises(ValueError):
-            vds.parse_bool('maybe')
-
-    def test_overwrite_parses_from_a_value(self):
-        parser = vds.build_parser()
-        args = parser.parse_args([
-            '--action', 'materialize', '--vds-path', 'gs://x', '--output-path', 'gs://o',
-            '--superpartitions-path', 'sp.tsv', '--sample-list-path', 's.tsv',
-            '--sample-map-path', 'm.tsv', '--overwrite', 'true',
-        ])
-        self.assertIs(True, args.overwrite)
 
     def test_no_store_true_flags_remain(self):
         parser = vds.build_parser()
@@ -471,11 +288,6 @@ class TestOutputFormatting(unittest.TestCase):
         chosen = {83: ['a', 'b'], 1: ['c']}
         self.assertEqual(['1\t1', '83\t2'], vds.format_superpartition_rows(chosen))
 
-    def test_sample_list_round_trips(self):
-        chosen = {83: ['5545879'], 64: ['3074794']}
-        sample_map = {'5545879': 328_001, '3074794': 252_001}
-        rows = vds.format_sample_list_rows(chosen, sample_map)
-        self.assertEqual(['3074794\t252001\t64', '5545879\t328001\t83'], rows)
 
 
 class TestProbeExtrapolation(unittest.TestCase):
@@ -560,10 +372,10 @@ class TestProbeExtrapolation(unittest.TestCase):
         report = vds.format_probe_report(600.0, 10_000_000, 1_340, 200, n_partitions=411)
         self.assertIn('Do not scale by base pairs', report)
 
-    def test_report_states_what_the_estimate_excludes(self):
+    def test_report_states_what_the_estimate_covers(self):
         report = vds.format_probe_report(60.0, 10_000_000, 1_340, 200, n_partitions=10)
-        self.assertIn('not writing', report)
-        self.assertIn('floor for the materialize pass', report)
+        self.assertIn('reading and aggregating', report)
+        self.assertIn('output cost is negligible', report)
 
     def test_report_without_partition_count_omits_the_model(self):
         report = vds.format_probe_report(60.0, 10_000_000, 1_340, 200)
@@ -572,6 +384,11 @@ class TestProbeExtrapolation(unittest.TestCase):
 
 class TestIntervalReadSemantics(unittest.TestCase):
     """read_vds(intervals=...) repartitions; it does not filter.
+
+    Also the reason locus sampling was dropped entirely: with the reader pruning to native
+    partitions, a genome-wide variant scan is under an hour and a reference scan a couple
+    of hours, so there is nothing worth buying by reading only part of the genome -- and
+    the first question this tool exists to answer is exhaustive by nature.
 
     N intervals yield exactly N partitions. A single 10 Mb interval therefore collapsed
     ~380 native partitions of a 119,189-partition VDS into one, and one task streamed all
@@ -625,56 +442,6 @@ class TestIntervalReadSemantics(unittest.TestCase):
         self.assertIn('native partitioning', doc)
 
 
-class TestStriding(unittest.TestCase):
-    """Striding must reach read_vds as intervals.
-
-    Expressed as a row predicate on the bin index, Hail cannot use the row index and
-    streams every byte of every partition it opens, so the scan costs the same as reading
-    everything and merely reports less.
-    """
-
-    def test_stride_one_returns_intervals_unchanged(self):
-        given = ['chr4:56000000-58000000']
-        self.assertEqual(given, vds.apply_stride(given, 50_000, 1))
-
-    def test_stride_expands_into_one_interval_per_retained_bin(self):
-        out = vds.strided_intervals('chr20', 1, 500_001, 50_000, 5)
-        self.assertEqual(['chr20:1-50001', 'chr20:250001-300001'], out)
-
-    def test_strided_intervals_are_clipped_to_the_request(self):
-        out = vds.strided_intervals('chr4', 60_000, 160_000, 50_000, 1)
-        self.assertEqual(
-            ['chr4:60000-100001', 'chr4:100001-150001', 'chr4:150001-160000'], out)
-
-    def test_stride_covers_any_window_wider_than_the_stride(self):
-        """The pigeonhole guarantee, now over real intervals."""
-        for offset in range(0, 500_000, 50_000):
-            out = vds.strided_intervals('chr1', 1 + offset, 1 + offset + 550_000,
-                                        50_000, 5)
-            self.assertTrue(out, msg=f'offset {offset}')
-
-    def test_apply_stride_over_multiple_intervals(self):
-        out = vds.apply_stride(['chr1:1-200001', 'chr2:1-200001'], 100_000, 2)
-        self.assertEqual(['chr1:1-100001', 'chr2:1-100001'], out)
-
-    def test_apply_stride_tolerates_thousands_separators(self):
-        self.assertEqual(['chr1:1-100001'],
-                         vds.apply_stride(['chr1:1-100,001'], 100_000, 2))
-
-    def test_striding_a_whole_contig_is_rejected(self):
-        """Unbounded intervals cannot be strided, and failing beats silently ignoring it."""
-        with self.assertRaises(ValueError) as ctx:
-            vds.apply_stride(['chr20'], 50_000, 5)
-        self.assertIn('whole contig', str(ctx.exception))
-
-    def test_invalid_stride_raises(self):
-        with self.assertRaises(ValueError):
-            vds.strided_intervals('chr1', 1, 1000, 50_000, 0)
-
-    def test_min_healthy_partitions_is_sane(self):
-        self.assertGreater(vds.MIN_HEALTHY_PARTITIONS, 1)
-
-
 class TestArgumentValidation(unittest.TestCase):
     """Catch misconfiguration before it books a cluster."""
 
@@ -697,53 +464,24 @@ class TestArgumentValidation(unittest.TestCase):
                 self.parse(*argv)
         return captured.getvalue()
 
-    def test_materialize_requires_outputs(self):
-        self.assert_rejected('--action', 'materialize', '--vds-path', 'gs://x',
-                             '--sample-map-path', 'm.tsv')
-
-    def test_materialize_accepts_full_argument_set(self):
-        args = self.parse(
-            '--action', 'materialize', '--vds-path', 'gs://in.vds',
-            '--sample-map-path', 'm.tsv', '--output-path', 'gs://out.vds',
-            '--superpartitions-path', 'sp.tsv', '--sample-list-path', 'samples.tsv',
-        )
-        self.assertEqual('materialize', args.action)
-        self.assertEqual(vds.DEFAULT_SAMPLES_PER_SUPERPARTITION,
-                         args.samples_per_superpartition)
-
-    def test_materialize_requires_sample_map_not_just_list(self):
-        self.assert_rejected('--action', 'materialize', '--vds-path', 'gs://x',
-                             '--output-path', 'gs://o', '--superpartitions-path', 'sp.tsv',
-                             '--sample-list-path', 'samples.tsv')
-
-    def test_scan_requires_a_sample_source(self):
+    def test_scan_requires_a_sample_map(self):
+        """Superpartition membership is a function of sample_id, which a VDS lacks."""
         self.assert_rejected('--action', 'scan', '--vds-path', 'gs://x',
                              '--summary-path', 's.tsv', '--superpartitions-path', 'sp.tsv')
 
-    def test_scan_accepts_recorded_sample_list(self):
-        args = self.parse('--action', 'scan', '--vds-path', 'gs://x',
-                          '--summary-path', 's.tsv', '--superpartitions-path', 'sp.tsv',
-                          '--sample-list-path', 'samples.tsv')
-        self.assertEqual('samples.tsv', args.sample_list_path)
-
     def test_full_depth_requires_output(self):
         self.assert_rejected('--action', 'full-depth', '--vds-path', 'gs://x',
-                             '--sample-list-path', 'samples.tsv')
-
-    def test_bad_stride_rejected(self):
-        message = self.assert_rejected('--action', 'probe', '--vds-path', 'gs://x',
-                                       '--sample-list-path', 's.tsv', '--stride', '0')
-        self.assertIn('--stride must be at least 1', message)
+                             '--sample-map-path', 'm.tsv')
 
     def test_bad_bin_size_rejected(self):
         message = self.assert_rejected('--action', 'probe', '--vds-path', 'gs://x',
-                                       '--sample-list-path', 's.tsv', '--bin-size', '0')
+                                       '--sample-map-path', 'm.tsv', '--bin-size', '0')
         self.assertIn('--bin-size must be at least 1', message)
 
     def test_intervals_are_repeatable(self):
         args = self.parse('--action', 'scan', '--vds-path', 'gs://x',
                           '--summary-path', 's.tsv', '--superpartitions-path', 'sp.tsv',
-                          '--sample-list-path', 'samples.tsv',
+                          '--sample-map-path', 'm.tsv',
                           '--intervals', 'chr4:56000000-58000000',
                           '--intervals', 'chr19:39000000-41000000')
         self.assertEqual(2, len(args.intervals))

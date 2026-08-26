@@ -7,28 +7,25 @@ version 1.0
 # means each numbered output file holds a contiguous location range for exactly one
 # superpartition.
 #
-# The work is split into actions rather than run end to end, because the cost is very unevenly
-# distributed. `materialize` pays one full-width read of the callset to write a downsampled
-# narrow copy, and is the single large bill. Every other action runs against that narrow copy
-# for a small fraction of the cost, so calibration and threshold tuning are cheap and
-# repeatable. Run one action per invocation.
+# Every sample is screened. There is no sampling, of samples or of loci: measured on Foxtrot
+# r2 (535,662 samples, 119,189 variant_data partitions), a genome-wide variant scan runs in
+# about an hour and a reference scan in a couple of hours at full autoscaling width, which
+# leaves nothing worth buying by screening a subset. An earlier design materialized a
+# downsampled copy first; that only made sense while a full-width pass was assumed expensive.
 #
-# Typical sequence for a callset:
-#   0. nothing, if bq_project_id and bq_dataset_name are supplied: the sample map is
-#      generated automatically. Pass sample_map_path instead to supply one yourself, or
-#      see scripts/variantstore/bq/vds_dropout_sample_map.sql to build it by hand.
-#   1. action = "probe"        on the SOURCE VDS      -> sizes the materialize pass
-#   2. action = "materialize"  on the source VDS      -> narrow copy + sample list
-#      Steps 1 and 2 take sample_map_path; steps 3 and 4 take the sample_list_path that
-#      step 2 wrote, so that every later run screens exactly the same samples.
-#   3. action = "scan"         on the narrow copy     -> summary + candidate rectangles + SQL
-#   4. action = "full-depth"   on the source VDS      -> per-sample detail for flagged windows
+# Run one action per invocation. Typical sequence for a callset:
+#   1. action = "scan", mode = "variants"    -> summary, candidate rectangles, adjudication SQL
+#   2. action = "scan", mode = "references"  -> the same for reference coverage
+#   3. action = "full-depth"                 -> per-sample detail for whatever step 1 or 2 flagged
 #
-# Note step 1: probing measures whatever VDS it is given, so pointing it at the source
-# full-width VDS is what estimates the one expensive pass, and it is worth doing before
-# materializing rather than after. Probing the narrow copy afterwards only estimates the
-# already-cheap screening cost. The estimate covers reading and aggregating but not
-# writing, so treat it as a floor for materialize.
+# `action = "probe"` is optional, for sizing an unfamiliar callset before committing to a full
+# scan. Give it a bounded interval wide enough to span many partitions: a partition is the unit
+# of work, so an interval resolving to a handful of them measures near-serial throughput and
+# takes about as long as a fully parallel genome-wide scan.
+#
+# The sample map is generated automatically when bq_project_id and bq_dataset_name are supplied.
+# Pass sample_map_path to supply one yourself, or see
+# scripts/variantstore/bq/vds_dropout_sample_map.sql to build it by hand.
 #
 # The BigQuery adjudication SQL that `scan` emits is deliberately not executed here. The screen
 # produces candidates; running the queries against the callset dataset is a separate, deliberate
@@ -50,17 +47,12 @@ workflow GvsValidateVdsCompleteness {
         String mode = "variants"
 
         String? sample_map_path
-        String? sample_list_path
-        String? narrow_vds_path
-        # Supply these and the sample map is generated for you; the query is a two-line
-        # projection of sample_info, so there is little reason to run it by hand.
+        # Supply bq_project_id and bq_dataset_name and the sample map is generated for you;
+        # the query is a two-line projection of sample_info.
         String bq_sample_table = "sample_info"
 
-        Int samples_per_superpartition = 100
-        String random_seed = "vs-1998"
         Int superpartition_size = 4000
         Int bin_size = 50000
-        Int stride = 1
 
         String? contigs
         String? intervals
@@ -68,7 +60,6 @@ workflow GvsValidateVdsCompleteness {
         # Fully callable 10 Mb window on chr20, clear of the centromere gap
         # (chr20:26,386,232-30,088,349), the telomere, and the smaller gaps near 31 Mb.
         String probe_interval = "chr20:37000000-47000000"
-        Boolean overwrite = false
 
         # Detection thresholds. Cheap to revisit: the detector runs against the small summary
         # table, so re-judging an existing scan costs nothing.
@@ -131,13 +122,13 @@ workflow GvsValidateVdsCompleteness {
 
     parameter_meta {
         action: {
-            help: "One of materialize, scan, probe, full-depth. See the header comment for the usual sequence."
+            help: "One of scan, probe, full-depth. See the header comment for the usual sequence."
         }
         vds_path: {
-            help: "VDS to read. The source VDS for materialize and full-depth; normally the narrow copy for scan and probe."
+            help: "VDS to read."
         }
         output_prefix: {
-            help: "GCS prefix under which outputs are written (narrow VDS, sample list, summary, report, SQL)."
+            help: "GCS prefix under which outputs are written (sample map, summary, report, adjudication SQL, logs)."
         }
         mode: {
             help: "variants counts variant_data entries; references sums reference-block coverage."
@@ -147,21 +138,6 @@ workflow GvsValidateVdsCompleteness {
         }
         bq_sample_table: {
             help: "Sample table or view the generated map reads from. Defaults to sample_info; use a view such as sample_info_new_to_foxtrot to restrict the sample universe."
-        }
-        sample_list_path: {
-            help: "Chosen-sample TSV written by materialize. Preferred by later actions so every VDS is screened on exactly the same samples, which is what makes figures comparable across classic, r2 and r3."
-        }
-        narrow_vds_path: {
-            help: "Destination for the narrow copy when action is materialize. Defaults to <output_prefix>/narrow.vds."
-        }
-        samples_per_superpartition: {
-            help: "Stratified sampling depth. 100 retains essentially all detection power for shard-scale dropouts at a fortieth of the columns; it cannot see dropouts affecting only a handful of individual samples."
-        }
-        random_seed: {
-            help: "Seed for sample selection. Keep fixed across VDSes or cross-VDS comparisons become meaningless."
-        }
-        stride: {
-            help: "Read one genomic bin in every N. Default 1 reads everything. Larger values cost roughly 1/N and guarantee detection of any dropout wider than stride * bin_size, but say nothing about unscanned bins."
         }
         intervals: {
             help: "Comma-separated Hail locus intervals. Overrides contigs. Required for full-depth."
@@ -173,7 +149,7 @@ workflow GvsValidateVdsCompleteness {
             help: "Comma-separated zones to try in order, or auto for every zone in the region. A stockout is a per-zone condition, so a create that fails for capacity is retried in the next zone rather than failing the workflow."
         }
         num_local_ssds: {
-            help: "Local SSDs per master and worker. Defaults to 0 because this screen does not shuffle; raising it narrows the zones able to serve the request."
+            help: "Local SSDs per master and worker. Kept at 1 to match the other GVS Hail workflows; lowering it widens the zones able to serve a request, at the cost of diverging from a known-good configuration."
         }
         probe_interval: {
             help: "Interval used when action is probe. Defaults to a fully callable 10 Mb window on chr20; pick a gap-free interval, since one overlapping a centromere reads faster than average and skews the extrapolation."
@@ -207,10 +183,10 @@ workflow GvsValidateVdsCompleteness {
         }
     }
 
-    if (action != "materialize" && action != "scan" && action != "probe" && action != "full-depth") {
+    if (action != "scan" && action != "probe" && action != "full-depth") {
         call Utils.TerminateWorkflow as UnrecognizedAction {
             input:
-                message = "`action` must be one of materialize, scan, probe, full-depth; got '" + action + "'.",
+                message = "`action` must be one of scan, probe, full-depth; got '" + action + "'.",
                 basic_docker = effective_basic_docker,
         }
     }
@@ -231,24 +207,14 @@ workflow GvsValidateVdsCompleteness {
         }
     }
 
-    # A sample map can be supplied directly, or generated from BigQuery. materialize is the
-    # only action that derives the sample selection from scratch; every other action should
-    # reuse the recorded list so results stay comparable between VDSes.
+    # Every action needs the sample map: superpartition membership is a function of
+    # sample_id, which a VDS does not carry.
     Boolean can_generate_sample_map = defined(bq_project_id) && defined(bq_dataset_name)
 
-    if (action == "materialize" && !defined(sample_map_path) && !can_generate_sample_map) {
-        call Utils.TerminateWorkflow as MaterializeNeedsSampleMap {
+    if (!defined(sample_map_path) && !can_generate_sample_map) {
+        call Utils.TerminateWorkflow as NeedsSampleMap {
             input:
-                message = "action materialize needs `sample_map_path`, or `bq_project_id` and `bq_dataset_name` so the map can be generated.",
-                basic_docker = effective_basic_docker,
-        }
-    }
-
-    if (action != "materialize" && !defined(sample_map_path) && !defined(sample_list_path) &&
-        !can_generate_sample_map) {
-        call Utils.TerminateWorkflow as ScanNeedsSamples {
-            input:
-                message = "action '" + action + "' needs `sample_list_path` (preferred), or `sample_map_path`, or `bq_project_id` and `bq_dataset_name` so the map can be generated.",
+                message = "Provide `sample_map_path`, or `bq_project_id` and `bq_dataset_name` so the map can be generated from sample_info.",
                 basic_docker = effective_basic_docker,
         }
     }
@@ -294,8 +260,7 @@ workflow GvsValidateVdsCompleteness {
              then "compressed" else "uncompressed")
         else "compressed"
 
-    # A recorded sample list supersedes the map, so only generate one when neither exists.
-    if (!defined(sample_map_path) && !defined(sample_list_path) && can_generate_sample_map) {
+    if (!defined(sample_map_path) && can_generate_sample_map) {
         call GenerateSampleMap {
             input:
                 bq_project_id = select_first([bq_project_id]),
@@ -324,18 +289,12 @@ workflow GvsValidateVdsCompleteness {
             output_prefix = output_prefix,
             mode = mode,
             sample_map_path = effective_sample_map_path,
-            sample_list_path = sample_list_path,
-            narrow_vds_path = narrow_vds_path,
-            samples_per_superpartition = samples_per_superpartition,
-            random_seed = random_seed,
             superpartition_size = superpartition_size,
             bin_size = bin_size,
-            stride = stride,
             contigs = contigs,
             intervals = intervals,
             target_superpartitions = target_superpartitions,
             probe_interval = probe_interval,
-            overwrite = overwrite,
             ratio_threshold = ratio_threshold,
             score_threshold = score_threshold,
             min_expected = min_expected,
@@ -477,20 +436,14 @@ task ScanVdsForDropouts {
         String mode
 
         String? sample_map_path
-        String? sample_list_path
-        String? narrow_vds_path
 
-        Int samples_per_superpartition
-        String random_seed
         Int superpartition_size
         Int bin_size
-        Int stride
 
         String? contigs
         String? intervals
         String? target_superpartitions
         String probe_interval
-        Boolean overwrite
 
         Float? ratio_threshold
         Float? score_threshold
@@ -529,10 +482,8 @@ task ScanVdsForDropouts {
         volatile: true
     }
 
-    String effective_narrow_vds_path = select_first([narrow_vds_path, output_prefix + "/narrow.vds"])
     String summary_path = output_prefix + "/summary_" + mode + ".tsv"
     String superpartitions_path = output_prefix + "/superpartitions_" + mode + ".tsv"
-    String effective_sample_list_path = select_first([sample_list_path, output_prefix + "/sample_list.tsv"])
     String full_depth_path = output_prefix + "/full_depth_" + mode + ".tsv"
 
     command <<<
@@ -590,11 +541,8 @@ task ScanVdsForDropouts {
             "action": action,
             "vds-path": "~{vds_path}",
             "mode": "~{mode}",
-            "samples-per-superpartition": ~{samples_per_superpartition},
-            "random-seed": "~{random_seed}",
             "superpartition-size": ~{superpartition_size},
             "bin-size": ~{bin_size},
-            "stride": ~{stride},
             "probe-interval": "~{probe_interval}",
             # Only used to annotate the probe report with the concurrency a full run could
             # reach; without them the report can report throughput but not project from it.
@@ -603,22 +551,14 @@ task ScanVdsForDropouts {
             "temp-path": sys.argv[1],
         }
 
-        if action == "materialize":
-            arguments["output-path"] = "~{effective_narrow_vds_path}"
-            arguments["sample-list-path"] = "~{effective_sample_list_path}"
-            arguments["superpartitions-path"] = "~{superpartitions_path}"
-            arguments["overwrite"] = "~{true='true' false='false' overwrite}"
-        elif action == "scan":
+        if action == "scan":
             arguments["summary-path"] = "~{summary_path}"
             arguments["superpartitions-path"] = "~{superpartitions_path}"
         elif action == "full-depth":
             arguments["full-depth-path"] = "~{full_depth_path}"
 
-        # A recorded sample list is preferred wherever one exists, so that every VDS is
-        # screened on identical samples; the raw map is the fallback for materialize.
         for key, value in [
             ("sample-map-path", "~{default='' sample_map_path}"),
-            ("sample-list-path", "~{default='' sample_list_path}"),
             ("contigs", "~{default='' contigs}"),
             ("intervals", "~{default='' intervals}"),
             ("target-superpartitions", "~{default='' target_superpartitions}"),

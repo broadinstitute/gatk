@@ -31,9 +31,9 @@ Superpartition TSV (``--superpartitions``)::
     superpartition  n_samples
     83              100
 
-``n_samples`` is the number of *sampled* samples that superpartition contributes, which
-is not always the downsampling depth -- the final superpartition of a callset may hold
-fewer than 4000 samples, and a stratified draw of depth k takes ``min(k, size)``.
+``n_samples`` is how many samples that superpartition contributes. Usually 4000, but the
+final superpartition of a callset holds fewer, and withdrawals thin the others -- so cells
+are converted to per-sample rates before anything is compared.
 
 Method
 ------
@@ -680,9 +680,8 @@ def adjudication_sql(
     proof rather than inference.  The tables are clustered by location, so restricting to
     the window keeps each check to a trivial scan.
 
-    The counts returned cover the whole superpartition, while the VDS-side figures in the
-    comment header cover only the downsampled subset -- so compare the presence and
-    order of magnitude of data, not the raw totals.
+    Both sides now cover the whole superpartition, so the counts are directly comparable
+    rather than merely indicative.
     """
     if mode not in MODES:
         raise ValueError(f"mode must be one of {MODES}, got {mode!r}")
@@ -698,7 +697,7 @@ def adjudication_sql(
     header = (
         f"-- Candidate dropout: {rectangle.contig}:{rectangle.start:,}-{rectangle.end:,} "
         f"superpartition {rectangle.superpartition}\n"
-        f"-- VDS (downsampled to {rectangle.n_samples} samples): observed "
+        f"-- VDS ({rectangle.n_samples:,} samples): observed "
         f"{rectangle.observed:,.0f} vs expected {rectangle.expected:,.0f} "
         f"(ratio {rectangle.ratio:.4f}, score {rectangle.score:,.1f})\n"
         f"-- Expect a non-trivial row count below if the data exists in BigQuery.\n"

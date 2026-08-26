@@ -1,8 +1,8 @@
 -- Sample name to sample ID map for VDS dropout screening (VS-1998).
 --
 -- YOU PROBABLY DO NOT NEED TO RUN THIS. GvsValidateVdsCompleteness.wdl generates the map
--- itself when given bq_project_id and bq_dataset_name, and the stratified sample list is
--- written by `--action materialize`. This file is the hand-run copy, for building a map
+-- itself when given bq_project_id and bq_dataset_name. This file is the hand-run copy, for
+-- building a map
 -- outside the workflow or inspecting the sample universe before committing to a run. The
 -- workflow's GenerateSampleMap task inlines the same projection and filter; a unit test
 -- asserts the two agree, because a divergent sample universe changes what gets screened

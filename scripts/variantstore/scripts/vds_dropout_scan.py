@@ -15,39 +15,27 @@ without Hail or a real VDS.
 
 Actions
 -------
-``--action materialize``
-    Read the source VDS, keep a stratified sample of columns, and write a narrow copy.
-    Costs one full-width read of the callset, which is unavoidable -- picking 100 of
-    535K samples still requires looking at all of them -- and is the single large bill.
-    Everything afterwards runs against the narrow copy at a small fraction of the cost.
-    Also writes the chosen sample list and the superpartition table, so later runs and
-    other VDSes can be screened against exactly the same samples.
-
 ``--action scan``
     Aggregate a VDS into per-(bin, superpartition) totals and write the summary and
-    superpartition TSVs that `vds_dropout_detect.py` consumes.  Normally pointed at a
-    narrow copy, but works on any VDS.
+    superpartition TSVs that `vds_dropout_detect.py` consumes.  Reads every partition
+    overlapping the requested contigs or intervals; there is no sampling of loci, so the
+    result supports an exhaustive claim about what is and is not missing.
 
 ``--action probe``
-    Run ``scan`` over a single small interval and report measured throughput plus a
-    genome-wide extrapolation.  Cheap way to size the real runs before committing to
-    them, and to check the Hail log for shuffle stages before paying for a big one.
+    Run ``scan`` over a bounded interval and report measured throughput plus a genome-wide
+    projection.  Useful for sizing a new callset.
 
-    Which VDS this is pointed at decides which question it answers, and the more valuable
-    use is the less obvious one:
-
-    * Against the **source, full-width VDS** it measures full-width read throughput, which
-      is what ``materialize`` costs.  That is the project's one large bill, so this is the
-      run worth doing *first* -- before materializing, not after.
-    * Against the **narrow copy** it estimates ongoing screening cost, which is small.
-
-    Either way the estimate covers reading and aggregating, not writing, so it is a floor
-    for ``materialize`` rather than a full prediction of it.
+    A partition is the unit of work -- one task streams one partition end to end -- so the
+    interval must span enough partitions to exercise the cluster.  An interval narrow
+    enough to resolve to a handful of partitions measures near-serial throughput and takes
+    roughly as long as a fully parallel scan of the whole genome, which is the opposite of
+    a cheap preview.  The report says so when it happens.
 
 ``--action full-depth``
-    For named intervals and superpartitions, count per-sample data at full width and
-    report how many samples carry nothing.  Meant for the handful of windows the screen
-    flags, not for the genome.  Point this at the *source* VDS, not the narrow copy.
+    For named intervals and superpartitions, count per-sample data and report how many
+    samples carry nothing.  Meant for the handful of windows the screen flags, not for the
+    genome: the screen aggregates to (bin, superpartition), so this is what turns a flagged
+    rectangle into a per-sample tally.
 
 Metrics
 -------
@@ -69,22 +57,29 @@ Metrics
     the Avro rows, and `update_reference_data_ploidy` only annotates `GT` on entries that
     already exist.
 
-Sample map and sample list
---------------------------
+Every sample is screened
+------------------------
+There is no sampling, of samples or of loci.  An earlier design screened a stratified
+subset of ~100 samples per superpartition, on the premise that a full-width pass was
+expensive enough to need amortizing over a downsampled copy.  Measurement retired that
+premise: with the reader pruning to native partitions, a genome-wide variant scan of a
+535K-sample VDS runs in about an hour and a reference scan in a couple of hours.  Screening
+everything is therefore simpler, strictly more sensitive -- a sampled screen cannot see a
+handful of individually lost samples -- and needs none of the machinery that made sampling
+safe to compare across VDSes.
+
+Sample map
+----------
 Superpartition membership comes from a TSV of sample name to sample ID, since a VDS knows
 only names.  ``GvsValidateVdsCompleteness.wdl`` generates that map itself when given a
 BigQuery project and dataset; ``scripts/variantstore/bq/vds_dropout_sample_map.sql`` is
 the hand-run copy, for building one outside the workflow.  Either tab- or comma-separated
 input is accepted, so ``bq query --format=csv`` output works as-is.
 
-``--action materialize`` writes the ``--sample-list-path`` file as a side effect, recording
-which samples the stratified draw chose.  Later actions should be pointed at that file
-rather than at the map, so every VDS is screened on identical samples -- which is what
-makes figures comparable between r2 and r3.
-
-Samples in the map but absent from the VDS are ignored, so a map generated after a
-withdrawal is still usable.  A VDS sample *missing* from the map is a hard error instead,
-because silently excluding it would bias the superpartition totals.
+The map must cover every sample in the VDS.  A VDS sample missing from it is a hard error
+rather than a skip, because screening part of a superpartition biases the peer comparison
+the detector relies on, and would do so silently.  Samples in the map but absent from the
+VDS are ignored, so a map generated after a withdrawal is still usable.
 """
 
 from __future__ import annotations
@@ -92,7 +87,6 @@ from __future__ import annotations
 import argparse
 import contextlib
 import datetime
-import hashlib
 import sys
 import time
 from collections import defaultdict
@@ -106,12 +100,9 @@ except ModuleNotFoundError:  # pragma: no cover - exercised only off-cluster
 
 DEFAULT_SUPERPARTITION_SIZE = 4000
 DEFAULT_BIN_SIZE = 50_000
-DEFAULT_SAMPLES_PER_SUPERPARTITION = 100
-DEFAULT_STRIDE = 1
 # Below this many partitions the aggregation cannot use the cluster, which on an AoU-scale
 # VDS turns a nominally small interval into hours of single-threaded streaming.
 MIN_HEALTHY_PARTITIONS = 8
-DEFAULT_SEED = 'vs-1998'
 # A 10 Mb window on chr20 that is 100% callable: comfortably clear of the centromere gap
 # (chr20:26,386,232-30,088,349) and of the telomere, and free of the smaller assembly gaps
 # near 31 Mb. Verified against
@@ -122,7 +113,7 @@ DEFAULT_PROBE_INTERVAL = 'chr20:37000000-47000000'
 CHR20_CENTROMERE_END = 30_088_349
 
 MODES = ('variants', 'references')
-ACTIONS = ('materialize', 'scan', 'probe', 'full-depth')
+ACTIONS = ('scan', 'probe', 'full-depth')
 
 # GRCh38 primary contigs GVS encodes. Alt and decoy contigs carry no GVS location
 # encoding and are not screened.
@@ -133,7 +124,6 @@ GENOME_LENGTH = 3_088_269_832
 
 SUMMARY_HEADER = 'contig\tbin_start\tbin_end\tsuperpartition\tobserved'
 SUPERPARTITION_HEADER = 'superpartition\tn_samples'
-SAMPLE_LIST_HEADER = 'sample_name\tsample_id\tsuperpartition'
 FULL_DEPTH_HEADER = (
     'contig\tstart\tend\tsuperpartition\tn_samples\tn_zero\tfraction_zero\ttotal_observed'
 )
@@ -166,51 +156,6 @@ def bin_index_for(position: int, bin_size: int = DEFAULT_BIN_SIZE) -> int:
     return (position - 1) // bin_size
 
 
-def sample_sort_key(sample_name: str, seed: str = DEFAULT_SEED) -> str:
-    """Stable pseudo-random ordering key for a sample.
-
-    SHA-256 of ``seed:sample_name`` rather than ``hash()``, which is salted per process,
-    or a Hail RNG, which would depend on partitioning.  The point is that re-running the
-    selection -- next week, on another VDS, on another cluster -- yields the same samples,
-    because the r3 comparison is only meaningful against the same sampled set.
-    """
-    return hashlib.sha256(f'{seed}:{sample_name}'.encode('utf-8')).hexdigest()
-
-
-def stratified_sample(
-        sample_to_superpartition: Mapping[str, int],
-        samples_per_superpartition: int = DEFAULT_SAMPLES_PER_SUPERPARTITION,
-        seed: str = DEFAULT_SEED,
-) -> dict[int, list[str]]:
-    """Choose up to ``samples_per_superpartition`` samples from each superpartition.
-
-    Stratified rather than a global random draw: a global 2.5% draw averages the right
-    count per superpartition but with binomial scatter, giving unequal detection power
-    across superpartitions.  Taking a fixed count from each gives every superpartition
-    the same power, and superpartitions smaller than the depth -- the last one in a
-    callset -- simply contribute everything they have.
-
-    Returns superpartition -> sorted list of chosen sample names.
-    """
-    if samples_per_superpartition < 1:
-        raise ValueError(
-            f"samples_per_superpartition must be positive, got {samples_per_superpartition}")
-
-    grouped: dict[int, list[str]] = defaultdict(list)
-    for sample_name, superpartition in sample_to_superpartition.items():
-        grouped[superpartition].append(sample_name)
-
-    chosen: dict[int, list[str]] = {}
-    for superpartition, names in grouped.items():
-        # Tie-break on the name itself rather than leaning on sort stability, which would
-        # make the result depend on the order samples happen to arrive in. The selection has
-        # to be reproducible across runs and across VDSes for the r2/r3 comparison to mean
-        # anything, so it must not depend on dict iteration order.
-        names.sort(key=lambda name: (sample_sort_key(name, seed), name))
-        chosen[superpartition] = sorted(names[:samples_per_superpartition])
-    return chosen
-
-
 def parse_sample_map(lines: Iterable[str]) -> dict[str, int]:
     """Parse a ``sample_name<TAB>sample_id`` table into a dict.
 
@@ -241,81 +186,6 @@ def parse_sample_map(lines: Iterable[str]) -> dict[str, int]:
     if not result:
         raise ValueError('sample map contained no rows')
     return result
-
-
-def assign_superpartitions(
-        sample_map: Mapping[str, int],
-        present_samples: Iterable[str],
-        superpartition_size: int = DEFAULT_SUPERPARTITION_SIZE,
-) -> dict[str, int]:
-    """Restrict the sample map to samples present in the VDS and assign superpartitions.
-
-    Samples in the VDS but missing from the map are a hard error: they would be silently
-    excluded from every superpartition total, quietly biasing the peer comparison the
-    detector relies on.
-    """
-    present = list(present_samples)
-    missing = [s for s in present if s not in sample_map]
-    if missing:
-        raise ValueError(
-            f"{len(missing)} sample(s) in the VDS are absent from the sample map, "
-            f"starting with {missing[:5]}; regenerate the map from sample_info"
-        )
-    return {s: superpartition_for(sample_map[s], superpartition_size) for s in present}
-
-
-def stride_keeps_bin(bin_index: int, stride: int) -> bool:
-    """Whether a strided scan reads the bin at ``bin_index``.
-
-    A stride of 1 reads everything.  Larger strides read one bin in every ``stride``,
-    which guarantees that any dropout wider than ``stride * bin_size`` fully contains at
-    least one scanned bin, while saying nothing about the unscanned remainder.
-    """
-    if stride < 1:
-        raise ValueError(f"stride must be at least 1, got {stride}")
-    return bin_index % stride == 0
-
-
-def strided_intervals(contig: str, start: int, end: int, bin_size: int,
-                      stride: int) -> list[str]:
-    """Express a strided scan as intervals, one per retained bin.
-
-    Striding has to reach ``read_vds`` as intervals to save anything. Expressed instead as
-    a row predicate on the bin index, Hail cannot consult the row index and streams every
-    byte of every partition it opens, discarding most of it after the fact -- so the scan
-    costs the same as reading everything and merely reports less. Intervals let the reader
-    seek.
-    """
-    if stride < 1:
-        raise ValueError(f"stride must be at least 1, got {stride}")
-    intervals = []
-    first = bin_index_for(start, bin_size)
-    last = bin_index_for(end - 1, bin_size)
-    for index in range(first, last + 1):
-        if not stride_keeps_bin(index, stride):
-            continue
-        bin_start = max(start, index * bin_size + 1)
-        bin_end = min(end, (index + 1) * bin_size + 1)
-        if bin_end > bin_start:
-            intervals.append(f'{contig}:{bin_start}-{bin_end}')
-    return intervals
-
-
-def parse_bool(value: str | bool) -> bool:
-    """Parse an explicit boolean.
-
-    Boolean flags are spelled with a value rather than as ``store_true`` because
-    `run_in_hail_cluster.py` renders every key of its arguments JSON as ``--key value``;
-    a bare ``store_true`` flag would receive an argument and fail to parse.
-    """
-    if isinstance(value, bool):
-        return value
-    lowered = value.strip().lower()
-    if lowered in ('true', 't', 'yes', '1'):
-        return True
-    if lowered in ('false', 'f', 'no', '0'):
-        return False
-    raise ValueError(f"expected a boolean, got {value!r}")
 
 
 def parse_interval_list(values: Sequence[str] | None) -> list[str]:
@@ -352,8 +222,7 @@ def format_summary_rows(
     """Render aggregated totals as summary TSV lines, skipping zero cells.
 
     Zero cells are omitted rather than written: they are the overwhelming majority in a
-    strided or sparse region, and `vds_dropout_detect.py` restores them from the
-    superpartition table.  Rows are ordered by contig then position so the output is
+    region, and `vds_dropout_detect.py` restores them from the superpartition table.  Rows are ordered by contig then position so the output is
     stable and diffable across runs.
     """
     rank = {contig: i for i, contig in enumerate(contig_order)}
@@ -373,18 +242,6 @@ def format_summary_rows(
 def format_superpartition_rows(chosen: Mapping[int, Sequence[str]]) -> list[str]:
     """Render the superpartition -> sampled-count table as TSV lines."""
     return [f'{sp}\t{len(chosen[sp])}' for sp in sorted(chosen)]
-
-
-def format_sample_list_rows(
-        chosen: Mapping[int, Sequence[str]],
-        sample_map: Mapping[str, int],
-) -> list[str]:
-    """Render the chosen sample list as TSV lines, for reuse across VDSes."""
-    rows: list[str] = []
-    for superpartition in sorted(chosen):
-        for name in chosen[superpartition]:
-            rows.append(f'{name}\t{sample_map[name]}\t{superpartition}')
-    return rows
 
 
 def extrapolate_runtime(
@@ -489,8 +346,8 @@ def format_probe_report(
             ]
     lines += [
         '',
-        'What this covers: reading and aggregating, not writing. Against a full-width VDS',
-        'it is therefore a floor for the materialize pass, not a full prediction of it.',
+        'What this covers: reading and aggregating. A scan writes only a small summary, so',
+        'output cost is negligible and this is the whole picture.',
     ]
     return '\n'.join(lines)
 
@@ -568,28 +425,6 @@ def read_sample_map(path: str) -> dict[str, int]:
         return parse_sample_map(handle)
 
 
-def apply_stride(interval_strings: Sequence[str], bin_size: int, stride: int) -> list[str]:
-    """Expand intervals into the strided subset actually to be read.
-
-    Returns them unchanged when stride is 1. See ``strided_intervals`` for why this has to
-    happen here, at read time, rather than as a row filter later.
-    """
-    if stride <= 1:
-        return list(interval_strings)
-    expanded: list[str] = []
-    for text in interval_strings:
-        contig, _, span = text.partition(':')
-        if not span:
-            raise ValueError(
-                f'striding needs bounded intervals; {text!r} covers a whole contig. '
-                'Pass explicit intervals, or use stride 1.')
-        start_text, _, end_text = span.partition('-')
-        expanded.extend(strided_intervals(
-            contig, int(start_text.replace(',', '')), int(end_text.replace(',', '')),
-            bin_size, stride))
-    return expanded
-
-
 def build_intervals(contigs: Sequence[str], interval_strings: Sequence[str]):
     """Build Hail locus intervals from explicit interval strings or whole contigs.
 
@@ -664,16 +499,6 @@ def read_and_subset_vds(vds_path: str, intervals):
         # left whole. Splitting them costs work and would skew the covered-base metric.
         vds = hl.vds.filter_intervals(vds, intervals, split_reference_blocks=False)
     return vds
-
-
-def vds_sample_names(vds) -> list[str]:
-    """Collect the VDS column keys.
-
-    Reads only the column metadata, not entries, so this is cheap even on a full-width
-    AoU VDS.
-    """
-    _require_hail()
-    return vds.variant_data.cols().s.collect()
 
 
 def sniff_delimiter(path: str) -> str:
@@ -845,62 +670,6 @@ def per_superpartition_sample_counts(vds, mode: str, mapping,
 # ---------------------------------------------------------------------------
 
 
-def action_materialize(args) -> int:
-    """Write a stratified narrow copy of the VDS, plus the sample and superpartition tables."""
-    _require_hail()
-    with step(f'Opening VDS {args.vds_path}'):
-        vds = hl.vds.read_vds(args.vds_path)
-    with step(f'Reading sample map {args.sample_map_path}'):
-        sample_map = read_sample_map(args.sample_map_path)
-    # The one remaining driver-side collect: stratified selection needs the full name list.
-    with step('Collecting VDS sample names'):
-        present = vds_sample_names(vds)
-    print(f'VDS holds {len(present):,} samples; map holds {len(sample_map):,}')
-
-    assigned = assign_superpartitions(sample_map, present, args.superpartition_size)
-    chosen = stratified_sample(assigned, args.samples_per_superpartition, args.random_seed)
-    selected = sorted(name for names in chosen.values() for name in names)
-    print(
-        f'Selected {len(selected):,} samples across {len(chosen):,} superpartitions '
-        f'(depth {args.samples_per_superpartition}, seed {args.random_seed!r})'
-    )
-
-    keep = hl.Table.parallelize(
-        [{'s': name} for name in selected], schema=hl.tstruct(s=hl.tstr),
-    ).key_by('s')
-    narrow = hl.vds.filter_samples(vds, keep, keep=True)
-
-    # Rows carrying no data for any retained sample are dead weight. Rare variants
-    # dominate the callset, so most loci have no sampled carrier and drop out here,
-    # shrinking the copy well beyond the column ratio alone. Safe for this purpose:
-    # the detector counts entries per bin, and an all-missing row contributes zero
-    # either way.
-    variant_data = narrow.variant_data.filter_rows(
-        hl.agg.any(hl.is_defined(narrow.variant_data.LA)))
-    reference_data = narrow.reference_data.filter_rows(
-        hl.agg.any(hl.is_defined(narrow.reference_data.END)))
-    with step(f'Writing narrow VDS to {args.output_path}'):
-        hl.vds.VariantDataset(reference_data, variant_data).write(
-            args.output_path, overwrite=args.overwrite)
-
-    n_sp = write_lines(
-        args.superpartitions_path, SUPERPARTITION_HEADER, format_superpartition_rows(chosen))
-    n_samples = write_lines(
-        args.sample_list_path, SAMPLE_LIST_HEADER, format_sample_list_rows(chosen, sample_map))
-    print(f'Wrote {n_sp:,} superpartition rows to {args.superpartitions_path}')
-    print(f'Wrote {n_samples:,} sample rows to {args.sample_list_path}')
-    return 0
-
-
-def sample_source_path(args) -> str:
-    """File the superpartition mapping is read from, preferring the recorded sample list.
-
-    The recorded list is preferred so that every VDS is screened on identical samples,
-    which is what makes figures comparable between r2 and r3.
-    """
-    return args.sample_list_path or args.sample_map_path
-
-
 @dataclass(frozen=True)
 class ScanGeometry:
     """Partition counts and cluster width, the inputs a cost estimate needs."""
@@ -913,22 +682,17 @@ class ScanGeometry:
 
 def _screening_matrix(args, vds):
     """Annotated matrix, per-superpartition sample counts, and the scan geometry."""
-    source = sample_source_path(args)
+    source = args.sample_map_path
     with step(f'Reading sample mapping from {source}'):
         mapping = superpartition_column_table(source, args.superpartition_size)
     matrix, n_unmatched, counts = annotated_matrix(vds, args.mode, mapping, args.bin_size)
 
     if n_unmatched:
-        detail = f'{n_unmatched:,} VDS sample(s) are absent from {source}'
-        if args.sample_list_path:
-            # A recorded list is deliberately a subset of the callset.
-            print(f'Note: {detail}; they will not be screened.')
-        else:
-            raise ValueError(
-                f'{detail}. A sample map is expected to cover every sample in the VDS, and '
-                'screening only part of a superpartition would bias the peer comparison the '
-                'detector relies on. Regenerate the map from sample_info, or pass a recorded '
-                'sample list if screening a subset is intended.')
+        raise ValueError(
+            f'{n_unmatched:,} VDS sample(s) are absent from {source}. The map must cover '
+            'every sample in the VDS: screening part of a superpartition would bias the '
+            'peer comparison the detector relies on, and would do so silently. Regenerate '
+            'the map from sample_info.')
 
     total = sum(counts.values())
     announce(f'Screening {total:,} samples across {len(counts):,} superpartitions')
@@ -965,12 +729,8 @@ def _screening_matrix(args, vds):
 def action_scan(args) -> int:
     """Aggregate a VDS and write the summary and superpartition tables."""
     _require_hail()
-    requested = parse_interval_list(args.intervals)
-    strided = apply_stride(requested, args.bin_size, args.stride) if requested else requested
-    if args.stride > 1 and not requested:
-        raise ValueError('--stride requires --intervals; a whole contig cannot be strided '
-                         'without bounds. Pass explicit intervals or use --stride 1.')
-    intervals = build_intervals(parse_contig_list(args.contigs), strided)
+    intervals = build_intervals(parse_contig_list(args.contigs),
+                                parse_interval_list(args.intervals))
     announce(f'Scanning {len(intervals):,} interval(s) of {args.vds_path}')
     with step(f'Opening VDS {args.vds_path}'):
         vds = read_and_subset_vds(args.vds_path, intervals)
@@ -1025,8 +785,8 @@ def action_full_depth(args) -> int:
     target = {int(s) for s in args.target_superpartitions.split(',')} \
         if args.target_superpartitions else None
 
-    with step(f'Reading sample mapping from {sample_source_path(args)}'):
-        mapping = superpartition_column_table(sample_source_path(args), args.superpartition_size)
+    with step(f'Reading sample mapping from {args.sample_map_path}'):
+        mapping = superpartition_column_table(args.sample_map_path, args.superpartition_size)
 
     rows: list[str] = []
     for interval_string in requested_intervals:
@@ -1081,40 +841,26 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--action', choices=ACTIONS, required=True,
                         help='Which step to run. See the module docstring.')
     parser.add_argument('--vds-path', required=True,
-                        help='VDS to read. The source VDS for materialize and full-depth; '
-                             'normally the narrow copy for scan and probe.')
+                        help='VDS to read.')
     parser.add_argument('--mode', choices=MODES, default='variants',
                         help='Metric to compute. Default: variants.')
 
-    parser.add_argument('--sample-map-path', default=None,
-                        help='TSV of sample_name and sample_id from sample_info.')
-    parser.add_argument('--sample-list-path', default=None,
-                        help='Chosen-sample TSV. Written by materialize, and preferred by '
-                             'later actions so every VDS is screened on the same samples.')
+    parser.add_argument('--sample-map-path', required=True,
+                        help='TSV of sample_name and sample_id covering every sample in the '
+                             'VDS. Superpartition membership is a function of sample_id, '
+                             'which a VDS does not carry.')
     parser.add_argument('--superpartitions-path', default=None,
                         help='Where to write the superpartition/n_samples table.')
     parser.add_argument('--summary-path', default=None,
                         help='Where to write the summary table (scan).')
     parser.add_argument('--full-depth-path', default=None,
                         help='Where to write per-sample results (full-depth).')
-    parser.add_argument('--output-path', default=None,
-                        help='Destination VDS path (materialize).')
 
-    parser.add_argument('--samples-per-superpartition', type=int,
-                        default=DEFAULT_SAMPLES_PER_SUPERPARTITION,
-                        help=f'Stratified sampling depth. Default: '
-                             f'{DEFAULT_SAMPLES_PER_SUPERPARTITION}.')
-    parser.add_argument('--random-seed', default=DEFAULT_SEED,
-                        help=f'Seed for sample selection. Default: {DEFAULT_SEED!r}. Keep it '
-                             'fixed across VDSes so results stay comparable.')
     parser.add_argument('--superpartition-size', type=int, default=DEFAULT_SUPERPARTITION_SIZE,
                         help=f'Samples per GVS superpartition. Default: '
                              f'{DEFAULT_SUPERPARTITION_SIZE}.')
     parser.add_argument('--bin-size', type=int, default=DEFAULT_BIN_SIZE,
                         help=f'Genomic bin size in bp. Default: {DEFAULT_BIN_SIZE}.')
-    parser.add_argument('--stride', type=int, default=DEFAULT_STRIDE,
-                        help='Read one bin in every N. Default 1 (read everything). Larger '
-                             'values cost about 1/N but say nothing about unscanned bins.')
 
     parser.add_argument('--contigs', default=None,
                         help='Comma-separated contigs to scan. Default: all GVS primary contigs.')
@@ -1136,15 +882,10 @@ def build_parser() -> argparse.ArgumentParser:
                              'reads faster than average and skews the extrapolation.')
 
     parser.add_argument('--temp-path', default=None, help='Hail temporary directory.')
-    parser.add_argument('--overwrite', type=parse_bool, default=False,
-                        help='Overwrite the destination VDS (materialize). Takes an explicit '
-                             'true/false because the cluster runner renders every argument '
-                             'as --key value.')
     return parser
 
 
 REQUIRED_BY_ACTION: dict[str, tuple[str, ...]] = {
-    'materialize': ('output_path', 'superpartitions_path', 'sample_list_path'),
     'scan': ('summary_path', 'superpartitions_path'),
     'probe': (),
     'full-depth': ('full_depth_path',),
@@ -1156,19 +897,8 @@ def validate_args(args, parser: argparse.ArgumentParser) -> None:
     for name in REQUIRED_BY_ACTION[args.action]:
         if getattr(args, name, None) is None:
             parser.error(f"--{name.replace('_', '-')} is required for --action {args.action}")
-    if args.action == 'materialize' and not args.sample_map_path:
-        parser.error('--sample-map-path is required for --action materialize')
-    if args.action != 'materialize' and not (args.sample_map_path or args.sample_list_path):
-        parser.error(
-            f'--action {args.action} needs either --sample-list-path (preferred) or '
-            '--sample-map-path'
-        )
-    if args.stride < 1:
-        parser.error('--stride must be at least 1')
     if args.bin_size < 1:
         parser.error('--bin-size must be at least 1')
-    if args.samples_per_superpartition < 1:
-        parser.error('--samples-per-superpartition must be at least 1')
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -1181,7 +911,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     hl.default_reference('GRCh38')
 
     handler = {
-        'materialize': action_materialize,
         'scan': action_scan,
         'probe': action_probe,
         'full-depth': action_full_depth,
