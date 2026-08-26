@@ -34,7 +34,7 @@ import run_in_hail_cluster as runner  # noqa: E402
 
 
 # The message GCP actually returned for VS-1998, kept verbatim so a change in how these
-# are recognised is caught against a real example rather than a paraphrase.
+# are recognized is caught against a real example rather than a paraphrase.
 REAL_STOCKOUT = (
     "ERROR: (gcloud.dataproc.clusters.create) Operation "
     "[projects/terra-40d6b12d/regions/us-central1/operations/bfa08809] failed: "
@@ -47,14 +47,14 @@ REAL_STOCKOUT = (
 
 class TestStockoutDetection(unittest.TestCase):
 
-    def test_recognises_the_real_error(self):
+    def test_recognizes_the_real_error(self):
         self.assertTrue(runner.looks_like_stockout(REAL_STOCKOUT))
 
-    def test_recognises_resource_pool_exhausted(self):
+    def test_recognizes_resource_pool_exhausted(self):
         self.assertTrue(runner.looks_like_stockout(
             'Error: ZONE_RESOURCE_POOL_EXHAUSTED_WITH_DETAILS'))
 
-    def test_recognises_the_prose_form_alone(self):
+    def test_recognizes_the_prose_form_alone(self):
         self.assertTrue(runner.looks_like_stockout(
             "The zone 'us-central1-b' does not have enough resources available"))
 
@@ -90,7 +90,7 @@ REAL_PARTIAL_CAPACITY = (
 class TestPartialCapacityDetection(unittest.TestCase):
     """A zone that can provide some but not all requested workers never says STOCKOUT."""
 
-    def test_recognises_the_real_partial_capacity_error(self):
+    def test_recognizes_the_real_partial_capacity_error(self):
         self.assertTrue(runner.looks_like_partial_capacity(REAL_PARTIAL_CAPACITY))
 
     def test_is_not_confused_with_a_stockout(self):
@@ -124,7 +124,7 @@ class TestPartialCapacityDetection(unittest.TestCase):
 
 class TestZoneResolution(unittest.TestCase):
 
-    def test_absent_means_current_behaviour(self):
+    def test_absent_means_current_behavior(self):
         """Empty resolves to no zones, so no --zone flag and Dataproc places the cluster."""
         for value in (None, '', '   '):
             self.assertEqual([], runner.resolve_zones(value, 'us-central1', 'proj'))
@@ -205,7 +205,7 @@ class TestRetryPolicy(unittest.TestCase):
         self.assertTrue(self.should_retry(REAL_PARTIAL_CAPACITY, 0, ['a', 'b', 'c']))
 
     def test_single_attempt_when_no_zones_configured(self):
-        """Preserves today's behaviour for callers that pass no zones."""
+        """Preserves today's behavior for callers that pass no zones."""
         self.assertFalse(self.should_retry(REAL_STOCKOUT, 0, [None]))
 
 

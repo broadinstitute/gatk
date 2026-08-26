@@ -586,6 +586,30 @@ def observed_parallelism() -> int | None:
         return None
 
 
+def executor_summary() -> str:
+    """Live executor count and total task slots, for the log.
+
+    Worth recording because it is the term most likely to be wrong in a cost estimate,
+    and the hardest to reconstruct afterwards. A cluster that starts with two primary
+    workers and depends on autoscaling for the rest can spend a long time far below its
+    peak width, and nothing in the job output would otherwise say so -- an estimate that
+    assumes full width is then wrong by the ratio, silently.
+    """
+    _require_hail()
+    try:
+        context = hl.spark_context()
+        # Excludes the driver, which appears in this map but runs no tasks.
+        executors = [
+            executor for executor in
+            context._jsc.sc().getExecutorMemoryStatus().keySet()
+            if 'driver' not in str(executor).lower()
+        ]
+        return (f'{len(executors)} executor(s), '
+                f'~{context.defaultParallelism} task slot(s)')
+    except Exception as exc:  # pragma: no cover - needs a live Spark context
+        return f'could not determine executor count ({exc})'
+
+
 def matrix_partition_count(matrix) -> int:
     """Partitions the aggregation will run over, i.e. its maximum parallelism.
 
@@ -736,8 +760,12 @@ def action_scan(args) -> int:
         vds = read_and_subset_vds(args.vds_path, intervals)
     matrix, counts, _ = _screening_matrix(args, vds)
 
+    announce(f'Cluster width at start of aggregation: {executor_summary()}')
     with step(f'Aggregating {args.mode} into {args.bin_size:,} bp bins'):
         totals = aggregate_totals(matrix, args.mode, args.bin_size)
+    # Logged again because autoscaling ramps: the two readings bracket the width the
+    # run actually had, which is what a cost estimate needs and what one reading misses.
+    announce(f'Cluster width at end of aggregation:   {executor_summary()}')
     rows = format_summary_rows(totals, args.bin_size)
     n_rows = write_lines(args.summary_path, SUMMARY_HEADER, rows)
     n_sp = write_lines(

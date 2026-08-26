@@ -185,7 +185,7 @@ def zones_for_region(region, workspace_project):
     # The format and filter expressions are quoted because this runs through /bin/sh, where
     # the parentheses in value(name) are metacharacters. Unquoted they produce
     # `Syntax error: "(" unexpected`, the command never runs, and the caller silently falls
-    # back to Dataproc's single-zone placement -- which is exactly the behaviour --zones
+    # back to Dataproc's single-zone placement -- which is exactly the behavior --zones
     # exists to avoid.
     list_cmd = unwrap(f"""
         gcloud compute zones list
