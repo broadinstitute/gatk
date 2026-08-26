@@ -501,6 +501,24 @@ task ScanVdsForDropouts {
 
         cat script-arguments.json
 
+        # GetHailScripts copies /app/*.py out of the Variants image, so the helper running here
+        # is whatever was baked into the current variants_docker tag, not what is in the repo.
+        # Check for the flags this workflow relies on before invoking it: without this the
+        # failure is an argparse usage dump listing the old arguments, which says nothing about
+        # the actual cause.
+        for required_flag in --zones --num-local-ssds
+        do
+            if ! python3 ~{run_in_hail_cluster_script} --help 2>&1 | grep -q -- "${required_flag}"
+            then
+                echo "ERROR: run_in_hail_cluster.py in this variants_docker image does not support" >&2
+                echo "  ${required_flag}, which this workflow passes." >&2
+                echo "Rebuild the Variants image and point GetToolVersions at the new tag:" >&2
+                echo "  1. scripts/variantstore/scripts/build_docker.sh" >&2
+                echo "  2. set variants_docker in GvsUtils.wdl GetToolVersions to the printed tag" >&2
+                exit 1
+            fi
+        done
+
         # vds_dropout_detect.py rides along as a secondary file so the Hail job can import it,
         # and so the same module that judges the summary on the cluster is the one CI tested.
         python3 ~{run_in_hail_cluster_script} \
