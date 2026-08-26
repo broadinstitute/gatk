@@ -75,6 +75,53 @@ class TestStockoutDetection(unittest.TestCase):
             'Error Code: UNAVAILABLE, errorSource: COMPUTE_ENGINE'))
 
 
+# The us-central1-b failure that followed a genuine stockout in us-central1-a: a capacity
+# shortfall that Dataproc reports as a node timeout and attributes to firewall rules.
+REAL_PARTIAL_CAPACITY = (
+    "ERROR: (gcloud.dataproc.clusters.create) Operation "
+    "[projects/terra-40d6b12d/regions/us-central1/operations/110baf15] failed: "
+    "Cannot start master: Timed out waiting for 2 nodes. This usually happens when VM to "
+    "VM communications are blocked by firewall rules. See "
+    "https://cloud.google.com/dataproc/docs/... ; "
+    "Operation timed out: Only 1 out of 2 minimum required datanodes running.."
+)
+
+
+class TestPartialCapacityDetection(unittest.TestCase):
+    """A zone that can provide some but not all requested workers never says STOCKOUT."""
+
+    def test_recognises_the_real_partial_capacity_error(self):
+        self.assertTrue(runner.looks_like_partial_capacity(REAL_PARTIAL_CAPACITY))
+
+    def test_is_not_confused_with_a_stockout(self):
+        """They are separate categories so the log can say which one occurred."""
+        self.assertFalse(runner.looks_like_stockout(REAL_PARTIAL_CAPACITY))
+        self.assertFalse(runner.looks_like_partial_capacity(REAL_STOCKOUT))
+
+    def test_both_categories_are_retryable(self):
+        for output in (REAL_STOCKOUT, REAL_PARTIAL_CAPACITY):
+            self.assertIsNotNone(runner.retry_reason(output))
+
+    def test_retry_reason_explains_which_happened(self):
+        self.assertIn('out of capacity', runner.retry_reason(REAL_STOCKOUT))
+        self.assertIn('all requested nodes',
+                      runner.retry_reason(REAL_PARTIAL_CAPACITY))
+
+    def test_partial_capacity_reason_mentions_the_firewall_alternative(self):
+        """If every zone fails this way it really is networking, and the log should say so."""
+        self.assertIn('firewall', runner.retry_reason(REAL_PARTIAL_CAPACITY))
+
+    def test_unrelated_failures_are_still_not_retried(self):
+        for message in (
+            'ERROR: PERMISSION_DENIED: insufficient rights',
+            "ERROR: Quota 'CPUS' exceeded. Limit: 1000.0 in region us-central1.",
+            'ERROR: ALREADY_EXISTS: Cluster projects/x/regions/us-central1/clusters/y',
+            'Constraint constraints/compute.vmExternalIpAccess violated',
+            '',
+        ):
+            self.assertIsNone(runner.retry_reason(message), msg=message)
+
+
 class TestZoneResolution(unittest.TestCase):
 
     def test_absent_means_current_behaviour(self):
@@ -141,7 +188,7 @@ class TestRetryPolicy(unittest.TestCase):
 
     @staticmethod
     def should_retry(output, index, zones):
-        return index + 1 < len(zones) and runner.looks_like_stockout(output)
+        return index + 1 < len(zones) and runner.retry_reason(output) is not None
 
     def test_retries_a_stockout_while_zones_remain(self):
         zones = ['a', 'b', 'c']
@@ -153,6 +200,9 @@ class TestRetryPolicy(unittest.TestCase):
 
     def test_does_not_retry_a_non_capacity_failure(self):
         self.assertFalse(self.should_retry('PERMISSION_DENIED', 0, ['a', 'b', 'c']))
+
+    def test_retries_partial_capacity_too(self):
+        self.assertTrue(self.should_retry(REAL_PARTIAL_CAPACITY, 0, ['a', 'b', 'c']))
 
     def test_single_attempt_when_no_zones_configured(self):
         """Preserves today's behaviour for callers that pass no zones."""

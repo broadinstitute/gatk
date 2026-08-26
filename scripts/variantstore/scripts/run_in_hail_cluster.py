@@ -23,6 +23,22 @@ STOCKOUT_MARKERS = (
     'ZONE_RESOURCE_POOL_EXHAUSTED',
 )
 
+# Capacity shortages that do not report themselves as such. When a zone can provide some
+# but not all of the requested workers, Dataproc does not emit a STOCKOUT; the create
+# simply times out waiting for nodes that never arrive, and the message blames firewall
+# rules. Observed in us-central1-b immediately after a genuine STOCKOUT in us-central1-a,
+# with only 1 of 4 requested workers provisioned.
+#
+# Retrying these in another zone is right when VM-to-VM networking is known to work, which
+# it is for a Terra project that routinely runs Dataproc. If networking really is broken
+# every zone will fail the same way, costing one attempt per zone before the error
+# surfaces -- so the log distinguishes this case from an outright stockout.
+PARTIAL_CAPACITY_MARKERS = (
+    'Timed out waiting for',
+    'minimum required datanodes',
+    'Cannot start master',
+)
+
 
 def autoscaling_policy_name(num_workers, max_secondary):
     """Return a policy name that encodes its configuration, e.g. gvs-spark-autoscaling-w2-s200."""
@@ -139,6 +155,26 @@ def looks_like_stockout(output):
     return any(marker in output for marker in STOCKOUT_MARKERS)
 
 
+def looks_like_partial_capacity(output):
+    """Whether output indicates only some requested nodes could be provisioned."""
+    return any(marker in output for marker in PARTIAL_CAPACITY_MARKERS)
+
+
+def retry_reason(output):
+    """Why this failure is worth retrying in another zone, or None to fail fast.
+
+    Returned as text rather than a boolean so the log records which of the two very
+    different-looking capacity failures was seen.
+    """
+    if looks_like_stockout(output):
+        return 'the zone is out of capacity'
+    if looks_like_partial_capacity(output):
+        return ('the zone could not provide all requested nodes (Dataproc reports this as '
+                'a node timeout and blames firewall rules; if every zone fails this way, '
+                'check VM-to-VM firewall rules for real)')
+    return None
+
+
 def zones_for_region(region, workspace_project):
     """List the zones of a region, for `--zones auto`.
 
@@ -218,6 +254,9 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
 
         # An empty list means one attempt with no --zone, i.e. Dataproc's own placement.
         candidate_zones = resolve_zones(zones, region, workspace_project) or [None]
+        if len(candidate_zones) > 1:
+            info(f"Will try up to {len(candidate_zones)} zone(s) in order: "
+                 f"{', '.join(candidate_zones)}")
 
         for index, zone in enumerate(candidate_zones):
             zone_arg = f"--zone {zone}" if zone else ""
@@ -262,7 +301,8 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
 
             exit_code = os.waitstatus_to_exitcode(wait_status)
             more_zones_to_try = index + 1 < len(candidate_zones)
-            retrying = more_zones_to_try and looks_like_stockout(output)
+            reason = retry_reason(output)
+            retrying = more_zones_to_try and reason is not None
 
             # Always tear down after a failed create, whether or not another zone will be
             # tried. A cluster that fails to create is left behind in ERROR state with its
@@ -271,7 +311,8 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
             delete_failed_cluster(cluster_name, region, workspace_project)
 
             if retrying:
-                info(f"{placement} is out of capacity. Retrying in {candidate_zones[index + 1]}.")
+                info(f"Cluster creation failed in {placement}: {reason}. "
+                     f"Retrying in {candidate_zones[index + 1]}.")
                 continue
             raise RuntimeError(f"Unexpected exit code from cluster creation: {exit_code}")
 

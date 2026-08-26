@@ -83,7 +83,12 @@ workflow GvsValidateVdsCompleteness {
         String? reference_schema
 
         Boolean use_tiny_dataproc_cluster = false
-        Int num_primary_workers = 4
+        # Two rather than four. Primary workers must all be provisioned before the cluster
+        # is usable, and Dataproc's floor is 2 datanodes, so asking for 4 doubles the
+        # up-front capacity ask for no benefit -- a us-central1-b create failed having
+        # provisioned only 1 of 4. Secondary workers are added by the autoscaling policy
+        # afterwards and are preemptible, so peak parallelism is unaffected.
+        Int num_primary_workers = 2
         Int max_secondary_workers = 300
         String cluster_prefix = "vds-completeness"
         # Compute Engine stockouts are per-zone, and Dataproc's default placement picks one
