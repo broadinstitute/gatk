@@ -122,6 +122,77 @@ class TestPartialCapacityDetection(unittest.TestCase):
             self.assertIsNone(runner.retry_reason(message), msg=message)
 
 
+# The verbatim client-side crash that killed a scan 47% of the way through a
+# 119,189-partition aggregation. gcloud could not reach the metadata server to refresh
+# credentials and exited non-zero; the Dataproc job it was streaming was unaffected.
+REAL_CLIENT_CRASH = (
+    "ERROR: gcloud crashed (MetadataServerException): HTTP Error 503: Service Unavailable "
+    "Service Unavailable Unable to fetch access token"
+)
+
+
+class TestClientCrashDetection(unittest.TestCase):
+    """A gcloud crash is not a job failure, and must not be treated as one.
+
+    `gcloud dataproc jobs submit` blocks while streaming driver output. If gcloud dies
+    client-side the job keeps running server-side, so the recovery is to reattach by job id
+    -- not to resubmit, and certainly not to delete the cluster.
+    """
+
+    def test_recognizes_the_real_crash(self):
+        self.assertTrue(runner.looks_like_client_crash(REAL_CLIENT_CRASH))
+
+    def test_recognizes_transient_server_errors(self):
+        for message in ('HTTP Error 500', 'HTTP Error 502', 'HTTP Error 503',
+                        'HTTP Error 504', 'ServiceUnavailable: 503',
+                        'Connection reset by peer', 'Remote end closed connection'):
+            self.assertTrue(runner.looks_like_client_crash(message), msg=message)
+
+    def test_does_not_fire_on_a_genuine_job_failure(self):
+        """These mean the job really failed, and reattaching would just re-read the error."""
+        for message in (
+            'Job [abc] failed with error: Traceback (most recent call last): ...',
+            "ERROR: (gcloud.dataproc.jobs.submit.pyspark) Job [x] entered state ERROR",
+            'hail.utils.java.FatalError: OutOfMemoryError',
+            'ERROR: PERMISSION_DENIED',
+            '',
+        ):
+            self.assertFalse(runner.looks_like_client_crash(message), msg=message)
+
+    def test_is_a_separate_category_from_capacity_failures(self):
+        """Three distinct recovery strategies, so the categories must not overlap."""
+        self.assertFalse(runner.looks_like_client_crash(REAL_STOCKOUT))
+        self.assertFalse(runner.looks_like_client_crash(REAL_PARTIAL_CAPACITY))
+        self.assertFalse(runner.looks_like_stockout(REAL_CLIENT_CRASH))
+        self.assertFalse(runner.looks_like_partial_capacity(REAL_CLIENT_CRASH))
+
+    def test_reattach_budget_is_bounded_and_nonzero(self):
+        self.assertGreater(runner.JOB_REATTACH_ATTEMPTS, 1)
+        self.assertLess(runner.JOB_REATTACH_ATTEMPTS, 20)
+        self.assertGreater(runner.JOB_REATTACH_DELAY_SECONDS, 0)
+
+
+class TestRunStreaming(unittest.TestCase):
+    """Output must be both streamed and captured: streamed so a long aggregation can be
+    monitored, captured so the caller can classify a failure."""
+
+    def test_captures_stdout_and_stderr_together(self):
+        code, output = runner.run_streaming('echo out; echo err >&2')
+        self.assertEqual(0, code)
+        self.assertIn('out', output)
+        self.assertIn('err', output)
+
+    def test_returns_the_exit_code(self):
+        code, _ = runner.run_streaming('exit 7')
+        self.assertEqual(7, code)
+
+    def test_captures_output_from_a_failing_command(self):
+        """The classification depends on reading output from a non-zero exit."""
+        code, output = runner.run_streaming('echo "HTTP Error 503" >&2; exit 1')
+        self.assertEqual(1, code)
+        self.assertTrue(runner.looks_like_client_crash(output))
+
+
 class TestZoneResolution(unittest.TestCase):
 
     def test_absent_means_current_behavior(self):

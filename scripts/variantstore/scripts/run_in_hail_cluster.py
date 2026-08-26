@@ -1,7 +1,10 @@
 import argparse
 import ijson
 import os
+import subprocess
+import sys
 import tempfile
+import time
 from google.cloud import dataproc_v1 as dataproc
 from logging import info
 
@@ -33,6 +36,30 @@ STOCKOUT_MARKERS = (
 # it is for a Terra project that routinely runs Dataproc. If networking really is broken
 # every zone will fail the same way, costing one attempt per zone before the error
 # surfaces -- so the log distinguishes this case from an outright stockout.
+# gcloud failing on the client side, as distinct from the submitted job failing. The
+# metadata server on the Cromwell VM occasionally returns 503 while refreshing
+# credentials; gcloud then crashes and exits non-zero even though the Dataproc job it is
+# streaming is still running perfectly well server-side. Treating that as job failure threw
+# away a scan that was 47% of the way through a 119,189-partition aggregation, because the
+# cluster was torn down immediately afterwards.
+JOB_CLIENT_CRASH_MARKERS = (
+    'gcloud crashed',
+    'MetadataServerException',
+    'Unable to fetch access token',
+    'ServiceUnavailable',
+    'HTTP Error 500',
+    'HTTP Error 502',
+    'HTTP Error 503',
+    'HTTP Error 504',
+    'Connection reset by peer',
+    'Remote end closed connection',
+)
+
+# A client-side crash is recoverable by reattaching to the running job rather than
+# resubmitting it. Metadata blips last seconds, so a handful of spaced attempts is ample.
+JOB_REATTACH_ATTEMPTS = 5
+JOB_REATTACH_DELAY_SECONDS = 30
+
 PARTIAL_CAPACITY_MARKERS = (
     'Timed out waiting for',
     'minimum required datanodes',
@@ -153,6 +180,36 @@ def create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, regi
 def looks_like_stockout(output):
     """Whether command output indicates a zone ran out of capacity."""
     return any(marker in output for marker in STOCKOUT_MARKERS)
+
+
+def looks_like_client_crash(output):
+    """Whether output indicates gcloud itself failed, rather than the submitted job."""
+    return any(marker in output for marker in JOB_CLIENT_CRASH_MARKERS)
+
+
+def run_streaming(command):
+    """Run a shell command, streaming its output through while also capturing it.
+
+    Both halves matter. Streaming keeps Hail's progress visible in the Cromwell log as it
+    happens, which is how a long aggregation is monitored at all. Capturing is what allows
+    the caller to tell a gcloud client-side crash apart from a genuine job failure. The
+    previous implementation used os.popen and discarded stdout, so neither was true of the
+    stream it actually needed to inspect.
+
+    Returns (exit_code, combined_output).
+    """
+    process = subprocess.Popen(
+        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, bufsize=1,
+    )
+    captured = []
+    for line in process.stdout:
+        # Straight to stderr, unbuffered, so progress appears as it is produced.
+        sys.stderr.write(line)
+        sys.stderr.flush()
+        captured.append(line)
+    process.stdout.close()
+    return process.wait(), ''.join(captured)
 
 
 def looks_like_partial_capacity(output):
@@ -345,10 +402,15 @@ def run_in_existing_cluster(cluster_name, account, region, workspace_project,
                 found_cluster = True
                 info("Found cluster: " + cluster_name)
 
+                # An explicit id is what makes reattachment possible: without one, a
+                # client-side gcloud crash leaves a running job we cannot name.
+                job_id = f"{cluster_name}-job"
+
                 submit_cmd = unwrap(f"""
 
                 gcloud dataproc jobs submit pyspark {script_path}
                  {secondary_script_path_arg}
+                 --id={job_id}
                  --cluster={cluster_name}
                  --project {workspace_project}
                  --region={region}
@@ -358,13 +420,45 @@ def run_in_existing_cluster(cluster_name, account, region, workspace_project,
                  {' '.join(custom_script_args)}
                 """)
 
+                wait_cmd = unwrap(f"""
+
+                gcloud dataproc jobs wait {job_id}
+                 --project {workspace_project}
+                 --region={region}
+                 --account {account}
+                """)
+
                 info("Running: " + submit_cmd)
-                pipe = os.popen(submit_cmd)
-                pipe.read()
-                wait_status = pipe.close()
-                if wait_status:
-                    exit_code = os.waitstatus_to_exitcode(wait_status)
-                    raise RuntimeError(f"Unexpected exit code running submitted job: {exit_code}")
+                info(f"Job id is {job_id}. If this workflow dies while the job is still "
+                     f"running, reattach with: {wait_cmd}")
+
+                for attempt in range(JOB_REATTACH_ATTEMPTS):
+                    if attempt == 0:
+                        exit_code, output = run_streaming(submit_cmd)
+                    else:
+                        info(f"Reattaching to job {job_id} "
+                             f"(attempt {attempt + 1} of {JOB_REATTACH_ATTEMPTS})...")
+                        exit_code, output = run_streaming(wait_cmd)
+
+                    if exit_code == 0:
+                        break
+
+                    last_attempt = attempt + 1 >= JOB_REATTACH_ATTEMPTS
+                    if not looks_like_client_crash(output):
+                        raise RuntimeError(
+                            f"Unexpected exit code running submitted job: {exit_code}")
+                    if last_attempt:
+                        raise RuntimeError(
+                            f"gcloud kept failing on the client side after "
+                            f"{JOB_REATTACH_ATTEMPTS} attempts. Job {job_id} may still be "
+                            f"running; check with `gcloud dataproc jobs describe {job_id} "
+                            f"--region={region} --project {workspace_project}` before "
+                            f"resubmitting.")
+                    # The job is almost certainly still running: gcloud failed to talk to
+                    # the metadata server, not to Dataproc. Reattach rather than resubmit.
+                    info(f"gcloud failed on the client side, not the job itself. Waiting "
+                         f"{JOB_REATTACH_DELAY_SECONDS}s before reattaching to {job_id}.")
+                    time.sleep(JOB_REATTACH_DELAY_SECONDS)
                 break
         if not found_cluster:
             raise RuntimeError(f"Unable to find cluster: {cluster_name}")
