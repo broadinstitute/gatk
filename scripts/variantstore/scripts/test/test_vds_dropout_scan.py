@@ -537,49 +537,111 @@ class TestOutputFormatting(unittest.TestCase):
 
 
 class TestProbeExtrapolation(unittest.TestCase):
+    """A partition is the unit of work, so cost scales by partitions, not base pairs.
 
-    def test_scales_linearly(self):
+    Not academic: a diagnostic bundle from a stalled run showed the entry aggregation
+    RUNNABLE in a single task, because a 10 Mb interval on a 535K-sample VDS resolved to
+    one partition. Scaling that wall clock by genomic span would have overstated a
+    genome-wide run by roughly the width of the cluster.
+    """
+
+    def test_partition_model_divides_by_concurrency(self):
+        # 10s for 2 partitions -> 5s each; 100 partitions over 10 tasks -> 50s.
+        self.assertAlmostEqual(50.0, vds.extrapolate_by_partitions(10.0, 2, 100, 10))
+
+    def test_partition_model_serial_case(self):
+        self.assertAlmostEqual(500.0, vds.extrapolate_by_partitions(10.0, 2, 100, 1))
+
+    def test_partition_model_rejects_nonsense(self):
+        for probed, total, tasks in ((0, 10, 1), (1, 0, 1), (1, 10, 0)):
+            with self.assertRaises(ValueError):
+                vds.extrapolate_by_partitions(10.0, probed, total, tasks)
+
+    def test_bp_model_still_available_but_documented_as_misleading(self):
         self.assertAlmostEqual(
-            100.0, vds.extrapolate_runtime(1.0, vds.GENOME_LENGTH // 100, vds.GENOME_LENGTH),
-            places=0,
-        )
+            100.0, vds.extrapolate_runtime(1.0, vds.GENOME_LENGTH // 100,
+                                           vds.GENOME_LENGTH), places=0)
+        self.assertIn('Misleading', vds.extrapolate_runtime.__doc__)
 
     def test_zero_span_raises(self):
         with self.assertRaises(ValueError):
             vds.extrapolate_runtime(1.0, 0)
 
-    def test_default_probe_interval_clears_the_centromere(self):
-        """A probe interval overlapping an assembly gap skews the extrapolation.
+    def test_report_leads_with_per_partition_cost(self):
+        report = vds.format_probe_report(600.0, 10_000_000, 1_340, 200,
+                                         n_samples=13_400, n_partitions=20)
+        self.assertIn('partitions read:', report)
+        self.assertIn('per partition:', report)
+        self.assertIn('30.0 s', report)
+        self.assertIn('Do not scale by base pairs', report)
 
-        The chr20 centromere gap ends at 30,088,349 per
-        wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list, so a window
-        starting at 30,000,000 would begin 88 kb inside it.
-        """
-        contig, _, span = vds.DEFAULT_PROBE_INTERVAL.partition(':')
-        start, _, end = span.partition('-')
-        self.assertEqual('chr20', contig)
-        self.assertGreater(int(start), vds.CHR20_CENTROMERE_END)
-        self.assertEqual(10_000_000, int(end) - int(start))
+    def test_report_warns_when_parallelism_is_degenerate(self):
+        report = vds.format_probe_report(600.0, 10_000_000, 1_340, 200, n_partitions=1)
+        self.assertIn('CAUTION', report)
+        self.assertIn('essentially serial', report)
 
-    def test_default_probe_interval_stays_within_chr20(self):
-        _, _, span = vds.DEFAULT_PROBE_INTERVAL.partition(':')
-        _, _, end = span.partition('-')
-        self.assertLess(int(end), 64_334_167)  # chr20 length
+    def test_report_does_not_warn_with_healthy_parallelism(self):
+        report = vds.format_probe_report(600.0, 10_000_000, 1_340, 200, n_partitions=500)
+        self.assertNotIn('CAUTION', report)
 
     def test_report_states_what_the_estimate_excludes(self):
-        """Readers must not mistake the figure for a materialize prediction."""
-        report = vds.format_probe_report(60.0, 10_000_000, 1_340, 200)
+        report = vds.format_probe_report(60.0, 10_000_000, 1_340, 200, n_partitions=10)
         self.assertIn('not writing', report)
         self.assertIn('floor for the materialize pass', report)
 
-    def test_report_includes_sample_count_when_given(self):
-        report = vds.format_probe_report(60.0, 10_000_000, 1_340, 200, n_samples=13_400)
-        self.assertIn('13,400', report)
-
-    def test_report_mentions_shuffle_check(self):
+    def test_report_without_partition_count_omits_the_model(self):
         report = vds.format_probe_report(60.0, 10_000_000, 1_340, 200)
-        self.assertIn('shuffle', report)
-        self.assertIn('genome-wide estimate', report)
+        self.assertNotIn('per partition:', report)
+
+
+class TestStriding(unittest.TestCase):
+    """Striding must reach read_vds as intervals.
+
+    Expressed as a row predicate on the bin index, Hail cannot use the row index and
+    streams every byte of every partition it opens, so the scan costs the same as reading
+    everything and merely reports less.
+    """
+
+    def test_stride_one_returns_intervals_unchanged(self):
+        given = ['chr4:56000000-58000000']
+        self.assertEqual(given, vds.apply_stride(given, 50_000, 1))
+
+    def test_stride_expands_into_one_interval_per_retained_bin(self):
+        out = vds.strided_intervals('chr20', 1, 500_001, 50_000, 5)
+        self.assertEqual(['chr20:1-50001', 'chr20:250001-300001'], out)
+
+    def test_strided_intervals_are_clipped_to_the_request(self):
+        out = vds.strided_intervals('chr4', 60_000, 160_000, 50_000, 1)
+        self.assertEqual(
+            ['chr4:60000-100001', 'chr4:100001-150001', 'chr4:150001-160000'], out)
+
+    def test_stride_covers_any_window_wider_than_the_stride(self):
+        """The pigeonhole guarantee, now over real intervals."""
+        for offset in range(0, 500_000, 50_000):
+            out = vds.strided_intervals('chr1', 1 + offset, 1 + offset + 550_000,
+                                        50_000, 5)
+            self.assertTrue(out, msg=f'offset {offset}')
+
+    def test_apply_stride_over_multiple_intervals(self):
+        out = vds.apply_stride(['chr1:1-200001', 'chr2:1-200001'], 100_000, 2)
+        self.assertEqual(['chr1:1-100001', 'chr2:1-100001'], out)
+
+    def test_apply_stride_tolerates_thousands_separators(self):
+        self.assertEqual(['chr1:1-100001'],
+                         vds.apply_stride(['chr1:1-100,001'], 100_000, 2))
+
+    def test_striding_a_whole_contig_is_rejected(self):
+        """Unbounded intervals cannot be strided, and failing beats silently ignoring it."""
+        with self.assertRaises(ValueError) as ctx:
+            vds.apply_stride(['chr20'], 50_000, 5)
+        self.assertIn('whole contig', str(ctx.exception))
+
+    def test_invalid_stride_raises(self):
+        with self.assertRaises(ValueError):
+            vds.strided_intervals('chr1', 1, 1000, 50_000, 0)
+
+    def test_min_healthy_partitions_is_sane(self):
+        self.assertGreater(vds.MIN_HEALTHY_PARTITIONS, 1)
 
 
 class TestArgumentValidation(unittest.TestCase):

@@ -96,6 +96,8 @@ because silently excluding it would bias the superpartition totals.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import datetime
 import hashlib
 import math
 import sys
@@ -112,6 +114,9 @@ DEFAULT_SUPERPARTITION_SIZE = 4000
 DEFAULT_BIN_SIZE = 50_000
 DEFAULT_SAMPLES_PER_SUPERPARTITION = 100
 DEFAULT_STRIDE = 1
+# Below this many partitions the aggregation cannot use the cluster, which on an AoU-scale
+# VDS turns a nominally small interval into hours of single-threaded streaming.
+MIN_HEALTHY_PARTITIONS = 8
 DEFAULT_SEED = 'vs-1998'
 # A 10 Mb window on chr20 that is 100% callable: comfortably clear of the centromere gap
 # (chr20:26,386,232-30,088,349) and of the telomere, and free of the smaller assembly gaps
@@ -270,12 +275,36 @@ def stride_keeps_bin(bin_index: int, stride: int) -> bool:
 
     A stride of 1 reads everything.  Larger strides read one bin in every ``stride``,
     which guarantees that any dropout wider than ``stride * bin_size`` fully contains at
-    least one scanned bin, at roughly ``1 / stride`` the cost -- while saying nothing
-    about the unscanned remainder.
+    least one scanned bin, while saying nothing about the unscanned remainder.
     """
     if stride < 1:
         raise ValueError(f"stride must be at least 1, got {stride}")
     return bin_index % stride == 0
+
+
+def strided_intervals(contig: str, start: int, end: int, bin_size: int,
+                      stride: int) -> list[str]:
+    """Express a strided scan as intervals, one per retained bin.
+
+    Striding has to reach ``read_vds`` as intervals to save anything. Expressed instead as
+    a row predicate on the bin index, Hail cannot consult the row index and streams every
+    byte of every partition it opens, discarding most of it after the fact -- so the scan
+    costs the same as reading everything and merely reports less. Intervals let the reader
+    seek.
+    """
+    if stride < 1:
+        raise ValueError(f"stride must be at least 1, got {stride}")
+    intervals = []
+    first = bin_index_for(start, bin_size)
+    last = bin_index_for(end - 1, bin_size)
+    for index in range(first, last + 1):
+        if not stride_keeps_bin(index, stride):
+            continue
+        bin_start = max(start, index * bin_size + 1)
+        bin_end = min(end, (index + 1) * bin_size + 1)
+        if bin_end > bin_start:
+            intervals.append(f'{contig}:{bin_start}-{bin_end}')
+    return intervals
 
 
 def parse_bool(value: str | bool) -> bool:
@@ -369,10 +398,34 @@ def extrapolate_runtime(
         scanned_bases: int,
         genome_length: int = GENOME_LENGTH,
 ) -> float:
-    """Scale a probe's wall time up to a whole-genome estimate, in seconds."""
+    """Scale a probe's wall time up by genomic span. Kept for reference only.
+
+    Misleading on its own, because it assumes the probe used the cluster as well as a
+    genome-wide run would. A narrow interval resolves to few partitions and therefore few
+    tasks, so it measures near-serial throughput and overstates the real cost, often by
+    the width of the cluster. Prefer ``extrapolate_by_partitions``.
+    """
     if scanned_bases <= 0:
         raise ValueError('scanned_bases must be positive')
     return elapsed_seconds * (genome_length / scanned_bases)
+
+
+def extrapolate_by_partitions(elapsed_seconds: float, n_partitions_probed: int,
+                              n_partitions_total: int, concurrent_tasks: int) -> float:
+    """Estimate a full run from per-partition cost, in seconds.
+
+    The unit of work is a partition, not a base pair: one task streams one partition end
+    to end. So the honest model is time-per-partition, multiplied by the partitions a full
+    run covers, divided by how many run at once -- which is what makes a genome-wide scan
+    cheaper per partition than a narrow probe rather than more expensive.
+    """
+    for name, value in (('n_partitions_probed', n_partitions_probed),
+                        ('n_partitions_total', n_partitions_total),
+                        ('concurrent_tasks', concurrent_tasks)):
+        if value <= 0:
+            raise ValueError(f'{name} must be positive, got {value}')
+    per_partition = elapsed_seconds / n_partitions_probed
+    return per_partition * n_partitions_total / concurrent_tasks
 
 
 def format_probe_report(
@@ -381,9 +434,13 @@ def format_probe_report(
         n_cells: int,
         n_bins: int,
         n_samples: int | None = None,
+        n_partitions: int | None = None,
 ) -> str:
-    """Human-readable probe result, including the genome-wide extrapolation."""
-    projected = extrapolate_runtime(elapsed_seconds, scanned_bases)
+    """Human-readable probe result.
+
+    Reports per-partition cost rather than a bp-scaled figure, because the partition is
+    the unit of work and a narrow probe is close to serial.
+    """
     lines = [
         'Probe result',
         f'  interval span:        {scanned_bases:,} bp',
@@ -392,22 +449,33 @@ def format_probe_report(
     ]
     if n_samples is not None:
         lines.append(f'  samples screened:     {n_samples:,}')
+    if n_partitions:
+        lines.append(f'  partitions read:      {n_partitions:,}')
+    lines.append(f'  elapsed:              {elapsed_seconds:,.1f} s')
+
+    if n_partitions:
+        per_partition = elapsed_seconds / n_partitions
+        lines += [
+            f'  per partition:        {per_partition:,.1f} s',
+            '',
+            'To estimate a full run, multiply the per-partition figure by the partitions it',
+            'covers and divide by the tasks running at once (roughly workers x cores per',
+            'worker). Do not scale by base pairs: a partition is the unit of work, one task',
+            'streams one partition end to end, and a narrow probe touching few partitions is',
+            'close to serial. Scaling its wall clock by genomic span overstates a genome-wide',
+            'run by roughly the width of the cluster.',
+        ]
+        if n_partitions < MIN_HEALTHY_PARTITIONS:
+            lines += [
+                '',
+                f'CAUTION: only {n_partitions} partition(s) were read, so this timing is',
+                'essentially serial and says little about a run that can use the whole',
+                'cluster. Treat the per-partition number as the useful output here.',
+            ]
     lines += [
-        f'  elapsed:              {elapsed_seconds:,.1f} s',
-        f'  genome-wide estimate: {projected / 3600:,.2f} h '
-        f'({projected / 60:,.1f} min) at this throughput',
         '',
-        'What this estimate covers: reading and aggregating, not writing. Against a',
-        'full-width VDS it is therefore a floor for the materialize pass, not a full',
-        'prediction of it. Against a narrow copy it estimates ongoing screening cost.',
-        '',
-        'Extrapolation assumes uniform density genome-wide, which is approximate: this',
-        'interval is fully callable, while the real genome includes centromeres and other',
-        'gaps that read faster than average.',
-        '',
-        'Check the Hail log for shuffle stages before committing to a genome-wide run.',
-        'A single streaming pass is expected; a shuffle means the aggregation did not',
-        'fuse, and the two-stage fallback should be used instead.',
+        'What this covers: reading and aggregating, not writing. Against a full-width VDS',
+        'it is therefore a floor for the materialize pass, not a full prediction of it.',
     ]
     return '\n'.join(lines)
 
@@ -415,6 +483,36 @@ def format_probe_report(
 # ---------------------------------------------------------------------------
 # Hail plumbing
 # ---------------------------------------------------------------------------
+
+
+def announce(message: str) -> None:
+    """Print a progress line immediately.
+
+    ``flush`` matters: stdout is block-buffered when it is not a terminal, so without it a
+    stalled run can leave its most recent progress line sitting in the buffer, and the log
+    then understates how far execution actually got.
+    """
+    print(f'[{datetime.datetime.now().isoformat(timespec="seconds")}] {message}', flush=True)
+
+
+@contextlib.contextmanager
+def step(description: str):
+    """Announce a unit of work and report how long it took.
+
+    Every Hail action is wrapped so a stall names the operation responsible. Without this
+    the script printed its intent and then nothing until the whole aggregation finished,
+    which meant a hang had to be localized by pulling a diagnostic bundle off the cluster
+    and reading jstacks -- for information the job could simply have logged.
+    """
+    announce(f'{description}: starting')
+    started = time.monotonic()
+    try:
+        yield
+    except BaseException:
+        announce(f'{description}: FAILED after {time.monotonic() - started:,.1f}s')
+        raise
+    else:
+        announce(f'{description}: done in {time.monotonic() - started:,.1f}s')
 
 
 def _require_hail() -> None:
@@ -453,6 +551,28 @@ def write_lines(path: str, header: str, rows: Iterable[str]) -> int:
 def read_sample_map(path: str) -> dict[str, int]:
     with _open_read(path) as handle:
         return parse_sample_map(handle)
+
+
+def apply_stride(interval_strings: Sequence[str], bin_size: int, stride: int) -> list[str]:
+    """Expand intervals into the strided subset actually to be read.
+
+    Returns them unchanged when stride is 1. See ``strided_intervals`` for why this has to
+    happen here, at read time, rather than as a row filter later.
+    """
+    if stride <= 1:
+        return list(interval_strings)
+    expanded: list[str] = []
+    for text in interval_strings:
+        contig, _, span = text.partition(':')
+        if not span:
+            raise ValueError(
+                f'striding needs bounded intervals; {text!r} covers a whole contig. '
+                'Pass explicit intervals, or use stride 1.')
+        start_text, _, end_text = span.partition('-')
+        expanded.extend(strided_intervals(
+            contig, int(start_text.replace(',', '')), int(end_text.replace(',', '')),
+            bin_size, stride))
+    return expanded
 
 
 def build_intervals(contigs: Sequence[str], interval_strings: Sequence[str]):
@@ -542,7 +662,7 @@ def superpartition_column_table(path: str,
         sp=hl.int32((table.sample_id + superpartition_size - 1) // superpartition_size))
 
 
-def annotated_matrix(vds, mode: str, mapping, bin_size: int, stride: int):
+def annotated_matrix(vds, mode: str, mapping, bin_size: int):
     """Return the mode-appropriate matrix annotated with superpartition and bin.
 
     Columns absent from the mapping are dropped rather than carried with a missing
@@ -558,14 +678,13 @@ def annotated_matrix(vds, mode: str, mapping, bin_size: int, stride: int):
     matrix = vds.variant_data if mode == 'variants' else vds.reference_data
 
     matrix = matrix.annotate_cols(_sp=mapping[matrix.s].sp)
-    n_unmatched = int(matrix.aggregate_cols(hl.agg.count_where(hl.is_missing(matrix._sp))))
+    with step('Summarizing columns by superpartition'):
+        n_unmatched, counts = superpartition_column_summary(matrix)
     matrix = matrix.filter_cols(hl.is_defined(matrix._sp))
     matrix = matrix.annotate_rows(
         _bin=(matrix.locus.position - 1) // bin_size,
     )
-    if stride > 1:
-        matrix = matrix.filter_rows(matrix._bin % stride == 0)
-    return matrix, n_unmatched
+    return matrix, n_unmatched, counts
 
 
 def _metric_expression(matrix, mode: str):
@@ -581,16 +700,36 @@ def _metric_expression(matrix, mode: str):
     )
 
 
-def superpartition_sample_counts(matrix) -> dict[int, int]:
-    """Samples actually screened per superpartition, aggregated over columns.
+def matrix_partition_count(matrix) -> int:
+    """Partitions the aggregation will run over, i.e. its maximum parallelism.
 
-    Counted from the matrix rather than from the mapping file so the figure reflects the
-    intersection that was really screened -- a recorded sample list can name samples a
-    later VDS no longer has. Columns only, so this is cheap.
+    Worth reporting prominently. A narrow interval on an AoU-scale VDS can resolve to a
+    single partition, and a single partition means a single task: the whole cluster idles
+    while one thread streams tens of gigabytes of entry data. That is a property of the
+    interval, not of the query, and it is invisible without asking.
     """
     _require_hail()
-    counter = matrix.aggregate_cols(hl.agg.counter(matrix._sp))
-    return {int(sp): int(n) for sp, n in counter.items() if sp is not None}
+    return int(matrix.n_partitions())
+
+
+def superpartition_column_summary(matrix) -> tuple[int, dict[int, int]]:
+    """Unmatched column count and per-superpartition sample counts, in one pass.
+
+    A single ``aggregate_cols`` rather than two. Reading the column table of a full-width
+    AoU VDS is the one operation observed to be pathologically slow on these callsets, so
+    it is done once and both numbers are taken from the same pass.
+
+    Counted from the matrix rather than from the mapping file so the figures reflect the
+    intersection actually screened -- a recorded sample list can name samples a later VDS
+    no longer has.
+    """
+    _require_hail()
+    result = matrix.aggregate_cols(hl.struct(
+        unmatched=hl.agg.count_where(hl.is_missing(matrix._sp)),
+        counts=hl.agg.filter(hl.is_defined(matrix._sp), hl.agg.counter(matrix._sp)),
+    ))
+    counts = {int(sp): int(n) for sp, n in result.counts.items() if sp is not None}
+    return int(result.unmatched), counts
 
 
 def aggregate_totals(matrix, mode: str,
@@ -648,9 +787,13 @@ def per_superpartition_sample_counts(vds, mode: str, mapping,
 def action_materialize(args) -> int:
     """Write a stratified narrow copy of the VDS, plus the sample and superpartition tables."""
     _require_hail()
-    vds = hl.vds.read_vds(args.vds_path)
-    sample_map = read_sample_map(args.sample_map_path)
-    present = vds_sample_names(vds)
+    with step(f'Opening VDS {args.vds_path}'):
+        vds = hl.vds.read_vds(args.vds_path)
+    with step(f'Reading sample map {args.sample_map_path}'):
+        sample_map = read_sample_map(args.sample_map_path)
+    # The one remaining driver-side collect: stratified selection needs the full name list.
+    with step('Collecting VDS sample names'):
+        present = vds_sample_names(vds)
     print(f'VDS holds {len(present):,} samples; map holds {len(sample_map):,}')
 
     assigned = assign_superpartitions(sample_map, present, args.superpartition_size)
@@ -675,9 +818,9 @@ def action_materialize(args) -> int:
         hl.agg.any(hl.is_defined(narrow.variant_data.LA)))
     reference_data = narrow.reference_data.filter_rows(
         hl.agg.any(hl.is_defined(narrow.reference_data.END)))
-    hl.vds.VariantDataset(reference_data, variant_data).write(
-        args.output_path, overwrite=args.overwrite)
-    print(f'Narrow VDS written to {args.output_path}')
+    with step(f'Writing narrow VDS to {args.output_path}'):
+        hl.vds.VariantDataset(reference_data, variant_data).write(
+            args.output_path, overwrite=args.overwrite)
 
     n_sp = write_lines(
         args.superpartitions_path, SUPERPARTITION_HEADER, format_superpartition_rows(chosen))
@@ -700,9 +843,9 @@ def sample_source_path(args) -> str:
 def _screening_matrix(args, vds):
     """Annotated matrix plus the per-superpartition sample counts it will be judged on."""
     source = sample_source_path(args)
-    mapping = superpartition_column_table(source, args.superpartition_size)
-    matrix, n_unmatched = annotated_matrix(
-        vds, args.mode, mapping, args.bin_size, args.stride)
+    with step(f'Reading sample mapping from {source}'):
+        mapping = superpartition_column_table(source, args.superpartition_size)
+    matrix, n_unmatched, counts = annotated_matrix(vds, args.mode, mapping, args.bin_size)
 
     if n_unmatched:
         detail = f'{n_unmatched:,} VDS sample(s) are absent from {source}'
@@ -716,21 +859,38 @@ def _screening_matrix(args, vds):
                 'detector relies on. Regenerate the map from sample_info, or pass a recorded '
                 'sample list if screening a subset is intended.')
 
-    counts = superpartition_sample_counts(matrix)
     total = sum(counts.values())
-    print(f'Screening {total:,} samples across {len(counts):,} superpartitions')
+    announce(f'Screening {total:,} samples across {len(counts):,} superpartitions')
+
+    with step('Counting partitions'):
+        n_partitions = matrix_partition_count(matrix)
+    announce(f'Aggregation will run over {n_partitions:,} partition(s)')
+    if n_partitions < MIN_HEALTHY_PARTITIONS:
+        announce(
+            f'WARNING: only {n_partitions} partition(s), so at most {n_partitions} task(s) '
+            'will run and the rest of the cluster will idle. On an AoU-scale VDS a single '
+            'partition can hold tens of GB of entry data, and one thread must stream all '
+            'of it. Widen the interval to span more partitions, or expect this to be slow '
+            'and unrepresentative of a genome-wide run.')
     return matrix, counts
 
 
 def action_scan(args) -> int:
     """Aggregate a VDS and write the summary and superpartition tables."""
     _require_hail()
-    intervals = build_intervals(parse_contig_list(args.contigs),
-                                parse_interval_list(args.intervals))
-    vds = read_and_subset_vds(args.vds_path, intervals)
+    requested = parse_interval_list(args.intervals)
+    strided = apply_stride(requested, args.bin_size, args.stride) if requested else requested
+    if args.stride > 1 and not requested:
+        raise ValueError('--stride requires --intervals; a whole contig cannot be strided '
+                         'without bounds. Pass explicit intervals or use --stride 1.')
+    intervals = build_intervals(parse_contig_list(args.contigs), strided)
+    announce(f'Scanning {len(intervals):,} interval(s) of {args.vds_path}')
+    with step(f'Opening VDS {args.vds_path}'):
+        vds = read_and_subset_vds(args.vds_path, intervals)
     matrix, counts = _screening_matrix(args, vds)
 
-    totals = aggregate_totals(matrix, args.mode, args.bin_size)
+    with step(f'Aggregating {args.mode} into {args.bin_size:,} bp bins'):
+        totals = aggregate_totals(matrix, args.mode, args.bin_size)
     rows = format_summary_rows(totals, args.bin_size)
     n_rows = write_lines(args.summary_path, SUMMARY_HEADER, rows)
     n_sp = write_lines(
@@ -748,19 +908,22 @@ def action_probe(args) -> int:
     interval_string = args.probe_interval
     intervals = build_intervals([], [interval_string])
     span = interval_span(intervals)
-    print(f'Probing {interval_string} ({span:,} bp) in {args.mode} mode')
+    announce(f'Probing {interval_string} ({span:,} bp) in {args.mode} mode')
 
-    vds = read_and_subset_vds(args.vds_path, intervals)
+    with step(f'Opening VDS {args.vds_path}'):
+        vds = read_and_subset_vds(args.vds_path, intervals)
     matrix, counts = _screening_matrix(args, vds)
     n_samples = sum(counts.values())
+    n_partitions = matrix_partition_count(matrix)
 
     started = time.monotonic()
-    totals = aggregate_totals(matrix, args.mode, args.bin_size)
+    with step(f'Aggregating {args.mode} over {interval_string}'):
+        totals = aggregate_totals(matrix, args.mode, args.bin_size)
     elapsed = time.monotonic() - started
 
     n_cells = sum(len(v) for v in totals.values())
     print()
-    print(format_probe_report(elapsed, span, n_cells, len(totals), n_samples))
+    print(format_probe_report(elapsed, span, n_cells, len(totals), n_samples, n_partitions))
     return 0
 
 
@@ -773,12 +936,14 @@ def action_full_depth(args) -> int:
     target = {int(s) for s in args.target_superpartitions.split(',')} \
         if args.target_superpartitions else None
 
-    mapping = superpartition_column_table(sample_source_path(args), args.superpartition_size)
+    with step(f'Reading sample mapping from {sample_source_path(args)}'):
+        mapping = superpartition_column_table(sample_source_path(args), args.superpartition_size)
 
     rows: list[str] = []
     for interval_string in requested_intervals:
         intervals = build_intervals([], [interval_string])
-        vds = read_and_subset_vds(args.vds_path, intervals)
+        with step(f'Opening VDS for {interval_string}'):
+            vds = read_and_subset_vds(args.vds_path, intervals)
 
         contig = intervals[0].start.contig
         start = intervals[0].start.position
@@ -786,8 +951,10 @@ def action_full_depth(args) -> int:
 
         # Columns are narrowed in Hail before anything is brought back, so the driver only
         # ever holds one superpartition's worth of samples rather than the whole callset.
-        for superpartition, observed in per_superpartition_sample_counts(
-                vds, args.mode, mapping, target).items():
+        with step(f'Counting per-sample data in {interval_string}'):
+            per_superpartition = per_superpartition_sample_counts(
+                vds, args.mode, mapping, target)
+        for superpartition, observed in per_superpartition.items():
             n_zero = sum(1 for value in observed.values() if value <= 0)
             total = sum(observed.values())
             names = observed

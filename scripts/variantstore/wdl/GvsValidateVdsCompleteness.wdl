@@ -89,15 +89,17 @@ workflow GvsValidateVdsCompleteness {
         # Compute Engine stockouts are per-zone, and Dataproc's default placement picks one
         # zone and fails rather than moving on. "auto" tries every zone in the region.
         String cluster_zones = "auto"
-        # The screen is a single streaming pass with no shuffle, so it has nothing to spill
-        # to local SSD. Local SSD availability is zone-specific and a common stockout cause,
-        # so asking for none widens the set of zones that can serve the request.
-        Int num_local_ssds = 0
+        # Kept at 1, matching every other GVS Hail workflow. In principle this screen is a
+        # single streaming pass with nothing to spill, and dropping local SSD widens the
+        # zones able to serve a request -- but that is now handled by cluster_zones retrying
+        # a stockout elsewhere, so there is no reason to also diverge from the configuration
+        # that is known to work. Worth revisiting for cost once the pipeline is proven.
+        Int num_local_ssds = 1
         String worker_machine_type = "n1-highmem-8"
-        # The driver collects a summary on the order of 62,000 x 134 numbers, so the large
-        # first-generation master the other GVS workflows use is oversized here, and large
-        # n1 shapes are among the most stockout-prone.
-        String master_machine_type = "n1-highmem-16"
+        # Also left matching the other GVS workflows. The driver only collects a summary on
+        # the order of 62,000 x 134 numbers, so this is oversized on paper, but a smaller
+        # master is a variable worth removing while the pipeline is still being brought up.
+        String master_machine_type = "n1-highmem-32"
         String? hail_temp_path
         String region = "us-central1"
         Int? cluster_max_idle_minutes
