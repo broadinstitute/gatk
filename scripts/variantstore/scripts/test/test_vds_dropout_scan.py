@@ -289,7 +289,6 @@ class TestOutputFormatting(unittest.TestCase):
         self.assertEqual(['1\t1', '83\t2'], vds.format_superpartition_rows(chosen))
 
 
-
 class TestProbeExtrapolation(unittest.TestCase):
     """A partition is the unit of work, so cost scales by partitions, not base pairs.
 

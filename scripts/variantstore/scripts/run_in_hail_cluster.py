@@ -427,31 +427,18 @@ if __name__ == "__main__":
     parser.add_argument('--max-secondary-workers', type=int, default=DEFAULT_MAX_SECONDARY,
                         help=f'Maximum number of secondary workers for the non-tiny autoscaling policy (default: {DEFAULT_MAX_SECONDARY}). '
                              f'Ignored when --use-tiny-dataproc-cluster is set.')
-
     parser.add_argument('--zones', type=str, required=False, default=None,
-
                         help='Comma-separated zones to try in order when creating the '
-
                              'cluster, or "auto" to use every zone in --region. A Compute '
-
                              'Engine stockout is a per-zone condition, so a create that '
-
                              'fails for capacity is retried in the next zone. Omit to keep '
-
                              "Dataproc's own placement, which picks one zone and does not "
-
                              'retry.')
-
     parser.add_argument('--num-local-ssds', type=int, required=False, default=1,
-
                         help='Local SSDs attached to the master and to each worker. Local '
-
                              'SSD availability is zone-specific and a common stockout '
-
                              'cause, so a workload that does not spill shuffle to disk can '
-
                              'set 0 to widen the usable zones. Defaults to 1.')
-
 
     args = parser.parse_args()
 
