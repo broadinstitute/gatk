@@ -626,11 +626,29 @@ def total_partition_count(vds_path: str, mode: str) -> int:
 
 
 def read_and_subset_vds(vds_path: str, intervals):
-    """Read a VDS, restricted to ``intervals`` when any are given."""
+    """Read a VDS and restrict it to ``intervals``, preserving its native partitioning.
+
+    Deliberately **not** ``read_vds(vds_path, intervals=...)``. That argument is a
+    *repartitioning* specification rather than a filter: N intervals produce exactly N
+    partitions. Passing a single 10 Mb interval therefore collapsed roughly 380 of this
+    VDS's native partitions into one, and since a partition is the unit of work, one task
+    had to stream all of it end to end -- observed as a nine-hour RUNNABLE task with the
+    rest of the cluster idle.
+
+    It would have been worse for a real scan: ``--contigs`` supplies one interval per
+    contig, so a genome-wide run would have used 24 partitions instead of the 119,189 the
+    VDS actually has.
+
+    Reading first and filtering afterwards keeps the native partitioning and prunes to the
+    partitions overlapping the request, which is both correct and parallel.
+    """
     _require_hail()
+    vds = hl.vds.read_vds(vds_path)
     if intervals:
-        return hl.vds.read_vds(vds_path, intervals=intervals)
-    return hl.vds.read_vds(vds_path)
+        # split_reference_blocks=False: reference blocks straddling an interval edge are
+        # left whole. Splitting them costs work and would skew the covered-base metric.
+        vds = hl.vds.filter_intervals(vds, intervals, split_reference_blocks=False)
+    return vds
 
 
 def vds_sample_names(vds) -> list[str]:

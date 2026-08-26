@@ -12,6 +12,7 @@ real data.
 """
 
 import argparse
+import ast
 import collections
 import contextlib
 import hashlib
@@ -592,6 +593,61 @@ class TestProbeExtrapolation(unittest.TestCase):
     def test_report_without_partition_count_omits_the_model(self):
         report = vds.format_probe_report(60.0, 10_000_000, 1_340, 200)
         self.assertNotIn('per partition:', report)
+
+
+class TestIntervalReadSemantics(unittest.TestCase):
+    """read_vds(intervals=...) repartitions; it does not filter.
+
+    N intervals yield exactly N partitions. A single 10 Mb interval therefore collapsed
+    ~380 native partitions of a 119,189-partition VDS into one, and one task streamed all
+    of it for nine hours. `--contigs` would have been worse still: 24 intervals, so 24
+    partitions for the whole genome.
+
+    Guarded by inspecting the source because the alternative needs a live Hail session and
+    an AoU-scale VDS, and the mistake is silent -- it produces correct results, slowly.
+    """
+
+    SOURCE = pathlib.Path(__file__).resolve().parents[1] / 'vds_dropout_scan.py'
+
+    def source(self):
+        return self.SOURCE.read_text()
+
+    @staticmethod
+    def _called_name(node):
+        func = node.func
+        return func.attr if isinstance(func, ast.Attribute) else getattr(func, 'id', '')
+
+    def test_read_vds_is_never_given_intervals(self):
+        """Parsed rather than grepped: the docstring explaining the trap quotes the call."""
+        tree = ast.parse(self.source())
+        offenders = [
+            node.lineno for node in ast.walk(tree)
+            if isinstance(node, ast.Call)
+            and self._called_name(node) == 'read_vds'
+            and any(kw.arg == 'intervals' for kw in node.keywords)
+        ]
+        self.assertEqual([], offenders,
+                         msg=f'read_vds called with intervals= at line(s) {offenders}; '
+                             'that repartitions to one partition per interval')
+
+    def test_filter_intervals_is_actually_called(self):
+        tree = ast.parse(self.source())
+        calls = [node for node in ast.walk(tree)
+                 if isinstance(node, ast.Call)
+                 and self._called_name(node) == 'filter_intervals']
+        self.assertTrue(calls, 'subsetting must go through hl.vds.filter_intervals')
+
+    def test_subsetting_goes_through_filter_intervals(self):
+        self.assertIn('hl.vds.filter_intervals(', self.source())
+
+    def test_reference_blocks_are_not_split(self):
+        """Splitting costs work and would skew the covered-base metric."""
+        self.assertIn('split_reference_blocks=False', self.source())
+
+    def test_the_reasoning_is_recorded_where_the_call_is(self):
+        doc = vds.read_and_subset_vds.__doc__
+        self.assertIn('repartitioning', doc)
+        self.assertIn('native partitioning', doc)
 
 
 class TestStriding(unittest.TestCase):
