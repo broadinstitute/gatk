@@ -36,8 +36,11 @@ workflow GvsQuickstartIntegration {
         Int? maximum_alternate_alleles
         File? gatk_override
         Boolean use_parquet_ingest = true
-        # DRAGEN version asserted by the BGE header-validation check. Defaults to the triplet the BGE
-        # integration samples carry; override to exercise the check against a different cohort.
+        # DRAGEN version asserted by the header-validation check. Left unset, the BGE call defaults to
+        # the triplet its samples carry ("3.7.8") and the other header-checked calls run consistency-
+        # only. When set, this value flows to BOTH the VETS/Hail (WGS) call and the BGE call. The WGS
+        # quickstart samples are pre-DRAGEN, so setting this will FAIL the VETS/Hail branch ("expected
+        # version given but no DRAGEN command lines found") until the WGS inputs are DRAGEN (VS-1958).
         String? expected_dragen_version
     }
 
