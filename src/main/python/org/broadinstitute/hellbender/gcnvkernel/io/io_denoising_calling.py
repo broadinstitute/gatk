@@ -132,7 +132,7 @@ class SampleDenoisingAndCallingPosteriorsWriter:
                     f.write(comment + comment_line + '\n')
             f.write(delimiter.join(copy_number_header_columns) + '\n')
             for ti in range(ndarray_tc.shape[0]):
-                f.write(delimiter.join([repr(x) for x in ndarray_tc[ti, :]]) + '\n')
+                f.write(delimiter.join([io_commons.scalar_to_str(x) for x in ndarray_tc[ti, :]]) + '\n')
 
     def __call__(self):
         # write gcnvkernel version

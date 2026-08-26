@@ -11,7 +11,7 @@ from pymc import Normal, Deterministic, Potential, Exponential, TruncatedNormal,
 
 from . import commons
 from .fancy_model import GeneralizedContinuousModel
-from .. import config, types
+from .. import config, pytensor_compat, types
 from ..structs.metadata import IntervalListMetadata, SampleMetadataCollection
 from ..tasks.inference_task_base import HybridInferenceParameters
 
@@ -195,7 +195,7 @@ class PloidyModel(GeneralizedContinuousModel):
     """Declaration of the germline contig ploidy model (continuous variables only; posterior of discrete
     variables are assumed to be known)."""
 
-    @pytensor.config.change_flags(compute_test_value="off")
+    @pytensor_compat.change_test_value_flag("off")
     def __init__(self,
                  ploidy_config: PloidyModelConfig,
                  ploidy_workspace: PloidyWorkspace):
@@ -283,7 +283,7 @@ class PloidyEmissionBasicSampler:
         self.samples_per_round = samples_per_round
         self._simultaneous_log_ploidy_emission_sampler = None
 
-    def update_approximation(self, approx: pm.approximations.MeanField):
+    def update_approximation(self, approx: pm.MeanField):
         """Generates a new compiled sampler based on a given approximation.
         Args:
             approx: an instance of PyMC mean-field approximation
@@ -300,14 +300,14 @@ class PloidyEmissionBasicSampler:
     def draw(self) -> np.ndarray:
         return self._simultaneous_log_ploidy_emission_sampler()
 
-    @pytensor.config.change_flags(compute_test_value="off")
-    def _get_compiled_simultaneous_log_ploidy_emission_sampler(self, approx: pm.approximations.MeanField):
+    @pytensor_compat.change_test_value_flag("off")
+    def _get_compiled_simultaneous_log_ploidy_emission_sampler(self, approx: pm.MeanField):
         """For a given variational approximation, returns a compiled pytensor function that draws posterior samples
         from the log ploidy emission."""
         log_ploidy_emission_sjk = commons.stochastic_node_mean_symbolic(
             approx, self.ploidy_model['logp_sjk'], size=self.samples_per_round)
-        return pm.pytensorf.compile_pymc(inputs=[], outputs=log_ploidy_emission_sjk,
-                                         random_seed=approx.rng.randint(2**30, dtype=np.int64))
+        return commons.compile_pymc(inputs=[], outputs=log_ploidy_emission_sjk,
+                                    random_seed=approx.rng.randint(2**30, dtype=np.int64))
 
 
 class PloidyBasicCaller:
@@ -319,7 +319,7 @@ class PloidyBasicCaller:
         self.inference_params = inference_params
         self._update_log_q_ploidy_sjk_pytensor_func = self._get_update_log_q_ploidy_sjk_pytensor_func()
 
-    @pytensor.config.change_flags(compute_test_value="off")
+    @pytensor_compat.change_test_value_flag("off")
     def _get_update_log_q_ploidy_sjk_pytensor_func(self) -> pytensor.compile.Function:
         new_log_q_ploidy_sjk = (self.ploidy_workspace.log_p_ploidy_jk.dimshuffle('x', 0, 1)
                                 + self.ploidy_workspace.log_ploidy_emission_sjk)

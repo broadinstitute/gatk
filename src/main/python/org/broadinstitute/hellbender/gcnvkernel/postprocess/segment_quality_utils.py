@@ -8,6 +8,7 @@ from ..models import commons
 from scipy.special import logsumexp
 
 from ..utils.math import logsumexp_double_complement, logp_to_phred
+from .. import pytensor_compat
 
 _logger = logging.getLogger(__name__)
 
@@ -67,7 +68,7 @@ class HMMSegmentationQualityCalculator:
             for left_out_state in range(self.num_states)}
 
     @staticmethod
-    @pytensor.config.change_flags(compute_test_value="ignore")
+    @pytensor_compat.change_test_value_flag("ignore")
     def _get_compiled_constrained_path_logp_pytensor_func() -> pytensor.compile.Function:
         """Returns a pytensor function that calculates the log posterior probability of hidden state paths composed
         from a subset X of all hidden states S.

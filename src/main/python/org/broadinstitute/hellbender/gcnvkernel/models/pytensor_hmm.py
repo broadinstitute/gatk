@@ -6,7 +6,7 @@ import pytensor.tensor as pt
 
 from ..models import commons
 from ..models.commons import logsumexp
-from .. import types
+from .. import pytensor_compat, types
 
 
 class PytensorForwardBackward:
@@ -122,7 +122,7 @@ class PytensorForwardBackward:
             arg_idx += 1
         return result
 
-    @pytensor.config.change_flags(compute_test_value="ignore")
+    @pytensor_compat.change_test_value_flag("ignore")
     def _get_compiled_forward_backward_pytensor_func(self) -> pytensor.compile.Function:
         """Returns a compiled pytensor function that computes the posterior probabilities of hidden states using
         the forward-backward algorithm.
@@ -354,7 +354,7 @@ class PytensorViterbi:
                          log_emission_tc: np.ndarray) -> List[int]:
         return self._viterbi_pytensor_func(log_prior_c, log_trans_tcc, log_emission_tc).tolist()
 
-    @pytensor.config.change_flags(compute_test_value="ignore")
+    @pytensor_compat.change_test_value_flag("ignore")
     def _get_compiled_viterbi_pytensor_func(self) -> pytensor.compile.Function:
         """Returns a pytensor function that calculates the Viterbi path."""
         log_prior_c = pt.vector('log_prior_c')

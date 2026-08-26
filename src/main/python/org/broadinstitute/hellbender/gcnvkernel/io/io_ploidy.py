@@ -90,8 +90,9 @@ class SamplePloidyWriter:
             f.write(header + '\n')
             for j, contig in enumerate(sample_ploidy_metadata.contig_list):
                 f.write(delimiter.join([contig,
-                                        repr(sample_ploidy_metadata.ploidy_j[j]),
-                                        repr(sample_ploidy_metadata.ploidy_genotyping_quality_j[j])]) + '\n')
+                                        io_commons.scalar_to_str(sample_ploidy_metadata.ploidy_j[j]),
+                                        io_commons.scalar_to_str(
+                                            sample_ploidy_metadata.ploidy_genotyping_quality_j[j])]) + '\n')
 
     @staticmethod
     def _write_sample_read_depth(sample_posterior_path: str,
@@ -106,8 +107,8 @@ class SamplePloidyWriter:
             header = delimiter.join([io_consts.global_read_depth_column_name,
                                      io_consts.average_ploidy_column_name])
             f.write(header + '\n')
-            f.write(delimiter.join([repr(sample_read_depth_metadata.global_read_depth),
-                                    repr(sample_read_depth_metadata.average_ploidy)]) + '\n')
+            f.write(delimiter.join([io_commons.scalar_to_str(sample_read_depth_metadata.global_read_depth),
+                                    io_commons.scalar_to_str(sample_read_depth_metadata.average_ploidy)]) + '\n')
 
     def __call__(self):
         for si, sample_name in enumerate(self.ploidy_workspace.sample_names):
