@@ -93,10 +93,10 @@ import argparse
 import contextlib
 import datetime
 import hashlib
-import math
 import sys
 import time
 from collections import defaultdict
+from dataclasses import dataclass
 from typing import IO, Iterable, Mapping, Sequence
 
 try:
@@ -901,8 +901,18 @@ def sample_source_path(args) -> str:
     return args.sample_list_path or args.sample_map_path
 
 
+@dataclass(frozen=True)
+class ScanGeometry:
+    """Partition counts and cluster width, the inputs a cost estimate needs."""
+
+    n_partitions: int
+    n_total_partitions: int
+    parallelism: int | None
+    full_parallelism: int | None
+
+
 def _screening_matrix(args, vds):
-    """Annotated matrix plus the per-superpartition sample counts it will be judged on."""
+    """Annotated matrix, per-superpartition sample counts, and the scan geometry."""
     source = sample_source_path(args)
     with step(f'Reading sample mapping from {source}'):
         mapping = superpartition_column_table(source, args.superpartition_size)
@@ -925,11 +935,6 @@ def _screening_matrix(args, vds):
 
     with step('Counting partitions'):
         n_partitions = matrix_partition_count(matrix)
-    n_total_partitions = total_partition_count(args.vds_path, args.mode)
-    parallelism = observed_parallelism()
-    # Peak width once the autoscaling policy has added its secondary workers.
-    full_parallelism = (args.max_secondary_workers * args.worker_cores
-                        if args.max_secondary_workers else None)
     with step('Counting partitions in the whole VDS'):
         n_total = total_partition_count(args.vds_path, args.mode)
     announce(f'Aggregation will run over {n_partitions:,} of {n_total:,} total partition(s)')
@@ -945,7 +950,16 @@ def _screening_matrix(args, vds):
             f'what a fully parallel scan of all {n_total:,} partitions would. It is not a '
             'cheap preview. Either widen the interval to span many partitions, or run the '
             'real scan and let the cluster work.')
-    return matrix, counts
+
+    geometry = ScanGeometry(
+        n_partitions=n_partitions,
+        n_total_partitions=n_total,
+        parallelism=observed_parallelism(),
+        # Peak width once the autoscaling policy has added its secondary workers.
+        full_parallelism=(args.max_secondary_workers * args.worker_cores
+                          if args.max_secondary_workers else None),
+    )
+    return matrix, counts, geometry
 
 
 def action_scan(args) -> int:
@@ -960,7 +974,7 @@ def action_scan(args) -> int:
     announce(f'Scanning {len(intervals):,} interval(s) of {args.vds_path}')
     with step(f'Opening VDS {args.vds_path}'):
         vds = read_and_subset_vds(args.vds_path, intervals)
-    matrix, counts = _screening_matrix(args, vds)
+    matrix, counts, _ = _screening_matrix(args, vds)
 
     with step(f'Aggregating {args.mode} into {args.bin_size:,} bp bins'):
         totals = aggregate_totals(matrix, args.mode, args.bin_size)
@@ -985,9 +999,8 @@ def action_probe(args) -> int:
 
     with step(f'Opening VDS {args.vds_path}'):
         vds = read_and_subset_vds(args.vds_path, intervals)
-    matrix, counts = _screening_matrix(args, vds)
+    matrix, counts, geometry = _screening_matrix(args, vds)
     n_samples = sum(counts.values())
-    n_partitions = matrix_partition_count(matrix)
 
     started = time.monotonic()
     with step(f'Aggregating {args.mode} over {interval_string}'):
@@ -996,8 +1009,10 @@ def action_probe(args) -> int:
 
     n_cells = sum(len(v) for v in totals.values())
     print()
-    print(format_probe_report(elapsed, span, n_cells, len(totals), n_samples, n_partitions,
-                              n_total_partitions, parallelism, full_parallelism))
+    print(format_probe_report(
+        elapsed, span, n_cells, len(totals), n_samples,
+        geometry.n_partitions, geometry.n_total_partitions,
+        geometry.parallelism, geometry.full_parallelism))
     return 0
 
 

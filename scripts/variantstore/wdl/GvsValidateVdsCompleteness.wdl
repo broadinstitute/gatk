@@ -98,6 +98,8 @@ workflow GvsValidateVdsCompleteness {
         # Compute Engine stockouts are per-zone, and Dataproc's default placement picks one
         # zone and fails rather than moving on. "auto" tries every zone in the region.
         String cluster_zones = "auto"
+        # Cores per worker, used only for the probe's concurrency estimate.
+        Int worker_cores = 4
         # Kept at 1, matching every other GVS Hail workflow. In principle this screen is a
         # single streaming pass with nothing to spill, and dropping local SSD widens the
         # zones able to serve a request -- but that is now handled by cluster_zones retrying
@@ -344,6 +346,7 @@ workflow GvsValidateVdsCompleteness {
             reference_schema = effective_reference_schema,
             prefix = cluster_prefix,
             cluster_zones = cluster_zones,
+            worker_cores = worker_cores,
             num_local_ssds = num_local_ssds,
             worker_machine_type = worker_machine_type,
             master_machine_type = master_machine_type,
@@ -501,6 +504,7 @@ task ScanVdsForDropouts {
 
         String prefix
         String cluster_zones
+        Int worker_cores
         Int num_local_ssds
         String worker_machine_type
         String master_machine_type
@@ -592,6 +596,10 @@ task ScanVdsForDropouts {
             "bin-size": ~{bin_size},
             "stride": ~{stride},
             "probe-interval": "~{probe_interval}",
+            # Only used to annotate the probe report with the concurrency a full run could
+            # reach; without them the report can report throughput but not project from it.
+            "max-secondary-workers": ~{max_secondary_workers},
+            "worker-cores": ~{worker_cores},
             "temp-path": sys.argv[1],
         }
 
