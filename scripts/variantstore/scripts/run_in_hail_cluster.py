@@ -458,6 +458,6 @@ if __name__ == "__main__":
                    master_memory_fraction=args.master_memory_fraction,
                    num_primary_workers=args.num_primary_workers,
                    max_secondary_workers=args.max_secondary_workers,
-            zones=args.zones,
-            num_local_ssds=args.num_local_ssds,
+                   zones=args.zones,
+                   num_local_ssds=args.num_local_ssds,
                    )
