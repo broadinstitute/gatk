@@ -86,8 +86,9 @@ final gatkCondaYML = "gatkcondaenv.yml"
 final largeResourcesFolder = "src/main/resources/large"
 final buildPrerequisitesMessage = "See https://github.com/broadinstitute/gatk#building for information on how to build GATK."
 
-// Returns true if any files in the target folder are git-lfs stub files.
-def checkForLFSStubFiles(targetFolder) {
+// Returns the git-lfs stub files in the target folder. A stub file is a small text file that
+// stands in for the real content, recording the sha256 ("oid") and the size of that content.
+def findLFSStubFiles(targetFolder) {
     final lfsStubFileHeader = "version https://git-lfs.github.com/spec/v1"  // first line of a git-lfs stub file
     def readBytesFromFile = { largeFile, n ->
         final byte[] bytes = new byte[n]
@@ -95,38 +96,127 @@ def checkForLFSStubFiles(targetFolder) {
         return bytes
     }
     def targetFiles = fileTree(dir: targetFolder)
-    return targetFiles.any() { f ->
+    return targetFiles.findAll() { f ->
         final byte[] actualBytes = readBytesFromFile(f, lfsStubFileHeader.length())
         return new String(actualBytes, "UTF-8") == lfsStubFileHeader
     }
 }
 
-// if any of the large resources are lfs stub files, download them
+// Returns the oid (sha256) and size of the content a git-lfs stub file stands in for.
+def parseLFSStubFile(stubFile) {
+    final stubFileLines = stubFile.readLines("UTF-8")
+    final oidLine = stubFileLines.find { it.startsWith("oid sha256:") }
+    final sizeLine = stubFileLines.find { it.startsWith("size ") }
+    if (oidLine == null || sizeLine == null) {
+        throw new GradleException("$stubFile looks like a git-lfs stub file, but has no oid and/or size line.")
+    }
+    return [ oid : oidLine.substring("oid sha256:".length()).trim(),
+             size: Long.parseLong(sizeLine.substring("size ".length()).trim()) ]
+}
+
+// Returns the sha256 of the contents of a file, as a hex string.
+def sha256OfFile(targetFile) {
+    final digest = java.security.MessageDigest.getInstance("SHA-256")
+    targetFile.withInputStream { stream ->
+        final byte[] buffer = new byte[64 * 1024]
+        int bytesRead
+        while ((bytesRead = stream.read(buffer)) > 0) {
+            digest.update(buffer, 0, bytesRead)
+        }
+    }
+    return digest.digest().encodeHex().toString()
+}
+
+// Download the content the given git-lfs stub files stand in for directly from the git-lfs server,
+// using the git-lfs batch API (https://github.com/git-lfs/git-lfs/blob/main/docs/api/batch.md),
+// and verify each download against the sha256 recorded in the stub file it replaces. This is what
+// allows the build to run from a source archive (i.e. a GitHub source tarball, or the source
+// tarball used by a downstream packager), which contains stub files, but no git repository and
+// no git-lfs to resolve them with.
+def downloadLFSStubFileContents(stubFiles, buildPrerequisitesMessage) {
+    // the lfs server the large resources are fetched from, overridable for forks and mirrors
+    final lfsBatchAPIEndpoint = System.getProperty("lfsBatchAPIEndpoint",
+            "https://github.com/broadinstitute/gatk.git/info/lfs/objects/batch")
+    final stubs = stubFiles.collectEntries { [(it): parseLFSStubFile(it)] }
+    final batchRequest = groovy.json.JsonOutput.toJson([
+            operation: "download",
+            transfers: [ "basic" ],
+            objects  : stubs.values().collect { [oid: it.oid, size: it.size] }
+    ])
+
+    def batchResponse
+    try {
+        final connection = new URL(lfsBatchAPIEndpoint).openConnection()
+        connection.setRequestMethod("POST")
+        connection.setDoOutput(true)
+        connection.setRequestProperty("Accept", "application/vnd.git-lfs+json")
+        connection.setRequestProperty("Content-Type", "application/vnd.git-lfs+json")
+        connection.outputStream.withWriter("UTF-8") { it.write(batchRequest) }
+        if (connection.responseCode != 200) {
+            throw new GradleException("The git-lfs server at $lfsBatchAPIEndpoint responded with"
+                    + " ${connection.responseCode} ${connection.responseMessage}. $buildPrerequisitesMessage")
+        }
+        batchResponse = new groovy.json.JsonSlurper().parseText(connection.inputStream.getText("UTF-8"))
+    } catch (IOException e) {
+        throw new GradleException("An IOException occurred while requesting the large resource files"
+                + " from the git-lfs server at $lfsBatchAPIEndpoint. $buildPrerequisitesMessage", e)
+    }
+
+    final downloadURLs = batchResponse.objects.collectEntries { [(it.oid): it.actions?.download?.href] }
+    stubs.each { stubFile, stub ->
+        final downloadURL = downloadURLs[stub.oid]
+        if (downloadURL == null) {
+            throw new GradleException("The git-lfs server did not return a download URL for $stubFile"
+                    + " (oid ${stub.oid}). $buildPrerequisitesMessage")
+        }
+        println "Downloading git-lfs resource $stubFile (${stub.size} bytes)"
+        final downloadedFile = File.createTempFile(stubFile.name, ".lfsdownload", stubFile.parentFile)
+        try {
+            downloadedFile.withOutputStream { output ->
+                new URL(downloadURL).withInputStream { input -> output << input }
+            }
+            final downloadedOid = sha256OfFile(downloadedFile)
+            if (downloadedOid != stub.oid) {
+                throw new GradleException("The content downloaded for $stubFile has sha256 $downloadedOid,"
+                        + " but the git-lfs stub file it replaces requires ${stub.oid}.")
+            }
+            java.nio.file.Files.move(downloadedFile.toPath(), stubFile.toPath(),
+                    java.nio.file.StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+            downloadedFile.delete()
+        }
+    }
+}
+
+// if any of the large resources are lfs stub files, resolve them: with git-lfs when we're in a git
+// repository, and by downloading them straight from the git-lfs server otherwise, or if git-lfs
+// isn't installed
 def resolveLargeResourceStubFiles(largeResourcesFolder, buildPrerequisitesMessage) {
     def execGitLFSCommand = { gitLFSExecCommand ->
         println "Executing: $gitLFSExecCommand"
         try {
             def retCode = gitLFSExecCommand.execute().waitFor()
             if (retCode.intValue() != 0) {
-                throw new GradleException("Execution of \"$gitLFSExecCommand\" failed with exit code: $retCode. " +
-                        " git-lfs is required to build GATK but may not be installed. $buildPrerequisitesMessage")
+                println "Execution of \"$gitLFSExecCommand\" failed with exit code: $retCode."
             }
             return retCode
         } catch (IOException e) {
-            throw new GradleException(
-                    "An IOException occurred while attempting to execute the command $gitLFSExecCommand."
-                    + " git-lfs is required to build GATK but may not be installed. $buildPrerequisitesMessage", e)
+            println "An IOException occurred while attempting to execute the command $gitLFSExecCommand: ${e.getMessage()}"
+            return -1
         }
     }
 
     // check for stub files, try to pull once if there are any, then check again
-    if (checkForLFSStubFiles(largeResourcesFolder)) {
-        final gitLFSPullLargeResources = "git lfs pull --include $largeResourcesFolder"
-        execGitLFSCommand(gitLFSPullLargeResources)
-        if (checkForLFSStubFiles(largeResourcesFolder)) {
-            throw new GradleException("$largeResourcesFolder contains one or more git-lfs stub files."
-                    + " The resource files in $largeResourcesFolder must be downloaded by running the git-lfs"
-                    + " command \"$gitLFSPullLargeResources\". $buildPrerequisitesMessage")
+    def stubFiles = findLFSStubFiles(largeResourcesFolder)
+    if (!stubFiles.isEmpty()) {
+        if (looksLikeWereInAGitRepository()) {
+            execGitLFSCommand("git lfs pull --include $largeResourcesFolder")
+            stubFiles = findLFSStubFiles(largeResourcesFolder)
+        }
+        // git-lfs is either unavailable, or didn't resolve the stub files (which is always the case
+        // when building from a source archive) - fetch the content from the git-lfs server directly
+        if (!stubFiles.isEmpty()) {
+            downloadLFSStubFileContents(stubFiles, buildPrerequisitesMessage)
         }
     }
 }
@@ -150,7 +240,9 @@ def ensureBuildPrerequisites(largeResourcesFolder, buildPrerequisitesMessage, sk
     }
     if (!skipGitCheck && !looksLikeWereInAGitRepository() ) {
         throw new GradleException("This doesn't appear to be a git folder. " +
-                "The GATK Github repository must be cloned using \"git clone\" to run the build. " +
+                "The GATK Github repository must be cloned using \"git clone\" to run the build, " +
+                "or, to build from a source archive, the version must be supplied explicitly using " +
+                "\"-DversionOverride=<version>\". " +
                 "\n$buildPrerequisitesMessage")
     }
     // Large runtime resource files must be present at build time to be compiled into the jar, so
