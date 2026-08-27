@@ -25,8 +25,8 @@ version 1.0
 # real summary the detector can consume.
 #
 # The sample map is generated automatically when bq_project_id and bq_dataset_name are supplied.
-# Pass sample_map_path to supply one yourself, or see
-# scripts/variantstore/bq/vds_dropout_sample_map.sql to build it by hand.
+# Pass sample_map_path to supply one yourself; the format is two columns, sample_name and
+# sample_id, with a header, and the GenerateSampleMap task below shows the query.
 #
 # The BigQuery adjudication SQL that `scan` emits is deliberately not executed here. The screen
 # produces candidates; running the queries against the callset dataset is a separate, deliberate
@@ -359,8 +359,8 @@ task GenerateSampleMap {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         # The same filter GvsExtractAvroFilesForHail.wdl applies when exporting Avro, so the
-        # sample universe matches the one the VDS was built from. Kept in step with
-        # scripts/variantstore/bq/vds_dropout_sample_map.sql, which is the hand-run copy.
+        # sample universe matches the one the VDS was built from. This is the only copy of
+        # the query; vds_dropout_scan.py documents the format a hand-built map must match.
         #
         # EXPORT DATA rather than `bq query > file`: it writes tab-delimited with a header
         # straight to GCS, which is the format the scan expects, and it does not depend on

@@ -76,18 +76,16 @@ class TestBinArithmetic(unittest.TestCase):
 
 
 class TestWdlGeneratedSampleMap(unittest.TestCase):
-    """The WDL generates the sample map itself, inlining a copy of the bq/ query.
+    """The WDL generates the sample map itself, and holds the only copy of the query.
 
-    Two copies of a predicate is two places to get it wrong, and getting it wrong here is
-    quiet: a mismatched sample universe changes which samples are screened without
-    erroring. So the essentials are asserted against both files.
+    Getting the sample universe wrong here is quiet: it changes which samples are screened
+    without erroring, so the essentials are asserted rather than assumed. The predicates
+    must match what GvsExtractAvroFilesForHail.wdl applies when exporting Avro, or the peer
+    comparison is drawn against a different cohort than the VDS holds.
     """
 
     WDL = (pathlib.Path(__file__).resolve().parents[2]
            / 'wdl' / 'GvsValidateVdsCompleteness.wdl')
-    SQL = (pathlib.Path(__file__).resolve().parents[2]
-           / 'bq' / 'vds_dropout_sample_map.sql')
-
     def read(self, path):
         if not path.exists():
             # The Docker test run mounts only the scripts directory.
@@ -106,13 +104,6 @@ class TestWdlGeneratedSampleMap(unittest.TestCase):
         query = self.generated_query()
         self.assertIn('withdrawn IS NULL', query)
         self.assertIn('is_control = false', query)
-
-    def test_wdl_and_sql_file_agree_on_the_filter(self):
-        query = self.generated_query()
-        sql = self.read(self.SQL)
-        for predicate in ('withdrawn IS NULL', 'is_control = false'):
-            self.assertIn(predicate, query, msg='WDL')
-            self.assertIn(predicate, sql, msg='bq/ SQL')
 
     def test_exports_in_the_format_the_scan_can_read(self):
         """Tab-delimited with a header is what sniff_delimiter and import_table expect."""

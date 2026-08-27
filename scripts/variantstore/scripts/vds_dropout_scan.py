@@ -80,10 +80,18 @@ safe to compare across VDSes.
 Sample map
 ----------
 Superpartition membership comes from a TSV of sample name to sample ID, since a VDS knows
-only names.  ``GvsValidateVdsCompleteness.wdl`` generates that map itself when given a
-BigQuery project and dataset; ``scripts/variantstore/bq/vds_dropout_sample_map.sql`` is
-the hand-run copy, for building one outside the workflow.  Either tab- or comma-separated
-input is accepted, so ``bq query --format=csv`` output works as-is.
+only names.  ``GvsValidateVdsCompleteness.wdl`` generates it from ``sample_info`` when given
+a BigQuery project and dataset, and its ``GenerateSampleMap`` task is the one place the
+query lives.
+
+To supply one by hand instead, produce two columns with a header::
+
+    sample_name<TAB>sample_id
+
+Either tab- or comma-separated input is accepted, so ``bq query --format=csv`` output works
+as-is.  The sample universe should match what the Avro export used -- non-withdrawn,
+non-control -- or the peer comparison is drawn against a different cohort than the VDS
+holds.
 
 The map must cover every sample in the VDS.  A VDS sample missing from it is a hard error
 rather than a skip, because screening part of a superpartition biases the peer comparison
