@@ -616,25 +616,35 @@ def observed_parallelism() -> int | None:
 def executor_summary() -> str:
     """Live executor count and total task slots, for the log.
 
-    Worth recording because it is the term most likely to be wrong in a cost estimate,
-    and the hardest to reconstruct afterwards. A cluster that starts with two primary
-    workers and depends on autoscaling for the rest can spend a long time far below its
-    peak width, and nothing in the job output would otherwise say so -- an estimate that
-    assumes full width is then wrong by the ratio, silently.
+    Worth recording because it is the term most likely to be wrong in a cost estimate and
+    the hardest to reconstruct afterwards -- a cluster that starts with two primary workers
+    and autoscales for the rest can spend a long time far below peak width, and an estimate
+    assuming full width is then silently wrong by that ratio.
+
+    Each figure is obtained independently. An earlier version built both inside one `try`
+    and iterated `getExecutorMemoryStatus().keySet()`, which py4j surfaces as a Java object
+    rather than a Python iterable; the resulting TypeError discarded the task-slot count as
+    well, which had been working. Diagnostics should degrade one field at a time.
     """
     _require_hail()
     try:
         context = hl.spark_context()
-        # Excludes the driver, which appears in this map but runs no tasks.
-        executors = [
-            executor for executor in
-            context._jsc.sc().getExecutorMemoryStatus().keySet()
-            if 'driver' not in str(executor).lower()
-        ]
-        return (f'{len(executors)} executor(s), '
-                f'~{context.defaultParallelism} task slot(s)')
     except Exception as exc:  # pragma: no cover - needs a live Spark context
-        return f'could not determine executor count ({exc})'
+        return f'unavailable (no Spark context: {exc})'
+
+    parts = []
+    try:
+        # A Scala Map, so ask it for its size rather than iterating it. The driver is
+        # included in this map but runs no tasks, hence the -1.
+        n_executors = int(context._jsc.sc().getExecutorMemoryStatus().size()) - 1
+        parts.append(f'{max(n_executors, 0)} executor(s)')
+    except Exception as exc:  # pragma: no cover - needs a live Spark context
+        parts.append(f'executor count unavailable ({type(exc).__name__})')
+    try:
+        parts.append(f'~{context.defaultParallelism} task slot(s)')
+    except Exception as exc:  # pragma: no cover - needs a live Spark context
+        parts.append(f'task slots unavailable ({type(exc).__name__})')
+    return ', '.join(parts)
 
 
 def matrix_partition_count(matrix) -> int:
@@ -789,6 +799,62 @@ def shard_paths(summary_path: str, contig: str) -> tuple[str, str]:
     return f'{summary_path}.{contig}', f'{summary_path}.{contig}.done'
 
 
+# The marker records what produced the shard, not just that something did. Without this, a
+# re-run with the same output_prefix but a different --vds-path or --bin-size would silently
+# reuse the previous run's shards and emit a summary describing the wrong VDS -- a silent
+# wrong answer, which is the single outcome this tool cannot afford to produce.
+MARKER_HEADER = 'contig\trows\tvds_path\tmode\tbin_size'
+
+
+def write_marker(marker_path: str, contig: str, n_rows: int, args) -> None:
+    """Record the shard's provenance alongside its row count."""
+    write_lines(marker_path, MARKER_HEADER,
+                [f'{contig}\t{n_rows}\t{args.vds_path}\t{args.mode}\t{args.bin_size}'])
+
+
+def verify_marker(marker_path: str, contig: str, args) -> None:
+    """Check a checkpoint was produced by the run we are resuming.
+
+    A mismatch aborts rather than warning: reusing another VDS's shard produces a summary
+    that looks complete and describes the wrong data, and no downstream step could detect
+    it.
+
+    Markers written before provenance was recorded are accepted with a warning rather than
+    discarded, so an in-flight scan's checkpoints stay usable across the upgrade. That is a
+    deliberate trade, and the warning says what it costs.
+    """
+    with _open_read(marker_path) as handle:
+        header = handle.readline().rstrip('\n')
+        row = handle.readline().rstrip('\n')
+
+    if header != MARKER_HEADER:
+        announce(
+            f'WARNING: {marker_path} predates provenance recording, so it cannot be '
+            f'checked against --vds-path or --bin-size. Accepting it and skipping {contig}. '
+            'If this output_prefix was previously used for a different VDS or bin size, '
+            f'delete {marker_path} and the matching shard before relying on the result.')
+        return
+
+    fields = row.split('\t')
+    if len(fields) < 5:
+        raise RuntimeError(f'{marker_path}: malformed marker row {row!r}; delete it and '
+                           f're-run {contig}.')
+    _, _, vds_path, mode, bin_size = fields[:5]
+    mismatches = []
+    if vds_path != args.vds_path:
+        mismatches.append(f'vds_path {vds_path!r} != {args.vds_path!r}')
+    if mode != args.mode:
+        mismatches.append(f'mode {mode!r} != {args.mode!r}')
+    if bin_size != str(args.bin_size):
+        mismatches.append(f'bin_size {bin_size} != {args.bin_size}')
+    if mismatches:
+        raise RuntimeError(
+            f'{marker_path} was produced by a different run ({"; ".join(mismatches)}). '
+            'Reusing it would emit a summary describing the wrong data while appearing '
+            f'complete. Delete {marker_path} and the matching shard, or choose a different '
+            '--summary-path.')
+
+
 def concatenate_shards(shards: Sequence[str], summary_path: str,
                        expected_contigs: Sequence[str]) -> int:
     """Merge per-contig shards into the final summary, verifying coverage.
@@ -828,6 +894,7 @@ def _scan_one_contig(args, contig: str):
     """Aggregate one contig into its shard. Returns (shard path, sample counts or None)."""
     shard, marker = shard_paths(args.summary_path, contig)
     if _path_exists(marker):
+        verify_marker(marker, contig, args)
         announce(f'{contig}: already complete, skipping')
         return shard, None
 
@@ -842,7 +909,7 @@ def _scan_one_contig(args, contig: str):
 
     n_rows = write_lines(shard, SUMMARY_HEADER,
                          format_summary_rows(totals, args.bin_size))
-    write_lines(marker, 'contig\trows', [f'{contig}\t{n_rows}'])
+    write_marker(marker, contig, n_rows, args)
     announce(f'{contig}: wrote {n_rows:,} rows ({len(totals):,} bins)')
     return shard, counts
 

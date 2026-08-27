@@ -19,6 +19,7 @@ import os
 import pathlib
 import re
 import tempfile
+import types
 import unittest
 
 import vds_dropout_scan as vds
@@ -256,6 +257,73 @@ class TestClusterRunnerCompatibility(unittest.TestCase):
         self.assertEqual([], vds.parse_interval_list(['  ,  ']))
 
 
+class TestExecutorSummary(unittest.TestCase):
+    """Cluster width is logged for the cost model, so it must degrade one field at a time.
+
+    The first version built both figures inside one try block and iterated
+    getExecutorMemoryStatus().keySet(), which py4j exposes as a Java object rather than a
+    Python iterable. The TypeError discarded the task-slot count too, which had been
+    working -- so a diagnostic meant to explain a slow run instead reported nothing.
+    """
+
+    class _MemStatus:
+        def __init__(self, size): self._size = size
+        def size(self): return self._size
+
+    def _context(self, size=5, parallelism=1856, break_status=False):
+        outer = self
+
+        class Sc:
+            def getExecutorMemoryStatus(inner):
+                if break_status:
+                    raise TypeError("'JavaObject' object is not iterable")
+                return outer._MemStatus(size)
+
+        class Jsc:
+            def sc(inner): return Sc()
+
+        return types.SimpleNamespace(_jsc=Jsc(), defaultParallelism=parallelism)
+
+    def summary_with(self, context_or_raiser):
+        original = vds.hl
+        vds.hl = types.SimpleNamespace(spark_context=context_or_raiser)
+        try:
+            return vds.executor_summary()
+        finally:
+            vds.hl = original
+
+    def test_reports_both_figures(self):
+        text = self.summary_with(lambda: self._context(size=5, parallelism=1856))
+        # The driver is in the map but runs no tasks, hence 4 rather than 5.
+        self.assertIn('4 executor(s)', text)
+        self.assertIn('~1856 task slot(s)', text)
+
+    def test_task_slots_survive_a_broken_executor_count(self):
+        """The regression: one unavailable figure must not take the other with it."""
+        text = self.summary_with(lambda: self._context(break_status=True))
+        self.assertIn('executor count unavailable', text)
+        self.assertIn('~1856 task slot(s)', text)
+
+    def test_missing_context_is_reported_not_raised(self):
+        def raiser():
+            raise RuntimeError('no context')
+        text = self.summary_with(raiser)
+        self.assertIn('unavailable', text)
+        self.assertIn('no context', text)
+
+    def test_never_raises(self):
+        """This only annotates a log line; it must not be able to fail a run."""
+        def raiser():
+            raise RuntimeError('boom')
+        for ctx in (lambda: self._context(), lambda: self._context(break_status=True), raiser):
+            self.assertIsInstance(self.summary_with(ctx), str)
+
+    def test_executor_count_never_goes_negative(self):
+        """An empty map would otherwise report -1 executors."""
+        text = self.summary_with(lambda: self._context(size=0))
+        self.assertIn('0 executor(s)', text)
+
+
 class TestContigCheckpointing(unittest.TestCase):
     """A genome-wide scan runs for hours, so it checkpoints per contig and resumes.
 
@@ -278,6 +346,69 @@ class TestContigCheckpointing(unittest.TestCase):
         if mark_done:
             vds.write_lines(marker, 'contig\trows', [f'{contig}\t{rows}'])
         return shard
+
+    def args(self, vds_path='gs://bucket/r2.vds', mode='variants', bin_size=50_000):
+        return types.SimpleNamespace(
+            vds_path=vds_path, mode=mode, bin_size=bin_size, summary_path=self.summary)
+
+    def test_marker_records_provenance(self):
+        _, marker = vds.shard_paths(self.summary, 'chr1')
+        vds.write_marker(marker, 'chr1', 42, self.args())
+        with open(marker) as handle:
+            header, row = handle.read().strip().split('\n')
+        self.assertEqual(vds.MARKER_HEADER, header)
+        self.assertIn('gs://bucket/r2.vds', row)
+        self.assertIn('variants', row)
+        self.assertIn('50000', row)
+
+    def test_matching_marker_verifies(self):
+        _, marker = vds.shard_paths(self.summary, 'chr1')
+        vds.write_marker(marker, 'chr1', 42, self.args())
+        vds.verify_marker(marker, 'chr1', self.args())   # must not raise
+
+    def test_different_vds_aborts(self):
+        """The hazard: same output_prefix, different VDS, silently wrong summary."""
+        _, marker = vds.shard_paths(self.summary, 'chr1')
+        vds.write_marker(marker, 'chr1', 42, self.args(vds_path='gs://bucket/r2.vds'))
+        with self.assertRaises(RuntimeError) as ctx:
+            vds.verify_marker(marker, 'chr1', self.args(vds_path='gs://bucket/r3.vds'))
+        self.assertIn('different run', str(ctx.exception))
+        self.assertIn('r3.vds', str(ctx.exception))
+
+    def test_different_bin_size_aborts(self):
+        _, marker = vds.shard_paths(self.summary, 'chr1')
+        vds.write_marker(marker, 'chr1', 42, self.args(bin_size=50_000))
+        with self.assertRaises(RuntimeError):
+            vds.verify_marker(marker, 'chr1', self.args(bin_size=10_000))
+
+    def test_different_mode_aborts(self):
+        _, marker = vds.shard_paths(self.summary, 'chr1')
+        vds.write_marker(marker, 'chr1', 42, self.args(mode='variants'))
+        with self.assertRaises(RuntimeError):
+            vds.verify_marker(marker, 'chr1', self.args(mode='references'))
+
+    def test_mismatch_error_says_how_to_recover(self):
+        _, marker = vds.shard_paths(self.summary, 'chr1')
+        vds.write_marker(marker, 'chr1', 42, self.args(vds_path='a'))
+        with self.assertRaises(RuntimeError) as ctx:
+            vds.verify_marker(marker, 'chr1', self.args(vds_path='b'))
+        self.assertIn('Delete', str(ctx.exception))
+
+    def test_legacy_marker_is_accepted_with_a_warning(self):
+        """Deliberate: an in-flight scan's checkpoints stay usable across the upgrade."""
+        _, marker = vds.shard_paths(self.summary, 'chr1')
+        vds.write_lines(marker, 'contig\trows', ['chr1\t42'])
+        with contextlib.redirect_stdout(io.StringIO()) as out:
+            vds.verify_marker(marker, 'chr1', self.args())
+        self.assertIn('predates provenance recording', out.getvalue())
+        self.assertIn('delete', out.getvalue().lower())
+
+    def test_malformed_marker_aborts(self):
+        _, marker = vds.shard_paths(self.summary, 'chr1')
+        vds.write_lines(marker, vds.MARKER_HEADER, ['chr1\t42'])
+        with self.assertRaises(RuntimeError) as ctx:
+            vds.verify_marker(marker, 'chr1', self.args())
+        self.assertIn('malformed', str(ctx.exception))
 
     def test_shard_and_marker_are_distinct_paths(self):
         shard, marker = vds.shard_paths('/x/summary.tsv', 'chr4')
