@@ -18,10 +18,11 @@ version 1.0
 #   2. action = "scan", mode = "references"  -> the same for reference coverage
 #   3. action = "full-depth"                 -> per-sample detail for whatever step 1 or 2 flagged
 #
-# `action = "probe"` is optional, for sizing an unfamiliar callset before committing to a full
-# scan. Give it a bounded interval wide enough to span many partitions: a partition is the unit
-# of work, so an interval resolving to a handful of them measures near-serial throughput and
-# takes about as long as a fully parallel genome-wide scan.
+# Contigs are checkpointed, so an interrupted scan resumes rather than restarting, and the first
+# contig to finish reports its own partition count and duration -- which is how a run is sized.
+# Partition geometry itself is metadata: `hl.vds.read_vds(path).variant_data.n_partitions()`.
+# To rehearse the pipeline cheaply, run a scan over a bounded `intervals` value; it produces a
+# real summary the detector can consume.
 #
 # The sample map is generated automatically when bq_project_id and bq_dataset_name are supplied.
 # Pass sample_map_path to supply one yourself, or see
@@ -57,9 +58,6 @@ workflow GvsValidateVdsCompleteness {
         String? contigs
         String? intervals
         String? target_superpartitions
-        # Fully callable 10 Mb window on chr20, clear of the centromere gap
-        # (chr20:26,386,232-30,088,349), the telomere, and the smaller gaps near 31 Mb.
-        String probe_interval = "chr20:37000000-47000000"
 
         # Detection thresholds. Cheap to revisit: the detector runs against the small summary
         # table, so re-judging an existing scan costs nothing.
@@ -89,8 +87,6 @@ workflow GvsValidateVdsCompleteness {
         # Compute Engine stockouts are per-zone, and Dataproc's default placement picks one
         # zone and fails rather than moving on. "auto" tries every zone in the region.
         String cluster_zones = "auto"
-        # Cores per worker, used only for the probe's concurrency estimate.
-        Int worker_cores = 4
         # Kept at 1, matching every other GVS Hail workflow. In principle this screen is a
         # single streaming pass with nothing to spill, and dropping local SSD widens the
         # zones able to serve a request -- but that is now handled by cluster_zones retrying
@@ -122,7 +118,7 @@ workflow GvsValidateVdsCompleteness {
 
     parameter_meta {
         action: {
-            help: "One of scan, probe, full-depth. See the header comment for the usual sequence."
+            help: "Either scan or full-depth. See the header comment for the usual sequence."
         }
         vds_path: {
             help: "VDS to read."
@@ -150,9 +146,6 @@ workflow GvsValidateVdsCompleteness {
         }
         num_local_ssds: {
             help: "Local SSDs per master and worker. Kept at 1 to match the other GVS Hail workflows; lowering it widens the zones able to serve a request, at the cost of diverging from a known-good configuration."
-        }
-        probe_interval: {
-            help: "Interval used when action is probe. Defaults to a fully callable 10 Mb window on chr20; pick a gap-free interval, since one overlapping a centromere reads faster than average and skews the extrapolation."
         }
         reference_schema: {
             help: "Override for the ref_ranges schema, either compressed or uncompressed. Leave unset to detect it from the dataset. AoU callsets are compressed, where reference adjudication filters on packed_ref_data, the clustering field."
@@ -183,10 +176,10 @@ workflow GvsValidateVdsCompleteness {
         }
     }
 
-    if (action != "scan" && action != "probe" && action != "full-depth") {
+    if (action != "scan" && action != "full-depth") {
         call Utils.TerminateWorkflow as UnrecognizedAction {
             input:
-                message = "`action` must be one of scan, probe, full-depth; got '" + action + "'.",
+                message = "`action` must be either scan or full-depth; got '" + action + "'.",
                 basic_docker = effective_basic_docker,
         }
     }
@@ -294,7 +287,6 @@ workflow GvsValidateVdsCompleteness {
             contigs = contigs,
             intervals = intervals,
             target_superpartitions = target_superpartitions,
-            probe_interval = probe_interval,
             ratio_threshold = ratio_threshold,
             score_threshold = score_threshold,
             min_expected = min_expected,
@@ -305,7 +297,6 @@ workflow GvsValidateVdsCompleteness {
             reference_schema = effective_reference_schema,
             prefix = cluster_prefix,
             cluster_zones = cluster_zones,
-            worker_cores = worker_cores,
             num_local_ssds = num_local_ssds,
             worker_machine_type = worker_machine_type,
             master_machine_type = master_machine_type,
@@ -443,7 +434,6 @@ task ScanVdsForDropouts {
         String? contigs
         String? intervals
         String? target_superpartitions
-        String probe_interval
 
         Float? ratio_threshold
         Float? score_threshold
@@ -457,7 +447,6 @@ task ScanVdsForDropouts {
 
         String prefix
         String cluster_zones
-        Int worker_cores
         Int num_local_ssds
         String worker_machine_type
         String master_machine_type
@@ -543,14 +532,10 @@ task ScanVdsForDropouts {
             "mode": "~{mode}",
             "superpartition-size": ~{superpartition_size},
             "bin-size": ~{bin_size},
-            "probe-interval": "~{probe_interval}",
-            # Only used to annotate the probe report with the concurrency a full run could
-            # reach; without them the report can report throughput but not project from it.
-            "max-secondary-workers": ~{max_secondary_workers},
-            "worker-cores": ~{worker_cores},
             "temp-path": sys.argv[1],
         }
 
+        # Per-action arguments only, so no command line carries flags another action owns.
         if action == "scan":
             arguments["summary-path"] = "~{summary_path}"
             arguments["superpartitions-path"] = "~{superpartitions_path}"

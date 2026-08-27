@@ -21,16 +21,6 @@ Actions
     overlapping the requested contigs or intervals; there is no sampling of loci, so the
     result supports an exhaustive claim about what is and is not missing.
 
-``--action probe``
-    Run ``scan`` over a bounded interval and report measured throughput plus a genome-wide
-    projection.  Useful for sizing a new callset.
-
-    A partition is the unit of work -- one task streams one partition end to end -- so the
-    interval must span enough partitions to exercise the cluster.  An interval narrow
-    enough to resolve to a handful of partitions measures near-serial throughput and takes
-    roughly as long as a fully parallel scan of the whole genome, which is the opposite of
-    a cheap preview.  The report says so when it happens.
-
 ``--action full-depth``
     For named intervals and superpartitions, count per-sample data and report how many
     samples carry nothing.  Meant for the handful of windows the screen flags, not for the
@@ -56,6 +46,25 @@ Metrics
     construction back-fills gaps -- `import_gvs.py` builds `reference_data` purely from
     the Avro rows, and `update_reference_data_ploidy` only annotates `GT` on entries that
     already exist.
+
+Sizing a run
+------------
+A partition is the unit of work: one task streams one partition end to end, so cost is
+per-partition time times partitions divided by concurrent tasks, and is **not**
+proportional to genomic span.
+
+Both terms are cheap to obtain without a trial run.  Partition geometry is metadata::
+
+    vds = hl.vds.read_vds(path)
+    vds.variant_data.n_partitions()      # 119,189 for Foxtrot r2
+    vds.reference_data.n_partitions()
+
+Per-partition time comes from the scan itself: contigs are checkpointed, so the first one
+to finish reports its own partition count and duration, and that work counts toward the
+result rather than being discarded.  An earlier ``probe`` action existed to estimate this in
+advance; it was removed because it could not be both cheap and representative -- a narrow
+interval measures near-serial throughput, and one wide enough to exercise the cluster is
+already a substantial fraction of the real run.
 
 Every sample is screened
 ------------------------
@@ -91,7 +100,6 @@ import os
 import sys
 import time
 from collections import defaultdict
-from dataclasses import dataclass
 from typing import IO, Iterable, Mapping, Sequence
 
 try:
@@ -104,24 +112,13 @@ DEFAULT_BIN_SIZE = 50_000
 # Below this many partitions the aggregation cannot use the cluster, which on an AoU-scale
 # VDS turns a nominally small interval into hours of single-threaded streaming.
 MIN_HEALTHY_PARTITIONS = 8
-# A 10 Mb window on chr20 that is 100% callable: comfortably clear of the centromere gap
-# (chr20:26,386,232-30,088,349) and of the telomere, and free of the smaller assembly gaps
-# near 31 Mb. Verified against
-# wgs_calling_regions.hg38.noCentromeres.noTelomeres.interval_list. An interval overlapping
-# a gap would make the probe's timing optimistic and emit confusing empty bins.
-DEFAULT_PROBE_INTERVAL = 'chr20:37000000-47000000'
-# End of the chr20 centromere gap, from the same interval list. Used to keep the default honest.
-CHR20_CENTROMERE_END = 30_088_349
-
 MODES = ('variants', 'references')
-ACTIONS = ('scan', 'probe', 'full-depth')
+ACTIONS = ('scan', 'full-depth')
 
 # GRCh38 primary contigs GVS encodes. Alt and decoy contigs carry no GVS location
 # encoding and are not screened.
 GVS_CONTIGS = tuple([f'chr{i}' for i in range(1, 23)] + ['chrX', 'chrY'])
 
-# Approximate GRCh38 primary assembly length, used only to extrapolate probe timings.
-GENOME_LENGTH = 3_088_269_832
 
 SUMMARY_HEADER = 'contig\tbin_start\tbin_end\tsuperpartition\tobserved'
 SUPERPARTITION_HEADER = 'superpartition\tn_samples'
@@ -245,119 +242,6 @@ def format_superpartition_rows(chosen: Mapping[int, Sequence[str]]) -> list[str]
     return [f'{sp}\t{len(chosen[sp])}' for sp in sorted(chosen)]
 
 
-def extrapolate_runtime(
-        elapsed_seconds: float,
-        scanned_bases: int,
-        genome_length: int = GENOME_LENGTH,
-) -> float:
-    """Scale a probe's wall time up by genomic span. Kept for reference only.
-
-    Misleading on its own, because it assumes the probe used the cluster as well as a
-    genome-wide run would. A narrow interval resolves to few partitions and therefore few
-    tasks, so it measures near-serial throughput and overstates the real cost, often by
-    the width of the cluster. Prefer ``extrapolate_by_partitions``.
-    """
-    if scanned_bases <= 0:
-        raise ValueError('scanned_bases must be positive')
-    return elapsed_seconds * (genome_length / scanned_bases)
-
-
-def extrapolate_by_partitions(elapsed_seconds: float, n_partitions_probed: int,
-                              n_partitions_total: int, concurrent_tasks: int) -> float:
-    """Estimate a full run from per-partition cost, in seconds.
-
-    The unit of work is a partition, not a base pair: one task streams one partition end
-    to end. So the honest model is time-per-partition, multiplied by the partitions a full
-    run covers, divided by how many run at once -- which is what makes a genome-wide scan
-    cheaper per partition than a narrow probe rather than more expensive.
-    """
-    for name, value in (('n_partitions_probed', n_partitions_probed),
-                        ('n_partitions_total', n_partitions_total),
-                        ('concurrent_tasks', concurrent_tasks)):
-        if value <= 0:
-            raise ValueError(f'{name} must be positive, got {value}')
-    per_partition = elapsed_seconds / n_partitions_probed
-    return per_partition * n_partitions_total / concurrent_tasks
-
-
-def format_probe_report(
-        elapsed_seconds: float,
-        scanned_bases: int,
-        n_cells: int,
-        n_bins: int,
-        n_samples: int | None = None,
-        n_partitions: int | None = None,
-        n_total_partitions: int | None = None,
-        parallelism: int | None = None,
-        full_parallelism: int | None = None,
-) -> str:
-    """Human-readable probe result.
-
-    Reports per-partition cost rather than a bp-scaled figure, because the partition is
-    the unit of work and a narrow probe is close to serial.
-    """
-    lines = [
-        'Probe result',
-        f'  interval span:        {scanned_bases:,} bp',
-        f'  bins produced:        {n_bins:,}',
-        f'  non-zero cells:       {n_cells:,}',
-    ]
-    if n_samples is not None:
-        lines.append(f'  samples screened:     {n_samples:,}')
-    if n_partitions:
-        lines.append(f'  partitions read:      {n_partitions:,}')
-    lines.append(f'  elapsed:              {elapsed_seconds:,.1f} s')
-
-    if n_partitions:
-        per_partition = elapsed_seconds / n_partitions
-        lines.append(f'  per partition:        {per_partition:,.1f} s')
-        if parallelism:
-            lines.append(f'  concurrent tasks:     ~{parallelism:,}')
-
-        if n_total_partitions:
-            same_width = elapsed_seconds * (n_total_partitions / n_partitions)
-            lines += [
-                '',
-                f'Genome-wide estimate ({n_total_partitions:,} partitions, '
-                f'{100 * n_partitions / n_total_partitions:.2f}% covered here):',
-                f'  at this cluster width: {same_width / 3600:,.1f} h',
-            ]
-            if parallelism and full_parallelism and full_parallelism > parallelism:
-                scaled = same_width * parallelism / full_parallelism
-                lines += [
-                    f'  at ~{full_parallelism:,} concurrent tasks: {scaled / 3600:,.1f} h',
-                    '',
-                    'The wider figure is the one to plan against: a probe covering a small',
-                    'share of partitions often completes before autoscaling ramps, so its',
-                    'observed concurrency understates a full run and its per-partition cost',
-                    'is conservative.',
-                ]
-        lines += [
-            '',
-            'Do not scale by base pairs. A partition is the unit of work, one task streams',
-            'one partition end to end, and a narrow probe touching few partitions is close',
-            'to serial, so span-scaling overstates a full run by the width of the cluster.',
-        ]
-        if n_partitions < MIN_HEALTHY_PARTITIONS:
-            lines += [
-                '',
-                f'CAUTION: only {n_partitions} partition(s) were read, so this timing is',
-                'essentially serial and says little about a run that can use the whole',
-                'cluster. Treat the per-partition number as the useful output here.',
-            ]
-    lines += [
-        '',
-        'What this covers: reading and aggregating. A scan writes only a small summary, so',
-        'output cost is negligible and this is the whole picture.',
-    ]
-    return '\n'.join(lines)
-
-
-# ---------------------------------------------------------------------------
-# Hail plumbing
-# ---------------------------------------------------------------------------
-
-
 def announce(message: str) -> None:
     """Print a progress line immediately.
 
@@ -476,18 +360,6 @@ def build_intervals(contigs: Sequence[str], interval_strings: Sequence[str]):
         [hl.parse_locus_interval(s, reference_genome='GRCh38') for s in strings])))
 
 
-def interval_span(intervals) -> int:
-    """Total base span of a list of Hail locus intervals.
-
-    ``build_intervals`` returns evaluated intervals, so the endpoints are plain ``Locus``
-    objects with integer positions and need no further ``hl.eval``.
-    """
-    total = 0
-    for interval in intervals:
-        total += max(0, interval.end.position - interval.start.position)
-    return total
-
-
 def total_partition_count(vds_path: str, mode: str) -> int:
     """Partitions in the whole VDS component, ignoring any interval subset.
 
@@ -597,20 +469,6 @@ def _metric_expression(matrix, mode: str):
     return hl.agg.sum(
         hl.if_else(hl.is_defined(matrix.END), matrix.END - matrix.locus.position + 1, 0)
     )
-
-
-def observed_parallelism() -> int | None:
-    """Roughly how many tasks can run at once, or None if it cannot be determined.
-
-    ``defaultParallelism`` tracks total executor cores, which is the right order of
-    magnitude for turning a probe's wall clock into an estimate. Best-effort: it is only
-    used to annotate a report, so any failure degrades the message rather than the run.
-    """
-    _require_hail()
-    try:
-        return int(hl.spark_context().defaultParallelism)
-    except Exception:  # pragma: no cover - depends on a live Spark context
-        return None
 
 
 def executor_summary() -> str:
@@ -731,18 +589,8 @@ def per_superpartition_sample_counts(vds, mode: str, mapping,
 # ---------------------------------------------------------------------------
 
 
-@dataclass(frozen=True)
-class ScanGeometry:
-    """Partition counts and cluster width, the inputs a cost estimate needs."""
-
-    n_partitions: int
-    n_total_partitions: int
-    parallelism: int | None
-    full_parallelism: int | None
-
-
 def _screening_matrix(args, vds):
-    """Annotated matrix, per-superpartition sample counts, and the scan geometry."""
+    """Annotated matrix and the per-superpartition sample counts it will be judged on."""
     source = args.sample_map_path
     with step(f'Reading sample mapping from {source}'):
         mapping = superpartition_column_table(source, args.superpartition_size)
@@ -776,15 +624,7 @@ def _screening_matrix(args, vds):
             'cheap preview. Either widen the interval to span many partitions, or run the '
             'real scan and let the cluster work.')
 
-    geometry = ScanGeometry(
-        n_partitions=n_partitions,
-        n_total_partitions=n_total,
-        parallelism=observed_parallelism(),
-        # Peak width once the autoscaling policy has added its secondary workers.
-        full_parallelism=(args.max_secondary_workers * args.worker_cores
-                          if args.max_secondary_workers else None),
-    )
-    return matrix, counts, geometry
+    return matrix, counts
 
 
 def shard_paths(summary_path: str, contig: str) -> tuple[str, str]:
@@ -901,7 +741,7 @@ def _scan_one_contig(args, contig: str):
     intervals = build_intervals([contig], [])
     with step(f'{contig}: opening VDS'):
         vds = read_and_subset_vds(args.vds_path, intervals)
-    matrix, counts, _ = _screening_matrix(args, vds)
+    matrix, counts = _screening_matrix(args, vds)
 
     announce(f'{contig}: cluster width {executor_summary()}')
     with step(f'{contig}: aggregating {args.mode} into {args.bin_size:,} bp bins'):
@@ -924,7 +764,7 @@ def _scan_intervals(args, requested_intervals: Sequence[str]) -> int:
     announce(f'Scanning {len(intervals):,} interval(s) of {args.vds_path}')
     with step(f'Opening VDS {args.vds_path}'):
         vds = read_and_subset_vds(args.vds_path, intervals)
-    matrix, counts, _ = _screening_matrix(args, vds)
+    matrix, counts = _screening_matrix(args, vds)
 
     announce(f'Cluster width at start of aggregation: {executor_summary()}')
     with step(f'Aggregating {args.mode} into {args.bin_size:,} bp bins'):
@@ -979,33 +819,6 @@ def action_scan(args) -> int:
     with step('Merging per-contig shards'):
         n_rows = concatenate_shards(shards, args.summary_path, contigs)
     announce(f'Wrote {n_rows:,} summary rows to {args.summary_path}')
-    return 0
-
-
-def action_probe(args) -> int:
-    """Time a small scan and extrapolate to the whole genome."""
-    _require_hail()
-    interval_string = args.probe_interval
-    intervals = build_intervals([], [interval_string])
-    span = interval_span(intervals)
-    announce(f'Probing {interval_string} ({span:,} bp) in {args.mode} mode')
-
-    with step(f'Opening VDS {args.vds_path}'):
-        vds = read_and_subset_vds(args.vds_path, intervals)
-    matrix, counts, geometry = _screening_matrix(args, vds)
-    n_samples = sum(counts.values())
-
-    started = time.monotonic()
-    with step(f'Aggregating {args.mode} over {interval_string}'):
-        totals = aggregate_totals(matrix, args.mode, args.bin_size)
-    elapsed = time.monotonic() - started
-
-    n_cells = sum(len(v) for v in totals.values())
-    print()
-    print(format_probe_report(
-        elapsed, span, n_cells, len(totals), n_samples,
-        geometry.n_partitions, geometry.n_total_partitions,
-        geometry.parallelism, geometry.full_parallelism))
     return 0
 
 
@@ -1102,17 +915,6 @@ def build_parser() -> argparse.ArgumentParser:
                              'comma-separated list. Overrides --contigs.')
     parser.add_argument('--target-superpartitions', default=None,
                         help='Comma-separated superpartitions to restrict full-depth to.')
-    parser.add_argument('--max-secondary-workers', type=int, default=None,
-                        help='Peak secondary workers the autoscaling policy may add. Used '
-                             'only to annotate the probe report with the concurrency a full '
-                             'run could reach.')
-    parser.add_argument('--worker-cores', type=int, default=4,
-                        help='Cores per worker, for the same estimate. Default: 4.')
-    parser.add_argument('--probe-interval', default=DEFAULT_PROBE_INTERVAL,
-                        help='Interval used by --action probe. Default: '
-                             f'{DEFAULT_PROBE_INTERVAL}, a fully callable 10 Mb window on '
-                             'chr20. Pick a gap-free interval; one overlapping a centromere '
-                             'reads faster than average and skews the extrapolation.')
 
     parser.add_argument('--temp-path', default=None, help='Hail temporary directory.')
     return parser
@@ -1120,7 +922,6 @@ def build_parser() -> argparse.ArgumentParser:
 
 REQUIRED_BY_ACTION: dict[str, tuple[str, ...]] = {
     'scan': ('summary_path', 'superpartitions_path'),
-    'probe': (),
     'full-depth': ('full_depth_path',),
 }
 
@@ -1145,7 +946,6 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     handler = {
         'scan': action_scan,
-        'probe': action_probe,
         'full-depth': action_full_depth,
     }[args.action]
     return handler(args)

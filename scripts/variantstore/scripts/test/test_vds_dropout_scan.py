@@ -7,8 +7,8 @@ broken: superpartition arithmetic that has to line up with the `vet_NNN` table n
 sample selection that has to be reproducible across runs and VDSes, bin boundaries, and
 the argument validation that stops a misconfigured run before it books a cluster.
 
-The Hail aggregation itself is not covered; it is exercised by the probe action against
-real data.
+The Hail aggregation itself is not covered; it is exercised by running a scan over a
+bounded interval against real data.
 """
 
 import argparse
@@ -520,98 +520,6 @@ class TestOutputFormatting(unittest.TestCase):
         self.assertEqual(['1\t1', '83\t2'], vds.format_superpartition_rows(chosen))
 
 
-class TestProbeExtrapolation(unittest.TestCase):
-    """A partition is the unit of work, so cost scales by partitions, not base pairs.
-
-    Not academic: a diagnostic bundle from a stalled run showed the entry aggregation
-    RUNNABLE in a single task, because a 10 Mb interval on a 535K-sample VDS resolved to
-    one partition. Scaling that wall clock by genomic span would have overstated a
-    genome-wide run by roughly the width of the cluster.
-    """
-
-    def test_partition_model_divides_by_concurrency(self):
-        # 10s for 2 partitions -> 5s each; 100 partitions over 10 tasks -> 50s.
-        self.assertAlmostEqual(50.0, vds.extrapolate_by_partitions(10.0, 2, 100, 10))
-
-    def test_partition_model_serial_case(self):
-        self.assertAlmostEqual(500.0, vds.extrapolate_by_partitions(10.0, 2, 100, 1))
-
-    def test_partition_model_rejects_nonsense(self):
-        for probed, total, tasks in ((0, 10, 1), (1, 0, 1), (1, 10, 0)):
-            with self.assertRaises(ValueError):
-                vds.extrapolate_by_partitions(10.0, probed, total, tasks)
-
-    def test_bp_model_still_available_but_documented_as_misleading(self):
-        self.assertAlmostEqual(
-            100.0, vds.extrapolate_runtime(1.0, vds.GENOME_LENGTH // 100,
-                                           vds.GENOME_LENGTH), places=0)
-        self.assertIn('Misleading', vds.extrapolate_runtime.__doc__)
-
-    def test_zero_span_raises(self):
-        with self.assertRaises(ValueError):
-            vds.extrapolate_runtime(1.0, 0)
-
-    def test_report_leads_with_per_partition_cost(self):
-        report = vds.format_probe_report(600.0, 10_000_000, 1_340, 200,
-                                         n_samples=13_400, n_partitions=20)
-        self.assertIn('partitions read:', report)
-        self.assertIn('per partition:', report)
-        self.assertIn('30.0 s', report)
-        self.assertIn('Do not scale by base pairs', report)
-
-    def test_report_warns_when_parallelism_is_degenerate(self):
-        report = vds.format_probe_report(600.0, 10_000_000, 1_340, 200, n_partitions=1)
-        self.assertIn('CAUTION', report)
-        self.assertIn('essentially serial', report)
-
-    def test_report_does_not_warn_with_healthy_parallelism(self):
-        report = vds.format_probe_report(600.0, 10_000_000, 1_340, 200, n_partitions=500)
-        self.assertNotIn('CAUTION', report)
-
-    def test_report_extrapolates_to_the_whole_vds(self):
-        """The real geometry: 411 of 119,189 partitions, the probe that finally worked."""
-        report = vds.format_probe_report(
-            1200.0, 10_000_000, 1_340, 200, n_samples=535_662,
-            n_partitions=411, n_total_partitions=119_189,
-            parallelism=16, full_parallelism=1200)
-        self.assertIn('119,189 partitions', report)
-        self.assertIn('0.34% covered here', report)
-        # 1200s * (119189/411) / 3600 = 96.67h at this width
-        self.assertIn('96.7 h', report)
-        # scaled by 16/1200 -> ~1.3h
-        self.assertIn('1.3 h', report)
-
-    def test_report_prefers_the_wider_estimate_explicitly(self):
-        report = vds.format_probe_report(
-            1200.0, 10_000_000, 1_340, 200, n_partitions=411,
-            n_total_partitions=119_189, parallelism=16, full_parallelism=1200)
-        self.assertIn('wider figure is the one to plan against', report)
-
-    def test_report_omits_scaling_when_no_wider_width_is_known(self):
-        report = vds.format_probe_report(
-            1200.0, 10_000_000, 1_340, 200, n_partitions=411,
-            n_total_partitions=119_189, parallelism=16)
-        self.assertIn('at this cluster width', report)
-        self.assertNotIn('concurrent tasks:', report.split('Genome-wide')[1])
-
-    def test_report_omits_extrapolation_without_a_total(self):
-        report = vds.format_probe_report(1200.0, 10_000_000, 1_340, 200, n_partitions=411)
-        self.assertNotIn('Genome-wide estimate', report)
-
-    def test_report_always_warns_against_span_scaling(self):
-        report = vds.format_probe_report(600.0, 10_000_000, 1_340, 200, n_partitions=411)
-        self.assertIn('Do not scale by base pairs', report)
-
-    def test_report_states_what_the_estimate_covers(self):
-        report = vds.format_probe_report(60.0, 10_000_000, 1_340, 200, n_partitions=10)
-        self.assertIn('reading and aggregating', report)
-        self.assertIn('output cost is negligible', report)
-
-    def test_report_without_partition_count_omits_the_model(self):
-        report = vds.format_probe_report(60.0, 10_000_000, 1_340, 200)
-        self.assertNotIn('per partition:', report)
-
-
 class TestIntervalReadSemantics(unittest.TestCase):
     """read_vds(intervals=...) repartitions; it does not filter.
 
@@ -704,7 +612,9 @@ class TestArgumentValidation(unittest.TestCase):
                              '--sample-map-path', 'm.tsv')
 
     def test_bad_bin_size_rejected(self):
-        message = self.assert_rejected('--action', 'probe', '--vds-path', 'gs://x',
+        message = self.assert_rejected('--action', 'scan', '--vds-path', 'gs://x',
+                                       '--summary-path', 's.tsv',
+                                       '--superpartitions-path', 'sp.tsv',
                                        '--sample-map-path', 'm.tsv', '--bin-size', '0')
         self.assertIn('--bin-size must be at least 1', message)
 
