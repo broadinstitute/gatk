@@ -1,7 +1,10 @@
 import argparse
 import ijson
 import os
+import subprocess
+import sys
 import tempfile
+import time
 from google.cloud import dataproc_v1 as dataproc
 from logging import info
 
@@ -10,6 +13,58 @@ TINY_NUM_WORKERS = 2
 TINY_MAX_SECONDARY = 5
 DEFAULT_NUM_WORKERS = 2
 DEFAULT_MAX_SECONDARY = 200
+
+# Substrings identifying a Compute Engine capacity shortage. These are properties of a
+# single zone, not of the region: the same request commonly succeeds in a sibling zone. By
+# default Dataproc places a cluster with Auto Zone placement, which picks one zone and
+# fails outright rather than moving on, so a stockout there is a hard workflow failure.
+# Deliberately narrow -- the enclosing error code is UNAVAILABLE, which also covers
+# transient conditions that retrying in a different zone would not help.
+STOCKOUT_MARKERS = (
+    'STOCKOUT',
+    'does not have enough resources',
+    'ZONE_RESOURCE_POOL_EXHAUSTED',
+)
+
+# Capacity shortages that do not report themselves as such. When a zone can provide some
+# but not all of the requested workers, Dataproc does not emit a STOCKOUT; the create
+# simply times out waiting for nodes that never arrive, and the message blames firewall
+# rules. Observed in us-central1-b immediately after a genuine STOCKOUT in us-central1-a,
+# with only 1 of 4 requested workers provisioned.
+#
+# Retrying these in another zone is right when VM-to-VM networking is known to work, which
+# it is for a Terra project that routinely runs Dataproc. If networking really is broken
+# every zone will fail the same way, costing one attempt per zone before the error
+# surfaces -- so the log distinguishes this case from an outright stockout.
+# gcloud failing on the client side, as distinct from the submitted job failing. The
+# metadata server on the Cromwell VM occasionally returns 503 while refreshing
+# credentials; gcloud then crashes and exits non-zero even though the Dataproc job it is
+# streaming is still running perfectly well server-side. Treating that as job failure threw
+# away a scan that was 47% of the way through a 119,189-partition aggregation, because the
+# cluster was torn down immediately afterwards.
+JOB_CLIENT_CRASH_MARKERS = (
+    'gcloud crashed',
+    'MetadataServerException',
+    'Unable to fetch access token',
+    'ServiceUnavailable',
+    'HTTP Error 500',
+    'HTTP Error 502',
+    'HTTP Error 503',
+    'HTTP Error 504',
+    'Connection reset by peer',
+    'Remote end closed connection',
+)
+
+# A client-side crash is recoverable by reattaching to the running job rather than
+# resubmitting it. Metadata blips last seconds, so a handful of spaced attempts is ample.
+JOB_REATTACH_ATTEMPTS = 5
+JOB_REATTACH_DELAY_SECONDS = 30
+
+PARTIAL_CAPACITY_MARKERS = (
+    'Timed out waiting for',
+    'minimum required datanodes',
+    'Cannot start master',
+)
 
 
 def autoscaling_policy_name(num_workers, max_secondary):
@@ -122,9 +177,129 @@ def create_autoscaling_policy(use_tiny_dataproc_cluster, workspace_project, regi
     return policy_name, num_workers
 
 
+def looks_like_stockout(output):
+    """Whether command output indicates a zone ran out of capacity."""
+    return any(marker in output for marker in STOCKOUT_MARKERS)
+
+
+def looks_like_client_crash(output):
+    """Whether output indicates gcloud itself failed, rather than the submitted job."""
+    return any(marker in output for marker in JOB_CLIENT_CRASH_MARKERS)
+
+
+def run_streaming(command):
+    """Run a shell command, streaming its output through while also capturing it.
+
+    Both halves matter. Streaming keeps Hail's progress visible in the Cromwell log as it
+    happens, which is how a long aggregation is monitored at all. Capturing is what allows
+    the caller to tell a gcloud client-side crash apart from a genuine job failure. The
+    previous implementation used os.popen and discarded stdout, so neither was true of the
+    stream it actually needed to inspect.
+
+    Returns (exit_code, combined_output).
+    """
+    process = subprocess.Popen(
+        command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+        text=True, bufsize=1,
+    )
+    captured = []
+    for line in process.stdout:
+        # Straight to stderr, unbuffered, so progress appears as it is produced.
+        sys.stderr.write(line)
+        sys.stderr.flush()
+        captured.append(line)
+    process.stdout.close()
+    return process.wait(), ''.join(captured)
+
+
+def looks_like_partial_capacity(output):
+    """Whether output indicates only some requested nodes could be provisioned."""
+    return any(marker in output for marker in PARTIAL_CAPACITY_MARKERS)
+
+
+def retry_reason(output):
+    """Why this failure is worth retrying in another zone, or None to fail fast.
+
+    Returned as text rather than a boolean so the log records which of the two very
+    different-looking capacity failures was seen.
+    """
+    if looks_like_stockout(output):
+        return 'the zone is out of capacity'
+    if looks_like_partial_capacity(output):
+        return ('the zone could not provide all requested nodes (Dataproc reports this as '
+                'a node timeout and blames firewall rules; if every zone fails this way, '
+                'check VM-to-VM firewall rules for real)')
+    return None
+
+
+def zones_for_region(region, workspace_project):
+    """List the zones of a region, for `--zones auto`.
+
+    Derived from the region rather than hardcoded so this stays correct outside
+    us-central1. On failure the caller falls back to Dataproc's own zone placement, since
+    an inability to enumerate zones is not a reason to fail the workflow.
+    """
+    # The format and filter expressions are quoted because this runs through /bin/sh, where
+    # the parentheses in value(name) are metacharacters. Unquoted they produce
+    # `Syntax error: "(" unexpected`, the command never runs, and the caller silently falls
+    # back to Dataproc's single-zone placement -- which is exactly the behavior --zones
+    # exists to avoid.
+    list_cmd = unwrap(f"""
+        gcloud compute zones list
+         --project={workspace_project}
+         --filter='region:{region}'
+         --format='value(name)'
+         --quiet
+    """)
+    # stderr is folded in rather than discarded so a failure here is visible in the log.
+    pipe = os.popen(list_cmd + " 2>&1")
+    output = pipe.read()
+    if pipe.close():
+        info(f"Could not list zones in {region}; falling back to automatic zone placement. "
+             f"Output: {output.strip()}")
+        return []
+    if not output.strip():
+        info(f"No zones reported for {region}; falling back to automatic zone placement.")
+        return []
+    return sorted(zone.strip() for zone in output.split() if zone.strip())
+
+
+def resolve_zones(zones, region, workspace_project):
+    """Turn the --zones argument into an ordered list of zones to try.
+
+    Empty means today's behavior: no --zone flag, and Dataproc places the cluster itself.
+    """
+    if not zones:
+        return []
+    if zones.strip().lower() == 'auto':
+        return zones_for_region(region, workspace_project)
+    return [zone.strip() for zone in zones.split(',') if zone.strip()]
+
+
+def delete_failed_cluster(cluster_name, region, workspace_project):
+    """Best-effort teardown so the cluster name is free for the next attempt.
+
+    A create that fails on capacity usually leaves the cluster behind in ERROR state, and
+    without this the retry would fail with ALREADY_EXISTS instead of surfacing the real
+    problem.
+    """
+    delete_cmd = unwrap(f"""
+        gcloud dataproc clusters delete {cluster_name}
+         --region={region}
+         --project={workspace_project}
+         --quiet
+    """)
+    info(f"Removing failed cluster '{cluster_name}'.")
+    pipe = os.popen(delete_cmd + " 2>&1")
+    output = pipe.read()
+    if pipe.close():
+        info(f"Nothing to remove, or removal failed (continuing anyway): {output.strip()}")
+
+
 def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_type, region, use_tiny_dataproc_cluster, workspace_project,
                    script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end, cluster_max_idle_minutes, cluster_max_age_minutes, master_memory_fraction,
-                   num_primary_workers=DEFAULT_NUM_WORKERS, max_secondary_workers=DEFAULT_MAX_SECONDARY):
+                   num_primary_workers=DEFAULT_NUM_WORKERS, max_secondary_workers=DEFAULT_MAX_SECONDARY,
+                   zones=None, num_local_ssds=1):
 
     cluster_max_idle_arg = f"--max-idle {cluster_max_idle_minutes}m" if cluster_max_idle_minutes else ""
     cluster_max_age_arg = f"--max-age {cluster_max_age_minutes}m" if cluster_max_age_minutes else ""
@@ -134,38 +309,68 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
                                                                      num_primary_workers=num_primary_workers,
                                                                      max_secondary_workers=max_secondary_workers)
 
-        cluster_start_cmd = unwrap(f"""
-        
-        hailctl dataproc start 
-         --autoscaling-policy={autoscaling_policy}
-         --num-workers {num_workers}
-         --worker-machine-type {worker_machine_type}
-         --master-machine-type {master_machine_type}
-         --master-memory-fraction {master_memory_fraction}
-         --enable-component-gateway
-         --region {region}
-         --project {workspace_project}
-         --service-account {account}
-         {cluster_max_idle_arg}
-         {cluster_max_age_arg}
-         --num-master-local-ssds 1
-         --num-worker-local-ssds 1 
-         --master-boot-disk-type=pd-ssd
-         --worker-boot-disk-type=pd-ssd
-         --subnet=projects/{workspace_project}/regions/{region}/subnetworks/subnetwork
-         --properties=dataproc:dataproc.monitoring.stackdriver.enable=true,dataproc:dataproc.logging.stackdriver.enable=true,core:fs.gs.outputstream.sync.min.interval=5
-         --packages=python-snappy
-         {cluster_name}
-         
-        """)
+        # An empty list means one attempt with no --zone, i.e. Dataproc's own placement.
+        candidate_zones = resolve_zones(zones, region, workspace_project) or [None]
+        if len(candidate_zones) > 1:
+            info(f"Will try up to {len(candidate_zones)} zone(s) in order: "
+                 f"{', '.join(candidate_zones)}")
 
-        info(f"Starting cluster '{cluster_name}'...")
-        info(cluster_start_cmd)
-        pipe = os.popen(cluster_start_cmd)
-        info(pipe.read())
-        wait_status = pipe.close()
-        if wait_status:
+        for index, zone in enumerate(candidate_zones):
+            zone_arg = f"--zone {zone}" if zone else ""
+            placement = f"zone {zone}" if zone else "an automatically placed zone"
+
+            cluster_start_cmd = unwrap(f"""
+
+            hailctl dataproc start 
+             --autoscaling-policy={autoscaling_policy}
+             --num-workers {num_workers}
+             --worker-machine-type {worker_machine_type}
+             --master-machine-type {master_machine_type}
+             --master-memory-fraction {master_memory_fraction}
+             --enable-component-gateway
+             --region {region}
+             {zone_arg}
+             --project {workspace_project}
+             --service-account {account}
+             {cluster_max_idle_arg}
+             {cluster_max_age_arg}
+             --num-master-local-ssds {num_local_ssds}
+             --num-worker-local-ssds {num_local_ssds} 
+             --master-boot-disk-type=pd-ssd
+             --worker-boot-disk-type=pd-ssd
+             --subnet=projects/{workspace_project}/regions/{region}/subnetworks/subnetwork
+             --properties=dataproc:dataproc.monitoring.stackdriver.enable=true,dataproc:dataproc.logging.stackdriver.enable=true,core:fs.gs.outputstream.sync.min.interval=5
+             --packages=python-snappy
+             {cluster_name}
+             
+            """)
+
+            info(f"Starting cluster '{cluster_name}' in {placement}...")
+            info(cluster_start_cmd)
+            # stderr is folded into stdout because gcloud reports capacity failures there,
+            # and the retry decision depends on reading them.
+            pipe = os.popen(cluster_start_cmd + " 2>&1")
+            output = pipe.read()
+            info(output)
+            wait_status = pipe.close()
+            if not wait_status:
+                break
+
             exit_code = os.waitstatus_to_exitcode(wait_status)
+            more_zones_to_try = index + 1 < len(candidate_zones)
+            reason = retry_reason(output)
+            retrying = more_zones_to_try and reason is not None
+
+            # Always tear down after a failed create, whether or not another zone will be
+            # tried. A cluster that fails to create is left behind in ERROR state with its
+            # VMs running: it bills, and it holds regional CPU quota that the next attempt
+            # -- or an unrelated cluster in the same project -- then cannot get.
+            delete_failed_cluster(cluster_name, region, workspace_project)
+
+            if retrying:
+                info(f"Cluster creation failed in {placement}: {reason}. "
+                     f"Retrying in {candidate_zones[index + 1]}.")
+                continue
             raise RuntimeError(f"Unexpected exit code from cluster creation: {exit_code}")
 
         run_in_existing_cluster(cluster_name, account, region, workspace_project,
@@ -197,10 +402,15 @@ def run_in_existing_cluster(cluster_name, account, region, workspace_project,
                 found_cluster = True
                 info("Found cluster: " + cluster_name)
 
+                # An explicit id is what makes reattachment possible: without one, a
+                # client-side gcloud crash leaves a running job we cannot name.
+                job_id = f"{cluster_name}-job"
+
                 submit_cmd = unwrap(f"""
 
                 gcloud dataproc jobs submit pyspark {script_path}
                  {secondary_script_path_arg}
+                 --id={job_id}
                  --cluster={cluster_name}
                  --project {workspace_project}
                  --region={region}
@@ -210,13 +420,45 @@ def run_in_existing_cluster(cluster_name, account, region, workspace_project,
                  {' '.join(custom_script_args)}
                 """)
 
+                wait_cmd = unwrap(f"""
+
+                gcloud dataproc jobs wait {job_id}
+                 --project {workspace_project}
+                 --region={region}
+                 --account {account}
+                """)
+
                 info("Running: " + submit_cmd)
-                pipe = os.popen(submit_cmd)
-                pipe.read()
-                wait_status = pipe.close()
-                if wait_status:
-                    exit_code = os.waitstatus_to_exitcode(wait_status)
-                    raise RuntimeError(f"Unexpected exit code running submitted job: {exit_code}")
+                info(f"Job id is {job_id}. If this workflow dies while the job is still "
+                     f"running, reattach with: {wait_cmd}")
+
+                for attempt in range(JOB_REATTACH_ATTEMPTS):
+                    if attempt == 0:
+                        exit_code, output = run_streaming(submit_cmd)
+                    else:
+                        info(f"Reattaching to job {job_id} "
+                             f"(attempt {attempt + 1} of {JOB_REATTACH_ATTEMPTS})...")
+                        exit_code, output = run_streaming(wait_cmd)
+
+                    if exit_code == 0:
+                        break
+
+                    last_attempt = attempt + 1 >= JOB_REATTACH_ATTEMPTS
+                    if not looks_like_client_crash(output):
+                        raise RuntimeError(
+                            f"Unexpected exit code running submitted job: {exit_code}")
+                    if last_attempt:
+                        raise RuntimeError(
+                            f"gcloud kept failing on the client side after "
+                            f"{JOB_REATTACH_ATTEMPTS} attempts. Job {job_id} may still be "
+                            f"running; check with `gcloud dataproc jobs describe {job_id} "
+                            f"--region={region} --project {workspace_project}` before "
+                            f"resubmitting.")
+                    # The job is almost certainly still running: gcloud failed to talk to
+                    # the metadata server, not to Dataproc. Reattach rather than resubmit.
+                    info(f"gcloud failed on the client side, not the job itself. Waiting "
+                         f"{JOB_REATTACH_DELAY_SECONDS}s before reattaching to {job_id}.")
+                    time.sleep(JOB_REATTACH_DELAY_SECONDS)
                 break
         if not found_cluster:
             raise RuntimeError(f"Unable to find cluster: {cluster_name}")
@@ -279,6 +521,18 @@ if __name__ == "__main__":
     parser.add_argument('--max-secondary-workers', type=int, default=DEFAULT_MAX_SECONDARY,
                         help=f'Maximum number of secondary workers for the non-tiny autoscaling policy (default: {DEFAULT_MAX_SECONDARY}). '
                              f'Ignored when --use-tiny-dataproc-cluster is set.')
+    parser.add_argument('--zones', type=str, required=False, default=None,
+                        help='Comma-separated zones to try in order when creating the '
+                             'cluster, or "auto" to use every zone in --region. A Compute '
+                             'Engine stockout is a per-zone condition, so a create that '
+                             'fails for capacity is retried in the next zone. Omit to keep '
+                             "Dataproc's own placement, which picks one zone and does not "
+                             'retry.')
+    parser.add_argument('--num-local-ssds', type=int, required=False, default=1,
+                        help='Local SSDs attached to the master and to each worker. Local '
+                             'SSD availability is zone-specific and a common stockout '
+                             'cause, so a workload that does not spill shuffle to disk can '
+                             'set 0 to widen the usable zones. Defaults to 1.')
 
     args = parser.parse_args()
 
@@ -298,4 +552,6 @@ if __name__ == "__main__":
                    master_memory_fraction=args.master_memory_fraction,
                    num_primary_workers=args.num_primary_workers,
                    max_secondary_workers=args.max_secondary_workers,
+                   zones=args.zones,
+                   num_local_ssds=args.num_local_ssds,
                    )

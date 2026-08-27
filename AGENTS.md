@@ -353,6 +353,34 @@ Some existing docs predate this and are still ragged. Only format files you are
 already modifying; reformatting untouched docs adds diff noise that obscures the
 actual change.
 
+## US English spelling
+
+This codebase is US English. British forms slip into comments easily and are invisible in
+review, since nothing is functionally wrong. Check before handing over prose:
+
+```shell
+scripts/variantstore/scripts/check-us-spelling <file-or-dir>...   # report; exit 1 if found
+scripts/variantstore/scripts/check-us-spelling --fix <file>...    # rewrite in place
+```
+
+It uses an explicit word list rather than an `-ise` suffix rule, because "analysis",
+"optimistic", "premise" and "exercise" are all correct US English and a checker that flags
+them gets ignored. Only the verb shifts: `analyse` becomes `analyze` while `analysis` stays
+put. Adding a word is a one-line edit to the tables in the script.
+
+Files that legitimately contain British spellings — the word list itself, its test
+fixtures, a document quoting them — opt out with `check-us-spelling: disable` anywhere in
+the file, or `check-us-spelling: ok` on a single line. Both are honored by `--fix`, so an
+exempt file is never rewritten.
+
+Identifiers are deliberately out of scope: word boundaries treat underscore as a word
+character, so `n_behaviour_flags` is not reported. Renaming an identifier here but not at
+its definition elsewhere would turn a spelling nit into broken code.
+
+Like `reflow-md`, this script is deliberately extensionless so that the Dockerfile's
+`COPY *.py /app/` leaves it out of the Variants image and out of the rebuild-and-bump
+obligation. Do not rename it to `check_us_spelling.py`.
+
 # Code Review Conventions
 
 ## Do the review inline — do not use the `code-review` skill

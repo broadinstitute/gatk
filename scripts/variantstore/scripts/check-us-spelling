@@ -1,0 +1,297 @@
+#!/usr/bin/env python3
+"""Flag British spellings in prose, comments and docstrings.
+
+check-us-spelling: disable -- this file is the word list, so it necessarily contains them.
+
+This codebase is US English. British forms creep in easily -- most often into comments
+written quickly -- and they are invisible in review because nothing is functionally wrong.
+This reports them, and with --fix rewrites them.
+
+    check-us-spelling FILE...             # report, exit 1 if anything found
+    check-us-spelling --fix FILE...       # rewrite in place
+    check-us-spelling DIR                 # search recursively
+
+Pass a directory to search it recursively; binary files, VCS metadata and Python caches are
+skipped. Exits non-zero when anything is found, so it works as a CI or pre-commit check.
+
+## Why a word list rather than a suffix rule
+
+The obvious implementation -- flag anything ending in "-ise" or "-isation" -- produces false
+positives that are worse than the problem. "analysis", "optimistic", "premise", "exercise",
+"raise", "noise" and "promise" are all correct US English, and a checker that cries wolf on
+them gets ignored. Only the verb shifts: analyse -> analyze while analysis stays put;
+optimise -> optimize while optimistic stays put.
+
+So the mapping is explicit. Regular "-ise" verbs are expanded from a stem list, and the
+irregulars are spelled out. Two words are deliberately absent:
+
+* "analyses" -- ambiguous. Plural of "analysis" (correct) or the UK verb form (not). No way
+  to tell without parsing, and the noun is far more common in this repo.
+* "towards" -- acceptable in US English, merely less preferred. Style, not spelling.
+
+Adding a word is a one-line edit to the tables below. Prefer that to loosening the rule.
+
+## Suppression
+
+Some files legitimately contain British spellings: this one lists them, its test asserts on
+them, and a document *about* spelling would quote them. Two escape hatches, either of which
+can appear in any comment or prose:
+
+* `check-us-spelling: disable` anywhere in a file exempts the whole file.
+* `check-us-spelling: ok` on a line exempts that line.
+
+Both are honored by --fix as well as by the check, so an exempt file is never rewritten.
+
+## Identifiers are out of scope
+
+Matching uses word boundaries, and Python's `\\b` treats underscore as a word character, so
+`n_behaviour_flags` is not reported. That is deliberate rather than an oversight: --fix
+rewrites in place, and renaming an identifier here but not at its definition in another
+file would turn a spelling nit into broken code. Prose and comments are the target; a
+misspelled variable name is a rename, which is a different and riskier operation.
+
+This file is deliberately extensionless: the Dockerfile in this directory does
+`COPY *.py /app/`, so keeping the `.py` off means this dev-only helper stays out of the
+Variants image and out of the rebuild-and-bump obligation that applies to anything baked
+into it. Same reasoning as `reflow-md` alongside it. Do not rename it to
+`check_us_spelling.py`.
+"""
+
+import os
+import re
+import sys
+
+# Regular "-ise" verbs. Each stem expands to -ise/-ised/-ises/-ising/-isation/-isations,
+# mapped to the -ize equivalents.
+ISE_STEMS = (
+    "amort", "apolog", "author", "capital", "categor", "central", "character", "civil",
+    "critic", "custom", "digit", "emphas", "factor", "familiar", "final", "general",
+    "harmon", "human", "hypothes", "initial", "italic", "item", "legal", "local", "maxim",
+    "memo", "minim", "mobil", "modern", "normal", "optim", "organ", "parameter", "priorit",
+    "random", "real", "recogn", "sanit", "serial", "special", "stabil", "standard",
+    "summar", "synchron", "token", "util", "vector", "visual",
+)
+
+# Irregulars and non-verb forms, given outright.
+EXPLICIT = {
+    "analyse": "analyze",
+    "analysed": "analyzed",
+    "analysing": "analyzing",
+    "paralyse": "paralyze",
+    "paralysed": "paralyzed",
+    "catalyse": "catalyze",
+    "catalysed": "catalyzed",
+    "behaviour": "behavior",
+    "behaviours": "behaviors",
+    "behavioural": "behavioral",
+    "colour": "color",
+    "coloured": "colored",
+    "colours": "colors",
+    "favour": "favor",
+    "favoured": "favored",
+    "favours": "favors",
+    "favourite": "favorite",
+    "labour": "labor",
+    "labours": "labors",
+    "neighbour": "neighbor",
+    "neighbours": "neighbors",
+    "centre": "center",
+    "centred": "centered",
+    "centres": "centers",
+    "metre": "meter",
+    "metres": "meters",
+    "catalogue": "catalog",
+    "catalogues": "catalogs",
+    "dialogue": "dialog",
+    "dialogues": "dialogs",
+    "defence": "defense",
+    "defences": "defenses",
+    "offence": "offense",
+    "offences": "offenses",
+    "licence": "license",
+    "licences": "licenses",
+    "practise": "practice",
+    "practised": "practiced",
+    "practising": "practicing",
+    "artefact": "artifact",
+    "artefacts": "artifacts",
+    "judgement": "judgment",
+    "judgements": "judgments",
+    "acknowledgement": "acknowledgment",
+    "acknowledgements": "acknowledgments",
+    "fulfil": "fulfill",
+    "fulfils": "fulfills",
+    "fulfilment": "fulfillment",
+    "enrol": "enroll",
+    "enrols": "enrolls",
+    "enrolment": "enrollment",
+    "instalment": "installment",
+    "skilful": "skillful",
+    "wilful": "willful",
+    "travelling": "traveling",
+    "travelled": "traveled",
+    "traveller": "traveler",
+    "modelling": "modeling",
+    "modelled": "modeled",
+    "cancelling": "canceling",
+    "cancelled": "canceled",
+    "labelling": "labeling",
+    "labelled": "labeled",
+    "signalling": "signaling",
+    "signalled": "signaled",
+    "ageing": "aging",
+    "programme": "program",
+    "programmes": "programs",
+    "storey": "story",
+    "storeys": "stories",
+    "grey": "gray",
+    "whilst": "while",
+    "amongst": "among",
+    "learnt": "learned",
+    "spelt": "spelled",
+    "sceptical": "skeptical",
+    "sceptic": "skeptic",
+    "manoeuvre": "maneuver",
+    "sulphur": "sulfur",
+    "oesophagus": "esophagus",
+    "haemoglobin": "hemoglobin",
+    "anaemia": "anemia",
+}
+
+# Suppression markers, honored by both the check and --fix. See the module docstring.
+DISABLE_FILE_MARKER = "check-us-spelling: disable"
+ALLOW_LINE_MARKER = "check-us-spelling: ok"
+
+SKIP_DIRS = {".git", "__pycache__", ".idea", ".gradle", "build", "node_modules", ".venv",
+             "localvenv"}
+SKIP_SUFFIXES = (".pyc", ".pyo", ".class", ".jar", ".png", ".jpg", ".jpeg", ".gif", ".pdf",
+                 ".gz", ".bgz", ".zip", ".tbi", ".idx", ".bam", ".cram", ".avro", ".parquet")
+
+
+def build_map():
+    """British -> American, lowercase keys."""
+    mapping = dict(EXPLICIT)
+    for stem in ISE_STEMS:
+        for uk_suffix, us_suffix in (
+            ("ise", "ize"), ("ised", "ized"), ("ises", "izes"), ("ising", "izing"),
+            ("isation", "ization"), ("isations", "izations"),
+        ):
+            mapping[stem + uk_suffix] = stem + us_suffix
+    return mapping
+
+
+WORD_MAP = build_map()
+# Longest first so "recognisation" is not matched as "recognise" plus leftovers.
+WORD_RE = re.compile(
+    r"\b(" + "|".join(sorted(map(re.escape, WORD_MAP), key=len, reverse=True)) + r")\b",
+    re.IGNORECASE,
+)
+
+
+def match_case(source, replacement):
+    """Apply the casing of ``source`` to ``replacement``.
+
+    Handles the three cases that occur in practice: all lower, Capitalised, ALL CAPS.
+    Anything else is left lowercase, which is better than guessing.
+    """
+    if source.isupper():
+        return replacement.upper()
+    if source[:1].isupper():
+        return replacement[:1].upper() + replacement[1:]
+    return replacement
+
+
+def find_in_text(text):
+    """Yield (line number, found, suggested) for each British form in ``text``.
+
+    Honors both suppression markers, so a file that legitimately contains British forms --
+    a word list, a test fixture, a document about spelling -- reports nothing.
+    """
+    if DISABLE_FILE_MARKER in text:
+        return
+    for lineno, line in enumerate(text.split("\n"), 1):
+        if ALLOW_LINE_MARKER in line:
+            continue
+        for match in WORD_RE.finditer(line):
+            found = match.group(0)
+            yield lineno, found, match_case(found, WORD_MAP[found.lower()])
+
+
+def _substitute(line):
+    return WORD_RE.sub(
+        lambda m: match_case(m.group(0), WORD_MAP[m.group(0).lower()]), line)
+
+
+def fix_text(text):
+    """Return ``text`` with British forms replaced, preserving casing.
+
+    Suppression is honored here too. An exempt file must never be rewritten, or the escape
+    hatch would only work for the check and not for --fix.
+    """
+    if DISABLE_FILE_MARKER in text:
+        return text
+    return "\n".join(
+        line if ALLOW_LINE_MARKER in line else _substitute(line)
+        for line in text.split("\n"))
+
+
+def collect(paths):
+    """Expand arguments into a list of files, searching directories recursively."""
+    files = []
+    for path in paths:
+        if os.path.isdir(path):
+            for root, dirs, names in os.walk(path):
+                dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+                files.extend(os.path.join(root, n) for n in sorted(names)
+                             if not n.endswith(SKIP_SUFFIXES))
+        else:
+            files.append(path)
+    return files
+
+
+def main(argv):
+    fix = "--fix" in argv
+    paths = [a for a in argv if not a.startswith("-")]
+    unknown = [a for a in argv if a.startswith("-") and a != "--fix"]
+    if unknown or not paths:
+        print(f"usage: {os.path.basename(sys.argv[0])} [--fix] FILE_OR_DIR...",
+              file=sys.stderr)
+        return 2
+
+    status = 0
+    total = 0
+    for path in collect(paths):
+        try:
+            with open(path, encoding="utf-8") as handle:
+                before = handle.read()
+        except (OSError, UnicodeDecodeError):
+            # Unreadable or not text; not something this tool has an opinion about.
+            continue
+
+        hits = list(find_in_text(before))
+        if not hits:
+            continue
+
+        total += len(hits)
+        status = 1
+        for lineno, found, suggestion in hits:
+            print(f"{path}:{lineno}: {found} -> {suggestion}")
+
+        if fix:
+            with open(path, "w", encoding="utf-8") as handle:
+                handle.write(fix_text(before))
+            print(f"{path}: rewrote {len(hits)} occurrence(s)")
+
+    if total:
+        verb = "fixed" if fix else "found"
+        # Flush first: stdout is block-buffered when redirected, so without this the stderr
+        # summary can appear above the findings it summarizes.
+        sys.stdout.flush()
+        print(f"\n{total} British spelling(s) {verb}.", file=sys.stderr)
+        # Rewriting resolves them, so --fix succeeds; a bare check does not.
+        return 0 if fix else status
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))
