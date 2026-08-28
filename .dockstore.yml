@@ -209,6 +209,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - ng_vs_1989_parquet_ingest_verification
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
