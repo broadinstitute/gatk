@@ -232,6 +232,25 @@ The canonical GVS location encoding and decoding logic lives in
 - **`cost_observability`**: Operation cost tracking, written to by the various
   tools that comprise the GVS pipeline.
 
+### Filter table gotchas
+
+**`yng_status` is only ever `G` or `Y`.** `N` is recognized by the extract code
+but is never written by the filter model; on Foxtrot the distribution across
+`filter_set_info` was `G` 1,724,533,270 and `Y` 29,333,911. Any check keyed on
+`yng_status = 'N'` is therefore vacuous, returning zero rows whether or not the
+condition it tests for occurs. `Y` comes from `POSITIVE_TRAIN_SITE`
+(`CreateFilteringFiles.java`), assigned by matching against left-aligned truth
+resources, so input data that is not left aligned cannot be rescued by a `Y` and
+is judged on calibration sensitivity alone.
+
+**Filtering is applied per site and per genotype, with opposite senses.**
+`ExtractCohortEngine#isFailingSite` compares the *maximum* (best) score among
+alleles of a class against that class's threshold, so a poor allele at a site
+whose best allele passes is not excluded; `filter_set_sites` records that
+per-site outcome and is the right table for "did this variant survive
+filtering". `#isFailingGenotype` compares the *minimum* (worst) score across a
+genotype's non-ref alleles, so a `1/2` call is filtered if either allele fails.
+
 ## Key Workflows
 
 ### GvsJointVariantCalling.wdl
