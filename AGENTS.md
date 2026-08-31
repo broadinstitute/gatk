@@ -243,13 +243,29 @@ condition it tests for occurs. `Y` comes from `POSITIVE_TRAIN_SITE`
 resources, so input data that is not left aligned cannot be rescued by a `Y` and
 is judged on calibration sensitivity alone.
 
-**Filtering is applied per site and per genotype, with opposite senses.**
+**`filter_set_sites` records only sites that have filters, and does not cover
+the filter model.** There is no PASS or null row; absence from the table means
+the site was not filtered. On Foxtrot it held 71,032,776 rows across
+`EXCESS_ALLELES`, `ExcessHet`, `LowQual`, `NO_HQ_GENOTYPES` and combinations.
+Calibration sensitivity failures are *not* among them: VETS and VQSR site
+failures are computed at extract time from `filter_set_info` scores, never
+stored here. So this table records which sites carry site-level filter values.
+Whether carrying one actually excludes the variant depends on the artifact: per
+"Hard filtered versus soft filtered variants" above, the VAT is hard filtered and
+drops them, while the VCF, VDS and PGEN artifacts are soft filtered and emit
+every variant with its filter information attached.
+`filter_set_info` answers a different question again: keyed by
+`(location, ref, alt)`, it gives the calibration sensitivity score and
+`yng_status` of an individual *allele*. Whether a *site* passes the filter model
+is derived from its alleles by the max-over-class rule below and is not recorded
+in either table.
+
+**The filter model is applied per site and per genotype, with opposite senses.**
 `ExtractCohortEngine#isFailingSite` compares the *maximum* (best) score among
 alleles of a class against that class's threshold, so a poor allele at a site
-whose best allele passes is not excluded; `filter_set_sites` records that
-per-site outcome and is the right table for "did this variant survive
-filtering". `#isFailingGenotype` compares the *minimum* (worst) score across a
-genotype's non-ref alleles, so a `1/2` call is filtered if either allele fails.
+whose best allele passes is not excluded. `#isFailingGenotype` compares the
+*minimum* (worst) score across a genotype's non-ref alleles, so a `1/2` call is
+filtered if either allele fails.
 
 ## Key Workflows
 
