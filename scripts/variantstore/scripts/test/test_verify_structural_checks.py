@@ -159,6 +159,40 @@ class TestAssessCardinality(unittest.TestCase):
         self.assertTrue(r["ok"])
         self.assertIsNone(r["mode"])
 
+    def test_reference_source_is_mode_by_default(self):
+        r = assess_cardinality({1: 24, 2: 24}, {1, 2})
+        self.assertEqual(r["reference_source"], "mode")
+        self.assertEqual(r["reference_count"], 24)
+
+    def test_override_matching_constant_passes(self):
+        r = assess_cardinality({1: 24, 2: 24, 3: 24}, {1, 2, 3}, expected_count=24)
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["reference_source"], "override")
+        self.assertEqual(r["reference_count"], 24)
+        self.assertEqual(r["deviating_samples"], [])
+
+    def test_override_flags_uniform_wrong_count(self):
+        # The case mode-based detection misses: every sample shares the *wrong* count. Mode would make
+        # 25 the reference and pass; the override pins 24 and flags all three, reporting observed mode.
+        counts = {1: 25, 2: 25, 3: 25}
+        self.assertTrue(assess_cardinality(counts, {1, 2, 3})["ok"])  # mode-based: passes
+        r = assess_cardinality(counts, {1, 2, 3}, expected_count=24)
+        self.assertFalse(r["ok"])
+        self.assertEqual(r["mode"], 25)
+        self.assertEqual(r["reference_count"], 24)
+        self.assertEqual([d["sample_id"] for d in r["deviating_samples"]], [1, 2, 3])
+
+    def test_override_still_catches_missing(self):
+        r = assess_cardinality({1: 24, 2: 24}, {1, 2, 3}, expected_count=24)
+        self.assertFalse(r["ok"])
+        self.assertEqual(r["missing_samples"], [3])
+
+    def test_override_empty_records_reference(self):
+        r = assess_cardinality({}, {1, 2}, expected_count=24)
+        self.assertFalse(r["ok"])
+        self.assertEqual(r["reference_count"], 24)
+        self.assertEqual(r["reference_source"], "override")
+
 
 class TestAssessFamilyCompleteness(unittest.TestCase):
     def _run(self, part, reg, exp):
@@ -273,6 +307,21 @@ class TestRunStructuralChecks(unittest.TestCase):
         self.assertTrue(r["completeness_ok"])
         self.assertTrue(r["cardinality_ok"])
         self.assertFalse(r["strict_vet_screen"])
+
+    def test_expected_ploidy_override_gates_uniform_wrong_count(self):
+        # Every sample uniformly carries 25 ploidy rows. Mode-based inference passes (25 is the mode);
+        # the explicit override pins 24 and fails cardinality, gating deletion.
+        part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
+        self._patch(part, {1: 25, 2: 25})
+        exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
+
+        self.assertTrue(run_structural_checks("proj", "ds", exp)["cardinality_ok"])  # mode: passes
+        r = run_structural_checks("proj", "ds", exp, expected_ploidy_rows_per_sample=24)
+        self.assertFalse(r["cardinality_ok"])
+        card = r["details"]["cardinality"]["sample_chromosome_ploidy"]
+        self.assertEqual(card["reference_source"], "override")
+        self.assertEqual(card["reference_count"], 24)
+        self.assertEqual(card["mode"], 25)
 
 
 if __name__ == "__main__":

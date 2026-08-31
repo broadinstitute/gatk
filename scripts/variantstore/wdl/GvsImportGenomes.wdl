@@ -64,6 +64,9 @@ workflow GvsImportGenomes {
     # deletion (all_loaded=false) only when parquet_strict_vet_screen is set.
     Float parquet_vet_duplication_threshold = 1.6
     Boolean parquet_strict_vet_screen = false
+    # If set, the exact per-sample ploidy row count to validate against (e.g. 24 for WGS) instead of
+    # the callset mode. Leave unset to infer the reference from the data (correct for exome/BGE/chrM).
+    Int? parquet_expected_ploidy_rows_per_sample
 
     Boolean is_wgs = true
   }
@@ -304,6 +307,7 @@ workflow GvsImportGenomes {
         superpartitioned_table_prefixes = parquet_superpartitioned_prefixes,
         vet_duplication_threshold = parquet_vet_duplication_threshold,
         strict_vet_screen = parquet_strict_vet_screen,
+        expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
         go = LoadParquetFilesToBQ.done,
         variants_docker = effective_variants_docker,
     }
@@ -1352,6 +1356,8 @@ task VerifyParquetLoading {
     # Independent structural checks (VS-1989): duplication-screen ratio and whether a flag gates deletion.
     Float vet_duplication_threshold = 1.6
     Boolean strict_vet_screen = false
+    # Exact per-sample ploidy row count to validate against (e.g. 24 for WGS); unset infers the mode.
+    Int? expected_ploidy_rows_per_sample
     # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
     # is passed here to prevent this task from running until the upstream task has completed.
     #@ except: UnusedInput
@@ -1376,6 +1382,7 @@ task VerifyParquetLoading {
       --superpartitioned-table-prefixes ~{sep=" " superpartitioned_table_prefixes} \
       --vet-duplication-threshold ~{vet_duplication_threshold} \
       ~{true="--strict-vet-screen" false="" strict_vet_screen} \
+      ~{"--expected-ploidy-rows-per-sample " + expected_ploidy_rows_per_sample} \
       --output-dir verification_output
   >>>
 

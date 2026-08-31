@@ -54,15 +54,16 @@ def _log_structural_summary(structural):
             )
 
     for table, card in sorted(details["cardinality"].items()):
+        ref_desc = f"{card.get('reference_count')} rows/sample ({card.get('reference_source', 'mode')})"
         if card["ok"]:
             log.info(
-                f"  [cardinality] {table}: {card['distinct_samples']} samples, "
-                f"all with {card['mode']} rows"
+                f"  [cardinality] {table}: {card['distinct_samples']} samples, all with {ref_desc}"
             )
         else:
             log.error(
-                f"  [cardinality] {table}: mode={card['mode']} min={card['min']} max={card['max']}; "
-                f"{len(card['missing_samples'])} missing, {len(card['deviating_samples'])} off-mode"
+                f"  [cardinality] {table}: expected {ref_desc}, observed mode={card['mode']} "
+                f"min={card['min']} max={card['max']}; "
+                f"{len(card['missing_samples'])} missing, {len(card['deviating_samples'])} off-reference"
             )
 
     for family, screen in sorted(details["duplication_screen"].items()):
@@ -83,7 +84,8 @@ def _log_structural_summary(structural):
 def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
                       superpartitioned_table_prefixes=None, regular_table_prefixes=None,
                       vet_duplication_threshold=DEFAULT_VET_DUPLICATION_THRESHOLD,
-                      strict_vet_screen=False):
+                      strict_vet_screen=False,
+                      expected_ploidy_rows_per_sample=None):
     """
     Compare GCS-derived (table_name, sample_id) pairs against what is actually
     present in BigQuery to find loads that are missing, then run independent
@@ -99,6 +101,8 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
         vet_duplication_threshold: Ratio-to-median above which a vet sample is flagged (default 1.6)
         strict_vet_screen: If True, a vet duplication flag fails verification (blocking deletion);
             if False (default) it only warns.
+        expected_ploidy_rows_per_sample: If set, the exact per-sample ploidy row count to validate
+            against (e.g. 24 for WGS) instead of the callset mode; leave unset to infer from the data.
 
     Returns:
         Dictionary with verification results
@@ -184,6 +188,7 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
         regular_table_prefixes=regular_table_prefixes,
         vet_duplication_threshold=vet_duplication_threshold,
         strict_vet_screen=strict_vet_screen,
+        expected_ploidy_rows_per_sample=expected_ploidy_rows_per_sample,
     )
     _log_structural_summary(structural)
 
@@ -289,6 +294,15 @@ def main():
             "By default the screen only warns."
         )
     )
+    parser.add_argument(
+        "--expected-ploidy-rows-per-sample",
+        type=int,
+        default=None,
+        help=(
+            "Exact per-sample ploidy row count to validate against (e.g. 24 for WGS) instead of the "
+            "callset mode. Leave unset to infer the reference from the data."
+        )
+    )
 
     args = parser.parse_args()
 
@@ -301,6 +315,7 @@ def main():
         regular_table_prefixes=args.regular_table_prefixes,
         vet_duplication_threshold=args.vet_duplication_threshold,
         strict_vet_screen=args.strict_vet_screen,
+        expected_ploidy_rows_per_sample=args.expected_ploidy_rows_per_sample,
     )
 
     if results["all_loaded"]:
@@ -319,7 +334,7 @@ def main():
         if not results.get("family_completeness_ok", True):
             reasons.append("family completeness check failed (missing or empty partitions)")
         if not results.get("ploidy_cardinality_ok", True):
-            reasons.append("ploidy cardinality check failed (missing or off-mode samples)")
+            reasons.append("ploidy cardinality check failed (missing or off-reference samples)")
         if (results.get("vet_duplication_flagged")
                 and results.get("family_completeness_ok", True)
                 and results.get("ploidy_cardinality_ok", True)

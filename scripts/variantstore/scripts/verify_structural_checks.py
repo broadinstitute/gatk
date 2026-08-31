@@ -201,15 +201,22 @@ def assess_family_completeness(partition_rows, regular_counts, expected_by_famil
     return {"ok": overall_ok, "per_family": per_family}
 
 
-def assess_cardinality(counts, expected_samples):
+def assess_cardinality(counts, expected_samples, expected_count=None):
     """
-    Check that every expected sample has the *same* per-sample row count -- the callset's modal
-    count -- and that none is missing.
+    Check that every expected sample has the *same* per-sample row count and that none is missing.
 
-    Deliberately does not assume a fixed count (e.g. 24 for ploidy): that number is emergent (the
-    count of distinct non-PAR contigs, which chrM or non-WGS ingest can change), so each sample is
-    validated against the callset mode instead. A sample below the mode indicates a partial load; a
-    sample at a multiple of the mode indicates duplication (subject to PLOIDY_BACKFILL_CAVEAT).
+    By default the reference is the callset's own modal count, deliberately *not* a fixed number: for
+    ploidy the intuitive "24" is emergent (the count of distinct non-PAR contigs, which chrM or
+    non-WGS ingest can change), so hardcoding it would false-positive on exome/BGE/chrM callsets. A
+    sample below the reference indicates a partial load; a sample at a multiple of it indicates
+    duplication (subject to PLOIDY_BACKFILL_CAVEAT).
+
+    When ``expected_count`` is supplied the reference becomes that exact constant instead of the mode
+    (e.g. pass 24 for a WGS ploidy table). This recovers the ticket's exact-cardinality guarantee and
+    closes the one gap mode-based detection has -- if a majority of samples share the *wrong* count,
+    that wrong count becomes the mode and the correct minority would otherwise be flagged. The
+    observed mode is always reported alongside, so a mismatch between an override and reality is
+    visible rather than silently overriding it.
 
     ``counts`` is ``{sample_id: row_count}``; only ``expected_samples`` are assessed (extra samples
     already in the table from prior loads are ignored).
@@ -218,10 +225,14 @@ def assess_cardinality(counts, expected_samples):
     present = {sid: counts[sid] for sid in expected if sid in counts and counts[sid] > 0}
     missing = sorted(expected - set(present))
 
+    reference_source = "override" if expected_count is not None else "mode"
+
     if not present:
         return {
             "ok": not expected,
             "mode": None,
+            "reference_count": expected_count,
+            "reference_source": reference_source,
             "min": None,
             "max": None,
             "distinct_samples": 0,
@@ -231,15 +242,18 @@ def assess_cardinality(counts, expected_samples):
         }
 
     values = list(present.values())
-    mode = Counter(values).most_common(1)[0][0]
+    observed_mode = Counter(values).most_common(1)[0][0]
+    reference = expected_count if expected_count is not None else observed_mode
     deviating = sorted(
-        ({"sample_id": sid, "count": n} for sid, n in present.items() if n != mode),
+        ({"sample_id": sid, "count": n} for sid, n in present.items() if n != reference),
         key=lambda d: d["sample_id"],
     )
 
     return {
         "ok": not missing and not deviating,
-        "mode": mode,
+        "mode": observed_mode,
+        "reference_count": reference,
+        "reference_source": reference_source,
         "min": min(values),
         "max": max(values),
         "distinct_samples": len(present),
@@ -294,6 +308,7 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
                           superpartitioned_table_prefixes=None, regular_table_prefixes=None,
                           vet_duplication_threshold=DEFAULT_VET_DUPLICATION_THRESHOLD,
                           strict_vet_screen=False,
+                          expected_ploidy_rows_per_sample=None,
                           duplication_screen_families=None):
     """
     Run the independent structural checks and return a result dict.
@@ -301,6 +316,11 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
     ``expected_by_family`` maps a family name (a superpartitioned prefix such as ``vet`` /
     ``ref_ranges``, or a regular table name such as ``sample_chromosome_ploidy``) to the set of
     ``sample_id`` values GCS says should be loaded for it.
+
+    ``expected_ploidy_rows_per_sample``, when set, is the exact per-sample row count each regular
+    per-sample table (ploidy) is validated against instead of the callset mode; leave it unset to
+    infer the reference from the data. (There is one regular table -- ploidy -- today; if others with
+    differing exact counts are ever added this would need to become a per-table mapping.)
 
     The returned dict carries flat booleans the WDL reads shallowly (``completeness_ok``,
     ``cardinality_ok``, ``duplication_flagged``) plus a nested ``details`` block for humans and logs.
@@ -332,7 +352,11 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
     cardinality = {}
     cardinality_ok = True
     for prefix in regular_table_prefixes:
-        result = assess_cardinality(regular_counts.get(prefix, {}), expected_by_family.get(prefix, set()))
+        result = assess_cardinality(
+            regular_counts.get(prefix, {}),
+            expected_by_family.get(prefix, set()),
+            expected_count=expected_ploidy_rows_per_sample,
+        )
         result["backfill_caveat"] = PLOIDY_BACKFILL_CAVEAT
         cardinality[prefix] = result
         cardinality_ok = cardinality_ok and result["ok"]

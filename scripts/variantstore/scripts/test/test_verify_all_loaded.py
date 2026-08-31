@@ -61,7 +61,8 @@ class VerifyAllLoadedTestBase(unittest.TestCase):
             f.write("\n".join(FIXTURE_FILES) + "\n")
         self.out_dir = os.path.join(self.tmp, "out")
 
-    def _run(self, loaded_pairs, structural, strict_vet_screen=False):
+    def _run(self, loaded_pairs, structural, strict_vet_screen=False,
+             expected_ploidy_rows_per_sample=None):
         with patch("verify_all_loaded.get_already_loaded_tables_and_sample_ids",
                    return_value=loaded_pairs), \
              patch("verify_all_loaded.run_structural_checks",
@@ -73,6 +74,7 @@ class VerifyAllLoadedTestBase(unittest.TestCase):
                 gcs_files_list=self.gcs_list,
                 output_dir=self.out_dir,
                 strict_vet_screen=strict_vet_screen,
+                expected_ploidy_rows_per_sample=expected_ploidy_rows_per_sample,
             )
 
     def _written_json(self):
@@ -106,6 +108,14 @@ class TestHappyPath(VerifyAllLoadedTestBase):
         self.assertEqual(set(expected_by_family["vet"]), {1, 2})
         self.assertEqual(set(expected_by_family["ref_ranges"]), {1, 2})
         self.assertEqual(set(expected_by_family["sample_chromosome_ploidy"]), {1, 2})
+
+    def test_expected_ploidy_override_threaded_to_structural_checks(self):
+        self._run(set(ALL_PAIRS), _structural(), expected_ploidy_rows_per_sample=24)
+        self.assertEqual(self.mock_struct.call_args.kwargs["expected_ploidy_rows_per_sample"], 24)
+
+    def test_expected_ploidy_override_defaults_to_none(self):
+        self._run(set(ALL_PAIRS), _structural())
+        self.assertIsNone(self.mock_struct.call_args.kwargs["expected_ploidy_rows_per_sample"])
 
 
 class TestStructuralChecksGate(VerifyAllLoadedTestBase):
