@@ -6,7 +6,7 @@
 # expensive to create and isn't expected to change often, while the steps in this Dockerfile are much less expensive and
 # more likely to change. Using a build-base image essentially allows the expensive layers to be globally cached which
 # should make building the final image much faster in most cases.
-FROM us.gcr.io/broad-dsde-methods/variantstore:2026-09-01-alpine-build-base AS build
+FROM us.gcr.io/broad-dsde-methods/variantstore:2026-09-02-alpine-build-base AS build
 
 # Install all of our variantstore Python requirements.
 # We constrain the version of setuptools to sidestep an issue in `terra-notebook-util`'s FISS dependency.
@@ -36,11 +36,16 @@ RUN mkdir /fiss-build && \
 # keyword in favor of `allowed_methods`. Upstream migrated its own `http.py` but missed `table.py`, so every
 # Terra entity-table call raises
 # `TypeError: Retry.__init__() got an unexpected keyword argument 'method_whitelist'`.
-# This was latent until the Cloud SDK base image moved to Python 3.14: on 3.12 pip happened to resolve
-# urllib3 1.26.x (where the keyword still exists but is deprecated), so nothing failed. That was luck, not a
-# constraint anyone wrote down, and it stopped holding on 3.14, where pip resolves urllib3 2.x.
-# Patching is preferred over pinning `urllib3 < 2`, which would hold the whole image back to an end-of-life
-# urllib3. `git apply` fails the build if the upstream line ever changes, which is the signal to re-check
+# Upstream PR #424 (merged 2026-08-26, shipped in 0.16.1/0.16.2) relaxed the hard caps `requests<=2.29.0`
+# and `urllib3<=1.26.19` to `<3` and fixed the identical call site in `http.py`, but missed this second one
+# in `table.py`. Until that release the caps held us on urllib3 1.26.x, where the keyword still exists but is
+# deprecated, so nothing failed.
+# This is NOT a Python version problem, and the `cloud_sdk_docker_decl` pin does not fix it: with the caps
+# gone, whether the resolver picks urllib3 1.x or 2.x depends on the pip build bundled in the base image
+# (pip 25.0.1 in cloud-sdk 565 resolves urllib3 1.26.20; pip 26.1.2 in 582 resolves 2.7.0). This patch is
+# what actually fixes it -- do not drop it on the assumption that the base image pin covers it.
+# Patching is preferred over re-pinning `urllib3 < 2`, which would hold the whole image back to an
+# end-of-life urllib3. `git apply` fails the build if the upstream line ever changes, which is the signal to re-check
 # whether this workaround can be dropped.
 COPY terra_notebook_utils_urllib3.patch /terra_notebook_utils_urllib3.patch
 RUN . /localvenv/bin/activate && \

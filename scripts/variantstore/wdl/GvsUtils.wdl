@@ -149,7 +149,7 @@ task GetToolVersions {
     # This has no effect until the image is rebuilt (build_docker.sh) and this tag is updated to match -- see the
     # "Variants Docker Image" section of the top-level CLAUDE.md. Editing the image's Dockerfiles (including the
     # cloud_sdk_docker_decl-equivalent base image tags above) has no runtime effect until that rebuild happens either.
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-09-01-alpine-df98d9b0a485"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-09-01-alpine-fdf40647cbfd"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-08-19-gatkbase-lite-087565f1a432"
     String gatk_heavy_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-08-19-gatkbase-32785e9276be"
