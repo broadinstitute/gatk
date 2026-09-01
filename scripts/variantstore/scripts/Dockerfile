@@ -32,7 +32,7 @@ RUN mkdir /fiss-build && \
     python setup.py install
 
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-alpine AS main
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:582.0.0-alpine AS main
 
 RUN apk update && apk upgrade
 

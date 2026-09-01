@@ -10,7 +10,7 @@
 #
 # Note: pyarrow was previously built from source here because Alpine's musl libc was incompatible with PyPI's
 # manylinux wheels. It has since been removed from the image entirely as no production code requires it.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-alpine
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:582.0.0-alpine
 
 RUN apk update && apk upgrade
 
