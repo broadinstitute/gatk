@@ -10,6 +10,13 @@
 #
 # Note: pyarrow was previously built from source here because Alpine's musl libc was incompatible with PyPI's
 # manylinux wheels. It has since been removed from the image entirely as no production code requires it.
+#
+# IMPORTANT: bumping the tag below only changes what this Dockerfile produces; it has no effect until the resulting
+# image is rebuilt and pushed via `build_build_base_docker.sh` and the new tag is wired into Dockerfile's `build`
+# stage FROM line. Until that happens, Dockerfile's `build` and `main` stages are on different Python versions, which
+# silently breaks the venv copied from `build` into `main` (its `python3` symlink dangles, so `python3` falls back to
+# the bare system interpreter with none of the pip-installed packages -- e.g. `ModuleNotFoundError: No module named
+# 'google'`). Keep the version here and in Dockerfile's `build` stage FROM in lockstep.
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:582.0.0-alpine
 
 RUN apk update && apk upgrade
