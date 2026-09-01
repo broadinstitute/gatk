@@ -58,6 +58,11 @@ task GetToolVersions {
   }
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
+  # Bumping this version does not touch the Variants image (see `variants_docker` below): that image's build-base
+  # stage is a separately built and pinned image (scripts/variantstore/scripts/build_base.Dockerfile, built via
+  # build_build_base_docker.sh) that must be rebuilt and re-pinned in lockstep, or its Python version drifts from
+  # this one and the Variants image's venv silently breaks at runtime. See the notes in build_base.Dockerfile and
+  # Dockerfile for details.
   String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:582.0.0-alpine"
 
   # For GVS releases, set `version` to match the release branch name, e.g. gvs_<major>.<minor>.<patch>.
@@ -131,6 +136,9 @@ task GetToolVersions {
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handful of tasks that require the larger GNU libc-based `slim`.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:582.0.0-slim"
+    # This has no effect until the image is rebuilt (build_docker.sh) and this tag is updated to match -- see the
+    # "Variants Docker Image" section of the top-level CLAUDE.md. Editing the image's Dockerfiles (including the
+    # cloud_sdk_docker_decl-equivalent base image tags above) has no runtime effect until that rebuild happens either.
     String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-09-01-alpine-df98d9b0a485"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-08-19-gatkbase-lite-087565f1a432"
