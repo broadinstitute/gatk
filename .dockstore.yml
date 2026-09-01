@@ -166,6 +166,15 @@ workflows:
          - ah_var_store
        tags:
          - /.*/
+   - name: GvsValidateVcfHeaders
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsValidateVcfHeaders.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+       tags:
+         - /.*/
    - name: GvsMergeAndRescoreVDSes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsMergeAndRescoreVDSes.wdl
@@ -218,6 +227,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - ng_vs_2002_cloud_sdk_docker_bump
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset

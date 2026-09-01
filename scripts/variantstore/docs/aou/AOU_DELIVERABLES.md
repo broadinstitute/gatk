@@ -90,7 +90,8 @@
    1. `GvsBulkIngestGenomes` header ingest and validation
       - Set `load_vcf_headers` to `true` and `load_vet_and_ref_ranges` to `false` to load VCF header data only.
       - Set a `load_data_scatter_width` of 400. (~10000 CreateWriteRequest tokens / hour) / (1 token / sample * ~20 samples / hour) = 500, drop to 400 to be safe.
-      - Once these headers have been loaded, run a sanity checking query on the DRAGEN version ```
+      - Once these headers have been loaded, run the `GvsValidateVcfHeaders` workflow (VS-1966) to validate them before spending any variant/reference ingest compute. Set `expected_dragen_version` to `3.7.8` for AoU callsets. This workflow automates the DRAGEN-version sanity check that was previously run by hand, and additionally verifies that every non-control, non-withdrawn sample has header data, that every sample was reblocked (`ReblockGVCF`), and that the DRAGEN version triplet is consistent across the cohort. With `fail_on_validation_errors` left at its default of `true`, the workflow fails and prints a report if anything is wrong; only proceed to the data ingest below once it passes. (The `validation_report` output describes exactly what failed for any sample.)
+      - As a manual fallback / for reference, the underlying DRAGEN-version query is: ```
   SELECT
   REGEXP_EXTRACT(vcf_header_lines, r'SW: [0-9\.]+') AS version,
   COUNT(*)
@@ -100,7 +101,7 @@ WHERE
   header_lines.is_expected_unique = TRUE
   AND CONTAINS_SUBSTR(vcf_header_lines, 'DRAGENCommandLine=<ID=dragen,')
 GROUP BY
-  version```. The version string here appears to be a mix of hardware and software versions. What matters for us is that the last triplet is `3.7.8`. In the Echo callset this query currently returns two rows with `version` values of `SW: 05.021.604.3.7.8` and `SW: 07.021.604.3.7.8`. Assuming this query returns only rows with `3.7.8` as the final triplet, proceed with the second invocation of `GvsBulkIngestGenomes` documented below.
+  version```. The version string here appears to be a mix of hardware and software versions. What matters for us is that the last triplet is `3.7.8`. In the Echo callset this query returns two rows with `version` values of `SW: 05.021.604.3.7.8` and `SW: 07.021.604.3.7.8`, both of which reduce to the `3.7.8` triplet that `GvsValidateVcfHeaders` checks.
    1. `GvsBulkIngestGenomes` variant and reference data ingest
       - If and only if the header ingest described above completed successfully, proceed with the loading of variant and reference data.
       - Set `load_vcf_headers` to `false` and `load_vet_and_ref_ranges` to `true` to load variant and reference data.
