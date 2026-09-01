@@ -2,11 +2,21 @@
 """
 Verify that all Parquet files in GCS have been loaded to BigQuery.
 
-Idempotency is determined by inspecting BigQuery directly:
-- For vet_% and ref_ranges_% tables: checks INFORMATION_SCHEMA.PARTITIONS for non-empty partitions.
-- For sample_chromosome_ploidy: checks for the sample_id in the table itself.
+Two layers of verification run here, and only together do they gate deletion of the source Parquet:
 
-This approach does not require or consult a parquet_load_status tracking table.
+1. Shared-predicate presence check. Parses every GCS path into a (table_name, sample_id) pair and
+   compares against get_already_loaded_tables_and_sample_ids -- the same predicate the loader uses to
+   decide what to skip. This is cheap and catches whole-sample absence, but because it asks the
+   loader's own question it can never contradict the loader: it is blind to a partition that is
+   present-but-partial or present-but-duplicated (VS-1989).
+
+2. Independent structural checks (verify_structural_checks.py). These ask "how many rows?" via
+   INFORMATION_SCHEMA.PARTITIONS.total_rows and a per-sample COUNT(*) on the ploidy table -- signals
+   the loader predicate never consults -- so they can catch partial loads and duplication. Family
+   completeness and ploidy cardinality gate deletion; the vet duplication screen warns by default and
+   only gates under --strict-vet-screen.
+
+Neither layer requires or consults a parquet_load_status tracking table.
 """
 
 import argparse
@@ -14,20 +24,72 @@ import json
 import logging
 import os
 import sys
+from collections import defaultdict
 
 from parse_and_group_files import (
     parse_table_and_sample_id_from_file_path,
     get_already_loaded_tables_and_sample_ids,
 )
+from verify_structural_checks import (
+    family_for_table,
+    run_structural_checks,
+    DEFAULT_VET_DUPLICATION_THRESHOLD,
+)
 
 log = logging.getLogger(__name__)
 
 
+def _log_structural_summary(structural):
+    """Log a human-readable summary of the independent structural checks."""
+    details = structural["details"]
+
+    for family, fam in sorted(details["family_completeness"]["per_family"].items()):
+        if fam["ok"]:
+            log.info(f"  [completeness] {family}: {fam['present']}/{fam['expected']} expected samples present")
+        else:
+            log.error(
+                f"  [completeness] {family}: {len(fam['missing_samples'])} missing, "
+                f"{len(fam['empty_partition_samples'])} present-but-empty "
+                f"(expected {fam['expected']})"
+            )
+
+    for table, card in sorted(details["cardinality"].items()):
+        ref_desc = f"{card.get('reference_count')} rows/sample ({card.get('reference_source', 'mode')})"
+        if card["ok"]:
+            log.info(
+                f"  [cardinality] {table}: {card['distinct_samples']} samples, all with {ref_desc}"
+            )
+        else:
+            log.error(
+                f"  [cardinality] {table}: expected {ref_desc}, observed mode={card['mode']} "
+                f"min={card['min']} max={card['max']}; "
+                f"{len(card['missing_samples'])} missing, {len(card['deviating_samples'])} off-reference"
+            )
+
+    for family, screen in sorted(details["duplication_screen"].items()):
+        outliers = screen["outliers"]
+        level = "  [duplication]"
+        if not outliers:
+            log.info(f"{level} {family}: no samples >= {screen['threshold']}x median ({screen['median']})")
+        elif structural["strict_vet_screen"]:
+            log.error(f"{level} {family}: {len(outliers)} sample(s) >= {screen['threshold']}x median (STRICT: gating)")
+        else:
+            log.warning(f"{level} {family}: {len(outliers)} sample(s) >= {screen['threshold']}x median (warning only)")
+
+    unscreened = details["duplication_unscreened"]
+    if unscreened["families"]:
+        log.info(f"  [duplication] not screened for {unscreened['families']}: {unscreened['reason']}")
+
+
 def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
-                      superpartitioned_table_prefixes=None, regular_table_prefixes=None):
+                      superpartitioned_table_prefixes=None, regular_table_prefixes=None,
+                      vet_duplication_threshold=DEFAULT_VET_DUPLICATION_THRESHOLD,
+                      strict_vet_screen=False,
+                      expected_ploidy_rows_per_sample=None):
     """
     Compare GCS-derived (table_name, sample_id) pairs against what is actually
-    present in BigQuery to find loads that are missing.
+    present in BigQuery to find loads that are missing, then run independent
+    row-count-based structural checks that the loader-shared predicate cannot make.
 
     Args:
         project_id: BigQuery project ID
@@ -36,6 +98,11 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
         output_dir: Directory to write results
         superpartitioned_table_prefixes: Prefixes for superpartitioned tables (default: ["vet", "ref_ranges"])
         regular_table_prefixes: Prefixes for regular tables (default: ["sample_chromosome_ploidy"])
+        vet_duplication_threshold: Ratio-to-median above which a vet sample is flagged (default 1.6)
+        strict_vet_screen: If True, a vet duplication flag fails verification (blocking deletion);
+            if False (default) it only warns.
+        expected_ploidy_rows_per_sample: If set, the exact per-sample ploidy row count to validate
+            against (e.g. 24 for WGS) instead of the callset mode; leave unset to infer from the data.
 
     Returns:
         Dictionary with verification results
@@ -103,7 +170,49 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
     log.info(f"  Files with missing pairs: {missing_files_count}")
     log.info(f"  Missing (table, sample_id) pairs: {len(missing_pairs)}")
 
-    all_loaded = (len(missing_pairs) == 0 and len(unmatched_files) == 0)
+    # --- Independent structural checks (VS-1989) --------------------------------------------------
+    # Derive, per family, the sample_ids GCS says should be loaded, then run row-count-based checks
+    # that share no code with the loader's get_already_loaded_tables_and_sample_ids predicate.
+    #
+    # This independence has a boundary: expected_by_family is sourced from all_gcs_pairs, which is
+    # the same GCS file listing (gcs_files_list, produced upstream by DiscoverParquetFiles) that the
+    # loader itself scatters over. A sample for which Parquet generation never produced output files
+    # at all -- as opposed to a sample whose files were produced but never loaded into BigQuery -- was
+    # never "expected" by this listing in the first place, so it is invisible to every check below,
+    # not just to the missing_pairs check above. Closing that would need an expected-sample source
+    # independent of GCS, e.g. sample_info/external_sample_names. See VS-1989.
+    expected_by_family = defaultdict(set)
+    for table_name, sample_id in all_gcs_pairs:
+        family = family_for_table(table_name, superpartitioned_table_prefixes)
+        if family is not None:
+            expected_by_family[family].add(sample_id)
+        elif table_name in regular_table_prefixes:
+            expected_by_family[table_name].add(sample_id)
+
+    log.info("Running independent structural checks...")
+    structural = run_structural_checks(
+        project_id, dataset_name, expected_by_family,
+        superpartitioned_table_prefixes=superpartitioned_table_prefixes,
+        regular_table_prefixes=regular_table_prefixes,
+        vet_duplication_threshold=vet_duplication_threshold,
+        strict_vet_screen=strict_vet_screen,
+        expected_ploidy_rows_per_sample=expected_ploidy_rows_per_sample,
+    )
+    _log_structural_summary(structural)
+
+    # Family completeness and per-sample cardinality are hard gates; the vet duplication screen only
+    # gates when strict mode is requested (otherwise it warns).
+    structural_checks_ok = (
+        structural["completeness_ok"]
+        and structural["cardinality_ok"]
+        and not (strict_vet_screen and structural["duplication_flagged"])
+    )
+
+    all_loaded = (
+        len(missing_pairs) == 0
+        and len(unmatched_files) == 0
+        and structural_checks_ok
+    )
 
     # Write list of missing file paths if there are any
     missing_files_list_path = None
@@ -131,6 +240,13 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
         "missing_files": missing_files_count,
         "missing_files_list": missing_files_list_path,
         "unmatched_files": len(unmatched_files),
+        # Flat structural-check booleans, read shallowly by the WDL (VS-1989).
+        "structural_checks_ok": structural_checks_ok,
+        "family_completeness_ok": structural["completeness_ok"],
+        "ploidy_cardinality_ok": structural["cardinality_ok"],
+        "vet_duplication_flagged": structural["duplication_flagged"],
+        # Full per-check detail for humans and logs.
+        "structural_checks": structural["details"],
     }
 
     results_file = f"{output_dir}/verification_results.json"
@@ -169,6 +285,32 @@ def main():
         default=["sample_chromosome_ploidy"],
         help="Table prefixes for regular (non-superpartitioned) tables (default: sample_chromosome_ploidy)"
     )
+    parser.add_argument(
+        "--vet-duplication-threshold",
+        type=float,
+        default=DEFAULT_VET_DUPLICATION_THRESHOLD,
+        help=(
+            "Ratio-to-median above which a vet sample is flagged as a possible duplicate "
+            f"(default: {DEFAULT_VET_DUPLICATION_THRESHOLD})"
+        )
+    )
+    parser.add_argument(
+        "--strict-vet-screen",
+        action="store_true",
+        help=(
+            "Treat vet duplication-screen flags as a failure (blocking Parquet deletion). "
+            "By default the screen only warns."
+        )
+    )
+    parser.add_argument(
+        "--expected-ploidy-rows-per-sample",
+        type=int,
+        default=None,
+        help=(
+            "Exact per-sample ploidy row count to validate against (e.g. 24 for WGS) instead of the "
+            "callset mode. Leave unset to infer the reference from the data."
+        )
+    )
 
     args = parser.parse_args()
 
@@ -179,6 +321,9 @@ def main():
         output_dir=args.output_dir,
         superpartitioned_table_prefixes=args.superpartitioned_table_prefixes,
         regular_table_prefixes=args.regular_table_prefixes,
+        vet_duplication_threshold=args.vet_duplication_threshold,
+        strict_vet_screen=args.strict_vet_screen,
+        expected_ploidy_rows_per_sample=args.expected_ploidy_rows_per_sample,
     )
 
     if results["all_loaded"]:
@@ -194,6 +339,15 @@ def main():
             reasons.append(
                 f"{unmatched_count} file(s) could not be parsed or matched to a table/sample_id"
             )
+        if not results.get("family_completeness_ok", True):
+            reasons.append("family completeness check failed (missing or empty partitions)")
+        if not results.get("ploidy_cardinality_ok", True):
+            reasons.append("ploidy cardinality check failed (missing or off-reference samples)")
+        if (results.get("vet_duplication_flagged")
+                and results.get("family_completeness_ok", True)
+                and results.get("ploidy_cardinality_ok", True)
+                and not results.get("structural_checks_ok", True)):
+            reasons.append("vet duplication screen flagged samples (--strict-vet-screen)")
 
         if reasons:
             log.error("✗ INCOMPLETE: " + "; ".join(reasons))
