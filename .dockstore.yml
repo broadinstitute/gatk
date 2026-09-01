@@ -350,6 +350,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_2002_update_variants_images
          tags:
              - /.*/
    - name: GvsIngestTieout

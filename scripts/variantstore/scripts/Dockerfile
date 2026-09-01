@@ -12,7 +12,7 @@
 # built here and copied into `main` via `COPY --from=build /localvenv /localvenv` gets a dangling `python3` symlink,
 # so `python3` in `main` silently falls back to the bare system interpreter with none of the pip-installed packages.
 # Bumping either FROM requires rebuilding build_base.Dockerfile, pushing a new tag, and updating both lines together.
-FROM us.gcr.io/broad-dsde-methods/variantstore:2026-06-23-alpine-build-base AS build
+FROM us.gcr.io/broad-dsde-methods/variantstore:2026-09-01-alpine-build-base AS build
 
 # Install all of our variantstore Python requirements.
 # We constrain the version of setuptools to sidestep an issue in `terra-notebook-util`'s FISS dependency.
