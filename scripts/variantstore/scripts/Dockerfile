@@ -44,7 +44,10 @@ FROM gcr.io/google.com/cloudsdktool/cloud-sdk:582.0.0-alpine AS main
 RUN apk update && apk upgrade
 
 # Add any generally useful Alpine packages here.
-RUN apk add --no-cache perl jq
+# `python3` (Alpine's own package, not this base image's bundled gcloud-internal interpreter -- see the note on the
+# `build` stage FROM above) must match what /localvenv was built against in the `build` stage, since the venv copied
+# in below is not self-contained and needs a matching /usr/bin/python3 and its shared libs present at the same path.
+RUN apk add --no-cache perl jq python3
 
 # The build stage generated Python artifacts to /root/.local via `pip install --user`, so grab all of those.
 COPY --from=build /localvenv /localvenv
