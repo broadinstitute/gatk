@@ -1259,7 +1259,7 @@ task DiscoverParquetFiles {
     # List all objects, filter for Parquet files
     echo "Listing files in ${OUTPUT_GCS_DIR}..."
     gcloud storage ls --recursive ~{"--billing-project " + billing_project_id} \
-      "${OUTPUT_GCS_DIR}/" > all_objects.txt || true
+      "${OUTPUT_GCS_DIR}/" > all_objects.txt
 
     grep '\.parquet$' all_objects.txt > all_files.txt || touch all_files.txt
 
@@ -1281,6 +1281,7 @@ task DiscoverParquetFiles {
     memory: "4 GB"
     disks: "local-disk 50 HDD"
     preemptible: 3
+    maxRetries: 3
     cpu: 2
   }
 
