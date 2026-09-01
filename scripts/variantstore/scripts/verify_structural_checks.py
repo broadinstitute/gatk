@@ -33,7 +33,15 @@ Scope notes (VS-1989):
     (pyarrow) and a footer read per file, which is prohibitive at AoU scale.
   * ``ref_ranges`` has no cheap per-sample duplication signal -- its row count tracks GQ-band
     transitions, not genome length, and legitimate samples reach many times the median -- so only
-    whole-sample presence is verified for it and the gap is recorded rather than papered over.
+    whole-sample presence is verified for it and the gap is recorded rather than papered over. The
+    only detector that does work is exact: ``COUNT(*)`` vs. ``COUNT(DISTINCT packed_ref_data)`` per
+    sample, which costs a full per-sample scan rather than a partition-metadata read and so is out
+    of scope here. Comparing a sample's row count against its counterpart in the parent callset was
+    also considered and rejected: a child callset is seeded by copying its parent, so a defect
+    already present in the parent is copied forward identically and reads as agreement, not
+    disagreement. Cross-generation comparison can only catch a change introduced at or after the
+    copy -- never a defect the parent already had -- so it is not a substitute for a real detector
+    and is not implemented. Do not re-attempt either approach without re-reading this note.
   * The ploidy *duplication* reading holds only where a sample's ploidy rows were written at ingest;
     a later backfill writes a full per-sample set regardless of what the reference tables contained,
     masking a doubled sample. See ``PLOIDY_BACKFILL_CAVEAT``.
@@ -372,8 +380,13 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
             )
     unscreened = {
         "checked": False,
-        "reason": ("No cheap per-sample duplication detector exists for these families "
-                   "(row count tracks GQ-band transitions, not genome length). See VS-1989."),
+        "reason": ("No cheap per-sample duplication detector exists for these families (row count "
+                   "tracks GQ-band transitions, not genome length). The exact detector -- COUNT(*) "
+                   "vs. COUNT(DISTINCT packed_ref_data) per sample -- needs a full per-sample scan "
+                   "and is out of scope. Comparing against the parent callset's row count was also "
+                   "considered and rejected: a child callset copies its parent, so a pre-existing "
+                   "parent-side defect is copied forward identically and would read as agreement. "
+                   "See the module docstring and VS-1989."),
         "families": sorted(f for f in superpartitioned_table_prefixes if f not in duplication),
     }
 

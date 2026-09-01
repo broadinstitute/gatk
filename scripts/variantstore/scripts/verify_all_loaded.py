@@ -173,6 +173,14 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
     # --- Independent structural checks (VS-1989) --------------------------------------------------
     # Derive, per family, the sample_ids GCS says should be loaded, then run row-count-based checks
     # that share no code with the loader's get_already_loaded_tables_and_sample_ids predicate.
+    #
+    # This independence has a boundary: expected_by_family is sourced from all_gcs_pairs, which is
+    # the same GCS file listing (gcs_files_list, produced upstream by DiscoverParquetFiles) that the
+    # loader itself scatters over. A sample for which Parquet generation never produced output files
+    # at all -- as opposed to a sample whose files were produced but never loaded into BigQuery -- was
+    # never "expected" by this listing in the first place, so it is invisible to every check below,
+    # not just to the missing_pairs check above. Closing that would need an expected-sample source
+    # independent of GCS, e.g. sample_info/external_sample_names. See VS-1989.
     expected_by_family = defaultdict(set)
     for table_name, sample_id in all_gcs_pairs:
         family = family_for_table(table_name, superpartitioned_table_prefixes)
