@@ -6,7 +6,7 @@
 # expensive to create and isn't expected to change often, while the steps in this Dockerfile are much less expensive and
 # more likely to change. Using a build-base image essentially allows the expensive layers to be globally cached which
 # should make building the final image much faster in most cases.
-FROM us.gcr.io/broad-dsde-methods/variantstore:2026-06-23-alpine-build-base AS build
+FROM us.gcr.io/broad-dsde-methods/variantstore:2026-09-01-alpine-build-base AS build
 
 # Install all of our variantstore Python requirements.
 # We constrain the version of setuptools to sidestep an issue in `terra-notebook-util`'s FISS dependency.
@@ -31,8 +31,29 @@ RUN mkdir /fiss-build && \
     . /localvenv/bin/activate && \
     python setup.py install
 
+# Patch `terra-notebook-utils` for a urllib3 2.x incompatibility.
+# Its `table.py` still passes urllib3 1.x's `method_whitelist` keyword to `Retry`; urllib3 2.0 removed that
+# keyword in favor of `allowed_methods`. Upstream migrated its own `http.py` but missed `table.py`, so every
+# Terra entity-table call raises
+# `TypeError: Retry.__init__() got an unexpected keyword argument 'method_whitelist'`.
+# This was latent until the Cloud SDK base image moved to Python 3.14: on 3.12 pip happened to resolve
+# urllib3 1.26.x (where the keyword still exists but is deprecated), so nothing failed. That was luck, not a
+# constraint anyone wrote down, and it stopped holding on 3.14, where pip resolves urllib3 2.x.
+# Patching is preferred over pinning `urllib3 < 2`, which would hold the whole image back to an end-of-life
+# urllib3. `git apply` fails the build if the upstream line ever changes, which is the signal to re-check
+# whether this workaround can be dropped.
+COPY terra_notebook_utils_urllib3.patch /terra_notebook_utils_urllib3.patch
+RUN . /localvenv/bin/activate && \
+    cd "$(python3 -c 'import terra_notebook_utils as m, pathlib; print(pathlib.Path(m.__file__).parent.parent)')" && \
+    git apply /terra_notebook_utils_urllib3.patch && \
+    python3 -c "from urllib3.util.retry import Retry; Retry(total=10, status_forcelist=[429], allowed_methods=['GET'])"
+
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-alpine AS main
+# IMPORTANT: must stay on the same Python version as the `build` stage's FROM above -- see the note there.
+# 565.0.0 is a deliberate ceiling -- see the note above this Dockerfile's `build` stage FROM, in
+# build_base.Dockerfile, and in GvsUtils.wdl's `cloud_sdk_docker_decl`. 568.0.0 and later bundle Python 3.14,
+# which hail cannot be installed on.
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-alpine AS main
 
 RUN apk update && apk upgrade
 
