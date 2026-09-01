@@ -166,6 +166,16 @@ workflows:
          - ah_var_store
        tags:
          - /.*/
+   - name: GvsValidateVcfHeaders
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsValidateVcfHeaders.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - ng_vs_1966_explicit_header_checks
+       tags:
+         - /.*/
    - name: GvsMergeAndRescoreVDSes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsMergeAndRescoreVDSes.wdl
@@ -218,6 +228,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - ng_vs_1966_explicit_header_checks
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
@@ -322,6 +333,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - ng_vs_1966_explicit_header_checks
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -331,6 +343,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - ng_vs_1966_explicit_header_checks
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -340,6 +353,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - ng_vs_1966_explicit_header_checks
          tags:
              - /.*/
    - name: GvsIngestTieout

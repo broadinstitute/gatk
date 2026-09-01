@@ -38,6 +38,9 @@ workflow GvsQuickstartHailIntegration {
         String? submission_id
 
         Int? maximum_alternate_alleles
+        # Optional DRAGEN version to assert in the header-validation check (this workflow always turns
+        # on header loading). Left unset the check only verifies DRAGEN-version consistency.
+        String? expected_dragen_version
         String ploidy_table_name = "sample_chromosome_ploidy"
         # Do not turn on `use_parquet_ingest` without either turning off header loading in this test or implementing
         # Parquet header loading generally.
@@ -75,6 +78,7 @@ workflow GvsQuickstartHailIntegration {
             use_compressed_references = use_compressed_references,
             extract_do_not_filter_override = extract_do_not_filter_override,
             load_vcf_headers = true,
+            expected_dragen_version = expected_dragen_version,
             dataset_suffix = dataset_suffix,
             use_default_dockers = use_default_dockers,
             check_expected_cost_and_table_size_outputs = false,
