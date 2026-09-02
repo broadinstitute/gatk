@@ -146,9 +146,6 @@ task GetToolVersions {
     # Must stay in lockstep with `cloud_sdk_docker_decl` above -- 565.0.0 is the last tag whose `-slim`
     # sibling is Debian 12 / Python 3.11. See the note there before bumping.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-slim"
-    # This has no effect until the image is rebuilt (build_docker.sh) and this tag is updated to match -- see the
-    # "Variants Docker Image" section of the top-level CLAUDE.md. Editing the image's Dockerfiles (including the
-    # cloud_sdk_docker_decl-equivalent base image tags above) has no runtime effect until that rebuild happens either.
     String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-09-02-alpine-fdf40647cbfd"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-08-19-gatkbase-lite-087565f1a432"
