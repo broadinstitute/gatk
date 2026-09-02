@@ -32,7 +32,8 @@ RUN mkdir /fiss-build && \
     python setup.py install
 
 # Patch `terra-notebook-utils` for a urllib3 2.x incompatibility.
-# An PR will be opened in `terra-notebook-utils` to fix this upstream, but until then we patch it here.
+# A PR has been opened in `terra-notebook-utils` to fix this upstream, but until that lands we patch this here.
+# https://github.com/DataBiosphere/terra-notebook-utils/pull/426
 COPY terra_notebook_utils_urllib3.patch /terra_notebook_utils_urllib3.patch
 RUN . /localvenv/bin/activate && \
     cd "$(python3 -c 'import terra_notebook_utils as m, pathlib; print(pathlib.Path(m.__file__).parent.parent)')" && \
