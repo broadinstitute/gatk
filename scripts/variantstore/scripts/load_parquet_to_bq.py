@@ -2,6 +2,9 @@
 """
 Load Parquet files from GCS to BigQuery with fault tolerance and idempotency.
 Uses deterministic job IDs to handle preemptions; no local state file is needed.
+A job that fails permanently is superseded by a fresh generation of its job ID so
+that a task retry is not stuck re-fetching the same dead job (see
+_submit_resumable_load_job).
 """
 
 import argparse
@@ -106,14 +109,13 @@ def load_table_from_parquet_files(
 
         job_id = None  # ensure it is always defined for the except handler
         try:
-            job_id = _make_job_id(project_id, dataset_name, table_name, batch)
-            
-            # Submit job (handles already-existing jobs via Conflict exception)
-            print(f"  Submitting job {job_id}")
-            load_job = _submit_load_job_with_retry(
-                client, batch, table_id, job_config, job_id, location
+            # Submit the job, resuming an in-flight or already-succeeded job on a
+            # deterministic job-ID collision and superseding a permanently-failed one.
+            load_job, job_id = _submit_resumable_load_job(
+                client, project_id, dataset_name, table_name, batch,
+                table_id, job_config, location,
             )
-            
+
             # Wait for completion with retry logic
             load_job = _wait_for_job_with_retry(load_job)
             
@@ -163,12 +165,21 @@ def load_table_from_parquet_files(
 
 
 
-def _make_job_id(project_id, dataset_name, table_name, batch):
-    """Create deterministic job ID from project, dataset, table name and batch contents."""
+def _make_job_id(project_id, dataset_name, table_name, batch, generation=0):
+    """Create deterministic job ID from project, dataset, table name and batch contents.
+
+    The optional generation lets a permanently-failed job be superseded by a fresh
+    job ID on a later task attempt (see _submit_resumable_load_job).  Generation 0
+    (the default) is unsuffixed so IDs minted before this parameter existed still
+    resolve identically; generation N>=1 appends an "_rN" suffix.
+    """
     digest = hashlib.sha1(
         "\n".join([project_id, dataset_name] + sorted(batch)).encode("utf-8")
     ).hexdigest()[:16]
-    return f"load_{table_name}_{digest}"
+    job_id = f"load_{table_name}_{digest}"
+    if generation:
+        job_id = f"{job_id}_r{generation}"
+    return job_id
 
 
 
@@ -208,6 +219,64 @@ def _log_batch_result(files, table_name, job_id, error=None):
         sample_id = _extract_sample_id_from_file_path(file_path, table_name)
         sample_id_str = sample_id if sample_id is not None else ""
         print(f"{sample_id_str}\t{file_path}")
+
+
+def _is_permanently_failed_job(load_job):
+    """
+    True if load_job is an existing job that finished in DONE state with an
+    error_result.
+
+    A BigQuery load job is atomic: one that terminates with an error_result loaded
+    zero rows, so it is safe to supersede with a fresh job ID rather than re-fetching
+    it forever.  A freshly submitted job is PENDING/RUNNING with no error_result and
+    is therefore never considered permanently failed here.
+    """
+    return load_job.state == "DONE" and load_job.error_result is not None
+
+
+def _submit_resumable_load_job(
+    client, project_id, dataset_name, table_name, batch,
+    table_id, job_config, location, max_generations=100,
+):
+    """
+    Submit a load job for a batch, resuming on a deterministic job-ID collision and
+    superseding a permanently-failed job with a fresh generation of the ID.
+
+    A BigQuery job ID cannot be reused, so once a job reaches DONE with an
+    error_result (a malformed Parquet file, a schema mismatch) its ID is burned:
+    re-submitting the same ID only re-fetches the dead job, whose result() re-raises
+    the original error.  Because the base ID is a pure function of the batch
+    contents, no task retry could otherwise make the batch succeed.  Walking a
+    generation suffix mints a genuinely new ID on the next attempt while still
+    resuming a job that is merely PENDING/RUNNING or already succeeded -- which must
+    never be duplicated, since the load is WRITE_APPEND.
+
+    Returns:
+        (load_job, job_id) for the generation that is in flight, already succeeded,
+        or freshly submitted.
+
+    Raises:
+        Exception: if the job submission fails for a non-Conflict reason, or if every
+        generation up to max_generations is an existing permanently-failed job.
+    """
+    for generation in range(max_generations):
+        job_id = _make_job_id(project_id, dataset_name, table_name, batch, generation)
+        print(f"  Submitting job {job_id}")
+        load_job = _submit_load_job_with_retry(
+            client, batch, table_id, job_config, job_id, location
+        )
+        if _is_permanently_failed_job(load_job):
+            print(
+                f"  Job {job_id} already exists and failed permanently "
+                f"({load_job.error_result}); superseding it with a fresh job ID"
+            )
+            continue
+        return load_job, job_id
+
+    raise Exception(
+        f"Exhausted {max_generations} job-ID generations for table {table_name}; "
+        f"every generation is an existing permanently-failed job"
+    )
 
 
 def _submit_load_job_with_retry(client, batch, table_id, job_config, job_id, location, max_retries=3):

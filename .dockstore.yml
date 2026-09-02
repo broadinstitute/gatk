@@ -349,6 +349,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - ng_vs_1988_failed_load_job
          tags:
              - /.*/
    - name: GvsIngestTieout
