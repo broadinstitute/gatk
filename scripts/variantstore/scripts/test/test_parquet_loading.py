@@ -30,7 +30,9 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from parse_and_group_files import parse_table_and_sample_id_from_file_path, get_already_loaded_tables_and_sample_ids, _validate_table_prefixes
 from load_parquet_to_bq import (
     _make_job_id,
+    _is_permanently_failed_job,
     _submit_load_job_with_retry,
+    _submit_resumable_load_job,
     _wait_for_job_with_retry,
     load_table_from_parquet_files,
 )
@@ -159,6 +161,38 @@ class TestMakeJobId(unittest.TestCase):
 
         # Job IDs should be the same because files are sorted inside _make_job_id
         self.assertEqual(job_id_1, job_id_2)
+
+    def test_generation_zero_is_unsuffixed(self):
+        """Generation 0 (the default) must equal the historical unsuffixed ID."""
+        batch = ["gs://bucket/file1.parquet"]
+
+        default_id = _make_job_id("my-project", "my_dataset", "vet_042", batch)
+        gen0_id = _make_job_id("my-project", "my_dataset", "vet_042", batch, generation=0)
+
+        self.assertEqual(default_id, gen0_id)
+        # No "_r" generation suffix appended for generation 0.
+        self.assertFalse(default_id.endswith("_r0"))
+
+    def test_generation_suffix_appended_for_nonzero(self):
+        """Generation N>=1 appends an _rN suffix to the base ID."""
+        batch = ["gs://bucket/file1.parquet"]
+
+        base_id = _make_job_id("my-project", "my_dataset", "vet_042", batch)
+        gen1_id = _make_job_id("my-project", "my_dataset", "vet_042", batch, generation=1)
+        gen2_id = _make_job_id("my-project", "my_dataset", "vet_042", batch, generation=2)
+
+        self.assertEqual(gen1_id, f"{base_id}_r1")
+        self.assertEqual(gen2_id, f"{base_id}_r2")
+
+    def test_generations_are_distinct(self):
+        """Different generations of the same batch produce different job IDs."""
+        batch = ["gs://bucket/file1.parquet"]
+
+        ids = {
+            _make_job_id("my-project", "my_dataset", "vet_042", batch, generation=g)
+            for g in range(4)
+        }
+        self.assertEqual(len(ids), 4)
 
 
 class TestPathNormalization(unittest.TestCase):
@@ -413,6 +447,150 @@ class TestSubmitLoadJobWithRetry(unittest.TestCase):
 
 
 @unittest.skipUnless(_GOOGLE_AVAILABLE, "google-cloud-bigquery not installed")
+class TestIsPermanentlyFailedJob(unittest.TestCase):
+    """Tests for the _is_permanently_failed_job predicate."""
+
+    @staticmethod
+    def _job(state, error_result):
+        job = MagicMock()
+        job.state = state
+        job.error_result = error_result
+        return job
+
+    def test_done_with_error_result_is_permanent(self):
+        """A terminal job carrying an error_result loaded nothing and is superseded."""
+        self.assertTrue(
+            _is_permanently_failed_job(self._job("DONE", {"reason": "invalid", "message": "bad parquet"}))
+        )
+
+    def test_done_without_error_result_is_not_permanent(self):
+        """A successfully completed job must be resumed, never superseded."""
+        self.assertFalse(_is_permanently_failed_job(self._job("DONE", None)))
+
+    def test_running_is_not_permanent(self):
+        """An in-flight job must be resumed, never superseded."""
+        self.assertFalse(_is_permanently_failed_job(self._job("RUNNING", None)))
+
+    def test_running_with_error_result_is_not_permanent(self):
+        """Only DONE jobs are superseded; a non-terminal job is always resumed."""
+        self.assertFalse(_is_permanently_failed_job(self._job("RUNNING", {"reason": "backendError"})))
+
+
+@unittest.skipUnless(_GOOGLE_AVAILABLE, "google-cloud-bigquery not installed")
+class TestSubmitResumableLoadJob(unittest.TestCase):
+    """Tests for _submit_resumable_load_job's generation-walk resume/supersede logic."""
+
+    def setUp(self):
+        self.client = MagicMock()
+        self.project_id = "proj"
+        self.dataset_name = "ds"
+        self.table_name = "vet_001"
+        self.batch = ["gs://bucket/vet/001/vet_001_42_file.parquet"]
+        self.table_id = "proj.ds.vet_001"
+        self.job_config = MagicMock()
+        self.location = "us-central1"
+
+    def _job(self, state="RUNNING", error_result=None):
+        job = MagicMock()
+        job.state = state
+        job.error_result = error_result
+        return job
+
+    def _job_id_for(self, generation):
+        return _make_job_id(self.project_id, self.dataset_name, self.table_name, self.batch, generation)
+
+    def _submit(self, max_generations=100):
+        return _submit_resumable_load_job(
+            self.client, self.project_id, self.dataset_name, self.table_name,
+            self.batch, self.table_id, self.job_config, self.location,
+            max_generations=max_generations,
+        )
+
+    def test_fresh_submit_uses_generation_zero(self):
+        """With no collision the batch loads under the unsuffixed generation-0 ID."""
+        fresh = self._job(state="RUNNING")
+        self.client.load_table_from_uri.return_value = fresh
+
+        load_job, job_id = self._submit()
+
+        self.assertIs(load_job, fresh)
+        self.assertEqual(job_id, self._job_id_for(0))
+        self.client.get_job.assert_not_called()
+
+    def test_conflict_resumes_running_job(self):
+        """A collision with a still-running job resumes it rather than superseding."""
+        running = self._job(state="RUNNING")
+        self.client.load_table_from_uri.side_effect = _bq_exceptions.Conflict("exists")
+        self.client.get_job.return_value = running
+
+        load_job, job_id = self._submit()
+
+        self.assertIs(load_job, running)
+        self.assertEqual(job_id, self._job_id_for(0))
+        self.client.get_job.assert_called_once_with(job_id=self._job_id_for(0), location=self.location)
+
+    def test_conflict_resumes_succeeded_job(self):
+        """A collision with a DONE job that has no error_result resumes it."""
+        succeeded = self._job(state="DONE", error_result=None)
+        self.client.load_table_from_uri.side_effect = _bq_exceptions.Conflict("exists")
+        self.client.get_job.return_value = succeeded
+
+        load_job, job_id = self._submit()
+
+        self.assertIs(load_job, succeeded)
+        self.assertEqual(job_id, self._job_id_for(0))
+
+    def test_permanently_failed_job_is_superseded_by_fresh_generation(self):
+        """
+        The core VS-1988 fix: generation 0 already exists as a DONE job with an
+        error_result, so it is superseded by a freshly submitted generation-1 job
+        instead of re-fetching the dead job forever.
+        """
+        failed = self._job(state="DONE", error_result={"reason": "invalid", "message": "bad parquet"})
+        fresh = self._job(state="RUNNING")
+        self.client.load_table_from_uri.side_effect = [_bq_exceptions.Conflict("exists"), fresh]
+        self.client.get_job.return_value = failed
+
+        load_job, job_id = self._submit()
+
+        self.assertIs(load_job, fresh)
+        self.assertEqual(job_id, self._job_id_for(1))
+        self.assertTrue(job_id.endswith("_r1"))
+        # The fresh submit used the generation-1 ID, not the burned generation-0 ID.
+        self.assertEqual(self.client.load_table_from_uri.call_args_list[1][1]["job_id"], self._job_id_for(1))
+        self.client.get_job.assert_called_once()
+
+    def test_two_failed_generations_are_walked(self):
+        """Two consecutive permanently-failed generations are skipped before a fresh one."""
+        failed0 = self._job(state="DONE", error_result={"reason": "invalid"})
+        failed1 = self._job(state="DONE", error_result={"reason": "invalid"})
+        fresh = self._job(state="RUNNING")
+        self.client.load_table_from_uri.side_effect = [
+            _bq_exceptions.Conflict("exists"),
+            _bq_exceptions.Conflict("exists"),
+            fresh,
+        ]
+        self.client.get_job.side_effect = [failed0, failed1]
+
+        load_job, job_id = self._submit()
+
+        self.assertIs(load_job, fresh)
+        self.assertEqual(job_id, self._job_id_for(2))
+        self.assertEqual(self.client.load_table_from_uri.call_count, 3)
+        self.assertEqual(self.client.get_job.call_count, 2)
+
+    def test_all_generations_permanently_failed_raises(self):
+        """If every generation up to the cap is a dead job, the batch cannot proceed."""
+        self.client.load_table_from_uri.side_effect = _bq_exceptions.Conflict("exists")
+        self.client.get_job.return_value = self._job(state="DONE", error_result={"reason": "invalid"})
+
+        with self.assertRaises(Exception):
+            self._submit(max_generations=3)
+
+        self.assertEqual(self.client.load_table_from_uri.call_count, 3)
+
+
+@unittest.skipUnless(_GOOGLE_AVAILABLE, "google-cloud-bigquery not installed")
 class TestWaitForJobWithRetry(unittest.TestCase):
     """Tests for _wait_for_job_with_retry."""
 
@@ -546,6 +724,43 @@ class TestLoadTableFromParquetFiles(unittest.TestCase):
         self.assertEqual(stats["completion_status"], "SUCCESS")
         self.assertEqual(stats["rows_loaded"], 50)
         self.assertEqual(stats["batches_failed"], 0)
+
+    def test_supersedes_permanently_failed_job_on_retry(self):
+        """
+        End-to-end VS-1988 fix: a prior task attempt left a DONE job with an
+        error_result under the deterministic (generation-0) job ID.  This attempt
+        must supersede it with a fresh generation-1 job that succeeds, rather than
+        re-fetching the dead job and failing the batch again.
+        """
+        files = ["gs://bucket/vet/001/vet_001_42_file.parquet"]
+        fofn = self._make_fofn(files)
+
+        failed_job = MagicMock()
+        failed_job.state = "DONE"
+        failed_job.error_result = {"reason": "invalid", "message": "schema mismatch"}
+
+        fresh_job = self._make_mock_job(rows=77, job_id="load_vet_001_gen1")
+        fresh_job.state = "RUNNING"
+        fresh_job.error_result = None
+
+        # Generation 0 collides (Conflict -> fetch the dead job); generation 1 is fresh.
+        self.mock_client.load_table_from_uri.side_effect = [
+            _bq_exceptions.Conflict("already exists"),
+            fresh_job,
+        ]
+        self.mock_client.get_job.return_value = failed_job
+
+        stats = load_table_from_parquet_files(
+            project_id="proj", dataset_name="ds", table_name="vet_001",
+            files_fofn=fofn, schema_path=None,
+        )
+
+        self.assertEqual(stats["completion_status"], "SUCCESS")
+        self.assertEqual(stats["rows_loaded"], 77)
+        self.assertEqual(stats["batches_failed"], 0)
+        # Generation 0 was fetched once (the dead job); generation 1 was submitted fresh.
+        self.mock_client.get_job.assert_called_once()
+        self.assertEqual(self.mock_client.load_table_from_uri.call_count, 2)
 
     def test_batch_with_job_errors_is_partial_failure(self):
         """A job that completes but carries errors is counted as a failed batch."""
