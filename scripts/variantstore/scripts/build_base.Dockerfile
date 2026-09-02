@@ -12,11 +12,7 @@
 # manylinux wheels. It has since been removed from the image entirely as no production code requires it.
 #
 # 565.0.0 is a deliberate ceiling, not merely "the version we happened to test". Do not bump it without
-# reading the note in GvsUtils.wdl's `cloud_sdk_docker_decl`: the `-alpine` images switched to a bundled
-# Python 3.14 at 568.0.0, and hail's pinned numpy has no musl wheel for anything past cp312, so the VAT's
-# `GenerateSitesOnlyVcf` cannot install hail on 568+. 565.0.0 is also the last tag whose `-slim` sibling is
-# still Debian 12 / Python 3.11, which the hail tasks in GvsCreateVDS/GvsValidateVDS/GvsCountVdsNovelLoci/
-# GvsTieOutVDS depend on for their `apt install python3.11-venv` step.
+# reading the note in GvsUtils.wdl's `cloud_sdk_docker_decl`.
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-alpine
 
 RUN apk update && apk upgrade

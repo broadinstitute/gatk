@@ -32,32 +32,14 @@ RUN mkdir /fiss-build && \
     python setup.py install
 
 # Patch `terra-notebook-utils` for a urllib3 2.x incompatibility.
-# Its `table.py` still passes urllib3 1.x's `method_whitelist` keyword to `Retry`; urllib3 2.0 removed that
-# keyword in favor of `allowed_methods`. Upstream migrated its own `http.py` but missed `table.py`, so every
-# Terra entity-table call raises
-# `TypeError: Retry.__init__() got an unexpected keyword argument 'method_whitelist'`.
-# Upstream PR #424 (merged 2026-08-26, shipped in 0.16.1/0.16.2) relaxed the hard caps `requests<=2.29.0`
-# and `urllib3<=1.26.19` to `<3` and fixed the identical call site in `http.py`, but missed this second one
-# in `table.py`. Until that release the caps held us on urllib3 1.26.x, where the keyword still exists but is
-# deprecated, so nothing failed.
-# This is NOT a Python version problem, and the `cloud_sdk_docker_decl` pin does not fix it: with the caps
-# gone, whether the resolver picks urllib3 1.x or 2.x depends on the pip build bundled in the base image
-# (pip 25.0.1 in cloud-sdk 565 resolves urllib3 1.26.20; pip 26.1.2 in 582 resolves 2.7.0). This patch is
-# what actually fixes it -- do not drop it on the assumption that the base image pin covers it.
-# Patching is preferred over re-pinning `urllib3 < 2`, which would hold the whole image back to an
-# end-of-life urllib3. `git apply` fails the build if the upstream line ever changes, which is the signal to re-check
-# whether this workaround can be dropped.
+# An PR will be opened in `terra-notebook-utils` to fix this upstream, but until then we patch it here.
 COPY terra_notebook_utils_urllib3.patch /terra_notebook_utils_urllib3.patch
 RUN . /localvenv/bin/activate && \
     cd "$(python3 -c 'import terra_notebook_utils as m, pathlib; print(pathlib.Path(m.__file__).parent.parent)')" && \
-    git apply /terra_notebook_utils_urllib3.patch && \
-    python3 -c "from urllib3.util.retry import Retry; Retry(total=10, status_forcelist=[429], allowed_methods=['GET'])"
+    git apply /terra_notebook_utils_urllib3.patch
 
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
 # IMPORTANT: must stay on the same Python version as the `build` stage's FROM above -- see the note there.
-# 565.0.0 is a deliberate ceiling -- see the note above this Dockerfile's `build` stage FROM, in
-# build_base.Dockerfile, and in GvsUtils.wdl's `cloud_sdk_docker_decl`. 568.0.0 and later bundle Python 3.14,
-# which hail cannot be installed on.
 FROM gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-alpine AS main
 
 RUN apk update && apk upgrade
