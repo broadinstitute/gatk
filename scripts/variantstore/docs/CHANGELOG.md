@@ -1,5 +1,13 @@
 # Genomic Variant Store (GVS) Changelog
 
+## 0.6.5 - 2026-09-03
+
+### Fixed
+
+- Moved the Google Cloud SDK images from `524.0.0` to `565.0.0`. Google deletes Cloud SDK images about a year after publication, and the `524.0.0` tags that 0.6.4 pinned are no longer served, which made every workflow using them fail at task startup.
+
+This is a patch release off 0.6.4 containing only the change above. No other 0.6.4 behavior is altered, and the GATK and Variants images it uses are unchanged.
+
 ## 0.6.4 - 2025-07-29
 
 ### Fixed

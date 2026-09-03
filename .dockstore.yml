@@ -269,6 +269,7 @@ workflows:
              - master
              - ah_var_store
              - gvs_0.6.4
+             - gvs_0.6.5
          tags:
              - /.*/
    - name: GvsWithdrawSamples
@@ -299,6 +300,7 @@ workflows:
              # so this shouldn't show up in the list of available versions in Dockstore or Terra.
              - master
              - gvs_0.6.4
+             - gvs_0.6.5
          tags:
              - /.*/
    - name: GvsJointVariantCallsetCost

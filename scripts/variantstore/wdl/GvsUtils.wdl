@@ -56,11 +56,16 @@ task GetToolVersions {
   }
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-  String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-alpine"
+  # Google deletes Cloud SDK images about a year after publication, and 524.0.0 is now gone. 565.0.0 is the
+  # newest tag that this release can take: its `-alpine` sibling still uses Alpine's system Python (568.0.0
+  # began bundling Python 3.14, which breaks the `pip install hail` in the VAT sites-only task), and its
+  # `-slim` sibling is still Debian 12 / Python 3.11 (566.0.0 moved to Debian 13, where the
+  # `apt install python3.11-venv` in the Hail tasks fails outright).
+  String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-alpine"
 
   # For GVS releases, set `version` to match the release branch name, e.g. gvs_<major>.<minor>.<patch>.
   # For non-release, leave the value at "unspecified".
-  String version = "gvs_0.6.4"
+  String version = "gvs_0.6.5"
 
   String effective_version = select_first([git_branch_or_tag, version])
 
@@ -128,7 +133,8 @@ task GetToolVersions {
     String cloud_sdk_docker = cloud_sdk_docker_decl #   Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handful of tasks that require the larger GNU libc-based `slim`.
-    String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-slim"
+    # Must stay in lockstep with `cloud_sdk_docker_decl` above -- see the note there before bumping.
+    String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-slim"
     String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-07-29-alpine-af87966245f9"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2025-07-29-gatkbase-650b8e1a32f0"
