@@ -1256,10 +1256,26 @@ task DiscoverParquetFiles {
     # Normalize GCS path to ensure exactly one trailing slash
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
-    # List all objects, filter for Parquet files
+    # List all objects, filter for Parquet files.
+    # "One or more URLs matched no objects" is a valid outcome (the directory is legitimately empty),
+    # not a listing failure, so only that specific error is tolerated; anything else fails fast.
     echo "Listing files in ${OUTPUT_GCS_DIR}..."
+    set +o errexit
     gcloud storage ls --recursive ~{"--billing-project " + billing_project_id} \
-      "${OUTPUT_GCS_DIR}/" > all_objects.txt
+      "${OUTPUT_GCS_DIR}/" > all_objects.txt 2> gcloud_ls_stderr.txt
+    GCLOUD_LS_EXIT_CODE=$?
+    set -o errexit
+
+    if [[ ${GCLOUD_LS_EXIT_CODE} -ne 0 ]]; then
+      if grep -q 'One or more URLs matched no objects' gcloud_ls_stderr.txt; then
+        echo "No objects found under ${OUTPUT_GCS_DIR}/, proceeding with an empty file list."
+        : > all_objects.txt
+      else
+        echo "gcloud storage ls failed unexpectedly:" >&2
+        cat gcloud_ls_stderr.txt >&2
+        exit "${GCLOUD_LS_EXIT_CODE}"
+      fi
+    fi
 
     grep '\.parquet$' all_objects.txt > all_files.txt || touch all_files.txt
 
