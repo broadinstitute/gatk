@@ -169,9 +169,12 @@ task CreateVds {
 
         account_name=$(gcloud config list account --format "value(core.account)")
 
-        apt-get update
-        apt install --assume-yes python3.11-venv
-        python3 -m venv ./localvenv
+        # Debian 13 (Cloud SDK 582 -slim) no longer packages python3.11. Install a standalone Python 3.11 via
+        # uv (independent of apt) and build the venv with it; --seed provisions pip so the pip3 installs below
+        # work unchanged. See the note on cloud_sdk_docker_decl in GvsUtils.wdl.
+        curl -LsSf https://astral.sh/uv/0.12.9/install.sh | env UV_NO_MODIFY_PATH=1 sh
+        export PATH="$HOME/.local/bin:$PATH"
+        uv venv --python 3.11 --seed ./localvenv
         . ./localvenv/bin/activate
 
         pip3 install --upgrade pip

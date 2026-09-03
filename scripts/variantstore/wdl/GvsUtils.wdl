@@ -58,20 +58,23 @@ task GetToolVersions {
   }
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-  # 565.0.0 is a ceiling, not just the last version anyone tested. Google removes Cloud SDK images about a
-  # year after publication, so this tag will need to move again around 2027-04-14 -- but it cannot simply be
-  # bumped to the newest release, for two independent reasons:
-  #   * The `-alpine` images stopped using Alpine's system Python and began bundling Python 3.14 at 568.0.0.
-  #     hail (see `hail_version` below) pins numpy<2, and numpy 1.26.4 publishes musl wheels only through
-  #     cp312, so `pip install hail` in GvsCreateVATfromVDS's `GenerateSitesOnlyVcf` falls back to a source
-  #     build and fails -- the image ships no compiler. Adding one would not help: numpy 1.26.4 does not
-  #     support Python 3.13+ at all.
-  #   * The `-slim` images moved from Debian 12 to Debian 13 at 566.0.0, which drops Python 3.11. The hail
-  #     tasks in GvsCreateVDS, GvsValidateVDS, GvsCountVdsNovelLoci and GvsTieOutVDS all run
-  #     `apt install python3.11-venv`, which fails outright on Debian 13.
-  # Escaping this ceiling means moving those tasks to hail >= 0.2.135 (the release that repins numpy to >=2),
-  # which is a pipeline-wide change requiring VDS revalidation -- not something to fold into an image bump.
-  String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-alpine"
+  # We run Cloud SDK 582.0.0 on hail 0.2.134 (which pins numpy<2) by working around the two problems that
+  # made 565.0.0 a ceiling, rather than taking the hail >= 0.2.135 bump those problems would otherwise force:
+  #   * `-alpine`: at 568.0.0 these images stopped using Alpine's system Python and began bundling Python 3.14
+  #     for gcloud's own internal use. numpy 1.26.4 (hail's numpy<2 pin) publishes musl wheels only through
+  #     cp312, so `pip install hail` against 3.14 in GvsCreateVATfromVDS's `GenerateSitesOnlyVcf` would fall
+  #     back to a source build and fail (the image ships no compiler). The variants image sidesteps this by
+  #     building its venv against Alpine's own /usr/bin/python3 (3.12) instead of the bundled interpreter --
+  #     see the notes in scripts/Dockerfile and scripts/build_base.Dockerfile.
+  #   * `-slim`: at 566.0.0 these images moved from Debian 12 to Debian 13, which drops the python3.11 apt
+  #     package. The hail tasks in GvsCreateVDS, GvsValidateVDS, GvsCountVdsNovelLoci, GvsMergeAndRescoreVDSes
+  #     and GvsRemoveSamplesFromVDS install Python 3.11 via uv (a standalone build, independent of apt).
+  # This is a bridge, not a permanent escape: numpy 1.26.4's musl wheels stop at cp312, so the variants image
+  # depends on Alpine's own python3 staying <= 3.12. When Cloud SDK's alpine base moves to an Alpine shipping
+  # Python 3.13+, `apk add python3` yields 3.13 and the alpine path breaks again -- and Alpine carries only one
+  # python3 per release, so it cannot be pinned back to 3.12. The durable fix remains moving these tasks to
+  # hail >= 0.2.135 (which repins numpy to >=2), a pipeline-wide change requiring VDS revalidation.
+  String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:582.0.0-alpine"
 
   # For GVS releases, set `version` to match the release branch name, e.g. gvs_<major>.<minor>.<patch>.
   # For non-release, leave the value at "unspecified".
@@ -143,10 +146,14 @@ task GetToolVersions {
     String cloud_sdk_docker = cloud_sdk_docker_decl #   Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handful of tasks that require the larger GNU libc-based `slim`.
-    # Must stay in lockstep with `cloud_sdk_docker_decl` above -- 565.0.0 is the last tag whose `-slim`
-    # sibling is Debian 12 / Python 3.11. See the note there before bumping.
-    String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-09-02-alpine-fdf40647cbfd"
+    # Must stay in lockstep with `cloud_sdk_docker_decl` above. At 582.0.0 the `-slim` sibling is Debian 13,
+    # which drops the python3.11 apt package; the hail tasks that use this image install Python 3.11 via uv
+    # instead. See the note on `cloud_sdk_docker_decl` before bumping.
+    String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:582.0.0-slim"
+    # REBUILD REQUIRED: this tag is a placeholder from the earlier 582 build and predates the terra-notebook-utils
+    # urllib3 patch now added in scripts/Dockerfile. Rebuild via build_docker.sh and update this to the new tag
+    # before relying on this image (see the Variants Docker Image note in CLAUDE.md).
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-09-01-alpine-37a0a74a7f56"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-08-19-gatkbase-lite-087565f1a432"
     String gatk_heavy_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-08-19-gatkbase-32785e9276be"

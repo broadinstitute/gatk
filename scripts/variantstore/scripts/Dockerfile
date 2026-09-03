@@ -6,7 +6,13 @@
 # expensive to create and isn't expected to change often, while the steps in this Dockerfile are much less expensive and
 # more likely to change. Using a build-base image essentially allows the expensive layers to be globally cached which
 # should make building the final image much faster in most cases.
-FROM us.gcr.io/broad-dsde-methods/variantstore:2026-09-02-alpine-build-base AS build
+#
+# IMPORTANT: this tag is built and pushed separately by build_build_base_docker.sh from build_base.Dockerfile, and
+# must be on the same Google Cloud SDK / Python version as the `main` stage's FROM below. If they diverge, the venv
+# built here and copied into `main` via `COPY --from=build /localvenv /localvenv` gets a dangling `python3` symlink,
+# so `python3` in `main` silently falls back to the bare system interpreter with none of the pip-installed packages.
+# Bumping either FROM requires rebuilding build_base.Dockerfile, pushing a new tag, and updating both lines together.
+FROM us.gcr.io/broad-dsde-methods/variantstore:2026-09-01-2-alpine-build-base AS build
 
 # Install all of our variantstore Python requirements.
 # We constrain the version of setuptools to sidestep an issue in `terra-notebook-util`'s FISS dependency.
@@ -41,12 +47,15 @@ RUN . /localvenv/bin/activate && \
 
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
 # IMPORTANT: must stay on the same Python version as the `build` stage's FROM above -- see the note there.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-alpine AS main
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:582.0.0-alpine AS main
 
 RUN apk update && apk upgrade
 
 # Add any generally useful Alpine packages here.
-RUN apk add --no-cache perl jq
+# `python3` (Alpine's own package, not this base image's bundled gcloud-internal interpreter -- see the note on the
+# `build` stage FROM above) must match what /localvenv was built against in the `build` stage, since the venv copied
+# in below is not self-contained and needs a matching /usr/bin/python3 and its shared libs present at the same path.
+RUN apk add --no-cache perl jq python3
 
 # The build stage generated Python artifacts to /root/.local via `pip install --user`, so grab all of those.
 COPY --from=build /localvenv /localvenv

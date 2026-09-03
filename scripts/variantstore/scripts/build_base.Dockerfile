@@ -11,15 +11,28 @@
 # Note: pyarrow was previously built from source here because Alpine's musl libc was incompatible with PyPI's
 # manylinux wheels. It has since been removed from the image entirely as no production code requires it.
 #
-# 565.0.0 is a deliberate ceiling, not merely "the version we happened to test". Do not bump it without
-# reading the note in GvsUtils.wdl's `cloud_sdk_docker_decl`.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-alpine
+# IMPORTANT: bumping the tag below only changes what this Dockerfile produces; it has no effect until the resulting
+# image is rebuilt and pushed via `build_build_base_docker.sh` and the new tag is wired into Dockerfile's `build`
+# stage FROM line. Until that happens, Dockerfile's `build` and `main` stages are on different Python versions, which
+# silently breaks the venv copied from `build` into `main` (its `python3` symlink dangles, so `python3` falls back to
+# the bare system interpreter with none of the pip-installed packages -- e.g. `ModuleNotFoundError: No module named
+# 'google'`). Keep the version here and in Dockerfile's `build` stage FROM in lockstep.
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:582.0.0-alpine
 
 RUN apk update && apk upgrade
 
 # Add all required build tools. These are not added to the main stage as they are only needed at compile time.
-RUN apk add autoconf bash g++ gcc make python3-dev git openssl-dev zlib-dev xz-dev bzip2-dev curl-dev
-RUN python3 -m venv /localvenv && . /localvenv/bin/activate && python3 -m ensurepip --upgrade
+# `python3` is listed explicitly (it's also a transitive dependency of python3-dev) because this image's cloud-sdk
+# base bundles its own private Python interpreter for gcloud's internal use, at /usr/local/bin, ahead of Alpine's own
+# apk-managed /usr/bin/python3 on PATH. That bundled interpreter's version moves independently with every cloud-sdk
+# release (it jumped 3.12 -> 3.14 between the 524.0.0 and 582.0.0 tags) and is not meant to be used outside gcloud
+# itself, so relying on a bare `python3` here would silently tie our venv to whatever Python gcloud happens to embed.
+# Alpine's own python3 package tracks the (much more slowly moving) Alpine release instead, so the venv below is
+# built against /usr/bin/python3 explicitly. Dockerfile's `main` stage must also `apk add python3` for the same
+# reason: this venv is copied there via `COPY --from=build`, and needs the matching interpreter/shared libs present
+# at the same path to not be a dangling symlink. See the notes in Dockerfile.
+RUN apk add autoconf bash g++ gcc make python3 python3-dev git openssl-dev zlib-dev xz-dev bzip2-dev curl-dev
+RUN /usr/bin/python3 -m venv /localvenv && . /localvenv/bin/activate && python3 -m ensurepip --upgrade
 
 
 ARG HTSLIB_VERSION=1.23.1
