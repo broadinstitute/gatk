@@ -58,7 +58,20 @@ task GetToolVersions {
   }
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-  String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-alpine"
+  # 565.0.0 is a ceiling, not just the last version anyone tested. Google removes Cloud SDK images about a
+  # year after publication, so this tag will need to move again around 2027-04-14 -- but it cannot simply be
+  # bumped to the newest release, for two independent reasons:
+  #   * The `-alpine` images stopped using Alpine's system Python and began bundling Python 3.14 at 568.0.0.
+  #     hail (see `hail_version` below) pins numpy<2, and numpy 1.26.4 publishes musl wheels only through
+  #     cp312, so `pip install hail` in GvsCreateVATfromVDS's `GenerateSitesOnlyVcf` falls back to a source
+  #     build and fails -- the image ships no compiler. Adding one would not help: numpy 1.26.4 does not
+  #     support Python 3.13+ at all.
+  #   * The `-slim` images moved from Debian 12 to Debian 13 at 566.0.0, which drops Python 3.11. The hail
+  #     tasks in GvsCreateVDS, GvsValidateVDS, GvsCountVdsNovelLoci and GvsTieOutVDS all run
+  #     `apt install python3.11-venv`, which fails outright on Debian 13.
+  # Escaping this ceiling means moving those tasks to hail >= 0.2.135 (the release that repins numpy to >=2),
+  # which is a pipeline-wide change requiring VDS revalidation -- not something to fold into an image bump.
+  String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-alpine"
 
   # For GVS releases, set `version` to match the release branch name, e.g. gvs_<major>.<minor>.<patch>.
   # For non-release, leave the value at "unspecified".
@@ -130,8 +143,10 @@ task GetToolVersions {
     String cloud_sdk_docker = cloud_sdk_docker_decl #   Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handful of tasks that require the larger GNU libc-based `slim`.
-    String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-08-24-alpine-2992179e6bf4"
+    # Must stay in lockstep with `cloud_sdk_docker_decl` above -- 565.0.0 is the last tag whose `-slim`
+    # sibling is Debian 12 / Python 3.11. See the note there before bumping.
+    String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-slim"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-09-02-alpine-fdf40647cbfd"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-08-19-gatkbase-lite-087565f1a432"
     String gatk_heavy_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-08-19-gatkbase-32785e9276be"

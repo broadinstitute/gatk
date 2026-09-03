@@ -1,0 +1,12 @@
+diff --git a/terra_notebook_utils/table.py b/terra_notebook_utils/table.py
+--- a/terra_notebook_utils/table.py
++++ b/terra_notebook_utils/table.py
+@@ -44,7 +44,7 @@ def fiss():
+     # This is especially useful for fiss.fapi.update_entity, which enjoys throwing spurious PATCH 500 errors.
+     retry = Retry(total=10,
+                   status_forcelist=[429, 500, 502, 503, 504],
+-                  method_whitelist=['GET', 'HEAD', 'DELETE', 'PATCH', 'PUT'])
++                  allowed_methods=['GET', 'HEAD', 'DELETE', 'PATCH', 'PUT'])
+     http_session(fiss.fapi.__SESSION, retry)
+     return fiss.fapi
+

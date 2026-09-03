@@ -173,7 +173,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - ng_vs_1966_explicit_header_checks
        tags:
          - /.*/
    - name: GvsMergeAndRescoreVDSes
@@ -228,7 +227,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - ng_vs_1966_explicit_header_checks
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
@@ -333,7 +331,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - ng_vs_1966_explicit_header_checks
          tags:
              - /.*/
    - name: GvsQuickstartHailIntegration
@@ -343,7 +340,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - ng_vs_1966_explicit_header_checks
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -353,7 +349,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - ng_vs_1966_explicit_header_checks
          tags:
              - /.*/
    - name: GvsIngestTieout
