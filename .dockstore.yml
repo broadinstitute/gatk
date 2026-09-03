@@ -340,6 +340,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - ng_vs_1990_gcs_listing_fail_fast
          tags:
              - /.*/
    - name: GvsIngestTieout
