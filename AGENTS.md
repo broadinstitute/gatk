@@ -99,6 +99,44 @@ Some of the GVS code in this repo does interact with split multi-allelic non-VDS
 Hail artifacts; see `AOU_MARKETING_STATISTICS.md` for an example that takes a
 split Exome MatrixTable as input.
 
+### Allele representations across GVS artifacts
+
+The same variant is written differently in different GVS artifacts. The
+differences are systematic rather than incidental, and comparing alleles across
+artifacts without accounting for them is a recurring source of bugs.
+
+- **`vet_%` and `alt_allele`** hold minimized (trimmed) alleles that are *not*
+  left-aligned. An indel stays wherever the caller placed it.
+- **The VDS** holds unsplit multi-allelic rows in a common per-site reference
+  context. `alleles[0]` must be long enough to span the longest deletion at the
+  site, and every ALT is expressed relative to it. A VDS allele string is
+  therefore a property of the site's allele set, not of the variant: the same
+  variant is written differently at a site with different neighbours.
+- **The VAT, and therefore vids,** hold alleles that are minimized *and*
+  left-aligned, via `bcftools norm -f` in `GvsCreateVATFromVDS.wdl:731`.
+
+Four consequences worth knowing before writing anything that joins across these:
+
+1. Minimize before comparing. `hl.min_rep`, or trimming by hand, reduces a VDS
+   allele to the intrinsic form that `alt_allele` stores.
+2. Compare the REF/ALT **pair**, never the ALT alone. One string can be the raw
+   ALT of one variant and the minimized ALT of an unrelated one. At
+   chr13:32368001 in Foxtrot, `CTT` is both: the raw ALT of a 24bp deletion
+   against a 27bp REF, and the minimized ALT of a 2bp insertion.
+3. Minimizing is not left-aligning. `hl.min_rep` trims shared prefixes and
+   suffixes but will not walk an indel through a repeat, so it cannot unify a
+   left-aligned vid with a non-left-aligned `alt_allele` row. That needs real
+   normalization against the reference, which is what `GvsMapUnmappedVIDs` and
+   the scripts under
+   `scripts/variantstore/scripts/variant_annotation_table/left_alignment_fixups/`
+   exist to do.
+4. Indel length is invariant under normalization, so it is a safe filter when
+   hunting for equivalent representations; position and allele strings are not.
+   The production synonym search keys on it as bcftools `ILEN` over a 200bp
+   window rightward from the vid's position, left-aligned being the leftmost
+   equivalent form (`generate_bcftools_searches_for_variant_synonyms.py:38-45`).
+
+
 # High-Level Architecture (WDLs, BigQuery, Terra)
 
 ## Java Artifacts
@@ -261,11 +299,15 @@ is derived from its alleles by the max-over-class rule below and is not recorded
 in either table.
 
 **The filter model is applied per site and per genotype, with opposite senses.**
-`ExtractCohortEngine#isFailingSite` compares the *maximum* (best) score among
-alleles of a class against that class's threshold, so a poor allele at a site
-whose best allele passes is not excluded. `#isFailingGenotype` compares the
-*minimum* (worst) score across a genotype's non-ref alleles, so a `1/2` call is
-filtered if either allele fails.
+A site is judged by its *best* allele of a class, so a poor allele at a site
+whose best allele passes is not excluded; a genotype is judged by its *worst*
+non-ref allele, so a `1/2` call is filtered if either allele fails. Note that
+which arithmetic expresses "best" depends on the model, and the two are
+inverted. For VQSR, `vqslod` is higher-is-better, so `ExtractCohortEngine`
+fails a site when `max(score) < threshold` and a genotype when
+`min(score) < threshold`. For VETS — the default — `calibration_sensitivity` is
+lower-is-better, so `ExtractCohortVETSEngine` overrides both and fails a site
+when `min(score) > threshold` and a genotype when `max(score) > threshold`.
 
 ## Key Workflows
 
