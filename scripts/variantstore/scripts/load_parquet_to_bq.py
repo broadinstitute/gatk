@@ -240,7 +240,8 @@ def _submit_resumable_load_job(
 ):
     """
     Submit a load job for a batch, resuming on a deterministic job-ID collision and
-    superseding a permanently-failed job with a fresh generation of the ID.
+    superseding a pre-existing permanently-failed job (one we collide with) with a
+    fresh generation of the ID.
 
     A BigQuery job ID cannot be reused, so once a job reaches DONE with an
     error_result (a malformed Parquet file, a schema mismatch) its ID is burned:
@@ -262,10 +263,17 @@ def _submit_resumable_load_job(
     for generation in range(max_generations):
         job_id = _make_job_id(project_id, dataset_name, table_name, batch, generation)
         print(f"  Submitting job {job_id}")
-        load_job = _submit_load_job_with_retry(
+        load_job, resumed_existing = _submit_load_job_with_retry(
             client, batch, table_id, job_config, job_id, location
         )
-        if _is_permanently_failed_job(load_job):
+        # Only supersede a job we *collided with*: a pre-existing job that reached DONE
+        # with an error_result loaded zero rows and its ID is burned.  A job we just
+        # submitted is returned as-is even if it fast-failed (e.g. a schema rejection
+        # already terminal in the insert response), so the caller records the batch
+        # failure and a later task attempt supersedes it.  Superseding a fresh failure
+        # here would burn every generation in a single attempt, since each new
+        # generation fast-fails identically -- leaving all later retries exhausted.
+        if resumed_existing and _is_permanently_failed_job(load_job):
             print(
                 f"  Job {job_id} already exists and failed permanently "
                 f"({load_job.error_result}); superseding it with a fresh job ID"
@@ -291,17 +299,22 @@ def _submit_load_job_with_retry(client, batch, table_id, job_config, job_id, loc
         job_id: Deterministic job ID
         location: BigQuery location
         max_retries: Maximum number of retry attempts (default: 3)
-    
+
     Returns:
-        LoadJob object
-    
+        (load_job, resumed_existing).  resumed_existing is True only when the job ID
+        already existed and the job was fetched via get_job() (a Conflict); it is
+        False for a job we freshly submitted.  Callers use this to distinguish a
+        pre-existing job -- which may be safely superseded if it failed permanently --
+        from one we just created, which must be returned as-is even if it is already
+        terminal (see _submit_resumable_load_job).
+
     Raises:
         Exception: If all retries are exhausted or a non-retryable error occurs
     """
     from google.api_core import exceptions
 
     retry_delays = [30, 60, 120]  # Exponential backoff: 30s, 60s, 120s
-    
+
     for attempt in range(max_retries + 1):
         try:
             load_job = client.load_table_from_uri(
@@ -311,8 +324,8 @@ def _submit_load_job_with_retry(client, batch, table_id, job_config, job_id, loc
                 job_id=job_id,
                 location=location,
             )
-            return load_job
-            
+            return load_job, False
+
         except (exceptions.TooManyRequests, 
                 exceptions.ServiceUnavailable,
                 exceptions.InternalServerError) as e:
@@ -327,10 +340,11 @@ def _submit_load_job_with_retry(client, batch, table_id, job_config, job_id, loc
                 raise
         
         except exceptions.Conflict as e:
-            # Job ID already exists and is running - this is actually OK
-            # We can fetch it instead of treating it as an error
+            # Job ID already exists - this is actually OK.  Fetch the existing job
+            # rather than treating it as an error, and flag it as pre-existing so the
+            # caller may supersede it if it turns out to have failed permanently.
             print(f"  Job {job_id} already exists, fetching existing job")
-            return client.get_job(job_id=job_id, location=location)
+            return client.get_job(job_id=job_id, location=location), True
         
         except Exception as e:
             # Non-retryable error, fail immediately
