@@ -612,6 +612,23 @@ class TestSubmitResumableLoadJob(unittest.TestCase):
 
         self.assertEqual(self.client.load_table_from_uri.call_count, 3)
 
+    def test_non_conflict_error_propagates_without_advancing_generation(self):
+        """
+        A non-Conflict, non-retryable submit error (bad permissions, a missing table,
+        ...) is a genuine failure, not a burned job ID.  It must propagate straight out
+        of the generation walk -- never be swallowed or retried under a fresh
+        generation -- so the caller records the batch as failed.  Only a *collided*
+        permanently-failed job advances a generation.
+        """
+        self.client.load_table_from_uri.side_effect = ValueError("bad table")
+
+        with self.assertRaises(ValueError):
+            self._submit()
+
+        # Exactly one attempt: the loop did not advance to another generation.
+        self.assertEqual(self.client.load_table_from_uri.call_count, 1)
+        self.client.get_job.assert_not_called()
+
 
 @unittest.skipUnless(_GOOGLE_AVAILABLE, "google-cloud-bigquery not installed")
 class TestWaitForJobWithRetry(unittest.TestCase):
