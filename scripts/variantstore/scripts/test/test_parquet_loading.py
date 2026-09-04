@@ -364,16 +364,17 @@ class TestSubmitLoadJobWithRetry(unittest.TestCase):
         self.location = "us-central1"
 
     def test_first_attempt_succeeds(self):
-        """Normal path: job is submitted and returned immediately."""
+        """Normal path: job is submitted and returned immediately, flagged as fresh."""
         mock_job = MagicMock()
         self.client.load_table_from_uri.return_value = mock_job
 
-        result = _submit_load_job_with_retry(
+        load_job, resumed_existing = _submit_load_job_with_retry(
             self.client, self.batch, self.table_id,
             self.job_config, self.job_id, self.location,
         )
 
-        self.assertIs(result, mock_job)
+        self.assertIs(load_job, mock_job)
+        self.assertFalse(resumed_existing)  # freshly submitted, not fetched via Conflict
         self.client.load_table_from_uri.assert_called_once_with(
             self.batch, self.table_id,
             job_config=self.job_config, job_id=self.job_id, location=self.location,
@@ -391,12 +392,13 @@ class TestSubmitLoadJobWithRetry(unittest.TestCase):
         self.client.load_table_from_uri.side_effect = _bq_exceptions.Conflict("Job already exists")
         self.client.get_job.return_value = existing_job
 
-        result = _submit_load_job_with_retry(
+        load_job, resumed_existing = _submit_load_job_with_retry(
             self.client, self.batch, self.table_id,
             self.job_config, self.job_id, self.location,
         )
 
-        self.assertIs(result, existing_job)
+        self.assertIs(load_job, existing_job)
+        self.assertTrue(resumed_existing)  # fetched via Conflict, so eligible for supersede
         self.client.load_table_from_uri.assert_called_once()
         self.client.get_job.assert_called_once_with(job_id=self.job_id, location=self.location)
 
@@ -409,12 +411,13 @@ class TestSubmitLoadJobWithRetry(unittest.TestCase):
             mock_job,
         ]
 
-        result = _submit_load_job_with_retry(
+        load_job, resumed_existing = _submit_load_job_with_retry(
             self.client, self.batch, self.table_id,
             self.job_config, self.job_id, self.location,
         )
 
-        self.assertIs(result, mock_job)
+        self.assertIs(load_job, mock_job)
+        self.assertFalse(resumed_existing)  # a retried fresh submit is still fresh
         self.assertEqual(self.client.load_table_from_uri.call_count, 2)
         mock_sleep.assert_called_once_with(30)  # first backoff delay
 
@@ -515,6 +518,26 @@ class TestSubmitResumableLoadJob(unittest.TestCase):
 
         self.assertIs(load_job, fresh)
         self.assertEqual(job_id, self._job_id_for(0))
+        self.client.get_job.assert_not_called()
+
+    def test_fresh_submit_that_fast_fails_is_returned_not_superseded(self):
+        """
+        A freshly submitted job can come back already DONE with an error_result -- a
+        fast schema rejection surfaced in the jobs.insert response, with no Conflict
+        raised.  Because it is not an *existing* job we collided with, it must be
+        returned to the caller (which records the batch failure) rather than
+        superseded.  Superseding it here would burn every generation in one task
+        attempt, since each fresh generation fast-fails identically, leaving all later
+        retries permanently exhausted.
+        """
+        fast_failed = self._job(state="DONE", error_result={"reason": "invalid", "message": "bad schema"})
+        self.client.load_table_from_uri.return_value = fast_failed
+
+        load_job, job_id = self._submit()
+
+        self.assertIs(load_job, fast_failed)
+        self.assertEqual(job_id, self._job_id_for(0))          # only generation 0 consumed
+        self.assertEqual(self.client.load_table_from_uri.call_count, 1)
         self.client.get_job.assert_not_called()
 
     def test_conflict_resumes_running_job(self):
@@ -761,6 +784,36 @@ class TestLoadTableFromParquetFiles(unittest.TestCase):
         # Generation 0 was fetched once (the dead job); generation 1 was submitted fresh.
         self.mock_client.get_job.assert_called_once()
         self.assertEqual(self.mock_client.load_table_from_uri.call_count, 2)
+
+    def test_fresh_submit_that_fast_fails_records_single_failed_batch(self):
+        """
+        End-to-end guard for the fresh-failure case: load_table_from_uri returns a job
+        already DONE with an error_result (a fast schema rejection, no Conflict), whose
+        result() raises.  The batch is recorded as one failure and the run moves on --
+        exactly one generation is consumed.  A regression that superseded the fresh
+        failure would instead re-submit under every generation, burning all 100 IDs in
+        this single task attempt and exhausting every later retry.
+        """
+        files = ["gs://bucket/vet/001/vet_001_42_file.parquet"]
+        fofn = self._make_fofn(files)
+
+        fast_failed = MagicMock()
+        fast_failed.state = "DONE"
+        fast_failed.error_result = {"reason": "invalid", "message": "schema mismatch"}
+        fast_failed.result.side_effect = _bq_exceptions.BadRequest("schema mismatch")
+        self.mock_client.load_table_from_uri.return_value = fast_failed
+
+        stats = load_table_from_parquet_files(
+            project_id="proj", dataset_name="ds", table_name="vet_001",
+            files_fofn=fofn, schema_path=None,
+        )
+
+        self.assertEqual(stats["completion_status"], "PARTIAL")
+        self.assertEqual(stats["batches_failed"], 1)
+        self.assertEqual(stats["rows_loaded"], 0)
+        # Exactly one generation consumed -- the fresh failure was not superseded.
+        self.assertEqual(self.mock_client.load_table_from_uri.call_count, 1)
+        self.mock_client.get_job.assert_not_called()
 
     def test_batch_with_job_errors_is_partial_failure(self):
         """A job that completes but carries errors is counted as a failed batch."""
