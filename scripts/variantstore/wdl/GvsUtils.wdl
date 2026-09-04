@@ -150,10 +150,7 @@ task GetToolVersions {
     # which drops the python3.11 apt package; the hail tasks that use this image install Python 3.11 via uv
     # instead. See the note on `cloud_sdk_docker_decl` before bumping.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:582.0.0-slim"
-    # REBUILD REQUIRED: this tag is a placeholder from the earlier 582 build and predates the terra-notebook-utils
-    # urllib3 patch now added in scripts/Dockerfile. Rebuild via build_docker.sh and update this to the new tag
-    # before relying on this image (see the Variants Docker Image note in CLAUDE.md).
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-09-01-alpine-37a0a74a7f56"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-09-03-alpine-43268e7d90fe"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-08-19-gatkbase-lite-087565f1a432"
     String gatk_heavy_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-08-19-gatkbase-32785e9276be"
