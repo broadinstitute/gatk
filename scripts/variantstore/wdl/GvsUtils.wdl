@@ -58,11 +58,22 @@ task GetToolVersions {
   }
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-  # Bumping this version does not touch the Variants image (see `variants_docker` below): that image's build-base
-  # stage is a separately built and pinned image (scripts/variantstore/scripts/build_base.Dockerfile, built via
-  # build_build_base_docker.sh) that must be rebuilt and re-pinned in lockstep, or its Python version drifts from
-  # this one and the Variants image's venv silently breaks at runtime. See the notes in build_base.Dockerfile and
-  # Dockerfile for details.
+  # We run Cloud SDK 582.0.0 on hail 0.2.134 (which pins numpy<2) by working around the two problems that
+  # made 565.0.0 a ceiling, rather than taking the hail >= 0.2.135 bump those problems would otherwise force:
+  #   * `-alpine`: at 568.0.0 these images stopped using Alpine's system Python and began bundling Python 3.14
+  #     for gcloud's own internal use. numpy 1.26.4 (hail's numpy<2 pin) publishes musl wheels only through
+  #     cp312, so `pip install hail` against 3.14 in GvsCreateVATfromVDS's `GenerateSitesOnlyVcf` would fall
+  #     back to a source build and fail (the image ships no compiler). The variants image sidesteps this by
+  #     building its venv against Alpine's own /usr/bin/python3 (3.12) instead of the bundled interpreter --
+  #     see the notes in scripts/Dockerfile and scripts/build_base.Dockerfile.
+  #   * `-slim`: at 566.0.0 these images moved from Debian 12 to Debian 13, which drops the python3.11 apt
+  #     package. The hail tasks in GvsCreateVDS, GvsValidateVDS, GvsCountVdsNovelLoci, GvsMergeAndRescoreVDSes
+  #     and GvsRemoveSamplesFromVDS install Python 3.11 via uv (a standalone build, independent of apt).
+  # This is a bridge, not a permanent escape: numpy 1.26.4's musl wheels stop at cp312, so the variants image
+  # depends on Alpine's own python3 staying <= 3.12. When Cloud SDK's alpine base moves to an Alpine shipping
+  # Python 3.13+, `apk add python3` yields 3.13 and the alpine path breaks again -- and Alpine carries only one
+  # python3 per release, so it cannot be pinned back to 3.12. The durable fix remains moving these tasks to
+  # hail >= 0.2.135 (which repins numpy to >=2), a pipeline-wide change requiring VDS revalidation.
   String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:582.0.0-alpine"
 
   # For GVS releases, set `version` to match the release branch name, e.g. gvs_<major>.<minor>.<patch>.
@@ -135,11 +146,11 @@ task GetToolVersions {
     String cloud_sdk_docker = cloud_sdk_docker_decl #   Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handful of tasks that require the larger GNU libc-based `slim`.
+    # Must stay in lockstep with `cloud_sdk_docker_decl` above. At 582.0.0 the `-slim` sibling is Debian 13,
+    # which drops the python3.11 apt package; the hail tasks that use this image install Python 3.11 via uv
+    # instead. See the note on `cloud_sdk_docker_decl` before bumping.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:582.0.0-slim"
-    # This has no effect until the image is rebuilt (build_docker.sh) and this tag is updated to match -- see the
-    # "Variants Docker Image" section of the top-level CLAUDE.md. Editing the image's Dockerfiles (including the
-    # cloud_sdk_docker_decl-equivalent base image tags above) has no runtime effect until that rebuild happens either.
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-09-01-alpine-df98d9b0a485"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-09-03-alpine-43268e7d90fe"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-08-19-gatkbase-lite-087565f1a432"
     String gatk_heavy_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-08-19-gatkbase-32785e9276be"

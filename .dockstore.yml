@@ -227,7 +227,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - ng_vs_2002_cloud_sdk_docker_bump
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
@@ -350,7 +349,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_2002_update_variants_images
+             - ng_vs_2004_pin_python_3_12
          tags:
              - /.*/
    - name: GvsIngestTieout
