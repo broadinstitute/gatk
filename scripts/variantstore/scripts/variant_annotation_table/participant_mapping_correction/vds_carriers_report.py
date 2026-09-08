@@ -1,65 +1,70 @@
 #!/usr/bin/env python3
 """Batch carrier report for a list of VIDs: one TSV row per VID, one pass over the VDS.
 
-The batch sibling of `vds_carriers_for_vid_exact.py`, built to answer a collaborator's
-spreadsheet rather than a single question. Same semantics, same definitions; the difference is
-that it takes a VID list, makes ONE pass over the VDS instead of one per VID, and emits a TSV
-instead of prose.
+Answers, for each VID you give it, "who does the VDS say carries this, and does that match the
+participant mapping table you received?" -- reading the VDS directly rather than trusting either
+artifact. The batch sibling of `vds_carriers_for_vid_exact.py`: same semantics and definitions,
+but it takes a VID list, makes ONE pass over the VDS instead of one per VID, and emits a TSV.
 
-WHY THE COLLABORATORS' NUMBERS AND OURS DISAGREE, in the two ways that matter
+TWO THINGS THAT MAKE A NAIVE VDS COUNT DISAGREE WITH THE MAPPING TABLE
 
-  1. THEY DO NOT APPLY FT. Their `vds_participant_count` is every LGT-defined genotype calling
-     the allele. The 2026-09-05 mapping table does apply FT, so it is now SMALLER than their
-     VDS count -- the reverse of the older complaint, where the mapping table was larger by the
-     GQ 0 records. Both directions are reported below (`vds_count_no_ft` vs `cb_new`) so the
-     sign of the gap is never in doubt.
+  1. FT. A count of every LGT-defined genotype calling the allele ignores genotype filtering.
+     The mapping table from 2026-09-05 onward applies `FT`, so it is SMALLER than such a count
+     -- the reverse of the pre-fix situation, where the mapping table was LARGER because it also
+     carried GQ 0 no-calls. Both directions are reported (`vds_count_no_ft` vs `cb_after_fix`)
+     so the sign of the gap is never in doubt.
 
-  2. THEY CANNOT SEE HETVARS. Their `vds_n_ref_alt` counts one-copy genotypes as `0/1`, which
-     means they are working from a SPLIT representation -- splitting turns a `1/2` into `0/1`
-     at each allele's row. Confirmed against 13-32368001-C-CTT, where they report 711 and the
-     unsplit truth is 283 `0/1` plus 428 `1/2`. This matters enormously here, because FT is a
-     property of the GENOTYPE, not the allele (`merge_and_rescore_vdses.py:155-173` folds
-     `FT = ~any_no & (any_yes | all_ok)` over every called non-ref allele), so a hetvar is
-     filtered when its OTHER allele fails. At that VID all 126 FT removals are hetvars. In a
-     split view those participants look like ordinary het carriers vanishing for no reason,
-     which is precisely the question this report exists to pre-empt.
+  2. HETVARS ARE INVISIBLE IN A SPLIT REPRESENTATION. Splitting a multi-allelic site turns a
+     `1/2` into `0/1` at each allele's row, so a split view counts hetvar carriers as ordinary
+     hets. At 13-32368001-C-CTT a split count gives 711 where the unsplit truth is 283 `0/1`
+     plus 428 `1/2`. This matters because FT is a property of the GENOTYPE, not the allele
+     (`merge_and_rescore_vdses.py:155-173` folds `FT = ~any_no & (any_yes | all_ok)` over every
+     called non-ref allele), so a hetvar is filtered when its OTHER allele fails. At that VID
+     all 126 FT removals are hetvars. In a split view those participants look like ordinary het
+     carriers vanishing for no reason, which is the question this report exists to pre-empt.
 
 COLUMN GROUPS
 
-  reproduces theirs   vds_count_no_ft, vds_one_copy_no_ft, vds_two_copies_no_ft, cb_old
-                      -- should match their vds_participant_count, vds_n_ref_alt,
-                      vds_n_alt_alt and cb_participants exactly. Included so they can join and
-                      confirm we are looking at the same data before reading anything else.
-  the new answer      cb_new (= carriers), and the removals that explain it
-  why                 removed_gq0, removed_ft_fail, removed_ft_fail_hetvar
+  the answer          cb_after_fix (= carriers, what the corrected mapping table should hold)
+  what changed        cb_before_fix, removed_total, and the reasons: removed_gq0,
+                      removed_ft_fail, removed_ft_fail_hetvar
+  unfiltered counts   vds_count_no_ft, vds_one_copy_no_ft, vds_two_copies_no_ft -- what a
+                      count that ignores FT would give, so a pre-existing tally can be joined
+                      and confirmed to be looking at the same data before anything else is read
   context             hetvar_total/pass/fail, gvs_all_ac, carriers_one_copy/two_copies
 
-CHECKING. Nothing here is validated by an identity among its own columns -- `cb_old` is derived
-from `vds_count_no_ft` and `removed_gq0`, so subtracting them back out is arithmetic, not
-evidence. The checks that mean something compare against a source outside this script:
+CHECKING. Nothing here is validated by an identity among its own columns -- `cb_before_fix` is
+derived from `vds_count_no_ft` and `removed_gq0`, so subtracting them back out is arithmetic,
+not evidence. The checks that mean something compare against a source outside this script:
 
-  agrees_cb_old        our reconstructed pre-fix count vs their cb_participants
-  agrees_vds_count     our FT-ignoring count vs their vds_participant_count
-  agrees_gvs_all_ac    our AC vs the VAT's, requires --vat-ac-tsv. This is the strongest of
-                       the three: gvs_all_ac is produced by a separate pipeline, so agreement
-                       says our FT and GQ 0 handling reproduces what the VAT actually did,
+  agrees_mapping       our carrier count vs the array length in the mapping table you were
+                       sent, via --mapping-tsv. This is the check that answers "is the file I
+                       received right", and the one to run first.
+  agrees_cb_before_fix our reconstructed pre-fix count vs a pre-fix cb_participants tally
+  agrees_vds_count     our FT-ignoring count vs an existing vds_participant_count tally
+  agrees_gvs_all_ac    our AC vs the VAT's, requires --vat-ac-tsv. The strongest of these:
+                       gvs_all_ac is produced by an entirely separate pipeline, so agreement
+                       says the FT and GQ 0 handling reproduces what the VAT actually did,
                        rather than merely being self-consistent.
   ft_all_defined       internal, and the only one that is: no entry has a missing FT.
 
-`all_checks_pass` ANDs whichever of those are available. It is absent entirely when neither
+`all_checks_pass` ANDs whichever of those are available. It is absent entirely when no
 comparison input is supplied, because with nothing external to check against there is nothing
 honest to put in it.
 
-NOT LEFT-ALIGNMENT AWARE, deliberately. Each VID is looked up at its own coordinate only. A VID
-whose stored representation is shifted comes back `vds_found=false` rather than being silently
-counted as absent -- rerun those few through `vds_carriers_for_vid.py --window 200`.
+Each VID is looked up at its own coordinate only. A VID whose stored representation differs
+comes back `vds_found=false` rather than being silently counted as absent; rerun those few
+through `vds_carriers_for_vid.py --window 200`.
 
 Usage:
-  vds_carriers_report.py --vds-path gs://... --vids-file chr13_cb_vs_vds_comparison_r1.tsv \\
-      --output report.tsv [--compare-tsv chr13_cb_vs_vds_comparison_r1.tsv]
+  vds_carriers_report.py --vds-path gs://... --vids-file my_vids.tsv --output report.tsv \\
+      [--mapping-tsv mapping_lengths.tsv] [--vat-ac-tsv vat_ac.tsv] \\
+      [--compare-tsv an_existing_tally.tsv]
 
 `--vids-file` accepts a bare list of VIDs, one per line, or any TSV with a `vid` column.
-`--compare-tsv` additionally merges their columns in beside ours and flags disagreement.
+`--mapping-tsv` wants `vid` plus the number of person_ids for that VID; see the delivery notes
+for how to produce it from the Parquet. `--compare-tsv` merges an existing tally in beside ours
+and flags disagreement.
 """
 
 import argparse
@@ -119,10 +124,13 @@ def main():
     p.add_argument('--vds-path', required=True)
     p.add_argument('--vids-file', required=True)
     p.add_argument('--output', required=True, help='TSV to write')
-    p.add_argument('--compare-tsv', help="their file, to merge in beside ours")
+    p.add_argument('--compare-tsv', help="an existing tally, to merge in beside ours")
     p.add_argument('--vat-ac-tsv',
                    help="TSV of vid + gvs_all_ac from the VAT, to validate the carrier "
                         "definition against an independently built artifact")
+    p.add_argument('--mapping-tsv',
+                   help="TSV of vid + the number of person_ids that VID has in the mapping "
+                        "table you received. Checks the delivered file against the VDS.")
     p.add_argument('--reference-genome', default='GRCh38')
     args = p.parse_args()
 
@@ -219,7 +227,7 @@ def main():
         vds_count_no_ft=hl.agg.count_where(ent.has_allele),
         vds_one_copy_no_ft=hl.agg.count_where(ent.has_allele & (ent.n_copies == 1)),
         vds_two_copies_no_ft=hl.agg.count_where(ent.has_allele & (ent.n_copies == 2)),
-        cb_new=hl.agg.count_where(ent.has_allele & ent.FT),
+        cb_after_fix=hl.agg.count_where(ent.has_allele & ent.FT),
         removed_ft_fail=hl.agg.count_where(ent.has_allele & ~ent.FT),
         removed_ft_fail_hetvar=hl.agg.count_where(ent.has_allele & ~ent.FT & ent.hetvar),
         removed_gq0=hl.agg.count_where(ent.gq0 & ent.LA.contains(ent.ti)),
@@ -264,20 +272,36 @@ def main():
         vat_ac = {v: int(t['gvs_all_ac']) for v, t in theirs.items() if t.get('gvs_all_ac')}
         print(f'using gvs_all_ac from {args.compare_tsv} ({len(vat_ac)} VIDs)', file=sys.stderr)
 
+    # What the delivered mapping table actually holds. Checking against this is the point of
+    # the exercise for anyone who received the file: every other comparison here validates our
+    # reasoning, and this one validates the artifact.
+    mapping_n = {}
+    if args.mapping_tsv:
+        with hopen(args.mapping_tsv) as f:
+            for row in csv.DictReader(f, delimiter='\t'):
+                n = next((row[k] for k in ('n_person_ids', 'n', 'count', 'person_ids_length')
+                          if row.get(k) not in (None, '')), None)
+                if n is None:  # tolerate any two-column vid/count export
+                    n = list(row.values())[1]
+                mapping_n[row['vid']] = int(n)
+        print(f'{len(mapping_n)} VIDs from {args.mapping_tsv}', file=sys.stderr)
+
     cols = ['vid', 'vds_found',
-            'cb_old', 'cb_new', 'vds_count_no_ft',
+            'cb_before_fix', 'cb_after_fix', 'vds_count_no_ft',
             'removed_total', 'removed_gq0', 'removed_ft_fail', 'removed_ft_fail_hetvar',
             'vds_one_copy_no_ft', 'vds_two_copies_no_ft',
             'hetvar_total', 'hetvar_pass', 'hetvar_fail',
             'carriers_one_copy', 'carriers_two_copies', 'gvs_all_ac',
             'gq0_at_site', 'ft_missing', 'ft_all_defined']
+    if mapping_n:
+        cols += ['mapping_n_person_ids', 'agrees_mapping']
     if theirs:
         cols += ['their_cb_participants', 'their_vds_participant_count',
                  'their_vds_n_ref_alt', 'their_vds_n_alt_alt',
-                 'agrees_cb_old', 'agrees_vds_count']
+                 'agrees_cb_before_fix', 'agrees_vds_count']
     if vat_ac:
         cols += ['vat_gvs_all_ac', 'agrees_gvs_all_ac']
-    if theirs or vat_ac:
+    if mapping_n or theirs or vat_ac:
         cols += ['all_checks_pass']
 
     n_bad, n_missing = 0, 0
@@ -294,17 +318,26 @@ def main():
                 out = {c: '' for c in cols}
                 out['vid'], out['vds_found'] = vid, 'false'
             else:
-                cb_old = r['vds_count_no_ft'] + r['removed_gq0']
+                cb_before = r['vds_count_no_ft'] + r['removed_gq0']
                 out = {c: r[c] for c in cols if c in r}
-                out.update(vid=vid, vds_found='true', cb_old=cb_old,
-                           removed_total=cb_old - r['cb_new'],
+                out.update(vid=vid, vds_found='true', cb_before_fix=cb_before,
+                           removed_total=cb_before - r['cb_after_fix'],
                            hetvar_fail=r['removed_ft_fail_hetvar'],
                            ft_all_defined=str(r['ft_missing'] == 0).lower())
 
             # Every check below compares against a source OUTSIDE this script. An internal
-            # identity among these columns would be arithmetic, not evidence: cb_old is derived
-            # from vds_count_no_ft and removed_gq0, so subtracting them back out proves nothing.
+            # identity among these columns would be arithmetic, not evidence: cb_before_fix is
+            # derived from vds_count_no_ft and removed_gq0, so subtracting them back out proves
+            # nothing.
             checks = [] if r is None else [r['ft_missing'] == 0]
+            if mapping_n:
+                m = mapping_n.get(vid)
+                if m is not None:
+                    out['mapping_n_person_ids'] = m
+                    if r is not None:
+                        agrees = m == r['cb_after_fix']
+                        out['agrees_mapping'] = str(agrees).lower()
+                        checks.append(agrees)
             if theirs:
                 t = theirs.get(vid)
                 if t:
@@ -313,9 +346,9 @@ def main():
                     out['their_vds_n_ref_alt'] = t['vds_n_ref_alt']
                     out['their_vds_n_alt_alt'] = t['vds_n_alt_alt']
                     if r is not None:
-                        a = int(t['cb_participants']) == out['cb_old']
+                        a = int(t['cb_participants']) == out['cb_before_fix']
                         b = int(t['vds_participant_count']) == r['vds_count_no_ft']
-                        out['agrees_cb_old'] = str(a).lower()
+                        out['agrees_cb_before_fix'] = str(a).lower()
                         out['agrees_vds_count'] = str(b).lower()
                         checks += [a, b]
             if vat_ac:
@@ -326,7 +359,7 @@ def main():
                         c = v == r['gvs_all_ac']
                         out['agrees_gvs_all_ac'] = str(c).lower()
                         checks.append(c)
-            if (theirs or vat_ac) and r is not None:
+            if (mapping_n or theirs or vat_ac) and r is not None:
                 ok = all(checks)
                 out['all_checks_pass'] = str(ok).lower()
                 n_bad += 0 if ok else 1
@@ -335,14 +368,12 @@ def main():
     print(f'\nWrote {args.output}', file=sys.stderr)
     if n_missing:
         print(f'{n_missing} VID(s) did not match at their own coordinate (vds_found=false). '
-              'Rerun those through vds_carriers_for_vid.py --window 200 -- they may be stored '
-              'at a non-left-aligned representation.', file=sys.stderr)
+              'Rerun those through vds_carriers_for_vid.py --window 200.', file=sys.stderr)
     if n_bad:
-        print(f'WARNING: {n_bad} row(s) have all_checks_pass=false. Investigate before '
-              'sending.', file=sys.stderr)
-    elif not (args.compare_tsv or args.vat_ac_tsv):
-        print('NOTE: no --compare-tsv or --vat-ac-tsv given, so nothing in this report was '
-              'checked against an external source.', file=sys.stderr)
+        print(f'WARNING: {n_bad} row(s) have all_checks_pass=false.', file=sys.stderr)
+    elif not (args.mapping_tsv or args.compare_tsv or args.vat_ac_tsv):
+        print('NOTE: none of --mapping-tsv, --compare-tsv or --vat-ac-tsv given, so nothing in '
+              'this report was checked against an external source.', file=sys.stderr)
 
 
 if __name__ == '__main__':

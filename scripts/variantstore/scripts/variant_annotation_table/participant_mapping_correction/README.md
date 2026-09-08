@@ -57,6 +57,12 @@ Supporting scripts, used for spot checks against the VDS rather than as pipeline
 | `vds_carriers_report.py`            | Per-VID carrier report used to reconcile the mapping table against the VDS.              |
 | `explain_vid_for_collaborators.sql` | Explains a single VID's carrier set end to end, for answering collaborator questions.    |
 
+`mapping-changes-for-collaborators.md` accompanies the redelivered table. It is the only document here written
+for an outside reader, and it is deliberately narrow: what changed, how much, and how to check it. It says nothing
+about the two residuals below or about allele representation, because the thing its readers actually have to act on
+is `FT`, and the residuals are rare enough (1.6e-05 of the correction) to be worth answering individually if anyone
+hits one rather than pre-empting at the cost of burying the main point.
+
 # Caveats
 
 **Participant IDs are redacted.** Three AoU person IDs appeared in comments and prose; in these committed copies they are
