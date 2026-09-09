@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Batch carrier report for a list of VIDs: one TSV row per VID, one pass over the VDS.
 
-Answers, for each VID you give it, "how many participants does the VDS say carry this allele,
-and why is that not the number I expected?" The batch sibling of `vds_carriers_for_vid_exact.py`:
-same semantics and definitions, but it takes a VID list, makes ONE pass over the VDS instead of
-one per VID, and emits a TSV.
+For each VID you give it, the script reads the VDS and computes `cb_after_fix`: the participants
+the VDS calls as carrying that allele with a passing FT, which is what the v9_r2_p4 mappings
+should contain. Every other column exists to explain that one -- what the count was before the
+correction, what came out of it, and for what reason. The batch sibling of
+`vds_carriers_for_vid_exact.py`: same semantics and definitions, but it takes a VID list, makes
+ONE pass over the VDS instead of one per VID, and emits a TSV.
 
 VIDs in, counts out. It does not read your mapping file and does not join anything to it -- join
 the output to your own data on `vid` in whatever you already use. `--vids-file` takes an existing
@@ -48,7 +50,7 @@ COLUMNS
   carriers_two_copies
   gvs_all_ac              allele count over the carriers, so a 1/1 counts twice. Computed here
                           from the VDS.
-  vat_gvs_all_ac          only with --vat-ac-tsv: the VAT's own column of that name
+  vat_gvs_all_ac          only with --vat-ac-file: the VAT's own column of that name
   gvs_all_ac_diff         gvs_all_ac - vat_gvs_all_ac, so 0 means they agree. This is the one
                           number here checked against something built independently -- the VAT
                           comes from a separate pipeline, so 0 means the FT and GQ 0 handling
@@ -62,10 +64,29 @@ through `vds_carriers_for_vid.py --window 200`.
 
 Usage:
   vds_carriers_report.py --vds-path gs://... --vids-file my_vids.tsv --output report.tsv \\
-      [--vat-ac-tsv vat_ac.tsv]
+      [--vat-ac-file vat_ac.csv]
 
-`--vids-file` accepts a bare list of VIDs, one per line, or any TSV with a `vid` column.
-Run it on a Hail cluster; it reads the VDS.
+`--vids-file` accepts a bare list of VIDs, one per line, or any file with a `vid` column. Both
+input options read TSV or CSV -- the delimiter is detected, so a spreadsheet or a BigQuery
+export can be handed over as-is. Run it on a Hail cluster; it reads the VDS.
+
+PRODUCING --vat-ac-file. Worth the trouble: it is the only column here checked against something
+this script did not compute. Query the VAT for the same VIDs and save the result:
+
+    SELECT DISTINCT vid, gvs_all_ac
+    FROM `<project>.<dataset>.<vat_table>`
+    WHERE vid IN UNNEST(['13-32368001-C-CTT', '1-668638-G-GA']);
+
+DISTINCT is not optional. The VAT holds one row per (vid, transcript), so a variant overlapping
+several transcripts repeats `gvs_all_ac` once per transcript. It is a per-variant value, so
+after DISTINCT there should be exactly one row per vid; if there is more than one, stop and
+work out why before trusting anything downstream of it.
+
+For more VIDs than are comfortable in an IN list, load them as a table and join:
+
+    SELECT DISTINCT v.vid, v.gvs_all_ac
+    FROM `<project>.<dataset>.<vat_table>` v
+    JOIN `<project>.<dataset>.my_vids` m USING (vid);
 """
 
 import argparse
@@ -98,12 +119,22 @@ def hopen(path, mode='r'):
     return hl.hadoop_open(path, mode) if '://' in path else open(path, mode)
 
 
+def read_lines(path):
+    """Whole file, blank lines dropped, plus its delimiter. BigQuery hands you CSV and our own
+    exports are TSV; guessing wrong silently collapses a row into a single column, so detect it
+    from the header rather than making the caller convert. Reads it all -- these are VID lists,
+    not the VDS."""
+    with hopen(path) as f:
+        lines = [ln.rstrip('\n') for ln in f if ln.strip()]
+    if not lines:
+        raise SystemExit(f'{path} is empty')
+    return lines, ('\t' if '\t' in lines[0] else ',')
+
+
 def read_vids(path):
     """One VID per line, or a delimited file with a `vid` column."""
-    with hopen(path) as f:
-        rows = [ln.rstrip('\n').split('\t') for ln in f if ln.strip()]
-    if not rows:
-        raise SystemExit(f'{path} is empty')
+    lines, delim = read_lines(path)
+    rows = [ln.split(delim) for ln in lines]
     header, idx = rows[0], 0
     if 'vid' in header:
         idx = header.index('vid')
@@ -125,9 +156,10 @@ def main():
     p.add_argument('--vds-path', required=True)
     p.add_argument('--vids-file', required=True)
     p.add_argument('--output', required=True, help='TSV to write')
-    p.add_argument('--vat-ac-tsv',
-                   help="TSV of vid + gvs_all_ac from the VAT. Adds a vat_gvs_all_ac column "
-                        "beside the gvs_all_ac this script computes from the VDS.")
+    p.add_argument('--vat-ac-file',
+                   help="vid + gvs_all_ac from the VAT, TSV or CSV. Adds a vat_gvs_all_ac column "
+                        "beside the gvs_all_ac this script computes from the VDS. See the SQL "
+                        "in the module docstring for how to produce it.")
     p.add_argument('--reference-genome', default='GRCh38')
     args = p.parse_args()
 
@@ -250,14 +282,20 @@ def main():
     # is built by an entirely separate pipeline: agreement means the FT and GQ 0 handling here
     # reproduces what the VAT actually did, rather than merely being self-consistent.
     vat_ac = {}
-    if args.vat_ac_tsv:
-        with hopen(args.vat_ac_tsv) as f:
-            for row in csv.DictReader(f, delimiter='\t'):
-                ac = row.get('gvs_all_ac')
-                if ac is None:  # tolerate a headerless-ish two-column export
-                    ac = list(row.values())[1]
-                vat_ac[row['vid']] = int(ac)
-        print(f'{len(vat_ac)} VIDs from {args.vat_ac_tsv}', file=sys.stderr)
+    if args.vat_ac_file:
+        lines, delim = read_lines(args.vat_ac_file)
+        for row in csv.DictReader(lines, delimiter=delim):
+            ac = row.get('gvs_all_ac')
+            if ac is None:  # tolerate a two-column export that named the columns differently
+                ac = list(row.values())[1]
+            vat_ac[row['vid']] = int(ac)
+        # One row per vid after DISTINCT; more means the query kept the transcript explosion,
+        # and the dict silently kept whichever row came last.
+        if len(vat_ac) != len(lines) - 1:
+            raise SystemExit(f'{args.vat_ac_file} has {len(lines) - 1} rows for {len(vat_ac)} '
+                             'distinct VIDs. Add DISTINCT to the query -- the VAT holds one row '
+                             'per (vid, transcript).')
+        print(f'{len(vat_ac)} VIDs from {args.vat_ac_file}', file=sys.stderr)
 
     cols = ['vid', 'vds_found',
             'cb_before_fix', 'cb_after_fix',
