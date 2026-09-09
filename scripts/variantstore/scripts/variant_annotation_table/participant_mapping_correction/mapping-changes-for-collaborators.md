@@ -12,9 +12,9 @@ For each VID the mappings now list only the participants whose genotypes contrib
 
 Two classes of genotype were incorrectly included in the previous mappings even though the callset does not count them:
 
-**GQ 0 no-calls.** In the v9 srWGS deliverables a genotype with `GQ` 0 is a *no-call*. The participant has no genotype at that site and contributes nothing to `AC`. However the underlying variant record still exists in the GVS source tables and the v9_r2_p3 mappings erroneously counted those participants as carriers. This is the source of the discrepancy seen when comparing the v9_r2_p3 mappings against the VDS: the mappings named participants the VDS does not call.
+**GQ 0 no-calls.** In the v9 srWGS deliverables a genotype with `GQ` 0 is a *no-call*. The participant has no genotype at that site and contributes nothing to `AC`. However the underlying variant record still exists in the GVS source tables and the v9_r2_p3 mappings erroneously included those participants as carriers. This is the source of the discrepancy seen when comparing the v9_r2_p3 mappings against the VDS: the mappings named participants the VDS does not call.
 
-**Genotypes failing `FT`.** A genotype that fails the filter does not contribute to `AC`. This did not surface in the v9_r2_p3 comparison, because neither the mappings nor a straightforward VDS carrier count applied `FT`, so it cancelled out. It has always been required for a tieout against `gvs_all_ac` itself, however, in previous srWGS releases as well as in v9 — what was out of step was the mappings, not the definition of a carrier. The v9_r2_p4 mappings do apply `FT`, so a carrier count compared against them must apply it too. Note that this reverses the direction of the discrepancy: a count that ignores `FT` will now be *larger* than the mappings, where against v9_r2_p3 it was smaller.
+**Genotypes failing `FT`.** A genotype that fails the filter does not contribute to `AC`. This did not surface in the v9_r2_p3 participant count comparisons because neither the mappings nor a straightforward VDS carrier count considered `FT`; both sides of the comparison made the same error of ignoring `FT`. Consideration of `FT` was always required for a tieout against `gvs_all_ac`, and will now be required for correct tie outs of participant counts to the v9_r2_p4 mappings.
 
 ## `FT` is a property of the genotype, not of the allele
 
@@ -29,14 +29,14 @@ Measured against the v9_r2_p3 mappings:
 | Quantity                               | Value             |
 |----------------------------------------|-------------------|
 | Entries in the v9_r2_p3 mappings       | 2,559,382,818,198 |
-| Entries removed                        | 2,341,606,369     |
+| Entries removed for v9_r2_p4           | 2,341,606,369     |
 | Fraction of entries removed            | 0.0915%           |
 | VIDs whose entry changed               | 5,437,323         |
 | Fraction of VIDs changed               | 0.34%             |
 | Mean entries removed, per affected VID | 431.2             |
 | Most entries removed from a single VID | 535,659           |
 
-Among the VIDs that changed, the ratio of the v9_r2_p3 count to the v9_r2_p4 count has a median of 1.02×, a 99th percentile of 7.6×, and a maximum of about 535,000× (one VID went from roughly 535,660 participants down to a single one, which is why that figure resembles the last row of the table above — the two are a ratio and a count respectively). So the typical affected VID barely moves, and the effect is concentrated in a small number of VIDs rather than spread evenly.
+Among the VIDs that changed, the median lost 2.4% of its participants, and the 99th percentile lost 86.8%. So the typical affected VID barely moves, and the effect is concentrated in a small number of VIDs rather than spread evenly.
 
 The row count goes from 1,601,242,198 to 1,601,242,026. The 172 missing rows are VIDs that had no remaining carriers once the corrections described above were applied, so they no longer appear in the mapping table.
 
