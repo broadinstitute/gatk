@@ -9,6 +9,10 @@ permissions:
   pull-requests: write
   issues: write
 
+concurrency:
+  group: docker-refresh-guard-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   docker-refresh-guard:
     name: Detect missing Docker image tag updates
