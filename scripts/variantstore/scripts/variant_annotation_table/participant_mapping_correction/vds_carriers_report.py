@@ -20,14 +20,15 @@ TWO THINGS THAT MAKE A NAIVE VDS COUNT DISAGREE WITH THE MAPPINGS
      v9_r2_p3, which was LARGER because it also carried GQ 0 no-calls. Both counts are reported
      (`vds_count_no_ft` and `cb_after_fix`) so the sign of the gap is never in doubt.
 
-  2. HETVARS ARE INVISIBLE IN A SPLIT REPRESENTATION. Splitting a multi-allelic site turns a
-     `1/2` into `0/1` at each allele's row, so a split view counts hetvar carriers as ordinary
-     hets. At 13-32368001-C-CTT a split count gives 711 where the unsplit truth is 283 `0/1`
-     plus 428 `1/2`. This matters because FT is a property of the GENOTYPE, not the allele
-     (`merge_and_rescore_vdses.py:155-173` folds `FT = ~any_no & (any_yes | all_ok)` over every
-     called non-ref allele), so a hetvar is filtered when its OTHER allele fails. At that VID
-     all 126 FT removals are hetvars. In a split view those participants look like ordinary het
+  2. A VID IS ONE ALLELE; FT IS ONE GENOTYPE. The mappings and the VAT are keyed per allele, so
+     nothing in a VID-keyed view tells you the participant's genotype at that site was `1/2`.
+     FT is a property of the genotype (`merge_and_rescore_vdses.py:155-173` folds
+     `FT = ~any_no & (any_yes | all_ok)` over every called non-ref allele), so a hetvar is
+     filtered when its OTHER allele fails -- an allele that has its own VID, possibly one you
+     are not looking at. At 13-32368001-C-CTT, 428 of the 711 carriers are `1/2`, and all 126
+     FT removals are among them. Working per-VID those participants look like ordinary het
      carriers vanishing for no reason, which is the question this report exists to pre-empt.
+     `removed_ft_fail_hetvar` is how you tell.
 
 COLUMNS
 
