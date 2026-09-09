@@ -48,15 +48,13 @@ COLUMNS
   carriers_two_copies
   gvs_all_ac              allele count over the carriers, so a 1/1 counts twice. Computed here
                           from the VDS.
-  vat_gvs_all_ac          only with --vat-ac-tsv: the VAT's own column of that name, placed
-                          beside ours. The VAT is built by a separate pipeline, so agreement
-                          means the FT and GQ 0 handling here reproduces what the VAT did
-                          rather than merely being self-consistent. There is no verdict
-                          column; the run prints how many VIDs differ.
+  vat_gvs_all_ac          only with --vat-ac-tsv: the VAT's own column of that name
+  gvs_all_ac_diff         gvs_all_ac - vat_gvs_all_ac, so 0 means they agree. This is the one
+                          number here checked against something built independently -- the VAT
+                          comes from a separate pipeline, so 0 means the FT and GQ 0 handling
+                          reproduces what the VAT did rather than merely being self-consistent.
   gq0_at_site             GQ 0 records at the site, whether or not they call this allele.
                           Context for removed_gq0, which is the subset that does.
-  ft_missing              entries carrying this allele with an undefined FT. Should be 0. A
-                          nonzero value means that row's counts cannot be trusted.
 
 Each VID is looked up at its own coordinate only. A VID whose stored representation differs
 comes back `vds_found=false` rather than being silently counted as absent; rerun those few
@@ -235,6 +233,10 @@ def main():
         # gvs_all_ac counts ALLELES, not people: a 1/1 carrier contributes 2. Summed over
         # exactly the carrier set, so it is comparable to the VAT and not to any people column.
         gvs_all_ac=hl.agg.filter(ent.has_allele & ent.FT, hl.agg.sum(ent.n_copies)),
+        # Structurally zero, and not reported as a column for that reason: FT is a fold over
+        # hl.range(LGT.ploidy) (merge_and_rescore_vdses.py:173, import_gvs.py:380), so it is
+        # missing exactly when LGT is, and has_allele already requires LGT defined. Kept as a
+        # tripwire in case this is ever pointed at a VDS whose FT came from somewhere else.
         ft_missing=hl.agg.count_where(ent.has_allele & hl.is_missing(ent.FT)),
         gq0_at_site=hl.agg.count_where(ent.gq0),
     )
@@ -264,8 +266,8 @@ def main():
             'hetvar_total', 'hetvar_pass',
             'carriers_one_copy', 'carriers_two_copies', 'gvs_all_ac']
     if vat_ac:
-        cols += ['vat_gvs_all_ac']
-    cols += ['gq0_at_site', 'ft_missing']
+        cols += ['vat_gvs_all_ac', 'gvs_all_ac_diff']
+    cols += ['gq0_at_site']
 
     n_ac_differs, n_ft_missing, n_missing = 0, 0, 0
     with hopen(args.output, 'w') as f:
@@ -287,15 +289,16 @@ def main():
                            removed_total=cb_before - r['cb_after_fix'])
                 n_ft_missing += 1 if r['ft_missing'] else 0
 
-            # The VAT's AC goes in beside ours without a verdict column: two adjacent integers
-            # are easy enough to eyeball or filter on, and the run-level count below is what
-            # actually tells you whether to go looking.
+            # Reported as a signed difference rather than a boolean: it reads as 0 down the
+            # column when all is well, and on the day it does not, the size and direction of
+            # the gap are the first thing anyone would want.
             if vat_ac:
                 v = vat_ac.get(vid)
                 if v is not None:
                     out['vat_gvs_all_ac'] = v
-                    if r is not None and v != r['gvs_all_ac']:
-                        n_ac_differs += 1
+                    if r is not None:
+                        out['gvs_all_ac_diff'] = r['gvs_all_ac'] - v
+                        n_ac_differs += 1 if r['gvs_all_ac'] != v else 0
             w.writerow(out)
 
     print(f'\nWrote {args.output}', file=sys.stderr)
@@ -303,8 +306,9 @@ def main():
         print(f'{n_missing} VID(s) did not match at their own coordinate (vds_found=false). '
               'Rerun those through vds_carriers_for_vid.py --window 200.', file=sys.stderr)
     if n_ft_missing:
-        print(f'WARNING: {n_ft_missing} VID(s) have entries with an undefined FT (ft_missing > '
-              '0). Their counts are not trustworthy.', file=sys.stderr)
+        print(f'WARNING: {n_ft_missing} VID(s) have entries with an undefined FT, which should '
+              'not be possible. Their counts are not trustworthy; check how this VDS was built.',
+              file=sys.stderr)
     if vat_ac:
         print(f'{n_ac_differs} VID(s) where gvs_all_ac differs from the VAT'
               f"'s{' -- investigate' if n_ac_differs else ''}", file=sys.stderr)
