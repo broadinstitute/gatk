@@ -86,11 +86,13 @@ workflow Mutect2 {
         File? germline_resource_idx
         File? variants_for_contamination
         File? variants_for_contamination_idx
+        File? common_hets_for_segmentation
 
         # extra arguments
         String? m2_extra_args
         String? m2_extra_filtering_args
         String? getpileupsummaries_extra_args
+        String? collect_allelic_counts_extra_args
         String? split_intervals_extra_args
 
         # additional modes and outputs
@@ -182,8 +184,10 @@ workflow Mutect2 {
                 max_retries = max_retries,
                 m2_extra_args = m2_extra_args,
                 getpileupsummaries_extra_args = getpileupsummaries_extra_args,
+                collect_allelic_counts_extra_args = collect_allelic_counts_extra_args,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_idx = variants_for_contamination_idx,
+                common_hets_for_segmentation = common_hets_for_segmentation,
                 dragstr_model = dragstr_model,
                 make_bamout = make_bamout,
                 run_ob_filter = run_orientation_bias_mixture_model_filter,
@@ -409,6 +413,7 @@ task M2 {
         File? germline_resource_idx
         String? m2_extra_args
         String? getpileupsummaries_extra_args
+        String? collect_allelic_counts_extra_args
         Boolean? make_bamout
         Boolean? run_ob_filter
         Boolean compress_vcfs
@@ -416,6 +421,7 @@ task M2 {
         File? gga_vcf_idx
         File? variants_for_contamination
         File? variants_for_contamination_idx
+        File? common_hets_for_segmentation
         File? dragstr_model
 
         File? gatk_override
@@ -465,6 +471,7 @@ task M2 {
         gga_vcf_idx: {localization_optional: true}
         variants_for_contamination: {localization_optional: true}
         variants_for_contamination_idx: {localization_optional: true}
+        common_hets_for_segmentation: {localization_optional: true}
         permutect_training_dataset_truth_vcf: {localization_optional: true}
         permutect_training_dataset_truth_vcf_idx: {localization_optional: true}
     }
@@ -481,6 +488,8 @@ task M2 {
         touch test-dataset.txt
         touch contigs.table
         touch read-groups.table
+        touch tumor_allelic_counts.tsv
+        touch normal_allelic_counts.tsv
 
         if [[ ! -z "~{normal_reads}" ]]; then
             gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{normal_reads} -O normal_names.txt -encode \
@@ -533,6 +542,25 @@ task M2 {
             fi
         fi
 
+        # CollectAllelicCounts
+        if [[ ! -z "~{common_hets_for_segmentation}" ]]; then
+            gatk --java-options "-Xmx~{command_mem}m" CollectAllelicCounts \
+                -R ~{ref_fasta} -I ~{tumor_reads} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
+                -L ~{common_hets_for_segmentation} \
+                ~{collect_allelic_counts_extra_args} \
+                -O tumor_allelic_counts.tsv \
+                ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
+
+            if [[ ! -z "~{normal_reads}" ]]; then
+                gatk --java-options "-Xmx~{command_mem}m" CollectAllelicCounts \
+                    -R ~{ref_fasta} -I ~{tumor_reads} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
+                    -L ~{common_hets_for_segmentation} \
+                    ~{collect_allelic_counts_extra_args} \
+                    -O normal_allelic_counts.tsv \
+                    ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
+            fi
+        fi
+
         # the script only fails if Mutect2 itself fails
         exit $m2_exit_code
     >>>
@@ -555,6 +583,8 @@ task M2 {
         File f1r2_counts = "f1r2.tar.gz"
         Array[File] tumor_pileups = glob("*tumor-pileups.table")
         Array[File] normal_pileups = glob("*normal-pileups.table")
+        File tumor_allelic_counts = "tumor_allelic_counts.tsv"
+        File normal_allelic_counts = "normal_allelic_counts.tsv"
         File permutect_training_dataset = "training-dataset.txt"
         File permutect_test_dataset = "test-dataset.txt"
         File permutect_contigs_table = "contigs.table"
