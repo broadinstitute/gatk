@@ -99,6 +99,44 @@ Some of the GVS code in this repo does interact with split multi-allelic non-VDS
 Hail artifacts; see `AOU_MARKETING_STATISTICS.md` for an example that takes a
 split Exome MatrixTable as input.
 
+### Allele representations across GVS artifacts
+
+The same variant is written differently in different GVS artifacts. The
+differences are systematic rather than incidental, and comparing alleles across
+artifacts without accounting for them is a recurring source of bugs.
+
+- **`vet_%` and `alt_allele`** hold minimized (trimmed) alleles that are *not*
+  left-aligned. An indel stays wherever the caller placed it.
+- **The VDS** holds unsplit multi-allelic rows in a common per-site reference
+  context. `alleles[0]` must be long enough to span the longest deletion at the
+  site, and every ALT is expressed relative to it. A VDS allele string is
+  therefore a property of the site's allele set, not of the variant: the same
+  variant is written differently at a site with different neighbours.
+- **The VAT, and therefore vids,** hold alleles that are minimized *and*
+  left-aligned, via `bcftools norm -f` in `GvsCreateVATFromVDS.wdl:731`.
+
+Four consequences worth knowing before writing anything that joins across these:
+
+1. Minimize before comparing. `hl.min_rep`, or trimming by hand, reduces a VDS
+   allele to the intrinsic form that `alt_allele` stores.
+2. Compare the REF/ALT **pair**, never the ALT alone. One string can be the raw
+   ALT of one variant and the minimized ALT of an unrelated one. At
+   chr13:32368001 in Foxtrot, `CTT` is both: the raw ALT of a 24bp deletion
+   against a 27bp REF, and the minimized ALT of a 2bp insertion.
+3. Minimizing is not left-aligning. `hl.min_rep` trims shared prefixes and
+   suffixes but will not walk an indel through a repeat, so it cannot unify a
+   left-aligned vid with a non-left-aligned `alt_allele` row. That needs real
+   normalization against the reference, which is what `GvsMapUnmappedVIDs` and
+   the scripts under
+   `scripts/variantstore/scripts/variant_annotation_table/left_alignment_fixups/`
+   exist to do.
+4. Indel length is invariant under normalization, so it is a safe filter when
+   hunting for equivalent representations; position and allele strings are not.
+   The production synonym search keys on it as bcftools `ILEN` over a 200bp
+   window rightward from the vid's position, left-aligned being the leftmost
+   equivalent form (`generate_bcftools_searches_for_variant_synonyms.py:38-45`).
+
+
 # High-Level Architecture (WDLs, BigQuery, Terra)
 
 ## Java Artifacts
@@ -232,6 +270,45 @@ The canonical GVS location encoding and decoding logic lives in
 - **`cost_observability`**: Operation cost tracking, written to by the various
   tools that comprise the GVS pipeline.
 
+### Filter table gotchas
+
+**`yng_status` is only ever `G` or `Y`.** `N` is recognized by the extract code
+but is never written by the filter model; on Foxtrot the distribution across
+`filter_set_info` was `G` 1,724,533,270 and `Y` 29,333,911. Any check keyed on
+`yng_status = 'N'` is therefore vacuous, returning zero rows whether or not the
+condition it tests for occurs. `Y` comes from `POSITIVE_TRAIN_SITE`
+(`CreateFilteringFiles.java`), assigned by matching against left-aligned truth
+resources, so input data that is not left aligned cannot be rescued by a `Y` and
+is judged on calibration sensitivity alone.
+
+**`filter_set_sites` records only sites that have filters, and does not cover
+the filter model.** There is no PASS or null row; absence from the table means
+the site was not filtered. On Foxtrot it held 71,032,776 rows across
+`EXCESS_ALLELES`, `ExcessHet`, `LowQual`, `NO_HQ_GENOTYPES` and combinations.
+Calibration sensitivity failures are *not* among them: VETS and VQSR site
+failures are computed at extract time from `filter_set_info` scores, never
+stored here. So this table records which sites carry site-level filter values.
+Whether carrying one actually excludes the variant depends on the artifact: per
+"Hard filtered versus soft filtered variants" above, the VAT is hard filtered and
+drops them, while the VCF, VDS and PGEN artifacts are soft filtered and emit
+every variant with its filter information attached.
+`filter_set_info` answers a different question again: keyed by
+`(location, ref, alt)`, it gives the calibration sensitivity score and
+`yng_status` of an individual *allele*. Whether a *site* passes the filter model
+is derived from its alleles by the max-over-class rule below and is not recorded
+in either table.
+
+**The filter model is applied per site and per genotype, with opposite senses.**
+A site is judged by its *best* allele of a class, so a poor allele at a site
+whose best allele passes is not excluded; a genotype is judged by its *worst*
+non-ref allele, so a `1/2` call is filtered if either allele fails. Note that
+which arithmetic expresses "best" depends on the model, and the two are
+inverted. For VQSR, `vqslod` is higher-is-better, so `ExtractCohortEngine`
+fails a site when `max(score) < threshold` and a genotype when
+`min(score) < threshold`. For VETS — the default — `calibration_sensitivity` is
+lower-is-better, so `ExtractCohortVETSEngine` overrides both and fails a site
+when `min(score) > threshold` and a genotype when `max(score) > threshold`.
+
 ## Key Workflows
 
 ### GvsJointVariantCalling.wdl
@@ -328,6 +405,30 @@ patch this table for a set of VIDs that did not have corresponding Participant
 IDs. See the directory `pseudo_vids_only_in_vat` for more information on
 unmatched VIDs that were discovered in the VATs of the Delta and Echo callsets.
 
+# Data Handling
+
+## Redact participant IDs from anything committed to this repo
+
+The GATK repository is public, and AoU is highly sensitive about participant
+data appearing in public places. Any AoU participant ID must be redacted before
+a file containing it is committed, replaced with a placeholder such as
+`<PERSON_A>`. This applies everywhere, not just to data files: SQL scripts with
+real IDs in an `IN` list, Python fixtures, pasted query output in a Markdown
+write-up, an example invocation in a docstring, and a commit message all count.
+
+Attach the unredacted data to the JIRA ticket for the work instead, and refer to
+it from the repo by ticket number.
+
+Redact before committing rather than afterwards. A commit is not undone by a
+later one — the ID stays reachable in the history, so a slip has to be fixed by
+rewriting history, which is disruptive and easy to do incompletely. Prefer
+placeholders in the working file from the outset, so there is no version of it
+that can be committed by accident.
+
+Note that a redacted file and its working counterpart tend to drift apart. Where
+both are needed, keep the redacted one as the file that is edited, and treat any
+real-ID version as a throwaway.
+
 # Documentation Conventions
 
 ## Markdown tables must be rectangular
@@ -352,3 +453,139 @@ and never touches content inside fenced code blocks.
 Some existing docs predate this and are still ragged. Only format files you are
 already modifying; reformatting untouched docs adds diff noise that obscures the
 actual change.
+
+# Code Review Conventions
+
+## Do the review inline — do not use the `code-review` skill
+
+When asked to review a branch, PR, or diff, read the diff and write the review
+directly in the conversation, following the conventions in this section. Do not
+invoke the `code-review` skill, and do not otherwise fork the review into a
+subagent.
+
+The skill is packaged to run forked, and what comes back does not follow the
+conventions below: it leads with findings instead of an `## Action items`
+section, and it does not produce the durable write-up under
+`~/claude-artifacts/<project>/`. Restructuring its output afterwards costs more
+than doing the review inline from the start.
+
+A forked reviewer also cannot see the context already gathered in the
+conversation — the established base ref, the diff, the surrounding files — so it
+re-derives them, and its supporting claims still have to be checked against the
+repo before they can be reported. In the VS-1983 review its findings were sound,
+but one rested on a partial survey of the repo: it correctly noted that
+`CreateDatasetForTest` in `GvsUtils.wdl` passes no `--location`, while missing
+`run_header_loading_e2e.sh`, which uses `--location=US` and cuts the other way.
+
+Whoever writes the review — inline or otherwise — verify each finding's
+supporting claims against the repo, and reproduce a finding directly where that
+is cheap, before reporting it.
+
+## Lead with action items
+
+A code review write-up opens with an `## Action items` section, before the scope
+summary and before the findings themselves. It lists what should actually be
+done, each entry pointing at the numbered finding that justifies it.
+
+Order that list by what the PR's author can act on directly, not by strict
+execution order. Their own work comes first, with the discretionary line closing
+that group. Anything the branch merely runs into — pre-existing debt, a problem
+in files the PR does not touch, something needing a team decision or
+coordination with another branch — goes in a separate group afterward, under a
+heading that says so, introduced by a sentence establishing provenance: that it
+was not introduced by this branch and has not come up before, so it is something
+for the team to discuss. Frame that as a shared next step, not as a limit on the
+author's authority — "so we should discuss these as a team" rather than "this is
+not the author's to decide".
+
+Write those cross-cutting entries to be comprehensible cold. The author has not
+been part of the conversation that produced them, so lead with the symptom and
+arrive at the proposed remedy; an entry that opens with the remedy reads as an
+unexplained directive. "The validation only runs on the non-Parquet ingest path,
+which is not what production uses" works where "relocate the non-Parquet
+coverage" does not.
+
+When one action genuinely gates another, say so inline in the entries affected
+rather than reordering the list to express it — ordering for the reader and
+recording a dependency are separate jobs, and the dependency note costs a
+clause.
+
+Every finding must be accounted for in that list, including the ones needing no
+work — group those into a short "discretionary" line rather than dropping them,
+so nothing looks accidentally omitted.
+
+The rationale, evidence, and reproduction detail stay in the numbered findings
+below. Do not put a duplicate ordered list at the end of the document.
+
+Both lists are numbered, so keep the two vocabularies distinct: the entries in
+`## Action items` are "action N" and the write-ups below are "finding N". Never
+call either one "item N" — a reference like "(item 4)" inside action item 1 is
+ambiguous between the two sequences, and the reader has no way to tell which is
+meant. Label the write-ups with a `## Findings` heading so the second sequence is
+visibly its own list.
+
+## One line per paragraph — do not hard-wrap
+
+Code review write-ups get pasted into GitHub PR comments and descriptions, and
+GitHub renders a newline inside a paragraph as a hard line break regardless of
+how much horizontal space is available. A source document wrapped at 100 columns
+therefore renders as a ragged column on GitHub rather than as flowing text.
+
+So in a generated code review document, write each paragraph and each list item
+as a single unwrapped line, however long it ends up. Headings, table rows, and
+fenced code blocks are unaffected — those are already one line each by
+construction, and their line breaks are significant.
+
+Author these documents unwrapped from the start where you can. To convert a
+draft that is already wrapped, use the `reflow-md` helper checked into this
+repo:
+
+```
+scripts/variantstore/scripts/reflow-md FILE...            # rewrite in place
+scripts/variantstore/scripts/reflow-md --dry-run FILE...  # report only
+```
+
+It folds paragraphs and list-item continuations onto single lines while leaving
+headings, table rows, blank lines, and fenced-block contents alone. It compares
+the whitespace-delimited token stream before and after and refuses to write if
+anything other than wrapping changed, and it is idempotent — a second run
+reports `already unwrapped`. Prefer it to joining lines by hand, which is easy
+to get wrong around list indentation and fences, where a mistake corrupts
+content rather than merely rewrapping it.
+
+The script is deliberately named without a `.py` extension: the Dockerfile in
+that directory does `COPY *.py /app/`, so an extensionless name keeps this
+dev-only helper out of the Variants image and out of the rebuild-and-bump
+obligation described in the Variants Docker Image section above. It is a
+dependency-free Python 3 script; do not rename it to `reflow_md.py`.
+
+JIRA hard-breaks intra-paragraph newlines the same way, so the same rule applies
+to anything destined for a JIRA description or comment.
+
+## Development scaffolding is not a review finding
+
+Do not report temporary "point this at my feature branch so I can test it"
+changes as code review findings. The most common example is adding a feature
+branch name to the `branches:` filters in `.dockstore.yml` — Dockstore will not
+expose a workflow for a branch that is not registered, so this edit is a
+prerequisite for testing any WDL change on a branch, not an oversight.
+Developers are reliable about removing these before merge, and a leftover
+registration is harmless: it makes a stale branch visible in Dockstore and
+nothing more.
+
+This exclusion covers branch- and tag-registration scaffolding only. It does
+**not** extend to a reference that will actually break or mislead at runtime
+once merged, which remains a legitimate (and usually serious) finding:
+
+- a Docker image tag — `variants_docker`, `gatk_docker`, etc. in `GvsUtils.wdl`'s
+  `GetToolVersions` — left pointing at a personal, unpublished, or stale image
+  (see the Variants Docker Image section above: a new or edited script under
+  `scripts/variantstore/scripts/` does not reach a running workflow until the
+  image is rebuilt and the tag is updated);
+- a hardcoded project, dataset, or GCS path pointing at a developer's scratch
+  resources in a code path that production runs;
+- a `git_branch_or_tag` default left set to the feature branch.
+
+The distinction is whether the leftover changes what a merged workflow does. If
+it only affects what is visible or runnable on the developer's own branch, leave
+it alone.

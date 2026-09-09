@@ -6,7 +6,7 @@
 # expensive to create and isn't expected to change often, while the steps in this Dockerfile are much less expensive and
 # more likely to change. Using a build-base image essentially allows the expensive layers to be globally cached which
 # should make building the final image much faster in most cases.
-FROM us.gcr.io/broad-dsde-methods/variantstore:2026-06-23-alpine-build-base AS build
+FROM us.gcr.io/broad-dsde-methods/variantstore:2026-09-02-alpine-build-base AS build
 
 # Install all of our variantstore Python requirements.
 # We constrain the version of setuptools to sidestep an issue in `terra-notebook-util`'s FISS dependency.
@@ -31,8 +31,17 @@ RUN mkdir /fiss-build && \
     . /localvenv/bin/activate && \
     python setup.py install
 
+# Patch `terra-notebook-utils` for a urllib3 2.x incompatibility.
+# A PR has been opened in `terra-notebook-utils` to fix this upstream, but until that lands we patch this here.
+# https://github.com/DataBiosphere/terra-notebook-utils/pull/426
+COPY terra_notebook_utils_urllib3.patch /terra_notebook_utils_urllib3.patch
+RUN . /localvenv/bin/activate && \
+    cd "$(python3 -c 'import terra_notebook_utils as m, pathlib; print(pathlib.Path(m.__file__).parent.parent)')" && \
+    git apply /terra_notebook_utils_urllib3.patch
+
 # The main layer does not install development tools, instead copies artifacts from the build layer above.
-FROM gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-alpine AS main
+# IMPORTANT: must stay on the same Python version as the `build` stage's FROM above -- see the note there.
+FROM gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-alpine AS main
 
 RUN apk update && apk upgrade
 
