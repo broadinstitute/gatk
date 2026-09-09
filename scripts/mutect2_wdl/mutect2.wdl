@@ -32,7 +32,7 @@ version 1.0
 ##
 ## ** Primary resources ** (optional but strongly recommended)
 ## pon, pon_idx: optional panel of normals (and its index) in VCF format containing probable technical artifacts (false positves)
-## gnomad, gnomad_idx: optional database of known germline variants (and its index) (see http://gnomad.broadinstitute.org/downloads)
+## germline_resource, germline_resource_idx: optional database of known germline variants (and its index) (see http://gnomad.broadinstitute.org/downloads)
 ## variants_for_contamination, variants_for_contamination_idx: VCF of common variants (and its index)with allele frequencies for calculating contamination
 ##
 ## ** Secondary resources ** (for optional tasks)
@@ -82,8 +82,8 @@ workflow Mutect2 {
         # optional but usually recommended resources
         File? pon
         File? pon_idx
-        File? gnomad
-        File? gnomad_idx
+        File? germline_resource
+        File? germline_resource_idx
         File? variants_for_contamination
         File? variants_for_contamination_idx
 
@@ -133,7 +133,7 @@ workflow Mutect2 {
     # Disk sizes used for dynamic sizing
     Int ref_size = ceil(size(ref_fasta, "GB") + size(ref_dict, "GB") + size(ref_fai, "GB"))
     Int tumor_reads_size = ceil(size(tumor_reads, "GB") + size(tumor_reads_index, "GB"))
-    Int gnomad_vcf_size = if defined(gnomad) then ceil(size(gnomad, "GB")) else 0
+    Int germline_resource_vcf_size = if defined(germline_resource) then ceil(size(germline_resource, "GB")) else 0
     Int normal_reads_size = if defined(normal_reads) then ceil(size(normal_reads, "GB") + size(normal_reads_index, "GB")) else 0
 
     # This is added to every task as padding, should increase if systematically you need more disk for every call
@@ -149,7 +149,7 @@ workflow Mutect2 {
 
     Int m2_output_size = tumor_reads_size / scatter_count
     #TODO: do we need to change this disk size now that NIO is always going to happen (for the google backend only)
-    Int m2_per_scatter_size = (tumor_reads_size + normal_reads_size) + ref_size + gnomad_vcf_size + m2_output_size + disk_pad
+    Int m2_per_scatter_size = (tumor_reads_size + normal_reads_size) + ref_size + germline_resource_vcf_size + m2_output_size + disk_pad
 
     call SplitIntervals {
         input:
@@ -176,8 +176,8 @@ workflow Mutect2 {
                 normal_reads_index = normal_reads_index,
                 pon = pon,
                 pon_idx = pon_idx,
-                gnomad = gnomad,
-                gnomad_idx = gnomad_idx,
+                germline_resource = germline_resource,
+                germline_resource_idx = germline_resource_idx,
                 preemptible = preemptible,
                 max_retries = max_retries,
                 m2_extra_args = m2_extra_args,
@@ -405,8 +405,8 @@ task M2 {
         File? normal_reads_index
         File? pon
         File? pon_idx
-        File? gnomad
-        File? gnomad_idx
+        File? germline_resource
+        File? germline_resource_idx
         String? m2_extra_args
         String? getpileupsummaries_extra_args
         Boolean? make_bamout
@@ -459,8 +459,8 @@ task M2 {
         normal_reads_index: {localization_optional: true}
         pon: {localization_optional: true}
         pon_idx: {localization_optional: true}
-        gnomad: {localization_optional: true}
-        gnomad_idx: {localization_optional: true}
+        germline_resource: {localization_optional: true}
+        germline_resource_idx: {localization_optional: true}
         gga_vcf: {localization_optional: true}
         gga_vcf_idx: {localization_optional: true}
         variants_for_contamination: {localization_optional: true}
@@ -495,7 +495,7 @@ task M2 {
             -I ~{tumor_reads} \
             ~{"-I " + normal_reads} \
             $normal_sample_line \
-            ~{"--germline-resource " + gnomad} \
+            ~{"--germline-resource " + germline_resource} \
             ~{"-pon " + pon} \
             ~{"-L " + intervals} \
             ~{"--alleles " + gga_vcf} \
