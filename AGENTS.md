@@ -405,6 +405,30 @@ patch this table for a set of VIDs that did not have corresponding Participant
 IDs. See the directory `pseudo_vids_only_in_vat` for more information on
 unmatched VIDs that were discovered in the VATs of the Delta and Echo callsets.
 
+# Data Handling
+
+## Redact participant IDs from anything committed to this repo
+
+The GATK repository is public, and AoU is highly sensitive about participant
+data appearing in public places. Any AoU participant ID must be redacted before
+a file containing it is committed, replaced with a placeholder such as
+`<PERSON_A>`. This applies everywhere, not just to data files: SQL scripts with
+real IDs in an `IN` list, Python fixtures, pasted query output in a Markdown
+write-up, an example invocation in a docstring, and a commit message all count.
+
+Attach the unredacted data to the JIRA ticket for the work instead, and refer to
+it from the repo by ticket number.
+
+Redact before committing rather than afterwards. A commit is not undone by a
+later one — the ID stays reachable in the history, so a slip has to be fixed by
+rewriting history, which is disruptive and easy to do incompletely. Prefer
+placeholders in the working file from the outset, so there is no version of it
+that can be committed by accident.
+
+Note that a redacted file and its working counterpart tend to drift apart. Where
+both are needed, keep the redacted one as the file that is edited, and treat any
+real-ID version as a throwaway.
+
 # Documentation Conventions
 
 ## Markdown tables must be rectangular
