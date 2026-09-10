@@ -110,10 +110,16 @@ WHERE sample_name IN UNNEST(['<REPORTED_PERSON_ID_1>', '<REPORTED_PERSON_ID_2>']
 -- STEP 3 -- BUILD the scrubbed copy alongside the original. 1 x T.
 -- Does not touch the original.
 --
--- The source table is created by a plain CREATE TABLE AS SELECT with no partitioning or
--- clustering, so this CTAS reproduces its physical layout.
+-- CLUSTER BY vid, which the source table does not physically have even though it reports as
+-- clustered. `GvsCreateParticipantMappingTable.wdl` used to apply clustering with a separate
+-- `bq update --clustering_fields=vid` after the CTAS, which writes the spec as metadata and
+-- does not recluster data already written. A plain CTAS here would carry that fiction forward,
+-- and the scrubbed copy would not even claim it. This table is only ever read by vid, and on
+-- Foxtrot the difference measured out as a full 18.65 TiB scan against cents.
 -- -------------------------------------------------------------------------------------
-CREATE TABLE `<PROJECT>.<DATASET>.<MAPPING_TABLE>_scrubbed` AS
+CREATE TABLE `<PROJECT>.<DATASET>.<MAPPING_TABLE>_scrubbed`
+CLUSTER BY vid
+AS
 WITH good_person_ids AS (
   -- A person id is good iff at least one sample_info row bearing that sample_name is
   -- neither withdrawn nor a control. Stated this way, a person re-ingested under a new
