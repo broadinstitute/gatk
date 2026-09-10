@@ -41,12 +41,12 @@ jobs:
               {
                 name: 'needs-docker-refresh',
                 color: 'd93f0b',
-                description: 'Added automatically: this PR changed files baked into a Docker image without updating the matching tag in GvsUtils.wdl.',
+                description: 'PR changed Docker image files without bumping the matching GvsUtils.wdl tag.',
               },
               {
                 name: 'docker-refresh-not-needed',
                 color: '0e8a16',
-                description: 'Add to a PR to acknowledge that the flagged changes do not need a Docker image rebuild, suppressing the docker-refresh-guard warning.',
+                description: 'Acknowledges no Docker rebuild is needed and suppresses the guard warning.',
               },
             ];
 
@@ -54,7 +54,8 @@ jobs:
               try {
                 await github.rest.issues.createLabel({ owner, repo, ...label });
               } catch (e) {
-                if (e.status !== 422) {
+                const alreadyExists = e.status === 422 && e.errors?.some(error => error.code === 'already_exists');
+                if (!alreadyExists) {
                   core.warning(`Could not create label ${label.name}: ${e.message}`);
                   continue;
                 }
