@@ -26,7 +26,13 @@ import os
 import re
 import sys
 
-FENCE = re.compile(r'^\s*(```|~~~)')
+# A fence is a run of three or more backticks or tildes. Per CommonMark a fence is closed only
+# by a run of the *same* character, at least as long as the opener and carrying no info string;
+# a run of the other character inside the block is ordinary content. Matching either character
+# indiscriminately silently corrupts the scan: the `~~~~^^` caret annotation in a Python 3.11+
+# traceback quoted inside a ``` block would end the block early, leaving every table after it
+# looking fenced and therefore skipped.
+FENCE = re.compile(r'^\s*(`{3,}|~{3,})(.*)$')
 SEPARATOR_CELL = re.compile(r'^:?-+:?$')
 UNESCAPED_PIPE = re.compile(r'(?<!\\)\|')
 # Up to three spaces of indentation still parses as a table; four or more is an indented
@@ -103,18 +109,26 @@ def format_table(rows, indent=''):
 def format_text(text):
     """Return (formatted_text, tables_changed)."""
     lines = text.split('\n')
-    out, index, in_fence, changed = [], 0, False, 0
+    out, index, changed = [], 0, 0
+    fence_char, fence_len = None, 0
 
     while index < len(lines):
         line = lines[index]
 
-        if FENCE.match(line):
-            in_fence = not in_fence
+        fence = FENCE.match(line)
+        if fence:
+            marker, info = fence.group(1), fence.group(2)
+            if fence_char is None:
+                # A backtick fence's info string may not itself contain a backtick.
+                if marker[0] == '~' or '`' not in info:
+                    fence_char, fence_len = marker[0], len(marker)
+            elif marker[0] == fence_char and len(marker) >= fence_len and not info.strip():
+                fence_char, fence_len = None, 0
             out.append(line)
             index += 1
             continue
 
-        header = None if in_fence else TABLE_LINE.match(line)
+        header = None if fence_char else TABLE_LINE.match(line)
         if header:
             end = index
             while end < len(lines) and TABLE_LINE.match(lines[end]):

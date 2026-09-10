@@ -140,20 +140,29 @@ public class LoadStatus {
                 @SuppressWarnings("ThrowableNotThrown")
                 StatusRuntimeException se = extractCausalStatusRuntimeExceptionOrThrow(e);
 
-                if (retryCount >= maxRetries) {
-                    throw new GATKException("Caught exception writing to BigQuery and " + maxRetries + " write retries are exhausted", e);
-                }
-
                 switch (se.getStatus().getCode()) {
                     case ALREADY_EXISTS:
-                        // This is okay, no need to retry
-                        break;
+                        // The row was already written, so this is a success and must not be retried:
+                        // `return`, not `break`, which would leave only the switch and let the enclosing
+                        // `while (true)` re-attempt the identical append forever without ever incrementing
+                        // `retryCount`.
+                        //
+                        // Note this is reached before the retry-exhaustion check, which lives in the
+                        // retryable branch below rather than ahead of the switch. That ordering matters:
+                        // the likeliest way to see ALREADY_EXISTS is a prior attempt that landed
+                        // server-side without the client observing the ack, which is precisely when the
+                        // retries are already spent. Checking exhaustion first would turn a completed
+                        // write into a task failure. CommittedBQWriter is arranged the same way.
+                        return;
                     case INVALID_ARGUMENT:
                     case NOT_FOUND:
                     case OUT_OF_RANGE:
                     case PERMISSION_DENIED:
                         throw new GATKException("Caught non-retryable StatusRuntimeException based exception", e);
                     default:
+                        if (retryCount >= maxRetries) {
+                            throw new GATKException("Caught exception writing to BigQuery and " + maxRetries + " write retries are exhausted", e);
+                        }
                         try {
                             logger.warn("Caught exception writing to BigQuery, " + (maxRetries - retryCount - 1) + " retries remaining.", e);
                             long backOffMillis = backoff.nextBackOffMillis();
