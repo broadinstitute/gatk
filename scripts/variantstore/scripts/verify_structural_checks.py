@@ -69,6 +69,16 @@ log = logging.getLogger(__name__)
 # docstring). Callers may override.
 DEFAULT_DUPLICATION_SCREEN_FAMILIES = ["vet"]
 
+# Regular (non-superpartitioned) tables held to a UNIFORM per-sample row count by the cardinality
+# check. Only ploidy qualifies: its per-sample row count is a fixed function of the reference (the
+# non-PAR contig count). This is deliberately an allowlist, not a denylist -- a regular table whose
+# per-sample row count legitimately varies must be completeness-checked but never cardinality-checked,
+# and the safe default for any newly added regular table is "completeness only". In particular
+# ``vcf_header_lines_scratch`` writes one row per header line and header counts differ across samples
+# (VcfHeaderLineScratchCreator#apply), so including it here would false-positive every sample as
+# "deviating" and fail a valid headers-only ingest.
+DEFAULT_CARDINALITY_TABLE_PREFIXES = ["sample_chromosome_ploidy"]
+
 # Default ratio-to-median above which a vet sample is flagged as a possible duplicate. Miguel's
 # Foxtrot calibration found vet tight enough that 1.2x is safe against false positives; 1.6x is a
 # conservative default that still catches a doubled sample (~2.0x).
@@ -324,7 +334,8 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
                           vet_duplication_threshold=DEFAULT_VET_DUPLICATION_THRESHOLD,
                           strict_vet_screen=False,
                           expected_ploidy_rows_per_sample=None,
-                          duplication_screen_families=None):
+                          duplication_screen_families=None,
+                          cardinality_table_prefixes=None):
     """
     Run the independent structural checks and return a result dict.
 
@@ -332,10 +343,18 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
     ``ref_ranges``, or a regular table name such as ``sample_chromosome_ploidy``) to the set of
     ``sample_id`` values GCS says should be loaded for it.
 
-    ``expected_ploidy_rows_per_sample``, when set, is the exact per-sample row count each regular
-    per-sample table (ploidy) is validated against instead of the callset mode; leave it unset to
-    infer the reference from the data. (There is one regular table -- ploidy -- today; if others with
-    differing exact counts are ever added this would need to become a per-table mapping.)
+    ``regular_table_prefixes`` are the non-superpartitioned per-sample tables checked for completeness
+    (every expected sample present with > 0 rows). ``cardinality_table_prefixes`` is the subset of
+    those additionally held to a UNIFORM per-sample row count; it defaults to ploidy alone. A regular
+    table whose per-sample row count legitimately varies -- ``vcf_header_lines_scratch`` writes one row
+    per header line and samples differ -- must NOT be listed here, or every sample would read as
+    "deviating" and fail a valid ingest; completeness alone covers it.
+
+    ``expected_ploidy_rows_per_sample``, when set, is the exact per-sample row count each
+    cardinality-checked table is validated against instead of the callset mode; leave it unset to
+    infer the reference from the data. (Today ploidy is the only cardinality-checked table; if others
+    with differing exact counts are ever added this single override would need to become a per-table
+    mapping.)
 
     The returned dict carries flat booleans the WDL reads shallowly (``completeness_ok``,
     ``cardinality_ok``, ``duplication_flagged``) plus a nested ``details`` block for humans and logs.
@@ -348,6 +367,8 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
         regular_table_prefixes = ["sample_chromosome_ploidy"]
     if duplication_screen_families is None:
         duplication_screen_families = DEFAULT_DUPLICATION_SCREEN_FAMILIES
+    if cardinality_table_prefixes is None:
+        cardinality_table_prefixes = DEFAULT_CARDINALITY_TABLE_PREFIXES
 
     partition_rows = get_partition_row_counts(
         project_id, dataset_name, superpartitioned_table_prefixes
@@ -362,11 +383,16 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
         superpartitioned_table_prefixes, regular_table_prefixes,
     )
 
-    # Per-sample cardinality consistency, applied to each regular per-sample table (ploidy is the
-    # exemplar): every sample should carry the callset's modal row count.
+    # Per-sample cardinality consistency, applied only to regular tables that carry a UNIFORM
+    # per-sample row count (ploidy). Tables whose per-sample count legitimately varies -- notably
+    # vcf_header_lines_scratch, one row per header line with counts differing across samples -- are
+    # excluded here (completeness above still covers them); enforcing the mode on them would
+    # false-positive every sample as "deviating" and fail a valid ingest.
     cardinality = {}
     cardinality_ok = True
     for prefix in regular_table_prefixes:
+        if prefix not in cardinality_table_prefixes:
+            continue
         result = assess_cardinality(
             regular_counts.get(prefix, {}),
             expected_by_family.get(prefix, set()),

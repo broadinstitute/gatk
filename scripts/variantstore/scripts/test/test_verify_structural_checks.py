@@ -291,6 +291,18 @@ class TestRunStructuralChecks(unittest.TestCase):
         self.addCleanup(p1.stop)
         self.addCleanup(p2.stop)
 
+    def _patch_regular(self, partition_rows, counts_by_table):
+        """Like _patch but returns per-table regular counts, keyed on the table-name argument."""
+        p1 = patch("verify_structural_checks.get_partition_row_counts", return_value=partition_rows)
+        p2 = patch(
+            "verify_structural_checks.get_ploidy_row_counts",
+            side_effect=lambda project_id, dataset_name, table: counts_by_table.get(table, {}),
+        )
+        p1.start()
+        p2.start()
+        self.addCleanup(p1.stop)
+        self.addCleanup(p2.stop)
+
     def test_all_good(self):
         part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
         self._patch(part, {1: 24, 2: 24})
@@ -339,6 +351,57 @@ class TestRunStructuralChecks(unittest.TestCase):
         self.assertEqual(card["reference_source"], "override")
         self.assertEqual(card["reference_count"], 24)
         self.assertEqual(card["mode"], 25)
+
+    def test_variable_cardinality_regular_table_not_gated(self):
+        # With VCF-header loading, the WDL passes vcf_header_lines_scratch alongside ploidy as a
+        # regular table. Its per-sample row count legitimately varies (one row per header line), so it
+        # must be completeness-checked but NOT held to the uniform-cardinality mode -- otherwise a valid
+        # headers ingest fails. Regression guard for the header-enabled prefix list.
+        part = ([("vet_001", i, 100) for i in (1, 2, 3)]
+                + [("ref_ranges_001", i, 50) for i in (1, 2, 3)])
+        counts_by_table = {
+            "sample_chromosome_ploidy": {1: 24, 2: 24, 3: 24},   # uniform
+            "vcf_header_lines_scratch": {1: 30, 2: 45, 3: 12},   # legitimately non-uniform
+        }
+        self._patch_regular(part, counts_by_table)
+        exp = {"vet": {1, 2, 3}, "ref_ranges": {1, 2, 3},
+               "sample_chromosome_ploidy": {1, 2, 3}, "vcf_header_lines_scratch": {1, 2, 3}}
+
+        r = run_structural_checks(
+            "proj", "ds", exp,
+            regular_table_prefixes=["sample_chromosome_ploidy", "vcf_header_lines_scratch"],
+        )
+
+        # The varying header counts must not fail cardinality, because the header table is never
+        # cardinality-checked -- only ploidy is.
+        self.assertTrue(r["cardinality_ok"])
+        self.assertIn("sample_chromosome_ploidy", r["details"]["cardinality"])
+        self.assertNotIn("vcf_header_lines_scratch", r["details"]["cardinality"])
+        # Completeness still covers the header table (all three samples present).
+        self.assertTrue(r["completeness_ok"])
+        self.assertIn("vcf_header_lines_scratch", r["details"]["family_completeness"]["per_family"])
+
+    def test_missing_header_sample_still_fails_completeness(self):
+        # Dropping the header table from the cardinality check must not blind us to a lost header load:
+        # a sample present in ploidy but absent from headers still fails completeness.
+        part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
+        counts_by_table = {
+            "sample_chromosome_ploidy": {1: 24, 2: 24},
+            "vcf_header_lines_scratch": {1: 30},   # sample 2 missing
+        }
+        self._patch_regular(part, counts_by_table)
+        exp = {"vet": {1, 2}, "ref_ranges": {1, 2},
+               "sample_chromosome_ploidy": {1, 2}, "vcf_header_lines_scratch": {1, 2}}
+
+        r = run_structural_checks(
+            "proj", "ds", exp,
+            regular_table_prefixes=["sample_chromosome_ploidy", "vcf_header_lines_scratch"],
+        )
+
+        self.assertFalse(r["completeness_ok"])
+        header = r["details"]["family_completeness"]["per_family"]["vcf_header_lines_scratch"]
+        self.assertEqual(header["missing_samples"], [2])
+        self.assertTrue(r["cardinality_ok"])  # ploidy still uniform
 
 
 if __name__ == "__main__":
