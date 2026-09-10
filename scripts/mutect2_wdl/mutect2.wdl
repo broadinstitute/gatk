@@ -94,6 +94,8 @@ workflow Mutect2 {
         String? getpileupsummaries_extra_args
         String? collect_allelic_counts_extra_args
         String? split_intervals_extra_args
+        Int? model_segments_min_total_allele_count
+        String? model_segments_extra_args
 
         # additional modes and outputs
         File? realignment_index_bundle
@@ -129,7 +131,7 @@ workflow Mutect2 {
         String? gcs_project_for_requester_pays
 
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
-        Int emergency_extra_disk = 0
+        Int emergency_extra_disk = 20
     }
 
     # Disk sizes used for dynamic sizing
@@ -249,11 +251,39 @@ workflow Mutect2 {
         }
 
         if (defined(normal_reads)) {
-            call MergeAllelicCounts as MergeTumorAllelicCounts {
+            call MergeAllelicCounts as MergeNormalAllelicCounts {
                 input:
                     input_tables = M2.tumor_allelic_counts,
                     runtime_params = standard_runtime
             }
+
+            Int model_segments_normal_disk = ceil(size(MergeNormalAllelicCounts.merged_table, "GB")) + emergency_extra_disk
+            call ModelSegments as ModelSegmentsTumor {
+                input:
+                    entity_id = "normal",
+                    allelic_counts = MergeNormalAllelicCounts.merged_table,
+                    min_total_allele_count = model_segments_min_total_allele_count,
+                    model_segments_extra_args = model_segments_extra_args,
+                    gatk_override = gatk_override,
+                    gatk_docker = gatk_docker,
+                    disk_space_gb = model_segments_normal_disk
+            }
+
+
+        }
+
+        Int model_segments_normal_portion = if defined(normal_reads) then ceil(size(MergeNormalAllelicCounts.merged_table, "GB")) else 0
+        Int model_segments_tumor_disk = ceil(size(MergeTumorAllelicCounts.merged_table, "GB")) + model_segments_normal_portion + emergency_extra_disk
+        call ModelSegments as ModelSegmentsTumor {
+            input:
+                entity_id = "tumor",
+                allelic_counts = MergeTumorAllelicCounts.merged_table,
+                normal_allelic_counts = MergeNormalAllelicCounts.merged_table,
+                min_total_allele_count = model_segments_min_total_allele_count,
+                model_segments_extra_args = model_segments_extra_args,
+                gatk_override = gatk_override,
+                gatk_docker = gatk_docker,
+                disk_space_gb = model_segments_tumor_disk
         }
     }
 
@@ -860,7 +890,6 @@ task ModelSegments {
         File? normal_allelic_counts
         Int? min_total_allele_count
         String? model_segments_extra_args
-        String? output_dir
         File? gatk_override
 
         # Runtime parameters
