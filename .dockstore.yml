@@ -344,6 +344,7 @@ workflows:
              - master
              - ah_var_store
              - pr-9375-docker-size-only
+             - VS-1994
          tags:
              - /.*/
    - name: GvsIngestTieout
