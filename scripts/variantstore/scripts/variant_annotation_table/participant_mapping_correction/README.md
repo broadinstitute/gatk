@@ -38,24 +38,30 @@ rather than diffuse, which is why the table was patched in place rather than reg
 
 # The files, in the order they were run
 
-| File                                           | What it does                                                                                                                                                            |
-|------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `scrub_participant_mapping_table.sql`          | The earlier withdrawn/control scrub of the delivered table. Also documents the four-case taxonomy of representation mismatch that the rest of this work refers back to. |
-| `verify_participant_mapping_scrub.sql`         | Post-hoc validation of that scrub.                                                                                                                                      |
-| `participant-mapping-withdrawn-fix-summary.md` | Write-up of the scrub, including the two VIDs it emptied and the hand-written `INSERT`s that restored them.                                                             |
-| `step4_compare_vds_ft.py`                      | Validates the SQL reconstruction of Hail's `FT` against the VDS itself rather than against arithmetic. Run on a Hail cluster.                                           |
-| `step5_build_exclusions.sql`                   | The single full pass over `alt_allele` that builds the exclusion set: 2,344,756,787 `(vid, person_id)` pairs to remove.                                                 |
-| `step6_patch_mapping_table.sql`                | Builds the corrected copy of the mapping table, plus the rehearsals, cost modeling and validation queries around it.                                                    |
-| `participant-mapping-over-reporting-plan.md`   | The plan of record. Every measurement above is derived and cross-checked here, with results recorded inline as each step ran.                                           |
+The **Kind** column says whether a file can be pointed at another dataset, because that is not apparent from opening one.
+*Tool* means parameterized — placeholders to substitute, or arguments to pass. *Record* means the dataset is hardcoded to
+`foxtrot`, so the file is the log of what was actually run and pointing it elsewhere means editing every reference; there
+are 110 of them in `step6_patch_mapping_table.sql`. *Prose* is a document. Nothing in any category runs as part of a
+workflow.
+
+| File                                           | Kind   | What it does                                                                                                                                                            |
+|------------------------------------------------|--------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `scrub_participant_mapping_table.sql`          | Tool   | The earlier withdrawn/control scrub of the delivered table. Also documents the four-case taxonomy of representation mismatch that the rest of this work refers back to. |
+| `verify_participant_mapping_scrub.sql`         | Tool   | Post-hoc validation of that scrub. Table names are unqualified, so it needs a default dataset set, and the generic `participant_mapping` renamed to the real table.     |
+| `participant-mapping-withdrawn-fix-summary.md` | Prose  | Write-up of the scrub, including the two VIDs it emptied and the hand-written `INSERT`s that restored them.                                                             |
+| `step4_compare_vds_ft.py`                      | Tool   | Validates the SQL reconstruction of Hail's `FT` against the VDS itself rather than against arithmetic. Run on a Hail cluster.                                           |
+| `step5_build_exclusions.sql`                   | Record | The single full pass over `alt_allele` that builds the exclusion set: 2,344,756,787 `(vid, person_id)` pairs to remove.                                                 |
+| `step6_patch_mapping_table.sql`                | Record | Builds the corrected copy of the mapping table, plus the rehearsals, cost modeling and validation queries around it.                                                    |
+| `participant-mapping-over-reporting-plan.md`   | Prose  | The plan of record. Every measurement above is derived and cross-checked here, with results recorded inline as each step ran.                                           |
 
 Supporting scripts, used for spot checks against the VDS rather than as pipeline stages:
 
-| File                                | What it does                                                                             |
-|-------------------------------------|------------------------------------------------------------------------------------------|
-| `vds_carriers_for_vid.py`           | Lists the VDS carriers of one VID.                                                       |
-| `vds_carriers_for_vid_exact.py`     | As above, but matching the allele representation exactly rather than after minimization. |
-| `vds_carriers_report.py`            | Per-VID carrier report used to reconcile the mapping table against the VDS.              |
-| `explain_vid_for_collaborators.sql` | Explains a single VID's carrier set end to end, for answering collaborator questions.    |
+| File                                | Kind   | What it does                                                                             |
+|-------------------------------------|--------|------------------------------------------------------------------------------------------|
+| `vds_carriers_for_vid.py`           | Tool   | Lists the VDS carriers of one VID.                                                       |
+| `vds_carriers_for_vid_exact.py`     | Tool   | As above, but matching the allele representation exactly rather than after minimization. |
+| `vds_carriers_report.py`            | Tool   | Per-VID carrier report used to reconcile the mapping table against the VDS.              |
+| `explain_vid_for_collaborators.sql` | Record | Explains a single VID's carrier set end to end, for answering collaborator questions.    |
 
 `mapping-changes-for-collaborators.md` accompanies the redelivered table. It is the only document here written
 for an outside reader, and it is deliberately narrow: what changed, how much, and how to check it. It says nothing
