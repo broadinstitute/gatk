@@ -218,6 +218,23 @@ class TestAssessFamilyCompleteness(unittest.TestCase):
         r = self._run(part, reg, exp)
         self.assertFalse(r["ok"])
         self.assertEqual(r["per_family"]["vet"]["empty_partition_samples"], [2])
+        # A present-but-empty partition is a partial load, not an absence: it must not also be
+        # double-counted as missing (regression guard for the double-count fix).
+        self.assertEqual(r["per_family"]["vet"]["missing_samples"], [])
+        self.assertEqual(r["per_family"]["vet"]["present"], 1)
+
+    def test_missing_and_empty_are_disjoint(self):
+        # sample 2 present (100 rows), sample 3 empty (0 rows), sample 4 absent entirely. Each must
+        # land in exactly one bucket.
+        part = [("vet_001", 2, 100), ("vet_001", 3, 0)]
+        reg = {"sample_chromosome_ploidy": {2: 24, 3: 24, 4: 24}}
+        exp = {"vet": {2, 3, 4}, "ref_ranges": set(), "sample_chromosome_ploidy": {2, 3, 4}}
+        r = self._run(part, reg, exp)
+        vet = r["per_family"]["vet"]
+        self.assertFalse(vet["ok"])
+        self.assertEqual(vet["missing_samples"], [4])
+        self.assertEqual(vet["empty_partition_samples"], [3])
+        self.assertEqual(vet["present"], 1)
 
     def test_missing_sample_in_one_family(self):
         part = [("vet_001", 1, 100), ("ref_ranges_001", 1, 50)]  # sample 2 absent everywhere

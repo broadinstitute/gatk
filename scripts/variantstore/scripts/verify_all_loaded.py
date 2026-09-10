@@ -38,6 +38,35 @@ from verify_structural_checks import (
 
 log = logging.getLogger(__name__)
 
+# Cap on the per-sample ID lists embedded in the results JSON. On a large-callset failure these lists
+# (missing / empty / deviating samples, duplication outliers) could otherwise hold hundreds of
+# thousands of entries, bloating verification_results.json -- which the WDL re-parses in full on every
+# one of its read_json calls -- and the Cromwell logs. The gating booleans and the human-readable
+# counts logged by _log_structural_summary are computed from the full, uncapped structural result;
+# only the copy written to disk is bounded.
+STRUCTURAL_DETAIL_LIST_CAP = 1000
+
+
+def _cap_structural_detail_lists(obj, cap=STRUCTURAL_DETAIL_LIST_CAP):
+    """
+    Return a copy of the structural-checks detail block with any per-sample list longer than ``cap``
+    truncated to its first ``cap`` entries. Where a list is truncated a sibling ``<key>_total`` key
+    records its true length, so the count survives even though the full enumeration does not (the
+    authoritative set lives in BigQuery). Recurses through the nested dicts (per_family, cardinality,
+    duplication_screen); list elements themselves (ints or small ``{sample_id, ...}`` dicts) are left
+    untouched.
+    """
+    if isinstance(obj, dict):
+        capped = {}
+        for key, value in obj.items():
+            if isinstance(value, list) and len(value) > cap:
+                capped[key] = value[:cap]
+                capped[f"{key}_total"] = len(value)
+            else:
+                capped[key] = _cap_structural_detail_lists(value, cap)
+        return capped
+    return obj
+
 
 def _log_structural_summary(structural):
     """Log a human-readable summary of the independent structural checks."""
@@ -245,8 +274,9 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
         "family_completeness_ok": structural["completeness_ok"],
         "ploidy_cardinality_ok": structural["cardinality_ok"],
         "vet_duplication_flagged": structural["duplication_flagged"],
-        # Full per-check detail for humans and logs.
-        "structural_checks": structural["details"],
+        # Full per-check detail for humans and logs, with per-sample lists bounded so a large-callset
+        # failure cannot bloat this file (which the WDL re-parses on every read_json call).
+        "structural_checks": _cap_structural_detail_lists(structural["details"]),
     }
 
     results_file = f"{output_dir}/verification_results.json"

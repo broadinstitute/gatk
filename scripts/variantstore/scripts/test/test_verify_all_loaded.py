@@ -149,6 +149,40 @@ class TestStructuralChecksGate(VerifyAllLoadedTestBase):
         self.assertTrue(r["vet_duplication_flagged"])
 
 
+class TestStructuralDetailCapped(VerifyAllLoadedTestBase):
+    def test_large_lists_capped_in_json(self):
+        # A failure that produces a huge per-sample list must not bloat the results JSON: the embedded
+        # list is capped and a sibling *_total records the true length.
+        cap = verify_all_loaded.STRUCTURAL_DETAIL_LIST_CAP
+        huge = list(range(cap + 500))
+        structural = _structural(completeness_ok=False)
+        structural["details"]["family_completeness"]["per_family"]["vet"] = {
+            "ok": False, "expected": len(huge), "present": 0,
+            "missing_samples": huge, "empty_partition_samples": [],
+        }
+
+        r = self._run(set(ALL_PAIRS), structural)
+
+        vet = r["structural_checks"]["family_completeness"]["per_family"]["vet"]
+        self.assertEqual(len(vet["missing_samples"]), cap)
+        self.assertEqual(vet["missing_samples_total"], len(huge))
+        # The on-disk JSON carries the same bounded copy.
+        self.assertEqual(self._written_json(), r)
+
+    def test_small_lists_untouched(self):
+        structural = _structural(completeness_ok=False)
+        structural["details"]["family_completeness"]["per_family"]["vet"] = {
+            "ok": False, "expected": 3, "present": 1,
+            "missing_samples": [4], "empty_partition_samples": [3],
+        }
+
+        r = self._run(set(ALL_PAIRS), structural)
+
+        vet = r["structural_checks"]["family_completeness"]["per_family"]["vet"]
+        self.assertEqual(vet["missing_samples"], [4])
+        self.assertNotIn("missing_samples_total", vet)
+
+
 class TestSharedPredicateStillGates(VerifyAllLoadedTestBase):
     def test_missing_pair_blocks_even_when_structural_ok(self):
         loaded = set(ALL_PAIRS) - {("vet_001", 2)}

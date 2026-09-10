@@ -169,7 +169,9 @@ def assess_family_completeness(partition_rows, regular_counts, expected_by_famil
 
     A sample expected in a superpartitioned family whose partition has ``total_rows == 0`` is
     reported separately as ``empty`` -- present to the loader predicate (it may have bytes) but empty
-    in fact, i.e. a partial load the loader-shared check cannot see.
+    in fact, i.e. a partial load the loader-shared check cannot see. It appears under
+    ``empty_partition_samples`` only and is never also counted under ``missing_samples`` -- "missing"
+    means the sample has no partition at all, so the two lists are disjoint.
 
     Returns a dict with an overall ``ok`` and a per-family breakdown.
     """
@@ -192,16 +194,21 @@ def assess_family_completeness(partition_rows, regular_counts, expected_by_famil
     per_family = {}
     overall_ok = True
     for fam, expected in sorted(expected_by_family.items()):
+        expected_set = set(expected)
         present = present_by_family.get(fam, set())
-        # An "empty" partition only matters if that sample was expected for this run.
-        empty = sorted(empty_by_family.get(fam, set()) & set(expected))
-        missing = sorted(set(expected) - present)
+        # A present-but-empty partition (total_rows == 0) is a partial load, reported on its own; an
+        # empty only matters if that sample was expected for this run.
+        empty_set = empty_by_family.get(fam, set()) & expected_set
+        empty = sorted(empty_set)
+        # "Missing" means no partition at all -- neither present nor empty. Excluding the empties here
+        # keeps the two lists disjoint so a present-but-empty sample is not double-counted as missing.
+        missing = sorted(expected_set - present - empty_set)
         fam_ok = not missing and not empty
         overall_ok = overall_ok and fam_ok
         per_family[fam] = {
             "ok": fam_ok,
-            "expected": len(expected),
-            "present": len(present & set(expected)),
+            "expected": len(expected_set),
+            "present": len(present & expected_set),
             "missing_samples": missing,
             "empty_partition_samples": empty,
         }
