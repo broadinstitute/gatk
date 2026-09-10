@@ -12,7 +12,7 @@ For each VID the mappings now list only the participants whose genotypes contrib
 
 Two classes of genotype were incorrectly included in the previous mappings even though the callset does not count them:
 
-**GQ 0 no-calls.** In the v9 srWGS deliverables a genotype with `GQ` 0 is a *no-call*. The participant has no genotype at that site and contributes nothing to `AC`. However the underlying variant record still exists in the GVS source tables and the v9_r2_p3 mappings erroneously included those participants as carriers. This is the source of the discrepancy seen when comparing the v9_r2_p3 mappings against the VDS: the mappings named participants the VDS does not call.
+**GQ 0 no-calls.** In the v9 srWGS deliverables a genotype with `GQ` 0 is a *no-call*. The participant has no genotype at that site and contributes nothing to `AC`. However the underlying variant record still exists in the GVS source tables and the v9_r2_p3 mappings erroneously included those participants as carriers. This is the source of the discrepancy seen when comparing the v9_r2_p3 mappings against the VDS: the mappings named participants the VDS does not call. Please note that the VDS is correct.
 
 **Genotypes failing `FT`.** A genotype that fails the filter does not contribute to `AC`. This did not surface in the v9_r2_p3 participant count comparisons because neither the mappings nor a straightforward VDS carrier count considered `FT`; both sides of the comparison made the same error of ignoring `FT`. Consideration of `FT` was always required for a tieout against `gvs_all_ac`, and will now be required for correct tie outs of participant counts to the v9_r2_p4 mappings.
 
