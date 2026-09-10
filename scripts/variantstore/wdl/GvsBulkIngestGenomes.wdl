@@ -3,6 +3,7 @@ version 1.0
 import "GvsUtils.wdl" as Utils
 import "GvsAssignIds.wdl" as AssignIds
 import "GvsImportGenomes.wdl" as ImportGenomes
+import "GvsValidateVcfHeaders.wdl" as ValidateVcfHeaders
 
 workflow GvsBulkIngestGenomes {
     input {
@@ -52,6 +53,17 @@ workflow GvsBulkIngestGenomes {
         Boolean tighter_gcp_quotas = false
         Boolean is_wgs = true
         # End GvsImportGenomes
+
+        # Begin GvsValidateVcfHeaders (VS-1966)
+        # When true, validate the ingested VCF headers after ingest completes and fail the workflow
+        # if validation fails. Intended for the AoU headers-only pass (load_vcf_headers = true,
+        # load_vet_and_ref_ranges = false): validation then fails fast before any vet/ref ingest.
+        Boolean validate_vcf_headers = false
+        # Exact triplet ('3.7.8', AoU) or a range with optional interval notation ('3.4.12-3.7.8',
+        # '[3.7.8-3.8)', '(3.7-3.8)'); see GvsValidateVcfHeaders.
+        String? expected_dragen_version
+        Boolean require_reblocking = true
+        # End GvsValidateVcfHeaders
 
         Boolean use_parquet_ingest = true
         # `parquet_output_gcs_dir` must be defined if `use_parquet_ingest` is true.
@@ -169,10 +181,32 @@ workflow GvsBulkIngestGenomes {
             is_wgs = is_wgs,
     }
 
+    # VS-1966: validate the ingested headers after ingest. Gated on ImportGenomes.done so it runs
+    # only after the header data has been loaded; fails the workflow if validation fails.
+    if (validate_vcf_headers) {
+        call ValidateVcfHeaders.GvsValidateVcfHeaders as ValidateHeaders {
+            input:
+                go = ImportGenomes.done,
+                dataset_name = dataset_name,
+                project_id = project_id,
+                expected_dragen_version = expected_dragen_version,
+                require_reblocking = require_reblocking,
+                fail_on_validation_errors = true,
+                git_branch_or_tag = git_branch_or_tag,
+                variants_docker = effective_variants_docker,
+                basic_docker = effective_basic_docker,
+        }
+    }
+
     output {
         Boolean done = true
         String recorded_git_hash = effective_git_hash
         Boolean used_tighter_gcp_quotas = ImportGenomes.used_tighter_gcp_quotas
+        # Optional because the ValidateHeaders call is conditional (validate_vcf_headers): Cromwell
+        # surfaces an un-run conditional call's outputs as None, so consumers must treat these as
+        # optional (defined()/select_first). This is the same pattern GvsValidateVDS uses.
+        Boolean? vcf_headers_validation_passed = ValidateHeaders.validation_passed
+        File? vcf_headers_validation_report = ValidateHeaders.validation_report
     }
 }
 

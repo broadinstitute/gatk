@@ -1273,10 +1273,42 @@ task DiscoverParquetFiles {
     # Normalize GCS path to ensure exactly one trailing slash
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
-    # List all objects, filter for Parquet files
+    # List all objects, filter for Parquet files.
+    #
+    # We deliberately tolerate exactly one gcloud failure mode -- stderr containing "One or more
+    # URLs matched no objects" -- and treat it as a legitimately empty directory (proceed with an
+    # empty file list). Every other non-zero exit fails the task. This couples GVS idempotency to
+    # gcloud's error wording; we go into it with open eyes:
+    #   - It is fail-safe. If a future cloud-sdk reworded this message, the empty-directory case
+    #     would stop matching and fall through to the `else`, failing the task loudly (retried, then
+    #     a visible workflow failure) rather than silently loading nothing.
+    #   - gcloud is version-pinned in the Variants image, so the wording can only change at a
+    #     deliberate cloud-sdk bump -- a reviewed, integration-tested event -- not under a running
+    #     pipeline.
+    #   - The match is kept specific (not broadened) so a genuine listing error is never mis-read
+    #     as "empty" -- that would be the one silent, dangerous direction.
+    # A canary asserts this contract against real gcloud + GCS. build_docker.sh runs it inside every
+    # freshly built Variants image (so a cloud-sdk bump that reworded this is caught at rebuild time);
+    # it can also be run standalone:
+    #   scripts/variantstore/scripts/test/gcs_listing_canary/run_gcs_listing_canary.sh
+    # If you change the grep pattern below, change the SENTINEL in that script too.
     echo "Listing files in ${OUTPUT_GCS_DIR}..."
+    set +o errexit
     gcloud storage ls --recursive ~{"--billing-project " + billing_project_id} \
-      "${OUTPUT_GCS_DIR}/" > all_objects.txt || true
+      "${OUTPUT_GCS_DIR}/" > all_objects.txt 2> gcloud_ls_stderr.txt
+    GCLOUD_LS_EXIT_CODE=$?
+    set -o errexit
+
+    if [[ ${GCLOUD_LS_EXIT_CODE} -ne 0 ]]; then
+      if grep -q 'One or more URLs matched no objects' gcloud_ls_stderr.txt; then
+        echo "No objects found under ${OUTPUT_GCS_DIR}/, proceeding with an empty file list."
+        : > all_objects.txt
+      else
+        echo "gcloud storage ls failed unexpectedly:" >&2
+        cat gcloud_ls_stderr.txt >&2
+        exit "${GCLOUD_LS_EXIT_CODE}"
+      fi
+    fi
 
     grep '\.parquet$' all_objects.txt > all_files.txt || touch all_files.txt
 
@@ -1298,6 +1330,7 @@ task DiscoverParquetFiles {
     memory: "4 GB"
     disks: "local-disk 50 HDD"
     preemptible: 3
+    maxRetries: 3
     cpu: 2
   }
 

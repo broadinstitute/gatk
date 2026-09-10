@@ -36,6 +36,12 @@ workflow GvsQuickstartIntegration {
         Int? maximum_alternate_alleles
         File? gatk_override
         Boolean use_parquet_ingest = true
+        # DRAGEN version asserted by the header-validation check. Left unset, the BGE call defaults to
+        # the triplet its samples carry ("3.7.8") and the other header-checked calls run consistency-
+        # only. When set, this value flows to BOTH the VETS/Hail (WGS) call and the BGE call. The WGS
+        # quickstart samples are pre-DRAGEN, so setting this will FAIL the VETS/Hail branch ("expected
+        # version given but no DRAGEN command lines found") until the WGS inputs are DRAGEN (VS-1958).
+        String? expected_dragen_version
     }
 
     String expected_subdir = if (!chr20_X_Y_only) then "all_chrs/"  else ""
@@ -123,6 +129,7 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = vcf_index_files_column_name,
                 sample_set_name = wgs_sample_set_name,
                 bgzip_output_vcfs = true,
+                expected_dragen_version = expected_dragen_version,
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
@@ -239,6 +246,10 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = vcf_index_files_column_name,
                 sample_set_name = exome_sample_set_name,
                 drop_state = "FORTY",
+                # Validate headers on the exome cohort too -- a distinct sample set whose headers are
+                # checked nowhere else. Consistency-only (no expected_dragen_version): the shared
+                # top-level value targets the WGS/BGE cohorts and the exome cohort may differ.
+                load_vcf_headers = true,
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
@@ -279,6 +290,12 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = vcf_index_files_column_name,
                 sample_set_name = bge_sample_set_name,
                 drop_state = "FORTY",
+                # Exercise header loading + validation on the BGE (Parquet-ingest) path so the check
+                # gets integration coverage on a real cohort. The BGE samples (SM-13QO7/SM-3A2WA/
+                # SM-14YML) are GATK-reblocked and each carry DRAGEN "SW: 07.021.604.3.7.8" (triplet
+                # 3.7.8), so assert that by default; a top-level expected_dragen_version overrides it.
+                load_vcf_headers = true,
+                expected_dragen_version = select_first([expected_dragen_version, "3.7.8"]),
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,

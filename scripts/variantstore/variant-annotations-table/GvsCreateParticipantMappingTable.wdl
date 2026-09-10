@@ -61,6 +61,13 @@ task CreateParticipantMappingTable {
         FROM `~{project_id}.~{dataset}.alt_allele` AS aa
                 JOIN `~{project_id}.~{dataset}.sample_info` AS si
                     ON aa.sample_id = si.sample_id
+                        -- `alt_allele` is append-only and is only ever extended for sample ids greater than the
+                        -- maximum already present, so it still contains rows for samples that were withdrawn
+                        -- after those rows were written. Those samples are excluded from the VDS, so they must
+                        -- be excluded here too. Controls are likewise absent from the VDS; the SAFE_CAST below
+                        -- happens to drop non-numeric control sample names, but do not rely on that.
+                        AND si.withdrawn IS NULL
+                        AND si.is_control = false
                 JOIN
             (SELECT vid,
                 vidToLocation(vid) AS location,
