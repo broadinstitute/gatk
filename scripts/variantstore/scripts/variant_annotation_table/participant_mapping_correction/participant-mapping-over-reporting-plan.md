@@ -8,7 +8,7 @@ The VID-to-participant mapping table ships alongside the VAT, and the AoU Resear
 
 An entry is a single `(vid, person_id)` pair. An entry is **over-reported** when `alt_allele` records the person as having that allele, but the callset does not count them as a carrier — the VAT's `gvs_all_ac` for that VID excludes their genotype while the mapping table lists them anyway.
 
-The cause is structural: the mapping table's base join reads `alt_allele`, which holds every call ever ingested, while the VAT counts only genotypes that survive VDS import and the filter model. The withdrawn/control defect is fixed in the WDLs (`11488f657`) and scrubbed from the delivered table. Three cases remain, in two groups.
+The cause is structural: the mapping table's base join reads `alt_allele`, which holds every call ever ingested, while the VAT counts only genotypes that survive VDS import and the filter model. The withdrawn/control defect is fixed in the WDLs (VS-2000, #9421) and scrubbed from the delivered table. Three cases remain, in two groups.
 
 **GQ 0 no-calls.** `import_gvs.py:262` nulls the genotype when `GQ` is 0, so the person has no call in the VDS and contributes nothing to `AC`. The call still exists in `alt_allele` and is still mapped.
 
@@ -409,7 +409,7 @@ A cheap gate for either route: recompute carriers for the 5,776 VIDs at their `i
 
 ### Step 7 — the WDL fix, for the next callset
 
-Apply the corrected predicate to all three joins that took the withdrawn filter in `11488f657`: `GvsCreateParticipantMappingTable`, `GvsMapUnmappedVIDs`, `GvsMapDroppedDuplicateVIDs`. Each gains three inputs — `filter_set_name`, `snp_threshold`, `indel_threshold` — and a new dependency on `filter_set_info`, so this is an interface change for anything that invokes them. Validate on a bounded `range_filter`; no full-scale run is needed now that Step 6 handles the delivered table.
+Apply the corrected predicate to all three joins that took the withdrawn filter in VS-2000 (#9421): `GvsCreateParticipantMappingTable`, `GvsMapUnmappedVIDs`, `GvsMapDroppedDuplicateVIDs`. Each gains three inputs — `filter_set_name`, `snp_threshold`, `indel_threshold` — and a new dependency on `filter_set_info`, so this is an interface change for anything that invokes them. Validate on a bounded `range_filter`; no full-scale run is needed now that Step 6 handles the delivered table.
 
 ### Step 8 — re-export Parquet and re-deliver
 

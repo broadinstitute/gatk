@@ -25,7 +25,7 @@ VAT counts only genotypes that survive VDS import and the filter model. Two clas
     VID's own allele passes and the partner allele is the one that failed — and `0/1` or `1/1` calls whose one allele
     failed the filter model.
 
-A third defect, withdrawn and control samples appearing in the mappings, was fixed in the WDLs by `11488f657` and
+A third defect, withdrawn and control samples appearing in the mappings, was fixed in the WDLs by VS-2000 (#9421) and
 scrubbed from the delivered table separately. That scrub is a prerequisite for this correction, and its artifacts are
 here too.
 
@@ -64,11 +64,6 @@ is `FT`, and the residuals are rare enough (1.6e-05 of the correction) to be wor
 hits one rather than pre-empting at the cost of burying the main point.
 
 # Caveats
-
-**Participant IDs are redacted.** Three AoU person IDs appeared in comments and prose; in these committed copies they are
-`<PERSON_A>`, `<PERSON_B>` and `<PERSON_C>`. This repository is public. The substitution is confined to comments — no
-executable statement referenced a participant ID — but a couple of the commented-out diagnostic queries will need the
-real IDs put back before they can be re-run.
 
 **The plan document records the reasoning as it developed, including corrections.** Several figures were revised as
 measurements replaced estimates, most notably a 2.77× revision to the prevalence estimate after four defects were found in

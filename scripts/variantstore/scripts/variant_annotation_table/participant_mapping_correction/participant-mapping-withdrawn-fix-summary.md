@@ -14,7 +14,7 @@ This is not confined to the newer unmapped-VID and dropped-duplicate steps, whic
 
 ## Fix
 
-Commit `533078da8` adds `AND si.withdrawn IS NULL AND si.is_control = false` to the `ON` clause of all three joins. `ON` rather than `WHERE`, because two of the three already append a conditional `WHERE` for `range_filter`. All three pass `womtool validate`.
+The VS-2000 fix (#9421) adds `AND si.withdrawn IS NULL AND si.is_control = false` to the `ON` clause of all three joins. `ON` rather than `WHERE`, because two of the three already append a conditional `WHERE` for `range_filter`. All three pass `womtool validate`.
 
 `is_control` is included so the predicate matches exactly what `GvsExtractAvroFilesForHail.wdl` puts in the VDS. Controls were not leaking, but only incidentally: `SAFE_CAST(sample_name AS INT64)` yields NULL for a non-numeric control name and `IGNORE NULLS` drops it. That silent guard is precisely what fails for withdrawn AoU samples, whose names are numeric person IDs.
 
@@ -62,7 +62,7 @@ This is narrower than it first appears and is not an independent defect. Write R
 | 3    | No active carrier uses R_LA, and no non-VDS sample sits at R_LA             | nothing, so the VID is unmapped | GvsMapUnmappedVIDs repairs it.                                                                                          |
 | 4    | No active carrier uses R_LA, but a withdrawn or control sample sits at R_LA | only that non-VDS sample        | Broken. A row is written, so the VID never looks unmapped and nothing repairs it.                                       |
 
-The stale `alt_allele` row is the cause rather than an incidental detail — it manufactures a spurious match that suppresses the detection which would otherwise have repaired the VID. Commit `533078da8` therefore fixes this instance: with the filter, case 4 yields no rows, no mapping row is written, and `GvsMapUnmappedVIDs` selects the VID and maps the real carriers. The `is_control` half matters as well, since a control-only match produces a row with an empty `person_ids` array that still counts as mapped.
+The stale `alt_allele` row is the cause rather than an incidental detail — it manufactures a spurious match that suppresses the detection which would otherwise have repaired the VID. The VS-2000 fix (#9421) therefore fixes this instance: with the filter, case 4 yields no rows, no mapping row is written, and `GvsMapUnmappedVIDs` selects the VID and maps the real carriers. The `is_control` half matters as well, since a control-only match produces a row with an empty `person_ids` array that still counts as mapped.
 
 Case 4 has a SECOND trigger that the commit does NOT fix. The spurious R_LA row need not come from a withdrawn or control sample; it is enough that the R_LA representation was excluded from the VAT while R_x was kept. VETS scores representations independently, because `filter_set_info` is keyed by location/ref/alt and nothing in the filtering path knows two representations are synonyms, so R_LA can fail calibration sensitivity while R_x passes. The VAT is hard filtered and `GvsCreateVATFromVDS.wdl` normalizes `filtered_sites_only.bcf`, so filtering happens before normalization: only R_x survives to be normalized, one record results, no duplicate is detected, and `GvsMapDroppedDuplicateVIDs` does not fire. `alt_allele` still holds R_LA regardless of filtering, and its carrier is an ordinary active sample, so the withdrawn/control predicate passes them through and the VID is mapped to a carrier whose variant failed filtering while the passing carrier is missed.
 
@@ -80,13 +80,13 @@ INSERT INTO `foxtrot.vid_to_participant_mapping_2026_08_28` (vid, person_ids)
 VALUES ('1-143186828-T-TG', [<PERSON_B>]);
 ```
 
-The row count is therefore back to 1,601,242,198, matching the pre-scrub table. Note that these two rows are correct only for the representations found; a pipeline re-run with commit `533078da8` would derive them automatically, since with the withdrawn filter in place both VIDs come out unmapped and `GvsMapUnmappedVIDs` maps them.
+The row count is therefore back to 1,601,242,198, matching the pre-scrub table. Note that these two rows are correct only for the representations found; a pipeline re-run with the VS-2000 fix (#9421) would derive them automatically, since with the withdrawn filter in place both VIDs come out unmapped and `GvsMapUnmappedVIDs` maps them.
 
 ## The general defect: the base join applies none of the VDS's inclusion criteria
 
 Everything above is one root cause. `GvsCreateParticipantMappingTable` derives `person_ids` by joining `alt_allele` to `sample_info`, and `alt_allele` holds every call ever ingested. Three separate gates determine what actually reaches the VDS and therefore the VAT, and the join applied none of them.
 
-1. **Sample eligibility.** Withdrawn and control samples are excluded from the VDS by `GvsExtractAvroFilesForHail.wdl`. This is the FIRST defect the collaborator reported, and the one fixed by `533078da8`.
+1. **Sample eligibility.** Withdrawn and control samples are excluded from the VDS by `GvsExtractAvroFilesForHail.wdl`. This is the FIRST defect the collaborator reported, and the one fixed by VS-2000 (#9421).
 2. **Genotype confidence.** `import_gvs.py:262` nulls the genotype when `GQ` is 0: `LGT = hl.parse_call(hl.or_missing(hl.is_missing(var_ht.GQ) | (var_ht.GQ != 0), var_ht.GT))`. A GQ0 call exists in `vet` and `alt_allele`, and `LA` is even populated in the VDS, but the sample is not a carrier there. Not applied by the join. This is the SECOND defect the collaborator reported, raised separately as a participant count mismatch at a specific VID and traced to this cause; see the worked example below.
 3. **Variant and genotype quality.** `FT` is set per genotype at `import_gvs.py:380` as `~any_no & (any_yes | all_ok)`, from `yng_status` and calibration sensitivity. Filtered genotypes stop contributing to `AC`, and `GvsCreateVATFromVDS.wdl:726` drops `AC=0` records. Not applied by the join.
 
@@ -117,7 +117,7 @@ So the prevalence of the normalization mechanism remains unquantified. What can 
 
 ## Follow-ups
 
-- PR commit `533078da8`.
+- VS-2000 (#9421).
 - Verify whether `dropped_duplicate_mappings.tsv` contains every synonym in a cluster or only the dropped ones. `GvsMapDroppedDuplicateVIDs` deletes the base row and re-inserts carriers joined on `dup.input_*` only, so if it carries only the dropped synonyms it discards carriers found at the surviving representation. Case two above rests entirely on that workflow and the commit does not touch it.
 - Consider adding the post-scrub assertion as a pipeline task: no `person_id` in the mapping table belongs to a withdrawn or control sample. About a dollar per run against a 1% sample. This matters more than it would if a safeguard had merely been lost: there was never prior knowledge to carry forward, so nothing but an explicit check will catch the next case that has not yet arisen.
 - `GvsCreateParticipantMappingTable` still uses the explode-and-regroup shape that failed at this scale. The commit adds the filter without changing that structure, so the workflow remains on the failing path for a table this size. Folding in the row-local formulation is worth doing before the next callset.
