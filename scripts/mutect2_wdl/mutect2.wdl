@@ -240,7 +240,7 @@ workflow Mutect2 {
     }
 
     call MergeStats { input: stats = M2.stats, runtime_params = standard_runtime }
-    
+
     if(defined(common_hets_for_segmentation)) {
         call MergeAllelicCounts as MergeTumorAllelicCounts {
                 input:
@@ -849,6 +849,76 @@ task CalculateContamination {
     output {
         File contamination_table = "contamination.table"
         File maf_segments = "segments.table"
+    }
+}
+
+task ModelSegments {
+    input {
+        String entity_id
+        File? denoised_copy_ratios
+        File allelic_counts
+        File? normal_allelic_counts
+        Int? min_total_allele_count
+        String? model_segments_extra_args
+        String? output_dir
+        File? gatk_override
+
+        # Runtime parameters
+        String gatk_docker
+        Int? mem_gb
+        Int? disk_space_gb
+        Boolean use_ssd = false
+        Int? cpu
+        Int? preemptible_attempts
+    }
+
+    Int machine_mem_mb = select_first([mem_gb, 13]) * 1000
+    # ModelSegments seems to need at least 3GB of overhead to run
+    Int command_mem_mb = machine_mem_mb - 3000
+
+    # default values are min_total_allele_count_ = 0 in matched-normal mode
+    #                                            = 30 in case-only mode
+    Int default_min_total_allele_count = if defined(normal_allelic_counts) then 0 else 30
+    Int min_total_allele_count_ = select_first([min_total_allele_count, default_min_total_allele_count])
+
+    command <<<
+        set -e
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+        gatk --java-options "-Xmx~{command_mem_mb}m" ModelSegments \
+            ~{"--denoised-copy-ratios " + denoised_copy_ratios} \
+            --allelic-counts ~{allelic_counts} \
+            ~{"--normal-allelic-counts " + normal_allelic_counts} \
+            --minimum-total-allele-count-case ~{min_total_allele_count_} \
+            ~{model_segments_extra_args} \
+            --output output_dir \
+            --output-prefix ~{entity_id}
+
+        # We need to create the file even if the above command doesn't so we have something to delocalize
+        # If no file is created by the above task then it will copy out an empty file
+        touch output_dir/~{entity_id}.hets.normal.tsv
+    >>>
+
+    runtime {
+        docker: "~{gatk_docker}"
+        memory: machine_mem_mb + " MB"
+        disks: "local-disk " + disk_space_gb + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
+        preemptible: select_first([preemptible_attempts, 2])
+    }
+
+    output {
+        File het_allelic_counts = "output_dir/~{entity_id}.hets.tsv"
+        File normal_het_allelic_counts = "output_dir/~{entity_id}.hets.normal.tsv"
+        File copy_ratio_only_segments = "output_dir/~{entity_id}.cr.seg"
+        File copy_ratio_legacy_segments = "output_dir/~{entity_id}.cr.igv.seg"
+        File allele_fraction_legacy_segments = "output_dir/~{entity_id}.af.igv.seg"
+        File modeled_segments_begin = "output_dir/~{entity_id}.modelBegin.seg"
+        File copy_ratio_parameters_begin = "output_dir/~{entity_id}.modelBegin.cr.param"
+        File allele_fraction_parameters_begin = "output_dir/~{entity_id}.modelBegin.af.param"
+        File modeled_segments = "output_dir/~{entity_id}.modelFinal.seg"
+        File copy_ratio_parameters = "output_dir/~{entity_id}.modelFinal.cr.param"
+        File allele_fraction_parameters = "output_dir/~{entity_id}.modelFinal.af.param"
     }
 }
 
