@@ -228,8 +228,8 @@ def _is_permanently_failed_job(load_job):
 
     A BigQuery load job is atomic: one that terminates with an error_result loaded
     zero rows, so it is safe to supersede with a fresh job ID rather than re-fetching
-    it forever.  A freshly submitted job is PENDING/RUNNING with no error_result and
-    is therefore never considered permanently failed here.
+    it. This predicate only classifies terminal job state; the caller must separately
+    verify that the job was fetched after a Conflict before superseding it.
     """
     return load_job.state == "DONE" and load_job.error_result is not None
 
