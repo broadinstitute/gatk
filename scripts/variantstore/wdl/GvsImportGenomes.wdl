@@ -71,6 +71,14 @@ workflow GvsImportGenomes {
     Boolean is_wgs = true
   }
 
+  parameter_meta {
+    # VS-1989 independent post-load structural checks; documented so these verification controls are
+    # discoverable (womtool inputs, Terra, integration tests) alongside use_parquet_ingest.
+    parquet_vet_duplication_threshold: "VS-1989 post-load verification: ratio-to-callset-median at or above which a vet sample's row count is flagged as a possible duplicate, and (mirrored) at or below median/ratio as a possible truncation. Must be > 1; default 1.6."
+    parquet_strict_vet_screen: "VS-1989 post-load verification: when true, a vet duplication- or truncation-screen flag fails verification and blocks Parquet deletion; when false (default) the screens only warn. Family completeness and ploidy cardinality always gate regardless."
+    parquet_expected_ploidy_rows_per_sample: "VS-1989 post-load verification: exact per-sample sample_chromosome_ploidy row count to validate against (e.g. 24 for WGS) instead of the inferred callset mode; leave unset to infer from the data (correct for exome/BGE/chrM)."
+  }
+
   Int max_auto_scatter_width = if is_wgs then 25000 else 100000
   String genome_type = if is_wgs then "WGS" else "exome"
 

@@ -480,5 +480,35 @@ class TestRunStructuralChecks(unittest.TestCase):
         self.assertTrue(r["cardinality_ok"])  # ploidy still uniform
 
 
+class TestThresholdValidation(unittest.TestCase):
+    """run_structural_checks rejects a nonsensical duplication/truncation ratio before any BigQuery read."""
+
+    def _call(self, threshold):
+        # An invalid threshold must raise before get_partition_row_counts is reached, so no patching is
+        # needed; if the guard were removed the call would instead try to touch BigQuery and error with
+        # a different type, failing these assertRaisesRegex checks.
+        run_structural_checks("proj", "ds", {"vet": {1}}, vet_duplication_threshold=threshold)
+
+    def test_zero_rejected(self):
+        with self.assertRaisesRegex(ValueError, "vet_duplication_threshold"):
+            self._call(0)
+
+    def test_one_rejected(self):
+        with self.assertRaisesRegex(ValueError, "vet_duplication_threshold"):
+            self._call(1)
+
+    def test_below_one_rejected(self):
+        with self.assertRaisesRegex(ValueError, "vet_duplication_threshold"):
+            self._call(0.5)
+
+    def test_infinite_rejected(self):
+        with self.assertRaisesRegex(ValueError, "vet_duplication_threshold"):
+            self._call(float("inf"))
+
+    def test_nan_rejected(self):
+        with self.assertRaisesRegex(ValueError, "vet_duplication_threshold"):
+            self._call(float("nan"))
+
+
 if __name__ == "__main__":
     unittest.main()

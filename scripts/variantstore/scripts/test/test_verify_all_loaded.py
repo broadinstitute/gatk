@@ -252,5 +252,51 @@ class TestSharedPredicateStillGates(VerifyAllLoadedTestBase):
         self.assertTrue(os.path.exists(r["missing_files_list"]))
 
 
+class TestDescribeIncompleteReasons(unittest.TestCase):
+    """The fail-loud operator message names every not-all-loaded cause, including a strict truncation-only failure."""
+
+    def _reasons(self, **over):
+        base = {
+            "missing_files": 0,
+            "unmatched_files": 0,
+            "family_completeness_ok": True,
+            "ploidy_cardinality_ok": True,
+            "structural_checks_ok": True,
+            "vet_duplication_flagged": False,
+            "vet_truncation_flagged": False,
+        }
+        base.update(over)
+        return verify_all_loaded.describe_incomplete_reasons(base)
+
+    def test_clean_results_yield_no_reasons(self):
+        self.assertEqual(self._reasons(), [])
+
+    def test_missing_and_unmatched_named(self):
+        reasons = self._reasons(missing_files=3, unmatched_files=2)
+        self.assertIn("3 file(s) not yet loaded", reasons)
+        self.assertTrue(any("2 file(s) could not be parsed" in r for r in reasons))
+
+    def test_completeness_and_cardinality_named(self):
+        reasons = self._reasons(family_completeness_ok=False, ploidy_cardinality_ok=False)
+        self.assertTrue(any("family completeness" in r for r in reasons))
+        self.assertTrue(any("ploidy cardinality" in r for r in reasons))
+
+    def test_strict_duplication_only_named(self):
+        reasons = self._reasons(structural_checks_ok=False, vet_duplication_flagged=True)
+        self.assertEqual(reasons, ["vet duplication screen flagged samples (--strict-vet-screen)"])
+
+    def test_strict_truncation_only_named(self):
+        # The regression: a truncation-only strict failure must not fall through to "unknown reasons".
+        reasons = self._reasons(structural_checks_ok=False, vet_truncation_flagged=True)
+        self.assertEqual(reasons, ["vet truncation screen flagged samples (--strict-vet-screen)"])
+
+    def test_strict_both_screens_named(self):
+        reasons = self._reasons(structural_checks_ok=False,
+                                vet_duplication_flagged=True, vet_truncation_flagged=True)
+        self.assertEqual(len(reasons), 2)
+        self.assertTrue(any("duplication" in r for r in reasons))
+        self.assertTrue(any("truncation" in r for r in reasons))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -57,6 +57,7 @@ Scope notes (VS-1989):
 """
 
 import logging
+import math
 import statistics
 from collections import Counter, defaultdict
 
@@ -428,6 +429,22 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
     the duplication and truncation screens contribute to the gate only when ``strict_vet_screen`` is
     set (otherwise they warn).
     """
+    # Reject a nonsensical ratio before any BigQuery read. 0 divides by zero in the truncation screen
+    # (median / threshold); any value <= 1 makes ordinary samples satisfy an outlier condition on both
+    # sides (>= threshold * median above, <= median / threshold below), so the screens would flag half
+    # the callset. Fail fast with an actionable message rather than crash mid-verification or silently
+    # flag everything.
+    try:
+        threshold_ok = math.isfinite(vet_duplication_threshold) and vet_duplication_threshold > 1
+    except TypeError:
+        threshold_ok = False
+    if not threshold_ok:
+        raise ValueError(
+            f"vet_duplication_threshold must be a finite number > 1 (got {vet_duplication_threshold!r}); "
+            "a ratio <= 1 flags ordinary samples on both screens and 0 divides by zero in the "
+            "truncation screen."
+        )
+
     if superpartitioned_table_prefixes is None:
         superpartitioned_table_prefixes = ["vet", "ref_ranges"]
     if regular_table_prefixes is None:

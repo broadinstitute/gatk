@@ -157,6 +157,38 @@ def compute_all_loaded(missing_pairs, unmatched_files, structural_checks_ok):
     )
 
 
+def describe_incomplete_reasons(results):
+    """
+    Human-readable reasons a verification came back not-all-loaded, for the fail-loud error line.
+
+    Kept a pure function of the results dict so the operator-facing diagnosis is unit-tested: this line
+    is what an operator reads when a run has aborted, and a strict-screen failure that named the wrong
+    screen -- or fell through to "unknown reasons" -- would misdirect them. The duplication and
+    truncation screens only block deletion under --strict-vet-screen, in which case structural_checks_ok
+    is False while the exact checks (completeness, cardinality) still pass; report whichever screen(s)
+    actually flagged.
+    """
+    reasons = []
+    missing_count = results.get("missing_files", 0) or 0
+    unmatched_count = results.get("unmatched_files", 0) or 0
+    if missing_count:
+        reasons.append(f"{missing_count} file(s) not yet loaded")
+    if unmatched_count:
+        reasons.append(f"{unmatched_count} file(s) could not be parsed or matched to a table/sample_id")
+    if not results.get("family_completeness_ok", True):
+        reasons.append("family completeness check failed (missing or empty partitions)")
+    if not results.get("ploidy_cardinality_ok", True):
+        reasons.append("ploidy cardinality check failed (missing or off-reference samples)")
+    if (not results.get("structural_checks_ok", True)
+            and results.get("family_completeness_ok", True)
+            and results.get("ploidy_cardinality_ok", True)):
+        if results.get("vet_duplication_flagged"):
+            reasons.append("vet duplication screen flagged samples (--strict-vet-screen)")
+        if results.get("vet_truncation_flagged"):
+            reasons.append("vet truncation screen flagged samples (--strict-vet-screen)")
+    return reasons
+
+
 def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
                       superpartitioned_table_prefixes=None, regular_table_prefixes=None,
                       vet_duplication_threshold=DEFAULT_VET_DUPLICATION_THRESHOLD,
@@ -367,8 +399,8 @@ def main():
         "--strict-vet-screen",
         action="store_true",
         help=(
-            "Treat vet duplication-screen flags as a failure (blocking Parquet deletion). "
-            "By default the screen only warns."
+            "Treat vet duplication- or truncation-screen flags as a failure (blocking Parquet "
+            "deletion). By default both screens only warn."
         )
     )
     parser.add_argument(
@@ -398,26 +430,7 @@ def main():
     if results["all_loaded"]:
         log.info("✓ SUCCESS: All files have been loaded!")
     else:
-        missing_count = results.get("missing_files", 0) or 0
-        unmatched_count = results.get("unmatched_files", 0) or 0
-
-        reasons = []
-        if missing_count:
-            reasons.append(f"{missing_count} file(s) not yet loaded")
-        if unmatched_count:
-            reasons.append(
-                f"{unmatched_count} file(s) could not be parsed or matched to a table/sample_id"
-            )
-        if not results.get("family_completeness_ok", True):
-            reasons.append("family completeness check failed (missing or empty partitions)")
-        if not results.get("ploidy_cardinality_ok", True):
-            reasons.append("ploidy cardinality check failed (missing or off-reference samples)")
-        if (results.get("vet_duplication_flagged")
-                and results.get("family_completeness_ok", True)
-                and results.get("ploidy_cardinality_ok", True)
-                and not results.get("structural_checks_ok", True)):
-            reasons.append("vet duplication screen flagged samples (--strict-vet-screen)")
-
+        reasons = describe_incomplete_reasons(results)
         if reasons:
             log.error("✗ INCOMPLETE: " + "; ".join(reasons))
         else:
