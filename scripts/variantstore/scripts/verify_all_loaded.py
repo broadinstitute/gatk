@@ -318,17 +318,19 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
     # This independence has a boundary: expected_by_family is sourced from all_gcs_pairs, which is the
     # same GCS file listing (gcs_files_list, produced upstream by DiscoverParquetFiles) that the loader
     # itself scatters over. Within that listing the checks are now cross-family consistent: a sample
-    # present in some required families but absent from another, AND an entirely absent required family,
-    # are both caught by assess_cross_family_consistency -- it takes the required family set from this
-    # invocation's configured prefixes, so a family with no files is compared as an empty set rather than
-    # silently dropped, and since all families are produced together per sample either gap is a partial
-    # upload -- rather than passing vacuously in the family that lacks the data. What remains outside the
-    # listing is the whole-sample gap: a sample for which Parquet generation never produced output for
-    # ANY family was never in the listing at all, so it is in no family's expected set and no
-    # cross-family union, and stays invisible to every check here -- as opposed to a sample whose files
-    # were produced but never loaded into BigQuery, which the checks do catch. Unlike a whole family,
-    # whose identity is known from the configured prefixes, a never-produced sample's identity is
-    # unknowable without a non-GCS source. Closing that residual gap needs an expected-sample source that
+    # present in some co-produced data families but absent from another, AND an entirely absent
+    # co-produced family, are both caught by assess_cross_family_consistency. It ranges over the group the
+    # Java ingest emits together per sample (vet / ref_ranges / ploidy) rather than over every configured
+    # prefix, so an absent group member is compared as an empty set -- either gap is a partial upload
+    # rather than passing vacuously in the family that lacks the data -- while the check stays presence-
+    # activated: it is dormant unless a group member has files this run, so a supported headers-only ingest
+    # (which produces only vcf_header_lines_scratch, deliberately not a group member) is not falsely
+    # reported incomplete. What remains outside the listing is the whole-sample gap: a sample for which
+    # Parquet generation never produced output for ANY family was never in the listing at all, so it is in
+    # no family's expected set and no cross-family union, and stays invisible to every check here -- as
+    # opposed to a sample whose files were produced but never loaded into BigQuery, which the checks do
+    # catch. Unlike a whole family, whose identity is known from the co-produced group, a never-produced
+    # sample's identity is unknowable without a non-GCS source. Closing that residual gap needs an expected-sample source that
     # does not derive from GCS: specifically this run's input sample set (the ingest FOFN). Note that
     # sample_info cannot serve this wholesale -- it accumulates every sample ever ingested, including
     # ones since withdrawn or deleted, so comparing against it in bulk would false-positive samples that

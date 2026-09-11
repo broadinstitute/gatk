@@ -257,14 +257,16 @@ class TestAssessFamilyCompleteness(unittest.TestCase):
 
 
 class TestAssessCrossFamilyConsistency(unittest.TestCase):
-    """The cross-family gaps assess_family_completeness judges vacuously: a sample present in some
-    required families but absent from another, and an entirely absent required family."""
+    """The cross-family gaps assess_family_completeness judges vacuously: within the co-produced data
+    group (vet / ref_ranges / ploidy, emitted together per sample), a sample present in some members but
+    absent from another, and an entirely absent member. The check is presence-activated -- dormant unless
+    a group member has files this run -- so a headers-only ingest, which produces none of these, passes."""
 
-    REQUIRED = ["vet", "ref_ranges", "sample_chromosome_ploidy"]
+    CO_PRODUCED = ["vet", "ref_ranges", "sample_chromosome_ploidy"]
 
     def test_identical_family_sets_pass(self):
         exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
-        r = assess_cross_family_consistency(exp, self.REQUIRED)
+        r = assess_cross_family_consistency(exp, self.CO_PRODUCED)
         self.assertTrue(r["ok"])
         self.assertEqual(r["union_size"], 2)
 
@@ -273,30 +275,42 @@ class TestAssessCrossFamilyConsistency(unittest.TestCase):
         # cross-family gap. completeness would pass ref_ranges vacuously (it only expects {1}); this
         # catches it.
         exp = {"vet": {1, 2}, "ref_ranges": {1}, "sample_chromosome_ploidy": {1, 2}}
-        r = assess_cross_family_consistency(exp, self.REQUIRED)
+        r = assess_cross_family_consistency(exp, self.CO_PRODUCED)
         self.assertFalse(r["ok"])
         self.assertEqual(r["union_size"], 2)
         self.assertEqual(r["per_family"]["ref_ranges"]["missing_samples"], [2])
         self.assertTrue(r["per_family"]["vet"]["ok"])
         self.assertTrue(r["per_family"]["sample_chromosome_ploidy"]["ok"])
 
-    def test_entirely_absent_required_family_flagged(self):
-        # No vet file was produced for any sample, so vet has no key in expected_by_family -- but it is a
-        # required family, so it is compared as the empty set and flagged missing every sample the other
-        # families carry. (Regression for the whole-family hole: a union over only present families would
-        # drop vet and pass, authorizing deletion of Parquet that lacks all variant data.)
+    def test_entirely_absent_member_flagged(self):
+        # No vet file was produced for any sample, so vet has no key in expected_by_family -- but a sibling
+        # member (ref_ranges / ploidy) is present, so the check activates and vet is compared as the empty
+        # set and flagged missing every sample the other members carry. (Regression for the whole-family
+        # hole: a union over only present families would drop vet and pass, authorizing deletion of Parquet
+        # that lacks all variant data.)
         exp = {"ref_ranges": {1, 2, 3}, "sample_chromosome_ploidy": {1, 2, 3}}
-        r = assess_cross_family_consistency(exp, self.REQUIRED)
+        r = assess_cross_family_consistency(exp, self.CO_PRODUCED)
         self.assertFalse(r["ok"])
         self.assertEqual(r["union_size"], 3)
         self.assertEqual(r["per_family"]["vet"]["missing_samples"], [1, 2, 3])
         self.assertTrue(r["per_family"]["ref_ranges"]["ok"])
         self.assertTrue(r["per_family"]["sample_chromosome_ploidy"]["ok"])
 
-    def test_headers_only_run_passes(self):
-        # A run that produced none of the required data families has an empty union, so no required family
-        # is missing anything -- a legitimate headers-only ingest must not be flagged.
-        r = assess_cross_family_consistency({}, self.REQUIRED)
+    def test_headers_only_run_with_scratch_samples_passes(self):
+        # A supported headers-only ingest lists only vcf_header_lines_scratch in GCS -- with real samples --
+        # while the data prefixes are configured but produce nothing. vcf_header_lines_scratch is not a
+        # co-produced member, so no member is present, the check is dormant, and the run passes. (Regression
+        # for the R10 whole-family fix rejecting the headers-only path: taking the union over every
+        # configured prefix reported every header sample missing from all three data families.)
+        exp = {"vcf_header_lines_scratch": {1, 2, 3}}
+        r = assess_cross_family_consistency(exp, self.CO_PRODUCED)
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["union_size"], 0)
+        self.assertEqual(r["per_family"], {})
+
+    def test_empty_run_passes(self):
+        # No family produced anything at all: no member present, dormant, passes.
+        r = assess_cross_family_consistency({}, self.CO_PRODUCED)
         self.assertTrue(r["ok"])
         self.assertEqual(r["union_size"], 0)
 
@@ -422,8 +436,8 @@ class TestRunStructuralChecks(unittest.TestCase):
 
     def test_entirely_absent_family_fails(self):
         # No vet files at all; ref_ranges + ploidy present for every sample. Completeness passes (nothing
-        # is "expected" for vet, so it is never iterated), but vet is a required family (from the default
-        # prefixes), so the cross-family check compares it as empty and fails all_loaded -- blocking
+        # is "expected" for vet, so it is never iterated), but its co-produced siblings are present, so the
+        # cross-family check activates, compares vet as the empty set, and fails all_loaded -- blocking
         # deletion of Parquet that lacks all variant data.
         part = [("ref_ranges_001", i, 50) for i in (1, 2)]
         self._patch(part, {1: 24, 2: 24})
@@ -434,6 +448,33 @@ class TestRunStructuralChecks(unittest.TestCase):
         self.assertEqual(
             r["details"]["cross_family_consistency"]["per_family"]["vet"]["missing_samples"], [1, 2]
         )
+
+    def test_headers_only_run_passes(self):
+        # A supported headers-only ingest: the WDL configures the data prefixes (vet / ref_ranges /
+        # sample_chromosome_ploidy) alongside vcf_header_lines_scratch, but only header files land, so GCS
+        # lists samples for vcf_header_lines_scratch alone. Completeness passes (only that family is
+        # expected and every sample has header rows), cardinality skips it (variable per-sample counts),
+        # and the cross-family check stays dormant because no co-produced member is present -- so the run
+        # is not falsely reported incomplete. (Regression for the R10 whole-family fix, which took the
+        # union over every configured prefix and reported every header sample missing from all three data
+        # families.)
+        self._patch_regular(
+            [],
+            {
+                "vcf_header_lines_scratch": {1: 10, 2: 12, 3: 8},
+                "sample_chromosome_ploidy": {},
+            },
+        )
+        exp = {"vcf_header_lines_scratch": {1, 2, 3}}
+        r = run_structural_checks(
+            "proj", "ds", exp,
+            superpartitioned_table_prefixes=["vet", "ref_ranges"],
+            regular_table_prefixes=["sample_chromosome_ploidy", "vcf_header_lines_scratch"],
+        )
+        self.assertTrue(r["completeness_ok"])
+        self.assertTrue(r["cardinality_ok"])
+        self.assertTrue(r["cross_family_ok"])
+        self.assertEqual(r["details"]["cross_family_consistency"]["per_family"], {})
 
     def test_partial_ploidy_load_fails_cardinality(self):
         part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]

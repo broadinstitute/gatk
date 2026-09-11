@@ -89,6 +89,16 @@ DEFAULT_DUPLICATION_SCREEN_FAMILIES = ["vet"]
 # "deviating" and fail a valid headers-only ingest.
 DEFAULT_CARDINALITY_TABLE_PREFIXES = ["sample_chromosome_ploidy"]
 
+# Families that Parquet generation produces TOGETHER, per sample, so their sample sets must be
+# identical within a run (the premise the cross-family consistency check rests on): a sample's vet,
+# ref_ranges and ploidy files are all written in the same pass (CreateVariantIngestFiles constructs all
+# three creators unconditionally per sample). ``vcf_header_lines_scratch`` is deliberately NOT a member
+# -- it is produced only on the header-loading path, on its own per-sample cadence, and a supported
+# headers-only ingest produces it while producing none of the data families. The cross-family check
+# activates only when at least one member is present, so a headers-only run (no data family present) is
+# not required to have them and passes; see assess_cross_family_consistency.
+DEFAULT_CO_PRODUCED_FAMILIES = ["vet", "ref_ranges", "sample_chromosome_ploidy"]
+
 # Default ratio-to-median above which a vet sample is flagged as a possible duplicate. Miguel's
 # Foxtrot calibration found vet tight enough that 1.2x is safe against false positives; 1.6x is a
 # conservative default that still catches a doubled sample (~2.0x).
@@ -236,9 +246,9 @@ def assess_family_completeness(partition_rows, regular_counts, expected_by_famil
     return {"ok": overall_ok, "per_family": per_family}
 
 
-def assess_cross_family_consistency(expected_by_family, required_families):
+def assess_cross_family_consistency(expected_by_family, co_produced_families):
     """
-    Cross-check the required families' expected-sample sets against each other (VS-1989; narrows VS-2016).
+    Cross-check the co-produced families' expected-sample sets against each other (VS-1989; narrows VS-2016).
 
     assess_family_completeness derives each family's expected set from that family's OWN GCS output
     files, so a sample for which one family's file was never produced is simply not "expected" in that
@@ -246,32 +256,39 @@ def assess_cross_family_consistency(expected_by_family, required_families):
     verify cleanly, and deletion of a source that is in fact incomplete gets authorized. On the Parquet
     ingest path every sample produces a vet, a ref_ranges and a ploidy file together
     (CreateVariantIngestFiles constructs all three creators unconditionally per sample, and a zero-row
-    file is still written on close), so within a single run the required families' sample sets must be
+    file is still written on close), so within a single run these families' sample sets must be
     identical. Any sample present in some but absent from another is therefore a partial upload -- a real
     incompleteness -- and is caught here from the GCS listing alone, with no external sample source.
 
-    ``required_families`` is what this invocation declares it is loading (the configured superpartitioned
-    + regular table prefixes). Iterating over THAT rather than over the families that happen to appear in
-    ``expected_by_family`` is what catches an ENTIRELY absent family: a family for which not a single file
-    was produced has no key in expected_by_family, so a union taken only over present families would
-    silently omit it and pass while the load lacks all of its data. Each required family is taken as the
-    empty set when absent, so the union of every required family's samples is checked against it and an
-    absent required family is missing all of them. A run that legitimately loads none of the required
-    data families (a headers-only ingest) has an empty union and passes -- the check fires only when SOME
-    required families carry samples that another required family lacks. Required families are assumed
-    produced together per sample, which is the same premise the whole check rests on; a regular table
-    whose sample set legitimately differs must not be listed as required.
+    ``co_produced_families`` is the group known to be generated together per sample (vet / ref_ranges /
+    ploidy; see DEFAULT_CO_PRODUCED_FAMILIES). The check is **presence-activated**: it fires only when at
+    least one member actually has files this run. This is what makes it correct across the phased ingest
+    without a phase flag. A member present-but-absent-from-another is a per-sample partial upload; a
+    member entirely absent while a sibling is present is a whole-family partial upload -- both fail. But
+    a run that produced NONE of the group (a supported headers-only ingest, whose only family is
+    ``vcf_header_lines_scratch`` -- deliberately not a member of this group -- while the data prefixes are
+    still configured, so their files are simply absent) has no member present, so the check is dormant
+    and passes. Membership must be limited to families with a single shared per-sample cadence; a family
+    on a different production cadence (headers) must not be listed, or a legitimate phase that produces
+    one but not the other would false-positive.
 
     This still does NOT close the whole-sample gap tracked in VS-2016: a sample absent from EVERY family
     was never in the GCS listing at all, so it is in no family's set and no union, and stays invisible
     here; catching it needs a non-GCS expected-sample source (this run's ingest FOFN). Unlike a whole
-    family, whose identity we know from the configured prefixes, a never-produced sample's identity is
+    family, whose identity we know from the co-produced group, a never-produced sample's identity is
     unknowable without that source.
 
-    ``expected_by_family`` is ``{family: set(sample_id)}``. Returns an overall ``ok`` plus, per required
-    family, the sample_ids in the cross-family union that this family is missing.
+    ``expected_by_family`` is ``{family: set(sample_id)}``. Returns an overall ``ok`` plus, per member
+    family, the sample_ids in the cross-family union that this family is missing. When no member is
+    present the returned ``per_family`` is empty and ``ok`` is True.
     """
-    families = sorted(required_families)
+    families = sorted(co_produced_families)
+    # Presence-activation: unless at least one co-produced family carries files this run, there is
+    # nothing to cross-check -- treating an absent group as a gap would fail a legitimate headers-only
+    # ingest (which produces none of these families) even though the data prefixes are configured.
+    if not any(expected_by_family.get(fam) for fam in families):
+        return {"ok": True, "union_size": 0, "per_family": {}}
+
     union = set()
     for fam in families:
         union |= expected_by_family.get(fam, set())
@@ -455,7 +472,8 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
                           allow_flagged_vet_loads=False,
                           expected_ploidy_rows_per_sample=None,
                           duplication_screen_families=None,
-                          cardinality_table_prefixes=None):
+                          cardinality_table_prefixes=None,
+                          co_produced_families=None):
     """
     Run the independent structural checks and return a result dict.
 
@@ -509,6 +527,8 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
         duplication_screen_families = DEFAULT_DUPLICATION_SCREEN_FAMILIES
     if cardinality_table_prefixes is None:
         cardinality_table_prefixes = DEFAULT_CARDINALITY_TABLE_PREFIXES
+    if co_produced_families is None:
+        co_produced_families = DEFAULT_CO_PRODUCED_FAMILIES
 
     partition_rows = get_partition_row_counts(
         project_id, dataset_name, superpartitioned_table_prefixes
@@ -523,14 +543,20 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
         superpartitioned_table_prefixes, regular_table_prefixes,
     )
 
-    # Cross-check the families' sample sets against one another. Completeness above judges each family
-    # only against its own GCS listing, so a family whose file was never produced -- for a sample, or for
-    # the whole run -- passes vacuously there; this catches both from the GCS listing alone. The required
-    # family set is this invocation's configured prefixes, so an entirely absent family is compared as an
-    # empty set rather than silently dropped. Exact, so it gates all_loaded alongside completeness and
-    # cardinality (see assess_cross_family_consistency).
-    required_families = list(superpartitioned_table_prefixes) + list(regular_table_prefixes)
-    cross_family = assess_cross_family_consistency(expected_by_family, required_families)
+    # Cross-check the co-produced families' sample sets against one another. Completeness above judges
+    # each family only against its own GCS listing, so a family whose file was never produced -- for a
+    # sample, or for the whole run -- passes vacuously there; this catches both from the GCS listing
+    # alone. The check ranges over the co-produced-data group (vet / ref_ranges / ploidy), which the Java
+    # ingest emits together per sample, NOT over every configured prefix: vcf_header_lines_scratch is on a
+    # different cadence and a headers-only phase produces only it. It is presence-activated -- dormant
+    # unless a group member has files this run -- so that supported headers-only ingest passes while a
+    # per-sample or whole-family gap within the data group still fails. The group is intersected with the
+    # configured prefixes so a run that does not load one of them cannot false-positive on its absence.
+    # Exact, so it gates all_loaded alongside completeness and cardinality (see
+    # assess_cross_family_consistency).
+    configured_families = set(superpartitioned_table_prefixes) | set(regular_table_prefixes)
+    active_co_produced_families = [f for f in co_produced_families if f in configured_families]
+    cross_family = assess_cross_family_consistency(expected_by_family, active_co_produced_families)
 
     # Per-sample cardinality consistency, applied only to regular tables that carry a UNIFORM
     # per-sample row count (ploidy). Tables whose per-sample count legitimately varies -- notably
