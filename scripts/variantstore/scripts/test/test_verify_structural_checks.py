@@ -22,6 +22,7 @@ from verify_structural_checks import (
     get_partition_row_counts,
     get_ploidy_row_counts,
     assess_family_completeness,
+    assess_cross_family_consistency,
     assess_cardinality,
     assess_duplication_screen,
     assess_truncation_screen,
@@ -255,6 +256,41 @@ class TestAssessFamilyCompleteness(unittest.TestCase):
         self.assertTrue(r["ok"])
 
 
+class TestAssessCrossFamilyConsistency(unittest.TestCase):
+    """The cross-family gap assess_family_completeness judges vacuously: a sample present in some
+    families' GCS listing but absent from another's."""
+
+    def test_identical_family_sets_pass(self):
+        exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
+        r = assess_cross_family_consistency(exp)
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["union_size"], 2)
+
+    def test_sample_missing_from_one_family_flagged(self):
+        # sample 2 was produced for vet and ploidy but its ref_ranges file never landed -- the exact
+        # cross-family gap. completeness would pass ref_ranges vacuously (it only expects {1}); this
+        # catches it.
+        exp = {"vet": {1, 2}, "ref_ranges": {1}, "sample_chromosome_ploidy": {1, 2}}
+        r = assess_cross_family_consistency(exp)
+        self.assertFalse(r["ok"])
+        self.assertEqual(r["union_size"], 2)
+        self.assertEqual(r["per_family"]["ref_ranges"]["missing_samples"], [2])
+        self.assertTrue(r["per_family"]["vet"]["ok"])
+        self.assertTrue(r["per_family"]["sample_chromosome_ploidy"]["ok"])
+
+    def test_single_family_run_passes_trivially(self):
+        # A run that legitimately lists only one family has a union equal to that family, so nothing is
+        # missing -- the check must not fire (that would be the whole-family case, VS-2016 territory).
+        r = assess_cross_family_consistency({"ref_ranges": {1, 2, 3}})
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["union_size"], 3)
+
+    def test_empty_input_passes(self):
+        r = assess_cross_family_consistency({})
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["union_size"], 0)
+
+
 class TestAssessDuplicationScreen(unittest.TestCase):
     def test_flags_high_outlier(self):
         part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 220)]
@@ -354,10 +390,25 @@ class TestRunStructuralChecks(unittest.TestCase):
         r = run_structural_checks("proj", "ds", exp)
         self.assertTrue(r["completeness_ok"])
         self.assertTrue(r["cardinality_ok"])
+        self.assertTrue(r["cross_family_ok"])
         self.assertFalse(r["duplication_flagged"])
         self.assertIn("ref_ranges", r["details"]["duplication_unscreened"]["families"])
         self.assertNotIn("vet", r["details"]["duplication_unscreened"]["families"])
         self.assertIn("backfill_caveat", r["details"]["cardinality"]["sample_chromosome_ploidy"])
+
+    def test_cross_family_gap_fails(self):
+        # sample 2's ref_ranges file was never produced, so GCS lists it only for vet/ploidy. Every
+        # listed pair is present in BigQuery, so completeness passes (ref_ranges only expected {1});
+        # the cross-family check catches the gap.
+        part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", 1, 50)]
+        self._patch(part, {1: 24, 2: 24})
+        exp = {"vet": {1, 2}, "ref_ranges": {1}, "sample_chromosome_ploidy": {1, 2}}
+        r = run_structural_checks("proj", "ds", exp)
+        self.assertTrue(r["completeness_ok"])
+        self.assertFalse(r["cross_family_ok"])
+        self.assertEqual(
+            r["details"]["cross_family_consistency"]["per_family"]["ref_ranges"]["missing_samples"], [2]
+        )
 
     def test_partial_ploidy_load_fails_cardinality(self):
         part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]

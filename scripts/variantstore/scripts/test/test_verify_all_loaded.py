@@ -39,17 +39,19 @@ ALL_PAIRS = {
 }
 
 
-def _structural(completeness_ok=True, cardinality_ok=True, duplication_flagged=False,
-                truncation_flagged=False, allow_flagged_vet_loads=False):
+def _structural(completeness_ok=True, cardinality_ok=True, cross_family_ok=True,
+                duplication_flagged=False, truncation_flagged=False, allow_flagged_vet_loads=False):
     """A run_structural_checks return value with the keys verify_all_loaded consumes."""
     return {
         "completeness_ok": completeness_ok,
         "cardinality_ok": cardinality_ok,
+        "cross_family_ok": cross_family_ok,
         "duplication_flagged": duplication_flagged,
         "truncation_flagged": truncation_flagged,
         "allow_flagged_vet_loads": allow_flagged_vet_loads,
         "details": {
             "family_completeness": {"ok": completeness_ok, "per_family": {}},
+            "cross_family_consistency": {"ok": cross_family_ok, "union_size": 0, "per_family": {}},
             "cardinality": {},
             "duplication_screen": {},
             "truncation_screen": {},
@@ -103,6 +105,7 @@ class TestHappyPath(VerifyAllLoadedTestBase):
         self.assertTrue(r["structural_checks_ok"])
         self.assertTrue(r["family_completeness_ok"])
         self.assertTrue(r["ploidy_cardinality_ok"])
+        self.assertTrue(r["cross_family_consistency_ok"])
         self.assertFalse(r["vet_duplication_flagged"])
         self.assertFalse(r["vet_truncation_flagged"])
         self.assertIn("structural_checks", r)
@@ -142,6 +145,17 @@ class TestExactChecksGateAllLoaded(VerifyAllLoadedTestBase):
         self.assertFalse(r["all_loaded"])
         self.assertFalse(r["safe_to_delete_parquet"])
         self.assertFalse(r["family_completeness_ok"])
+
+    def test_cross_family_failure_blocks_all_loaded(self):
+        # A sample present in some families but absent from another (a partial upload) fails all_loaded
+        # even though every listed pair is present in BigQuery -- the cross-family gap completeness
+        # judges vacuously.
+        r = self._run(set(ALL_PAIRS), _structural(cross_family_ok=False))
+        self.assertFalse(r["all_loaded"])
+        self.assertFalse(r["safe_to_delete_parquet"])
+        self.assertFalse(r["structural_checks_ok"])
+        self.assertFalse(r["cross_family_consistency_ok"])
+        self.assertEqual(r["missing_files"], 0)
 
 
 class TestVetScreensGateDeletionNotAllLoaded(VerifyAllLoadedTestBase):
@@ -219,8 +233,9 @@ class TestStructuralDetailCapped(VerifyAllLoadedTestBase):
 
 
 class TestComputeStructuralChecksOk(unittest.TestCase):
-    """The exact structural signal that feeds all_loaded: completeness and cardinality only. The vet
-    screens are deliberately excluded -- they gate safe_to_delete_parquet, not all_loaded."""
+    """The exact structural signal that feeds all_loaded: completeness, cardinality and cross-family
+    consistency only. The vet screens are deliberately excluded -- they gate safe_to_delete_parquet,
+    not all_loaded."""
 
     def _ok(self, structural):
         return verify_all_loaded.compute_structural_checks_ok(structural)
@@ -233,6 +248,9 @@ class TestComputeStructuralChecksOk(unittest.TestCase):
 
     def test_cardinality_failure_gates(self):
         self.assertFalse(self._ok(_structural(cardinality_ok=False)))
+
+    def test_cross_family_failure_gates(self):
+        self.assertFalse(self._ok(_structural(cross_family_ok=False)))
 
     def test_screen_flags_do_not_affect_exact_signal(self):
         self.assertTrue(self._ok(_structural(duplication_flagged=True)))
@@ -304,6 +322,7 @@ class TestDescribeIncompleteReasons(unittest.TestCase):
             "unmatched_files": 0,
             "family_completeness_ok": True,
             "ploidy_cardinality_ok": True,
+            "cross_family_consistency_ok": True,
         }
         base.update(over)
         return verify_all_loaded.describe_incomplete_reasons(base)
@@ -320,6 +339,10 @@ class TestDescribeIncompleteReasons(unittest.TestCase):
         reasons = self._reasons(family_completeness_ok=False, ploidy_cardinality_ok=False)
         self.assertTrue(any("family completeness" in r for r in reasons))
         self.assertTrue(any("ploidy cardinality" in r for r in reasons))
+
+    def test_cross_family_named(self):
+        reasons = self._reasons(cross_family_consistency_ok=False)
+        self.assertTrue(any("cross-family consistency" in r for r in reasons))
 
     def test_screen_flags_do_not_appear(self):
         # Screens gate safe_to_delete_parquet, never all_loaded, so they must not appear as a

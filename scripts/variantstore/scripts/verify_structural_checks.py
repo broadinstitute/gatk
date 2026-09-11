@@ -236,6 +236,46 @@ def assess_family_completeness(partition_rows, regular_counts, expected_by_famil
     return {"ok": overall_ok, "per_family": per_family}
 
 
+def assess_cross_family_consistency(expected_by_family):
+    """
+    Cross-check the per-family expected-sample sets against each other (VS-1989; narrows VS-2016).
+
+    assess_family_completeness derives each family's expected set from that family's OWN GCS output
+    files, so a sample for which one family's file was never produced is simply not "expected" in that
+    family and its absence there passes vacuously -- meanwhile its files in the OTHER families load and
+    verify cleanly, and deletion of a source that is in fact incomplete gets authorized. On the Parquet
+    ingest path every sample produces a vet, a ref_ranges and a ploidy file together
+    (CreateVariantIngestFiles constructs all three creators unconditionally per sample, and a zero-row
+    file is still written on close), so within a single run the families' sample sets must be identical.
+    Any sample present in some families but absent from another is therefore a partial upload -- a real
+    incompleteness -- and is caught here from the GCS listing alone, with no external sample source.
+
+    This deliberately does NOT close the whole-sample gap tracked in VS-2016: a sample absent from EVERY
+    family was never in the GCS listing at all, so it is not in the cross-family union and stays
+    invisible here; that still needs a non-GCS expected-sample source (this run's ingest FOFN). What it
+    does close is the narrower cross-family case -- present in some families, absent from another.
+
+    ``expected_by_family`` is ``{family: set(sample_id)}``. Returns an overall ``ok`` plus, per family,
+    the sample_ids in the cross-family union that this family is missing. A family entirely absent from
+    the listing has no key here and is not cross-checked -- that is the whole-family case above, not a
+    partial gap -- so the check never fires on a run that legitimately loads only one family.
+    """
+    families = sorted(expected_by_family)
+    union = set()
+    for fam in families:
+        union |= expected_by_family[fam]
+
+    per_family = {}
+    overall_ok = True
+    for fam in families:
+        missing = sorted(union - expected_by_family[fam])
+        fam_ok = not missing
+        overall_ok = overall_ok and fam_ok
+        per_family[fam] = {"ok": fam_ok, "missing_samples": missing}
+
+    return {"ok": overall_ok, "union_size": len(union), "per_family": per_family}
+
+
 def assess_cardinality(counts, expected_samples, expected_count=None):
     """
     Check that every expected sample has the *same* per-sample row count and that none is missing.
@@ -425,9 +465,10 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
     mapping.)
 
     The returned dict carries flat booleans read shallowly downstream (``completeness_ok``,
-    ``cardinality_ok``, ``duplication_flagged``, ``truncation_flagged``) plus a nested ``details``
-    block for humans and logs. ``completeness_ok`` and ``cardinality_ok`` are the exact signals that
-    gate ``all_loaded`` (and so the fail-loud abort). The duplication and truncation screens never
+    ``cardinality_ok``, ``cross_family_ok``, ``duplication_flagged``, ``truncation_flagged``) plus a
+    nested ``details`` block for humans and logs. ``completeness_ok``, ``cardinality_ok`` and
+    ``cross_family_ok`` are the exact signals that gate ``all_loaded`` (and so the fail-loud abort).
+    The duplication and truncation screens never
     affect ``all_loaded``; they gate only the separate ``safe_to_delete_parquet`` predicate, and there
     only when ``allow_flagged_vet_loads`` is false (its default). ``allow_flagged_vet_loads`` itself is
     carried through unchanged, purely so the log summary can say whether a flag will block deletion.
@@ -469,6 +510,12 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
         partition_rows, regular_counts, expected_by_family,
         superpartitioned_table_prefixes, regular_table_prefixes,
     )
+
+    # Cross-check the families' sample sets against one another. Completeness above judges each family
+    # only against its own GCS listing, so a family whose file was never produced for a sample passes
+    # vacuously there; this catches that cross-family gap from the GCS listing alone. Exact, so it gates
+    # all_loaded alongside completeness and cardinality (see assess_cross_family_consistency).
+    cross_family = assess_cross_family_consistency(expected_by_family)
 
     # Per-sample cardinality consistency, applied only to regular tables that carry a UNIFORM
     # per-sample row count (ploidy). Tables whose per-sample count legitimately varies -- notably
@@ -524,11 +571,13 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
     return {
         "completeness_ok": completeness["ok"],
         "cardinality_ok": cardinality_ok,
+        "cross_family_ok": cross_family["ok"],
         "duplication_flagged": duplication_flagged,
         "truncation_flagged": truncation_flagged,
         "allow_flagged_vet_loads": allow_flagged_vet_loads,
         "details": {
             "family_completeness": completeness,
+            "cross_family_consistency": cross_family,
             "cardinality": cardinality,
             "duplication_screen": duplication,
             "truncation_screen": truncation,

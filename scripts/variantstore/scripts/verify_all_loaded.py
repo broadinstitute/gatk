@@ -86,6 +86,18 @@ def _log_structural_summary(structural):
                 f"(expected {fam['expected']})"
             )
 
+    cross = details.get("cross_family_consistency")
+    if cross is not None:
+        if cross["ok"]:
+            log.info(f"  [cross-family] all families share the same {cross['union_size']} expected sample(s)")
+        else:
+            for family, fam in sorted(cross["per_family"].items()):
+                if fam["missing_samples"]:
+                    log.error(
+                        f"  [cross-family] {family}: {len(fam['missing_samples'])} sample(s) present in "
+                        f"other families but absent here (of {cross['union_size']} across all families)"
+                    )
+
     for table, card in sorted(details["cardinality"].items()):
         ref_desc = f"{card.get('reference_count')} rows/sample ({card.get('reference_source', 'mode')})"
         if card["ok"]:
@@ -129,13 +141,18 @@ def compute_structural_checks_ok(structural):
     Reduce a run_structural_checks result to the exact structural boolean that feeds all_loaded.
 
     Only the exact checks contribute: family completeness (every expected sample present and
-    non-empty) and per-sample ploidy cardinality. The duplication and truncation screens are
-    heuristics and deliberately do NOT gate all_loaded -- all_loaded is the factual "is the load
-    complete?" signal that fail-loud aborts on, and a heuristic flag does not make a complete load
-    incomplete. The screens instead gate the separate safe_to_delete_parquet predicate (see
-    compute_safe_to_delete_parquet).
+    non-empty), per-sample ploidy cardinality, and cross-family consistency (a sample present in some
+    families must be present in all -- catches the cross-family gap completeness judges vacuously). The
+    duplication and truncation screens are heuristics and deliberately do NOT gate all_loaded --
+    all_loaded is the factual "is the load complete?" signal that fail-loud aborts on, and a heuristic
+    flag does not make a complete load incomplete. The screens instead gate the separate
+    safe_to_delete_parquet predicate (see compute_safe_to_delete_parquet).
     """
-    return structural["completeness_ok"] and structural["cardinality_ok"]
+    return (
+        structural["completeness_ok"]
+        and structural["cardinality_ok"]
+        and structural["cross_family_ok"]
+    )
 
 
 def compute_all_loaded(missing_pairs, unmatched_files, structural_checks_ok):
@@ -183,9 +200,9 @@ def describe_incomplete_reasons(results):
 
     Kept a pure function of the results dict so the operator-facing diagnosis is unit-tested: this line
     is what an operator reads when a run has aborted. Only the exact checks can make all_loaded false
-    (missing/unmatched files, family completeness, ploidy cardinality); the vet duplication and
-    truncation screens never fail all_loaded -- they gate safe_to_delete_parquet instead -- so they are
-    deliberately absent here.
+    (missing/unmatched files, family completeness, ploidy cardinality, cross-family consistency); the
+    vet duplication and truncation screens never fail all_loaded -- they gate safe_to_delete_parquet
+    instead -- so they are deliberately absent here.
     """
     reasons = []
     missing_count = results.get("missing_files", 0) or 0
@@ -198,6 +215,8 @@ def describe_incomplete_reasons(results):
         reasons.append("family completeness check failed (missing or empty partitions)")
     if not results.get("ploidy_cardinality_ok", True):
         reasons.append("ploidy cardinality check failed (missing or off-reference samples)")
+    if not results.get("cross_family_consistency_ok", True):
+        reasons.append("cross-family consistency check failed (a sample present in some families is absent from another)")
     return reasons
 
 
@@ -296,17 +315,22 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
     # Derive, per family, the sample_ids GCS says should be loaded, then run row-count-based checks
     # that share no code with the loader's get_already_loaded_tables_and_sample_ids predicate.
     #
-    # This independence has a boundary: expected_by_family is sourced from all_gcs_pairs, which is
-    # the same GCS file listing (gcs_files_list, produced upstream by DiscoverParquetFiles) that the
-    # loader itself scatters over. A sample for which Parquet generation never produced output files
-    # at all -- as opposed to a sample whose files were produced but never loaded into BigQuery -- was
-    # never "expected" by this listing in the first place, so it is invisible to every check below,
-    # not just to the missing_pairs check above. Closing this needs an expected-sample source that
-    # does not derive from GCS: specifically this run's input sample set (the ingest FOFN). Note that
-    # sample_info cannot serve this wholesale -- it accumulates every sample ever ingested, including
-    # ones since withdrawn or deleted, so comparing against it in bulk would false-positive samples
-    # that are legitimately absent from this run; the expected set has to be scoped to the FOFN for
-    # this run. Tracked as a follow-up in VS-2016 (family-completeness independence); see also VS-1989.
+    # This independence has a boundary: expected_by_family is sourced from all_gcs_pairs, which is the
+    # same GCS file listing (gcs_files_list, produced upstream by DiscoverParquetFiles) that the loader
+    # itself scatters over. Within that listing the checks are now cross-family consistent -- a sample
+    # present in some families but absent from another is caught by assess_cross_family_consistency (all
+    # families are produced together per sample, so such a gap is a partial upload) rather than passing
+    # vacuously in the family that lacks it. What remains outside the listing is the whole-sample gap: a
+    # sample for which Parquet generation never produced output for ANY family was never in the listing
+    # at all, so it is in no family's expected set and no cross-family union, and stays invisible to
+    # every check here -- as opposed to a sample whose files were produced but never loaded into
+    # BigQuery, which the checks do catch. Closing that residual gap needs an expected-sample source
+    # that does not derive from GCS: specifically this run's input sample set (the ingest FOFN). Note
+    # that sample_info cannot serve this wholesale -- it accumulates every sample ever ingested,
+    # including ones since withdrawn or deleted, so comparing against it in bulk would false-positive
+    # samples that are legitimately absent from this run; the expected set has to be scoped to the FOFN
+    # for this run. Tracked as a follow-up in VS-2016 (family-completeness independence); see also
+    # VS-1989.
     expected_by_family = defaultdict(set)
     for table_name, sample_id in all_gcs_pairs:
         family = family_for_table(table_name, superpartitioned_table_prefixes)
@@ -370,6 +394,7 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
         "structural_checks_ok": structural_checks_ok,
         "family_completeness_ok": structural["completeness_ok"],
         "ploidy_cardinality_ok": structural["cardinality_ok"],
+        "cross_family_consistency_ok": structural["cross_family_ok"],
         "vet_duplication_flagged": structural["duplication_flagged"],
         "vet_truncation_flagged": structural["truncation_flagged"],
         # Full per-check detail for humans and logs, with per-sample lists bounded so a large-callset
