@@ -414,6 +414,11 @@ workflow Mutect2 {
         File? permutect_test_dataset = ConcatenatePermutectTestData.concatenated
         File permutect_contigs_table = select_first(M2.permutect_contigs_table)
         File permutect_read_groups_table = select_first(M2.permutect_read_groups_table)
+        
+        File modeled_segments_tumor = ModelSegmentsTumor.modeled_segments
+        File modeled_segments_plot_tumor = PlotModeledSegmentsTumor.modeled_segments_plot
+        File? modeled_segments_normal = ModelSegmentsNormal.modeled_segments
+        File? modeled_segments_plot_normal = PlotModeledSegmentsNormal.modeled_segments_plot
     }
 }
 
