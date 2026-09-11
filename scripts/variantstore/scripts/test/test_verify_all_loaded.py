@@ -202,6 +202,46 @@ class TestStructuralDetailCapped(VerifyAllLoadedTestBase):
         self.assertNotIn("missing_samples_total", vet)
 
 
+class TestComputeStructuralChecksOk(unittest.TestCase):
+    """The structural half of the deletion gate, isolated: exact checks gate, heuristics warn unless strict."""
+
+    def _ok(self, structural, strict):
+        return verify_all_loaded.compute_structural_checks_ok(structural, strict)
+
+    def test_all_ok_passes(self):
+        self.assertTrue(self._ok(_structural(), False))
+
+    def test_completeness_failure_gates_unconditionally(self):
+        self.assertFalse(self._ok(_structural(completeness_ok=False), False))
+
+    def test_cardinality_failure_gates_unconditionally(self):
+        self.assertFalse(self._ok(_structural(cardinality_ok=False), False))
+
+    def test_duplication_warns_by_default_gates_under_strict(self):
+        self.assertTrue(self._ok(_structural(duplication_flagged=True), False))
+        self.assertFalse(self._ok(_structural(duplication_flagged=True), True))
+
+    def test_truncation_warns_by_default_gates_under_strict(self):
+        self.assertTrue(self._ok(_structural(truncation_flagged=True), False))
+        self.assertFalse(self._ok(_structural(truncation_flagged=True), True))
+
+
+class TestComputeAllLoaded(unittest.TestCase):
+    """The deletion gate proper: safe to delete only when nothing is missing/unmatched and structural checks pass."""
+
+    def test_true_when_everything_clean(self):
+        self.assertTrue(verify_all_loaded.compute_all_loaded(set(), [], True))
+
+    def test_missing_pair_blocks(self):
+        self.assertFalse(verify_all_loaded.compute_all_loaded({("vet_001", 2)}, [], True))
+
+    def test_unmatched_file_blocks(self):
+        self.assertFalse(verify_all_loaded.compute_all_loaded(set(), ["gs://b/weird.parquet"], True))
+
+    def test_structural_failure_blocks_even_when_files_all_present(self):
+        self.assertFalse(verify_all_loaded.compute_all_loaded(set(), [], False))
+
+
 class TestSharedPredicateStillGates(VerifyAllLoadedTestBase):
     def test_missing_pair_blocks_even_when_structural_ok(self):
         loaded = set(ALL_PAIRS) - {("vet_001", 2)}

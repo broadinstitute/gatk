@@ -120,6 +120,43 @@ def _log_structural_summary(structural):
         log.info(f"  [duplication] not screened for {unscreened['families']}: {unscreened['reason']}")
 
 
+def compute_structural_checks_ok(structural, strict_vet_screen):
+    """
+    Reduce a run_structural_checks result to the single structural boolean that feeds the deletion gate.
+
+    Only the exact checks gate unconditionally: family completeness (every expected sample present and
+    non-empty) and per-sample ploidy cardinality. The duplication and truncation screens are
+    heuristics and gate only when ``strict_vet_screen`` is set; otherwise they warn. Keeping a
+    heuristic off the default gate is deliberate -- a heuristic's false negatives would lend false
+    confidence before an irreversible delete, whereas a false positive only over-retains Parquet, which
+    is safe.
+    """
+    return (
+        structural["completeness_ok"]
+        and structural["cardinality_ok"]
+        and not (strict_vet_screen
+                 and (structural["duplication_flagged"] or structural["truncation_flagged"]))
+    )
+
+
+def compute_all_loaded(missing_pairs, unmatched_files, structural_checks_ok):
+    """
+    The deletion gate. Returns True only when it is safe to delete the source Parquet: no
+    (table, sample_id) pair the loader should have produced is missing from BigQuery, no GCS file was
+    left unmatched, and the independent structural checks pass (see compute_structural_checks_ok).
+
+    This is the single predicate DeleteParquetFiles is downstream of. It is kept a pure function of its
+    inputs so the deletion-authorizing logic stays trivially testable in isolation -- a regression here
+    authorizes an irreversible delete, so it is the one place in this module that most warrants direct
+    unit tests.
+    """
+    return (
+        len(missing_pairs) == 0
+        and len(unmatched_files) == 0
+        and structural_checks_ok
+    )
+
+
 def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
                       superpartitioned_table_prefixes=None, regular_table_prefixes=None,
                       vet_duplication_threshold=DEFAULT_VET_DUPLICATION_THRESHOLD,
@@ -239,20 +276,10 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
     )
     _log_structural_summary(structural)
 
-    # Family completeness and per-sample cardinality are hard gates; the vet duplication and truncation
-    # screens only gate when strict mode is requested (otherwise they warn).
-    structural_checks_ok = (
-        structural["completeness_ok"]
-        and structural["cardinality_ok"]
-        and not (strict_vet_screen
-                 and (structural["duplication_flagged"] or structural["truncation_flagged"]))
-    )
-
-    all_loaded = (
-        len(missing_pairs) == 0
-        and len(unmatched_files) == 0
-        and structural_checks_ok
-    )
+    # The structural half of the deletion gate (exact checks gate; heuristics warn unless strict) and
+    # the full gate itself are pure helpers, so the deletion-authorizing logic is tested in isolation.
+    structural_checks_ok = compute_structural_checks_ok(structural, strict_vet_screen)
+    all_loaded = compute_all_loaded(missing_pairs, unmatched_files, structural_checks_ok)
 
     # Write list of missing file paths if there are any
     missing_files_list_path = None
