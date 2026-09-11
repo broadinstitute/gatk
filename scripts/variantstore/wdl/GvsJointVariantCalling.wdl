@@ -37,6 +37,12 @@ workflow GvsJointVariantCalling {
         # *NOTE* Parquet ingest off here by default until Parquet becomes the default ingest mode for Beta!
         Boolean use_parquet_ingest = false
         String? parquet_output_gcs_dir
+        # Independent post-load structural checks (VS-1989), forwarded through GvsBulkIngestGenomes to
+        # GvsImportGenomes. Defaults keep the vet screens blocking deletion on a flag and ploidy
+        # mode-inferred.
+        Float parquet_vet_duplication_threshold = 1.6
+        Boolean parquet_allow_flagged_vet_loads = false
+        Int? parquet_expected_ploidy_rows_per_sample
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
         String? billing_project_id
 
@@ -93,6 +99,15 @@ workflow GvsJointVariantCalling {
         File? sample_names_to_extract
         Int? split_intervals_disk_size_override
         Int? split_intervals_mem_override
+    }
+
+    parameter_meta {
+        # VS-1989 independent post-load structural checks, forwarded through GvsBulkIngestGenomes to
+        # GvsImportGenomes; documented so these verification controls are discoverable (womtool inputs,
+        # Terra, integration tests).
+        parquet_vet_duplication_threshold: "VS-1989 post-load verification: ratio-to-callset-median at or above which a vet sample's row count is flagged as a possible duplicate, and (mirrored) at or below median/ratio as a possible truncation. Must be > 1; default 1.6."
+        parquet_allow_flagged_vet_loads: "VS-1989 post-load verification: when false (default), a vet duplication- or truncation-screen flag blocks deletion of the source Parquet (the load still succeeds and its Parquet is retained); when true the screens are waived and deletion proceeds despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless."
+        parquet_expected_ploidy_rows_per_sample: "VS-1989 post-load verification: exact per-sample sample_chromosome_ploidy row count to validate against (e.g. 24 for WGS) instead of the inferred callset mode; leave unset to infer from the data (correct for exome/BGE/chrM)."
     }
 
     # The `call_set_identifier` string is used to name many different things throughout this workflow (BQ tables, vcfs etc).
@@ -167,6 +182,9 @@ workflow GvsJointVariantCalling {
             load_data_scatter_width = load_data_scatter_width,
             use_parquet_ingest = use_parquet_ingest,
             parquet_output_gcs_dir = parquet_output_gcs_dir,
+            parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+            parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+            parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {

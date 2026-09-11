@@ -22,6 +22,12 @@ workflow GvsQuickstartVcfIntegration {
         # (its samples predate DRAGEN, so the DRAGEN check is informational there).
         String? expected_dragen_version
         Boolean use_parquet_ingest = true
+        # VS-1989 independent post-load structural checks, forwarded through GvsJointVariantCalling so an
+        # integration run can exercise them (e.g. set parquet_allow_flagged_vet_loads = true to waive the
+        # screens and let deletion proceed despite a flag).
+        Float parquet_vet_duplication_threshold = 1.6
+        Boolean parquet_allow_flagged_vet_loads = false
+        Int? parquet_expected_ploidy_rows_per_sample
         String drop_state = "FORTY"
         Boolean bgzip_output_vcfs = false
         String dataset_suffix
@@ -136,6 +142,9 @@ workflow GvsQuickstartVcfIntegration {
             extract_output_gcs_dir = extract_output_gcs_dir,
             use_parquet_ingest = use_parquet_ingest,
             parquet_output_gcs_dir = parquet_output_gcs_dir,
+            parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+            parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+            parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
     }
 
     # VS-1966: if headers were loaded, validate them end to end and fail the test if validation fails.
