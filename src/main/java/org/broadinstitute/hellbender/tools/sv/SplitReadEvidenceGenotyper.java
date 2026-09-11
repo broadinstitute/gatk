@@ -258,7 +258,7 @@ public class SplitReadEvidenceGenotyper {
         hetMedian = MEDIAN.evaluate(hetCounts);
         final double[] deviations = DoubleStream.of(hetCounts).map(d -> Math.abs(d - hetMedian)).toArray();
         hetMad = MEDIAN.evaluate(deviations);
-        hetCutoff = hetMedian + 1.645 * hetMad;
+        hetCutoff = hetMedian + 1.4826 * 1.645 * hetMad;
         diagFirstPassVariants = firstPassCounts.size();
         diagFirstPassHetN = hetCounts.length;
         firstPassMade = true;
