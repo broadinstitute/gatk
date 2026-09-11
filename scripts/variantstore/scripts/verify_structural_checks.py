@@ -236,9 +236,9 @@ def assess_family_completeness(partition_rows, regular_counts, expected_by_famil
     return {"ok": overall_ok, "per_family": per_family}
 
 
-def assess_cross_family_consistency(expected_by_family):
+def assess_cross_family_consistency(expected_by_family, required_families):
     """
-    Cross-check the per-family expected-sample sets against each other (VS-1989; narrows VS-2016).
+    Cross-check the required families' expected-sample sets against each other (VS-1989; narrows VS-2016).
 
     assess_family_completeness derives each family's expected set from that family's OWN GCS output
     files, so a sample for which one family's file was never produced is simply not "expected" in that
@@ -246,29 +246,41 @@ def assess_cross_family_consistency(expected_by_family):
     verify cleanly, and deletion of a source that is in fact incomplete gets authorized. On the Parquet
     ingest path every sample produces a vet, a ref_ranges and a ploidy file together
     (CreateVariantIngestFiles constructs all three creators unconditionally per sample, and a zero-row
-    file is still written on close), so within a single run the families' sample sets must be identical.
-    Any sample present in some families but absent from another is therefore a partial upload -- a real
+    file is still written on close), so within a single run the required families' sample sets must be
+    identical. Any sample present in some but absent from another is therefore a partial upload -- a real
     incompleteness -- and is caught here from the GCS listing alone, with no external sample source.
 
-    This deliberately does NOT close the whole-sample gap tracked in VS-2016: a sample absent from EVERY
-    family was never in the GCS listing at all, so it is not in the cross-family union and stays
-    invisible here; that still needs a non-GCS expected-sample source (this run's ingest FOFN). What it
-    does close is the narrower cross-family case -- present in some families, absent from another.
+    ``required_families`` is what this invocation declares it is loading (the configured superpartitioned
+    + regular table prefixes). Iterating over THAT rather than over the families that happen to appear in
+    ``expected_by_family`` is what catches an ENTIRELY absent family: a family for which not a single file
+    was produced has no key in expected_by_family, so a union taken only over present families would
+    silently omit it and pass while the load lacks all of its data. Each required family is taken as the
+    empty set when absent, so the union of every required family's samples is checked against it and an
+    absent required family is missing all of them. A run that legitimately loads none of the required
+    data families (a headers-only ingest) has an empty union and passes -- the check fires only when SOME
+    required families carry samples that another required family lacks. Required families are assumed
+    produced together per sample, which is the same premise the whole check rests on; a regular table
+    whose sample set legitimately differs must not be listed as required.
 
-    ``expected_by_family`` is ``{family: set(sample_id)}``. Returns an overall ``ok`` plus, per family,
-    the sample_ids in the cross-family union that this family is missing. A family entirely absent from
-    the listing has no key here and is not cross-checked -- that is the whole-family case above, not a
-    partial gap -- so the check never fires on a run that legitimately loads only one family.
+    This still does NOT close the whole-sample gap tracked in VS-2016: a sample absent from EVERY family
+    was never in the GCS listing at all, so it is in no family's set and no union, and stays invisible
+    here; catching it needs a non-GCS expected-sample source (this run's ingest FOFN). Unlike a whole
+    family, whose identity we know from the configured prefixes, a never-produced sample's identity is
+    unknowable without that source.
+
+    ``expected_by_family`` is ``{family: set(sample_id)}``. Returns an overall ``ok`` plus, per required
+    family, the sample_ids in the cross-family union that this family is missing.
     """
-    families = sorted(expected_by_family)
+    families = sorted(required_families)
     union = set()
     for fam in families:
-        union |= expected_by_family[fam]
+        union |= expected_by_family.get(fam, set())
 
     per_family = {}
     overall_ok = True
     for fam in families:
-        missing = sorted(union - expected_by_family[fam])
+        present = expected_by_family.get(fam, set())
+        missing = sorted(union - present)
         fam_ok = not missing
         overall_ok = overall_ok and fam_ok
         per_family[fam] = {"ok": fam_ok, "missing_samples": missing}
@@ -512,10 +524,13 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
     )
 
     # Cross-check the families' sample sets against one another. Completeness above judges each family
-    # only against its own GCS listing, so a family whose file was never produced for a sample passes
-    # vacuously there; this catches that cross-family gap from the GCS listing alone. Exact, so it gates
-    # all_loaded alongside completeness and cardinality (see assess_cross_family_consistency).
-    cross_family = assess_cross_family_consistency(expected_by_family)
+    # only against its own GCS listing, so a family whose file was never produced -- for a sample, or for
+    # the whole run -- passes vacuously there; this catches both from the GCS listing alone. The required
+    # family set is this invocation's configured prefixes, so an entirely absent family is compared as an
+    # empty set rather than silently dropped. Exact, so it gates all_loaded alongside completeness and
+    # cardinality (see assess_cross_family_consistency).
+    required_families = list(superpartitioned_table_prefixes) + list(regular_table_prefixes)
+    cross_family = assess_cross_family_consistency(expected_by_family, required_families)
 
     # Per-sample cardinality consistency, applied only to regular tables that carry a UNIFORM
     # per-sample row count (ploidy). Tables whose per-sample count legitimately varies -- notably

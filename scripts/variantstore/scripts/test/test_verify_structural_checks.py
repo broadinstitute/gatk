@@ -257,36 +257,46 @@ class TestAssessFamilyCompleteness(unittest.TestCase):
 
 
 class TestAssessCrossFamilyConsistency(unittest.TestCase):
-    """The cross-family gap assess_family_completeness judges vacuously: a sample present in some
-    families' GCS listing but absent from another's."""
+    """The cross-family gaps assess_family_completeness judges vacuously: a sample present in some
+    required families but absent from another, and an entirely absent required family."""
+
+    REQUIRED = ["vet", "ref_ranges", "sample_chromosome_ploidy"]
 
     def test_identical_family_sets_pass(self):
         exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
-        r = assess_cross_family_consistency(exp)
+        r = assess_cross_family_consistency(exp, self.REQUIRED)
         self.assertTrue(r["ok"])
         self.assertEqual(r["union_size"], 2)
 
     def test_sample_missing_from_one_family_flagged(self):
-        # sample 2 was produced for vet and ploidy but its ref_ranges file never landed -- the exact
+        # sample 2 was produced for vet and ploidy but its ref_ranges file never landed -- the per-sample
         # cross-family gap. completeness would pass ref_ranges vacuously (it only expects {1}); this
         # catches it.
         exp = {"vet": {1, 2}, "ref_ranges": {1}, "sample_chromosome_ploidy": {1, 2}}
-        r = assess_cross_family_consistency(exp)
+        r = assess_cross_family_consistency(exp, self.REQUIRED)
         self.assertFalse(r["ok"])
         self.assertEqual(r["union_size"], 2)
         self.assertEqual(r["per_family"]["ref_ranges"]["missing_samples"], [2])
         self.assertTrue(r["per_family"]["vet"]["ok"])
         self.assertTrue(r["per_family"]["sample_chromosome_ploidy"]["ok"])
 
-    def test_single_family_run_passes_trivially(self):
-        # A run that legitimately lists only one family has a union equal to that family, so nothing is
-        # missing -- the check must not fire (that would be the whole-family case, VS-2016 territory).
-        r = assess_cross_family_consistency({"ref_ranges": {1, 2, 3}})
-        self.assertTrue(r["ok"])
+    def test_entirely_absent_required_family_flagged(self):
+        # No vet file was produced for any sample, so vet has no key in expected_by_family -- but it is a
+        # required family, so it is compared as the empty set and flagged missing every sample the other
+        # families carry. (Regression for the whole-family hole: a union over only present families would
+        # drop vet and pass, authorizing deletion of Parquet that lacks all variant data.)
+        exp = {"ref_ranges": {1, 2, 3}, "sample_chromosome_ploidy": {1, 2, 3}}
+        r = assess_cross_family_consistency(exp, self.REQUIRED)
+        self.assertFalse(r["ok"])
         self.assertEqual(r["union_size"], 3)
+        self.assertEqual(r["per_family"]["vet"]["missing_samples"], [1, 2, 3])
+        self.assertTrue(r["per_family"]["ref_ranges"]["ok"])
+        self.assertTrue(r["per_family"]["sample_chromosome_ploidy"]["ok"])
 
-    def test_empty_input_passes(self):
-        r = assess_cross_family_consistency({})
+    def test_headers_only_run_passes(self):
+        # A run that produced none of the required data families has an empty union, so no required family
+        # is missing anything -- a legitimate headers-only ingest must not be flagged.
+        r = assess_cross_family_consistency({}, self.REQUIRED)
         self.assertTrue(r["ok"])
         self.assertEqual(r["union_size"], 0)
 
@@ -408,6 +418,21 @@ class TestRunStructuralChecks(unittest.TestCase):
         self.assertFalse(r["cross_family_ok"])
         self.assertEqual(
             r["details"]["cross_family_consistency"]["per_family"]["ref_ranges"]["missing_samples"], [2]
+        )
+
+    def test_entirely_absent_family_fails(self):
+        # No vet files at all; ref_ranges + ploidy present for every sample. Completeness passes (nothing
+        # is "expected" for vet, so it is never iterated), but vet is a required family (from the default
+        # prefixes), so the cross-family check compares it as empty and fails all_loaded -- blocking
+        # deletion of Parquet that lacks all variant data.
+        part = [("ref_ranges_001", i, 50) for i in (1, 2)]
+        self._patch(part, {1: 24, 2: 24})
+        exp = {"ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
+        r = run_structural_checks("proj", "ds", exp)
+        self.assertTrue(r["completeness_ok"])
+        self.assertFalse(r["cross_family_ok"])
+        self.assertEqual(
+            r["details"]["cross_family_consistency"]["per_family"]["vet"]["missing_samples"], [1, 2]
         )
 
     def test_partial_ploidy_load_fails_cardinality(self):
