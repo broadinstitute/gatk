@@ -726,11 +726,27 @@ public final class TrainSVGenotyping extends MultiplePassVariantWalker {
         final GenomeLocParser genomeLocParser = new GenomeLocParser(dictionary);
         final GenomeLocSortedSet trainingLocs = IntervalUtils.loadIntervals(Collections.singletonList(trainingIntervalsPath.toString()), IntervalSetRule.UNION, IntervalMergingRule.OVERLAPPING_ONLY, 0, genomeLocParser);
         logger.info("Training on " + trainingLocs.size() + " CNV sites");
-        final List<DepthEvidenceGenotyper.DepthGenotypeResult> genotypeResults = new ArrayList<>();
-        for (final GenomeLoc genomeLoc : trainingLocs) {
-            final DepthMatrix depthMatrix = loader.load(new SimpleInterval(genomeLoc), sampleMedians);
-            genotypeResults.add(depthGenotyper.genotype(depthMatrix));
-        }
+        // Stream the per-interval genotypes into the trainer instead of accumulating a list of all
+        // of them: the list cost ~(training intervals x batch size) memory and OOMed on a
+        // 156-sample whole-genome batch under the task's 16 GiB default.
+        final Iterable<DepthEvidenceGenotyper.DepthGenotypeResult> genotypeResults = () -> new Iterator<DepthEvidenceGenotyper.DepthGenotypeResult>() {
+            private final Iterator<GenomeLoc> locs = trainingLocs.iterator();
+            private long processed = 0;
+
+            @Override
+            public boolean hasNext() {
+                return locs.hasNext();
+            }
+
+            @Override
+            public DepthEvidenceGenotyper.DepthGenotypeResult next() {
+                final DepthEvidenceGenotyper.DepthGenotypeResult result = depthGenotyper.genotype(loader.load(new SimpleInterval(locs.next()), sampleMedians));
+                if (++processed % 100000 == 0) {
+                    logger.info("RD training progress: " + processed + " / " + trainingLocs.size() + " intervals");
+                }
+                return result;
+            }
+        };
         final List<DepthEvidenceGenotyper.CopyStateStats> baseCopyStateStats = depthGenotyper.train(genotypeResults, numTrainingStates);
 
         // Apply minimum separation constraints to produce separate cutoffs for depth-only and PESR variants.
