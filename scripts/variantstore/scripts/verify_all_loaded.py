@@ -105,6 +105,16 @@ def _log_structural_summary(structural):
         else:
             log.warning(f"{level} {family}: {len(outliers)} sample(s) >= {screen['threshold']}x median (warning only)")
 
+    for family, screen in sorted(details.get("truncation_screen", {}).items()):
+        outliers = screen["outliers"]
+        level = "  [truncation]"
+        if not outliers:
+            log.info(f"{level} {family}: no samples <= median/{screen['threshold']} ({screen['median']})")
+        elif structural["strict_vet_screen"]:
+            log.error(f"{level} {family}: {len(outliers)} sample(s) <= median/{screen['threshold']} (STRICT: gating)")
+        else:
+            log.warning(f"{level} {family}: {len(outliers)} sample(s) <= median/{screen['threshold']} (warning only)")
+
     unscreened = details["duplication_unscreened"]
     if unscreened["families"]:
         log.info(f"  [duplication] not screened for {unscreened['families']}: {unscreened['reason']}")
@@ -229,12 +239,13 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
     )
     _log_structural_summary(structural)
 
-    # Family completeness and per-sample cardinality are hard gates; the vet duplication screen only
-    # gates when strict mode is requested (otherwise it warns).
+    # Family completeness and per-sample cardinality are hard gates; the vet duplication and truncation
+    # screens only gate when strict mode is requested (otherwise they warn).
     structural_checks_ok = (
         structural["completeness_ok"]
         and structural["cardinality_ok"]
-        and not (strict_vet_screen and structural["duplication_flagged"])
+        and not (strict_vet_screen
+                 and (structural["duplication_flagged"] or structural["truncation_flagged"]))
     )
 
     all_loaded = (
@@ -274,6 +285,7 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
         "family_completeness_ok": structural["completeness_ok"],
         "ploidy_cardinality_ok": structural["cardinality_ok"],
         "vet_duplication_flagged": structural["duplication_flagged"],
+        "vet_truncation_flagged": structural["truncation_flagged"],
         # Full per-check detail for humans and logs, with per-sample lists bounded so a large-callset
         # failure cannot bloat this file (which the WDL re-parses on every read_json call).
         "structural_checks": _cap_structural_detail_lists(structural["details"]),

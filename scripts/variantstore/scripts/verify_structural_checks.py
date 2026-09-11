@@ -30,7 +30,16 @@ predicate cannot.
 Scope notes (VS-1989):
   * The exact footer-vs-BigQuery per-sample comparison (the gold-standard loss+duplication detector
     from the ticket description) is intentionally deferred: it needs a new heavy image dependency
-    (pyarrow) and a footer read per file, which is prohibitive at AoU scale.
+    (pyarrow) and a footer read per file, which is prohibitive at AoU scale. It would also catch
+    little that the checks here do not. A partial *load* cannot occur: BigQuery load jobs are atomic
+    (``load_parquet_to_bq.py`` loads each batch via ``load_table_from_uri`` with ``WRITE_APPEND``, and
+    a failed job commits nothing), so a present partition is either complete, empty (caught by
+    completeness), or duplicated (caught by the duplication screen). The one residual truncation source
+    is a Parquet file generated upstream with too few rows -- and there the footer count and the
+    BigQuery count agree, so footer-vs-BigQuery would pass it too. That case is instead surfaced
+    cheaply by ``assess_truncation_screen``, a below-median heuristic (the low-side mirror of the
+    duplication screen); catching it exactly would need a gVCF-level variant count, which is out of
+    scope. Do not re-attempt the footer comparison without re-reading this note.
   * ``ref_ranges`` has no cheap per-sample duplication signal -- its row count tracks GQ-band
     transitions, not genome length, and legitimate samples reach many times the median -- so only
     whole-sample presence is verified for it and the gap is recorded rather than papered over. The
@@ -329,6 +338,63 @@ def assess_duplication_screen(partition_rows, family, expected_samples,
     }
 
 
+def assess_truncation_screen(partition_rows, family, expected_samples,
+                             superpartitioned_table_prefixes, threshold):
+    """
+    Flag samples in ``family`` whose ``total_rows`` is at most ``median / threshold`` -- the low-side
+    mirror of ``assess_duplication_screen`` and a heuristic screen for a grossly truncated partition.
+    The same ``threshold`` governs both sides: a sample reads as a possible duplicate above
+    ``threshold * median`` and as a possible truncation below ``median / threshold``. Returns the
+    flagged samples; the caller decides whether flags gate (strict) or merely warn (default).
+
+    This is the only cheap detector for the one truncation source the rest of the row-count gate
+    misses: a Parquet file generated upstream with far fewer rows than its peers. Truncation cannot
+    arise from the load itself -- BigQuery load jobs are atomic (``load_parquet_to_bq.py`` loads each
+    batch via ``load_table_from_uri`` with ``WRITE_APPEND``, and a failed job commits nothing), so a
+    present partition is either complete, empty (zero rows, caught by completeness), or duplicated
+    (caught by the duplication screen), never partially committed. A load-vs-source row comparison
+    (the deferred footer-vs-BigQuery check) would therefore add cost -- a footer read per file, a new
+    pyarrow dependency -- without catching anything this does not: where a source Parquet is itself
+    truncated, its footer count and the BigQuery count agree, so that comparison would pass it too.
+    Catching the upstream case exactly would need a gVCF-level count, which is out of scope; a
+    below-peers heuristic is what remains, and that is this.
+
+    Only meaningful for families with a tight per-sample distribution (``vet``); callers must not apply
+    it to ``ref_ranges``, whose row count varies by orders of magnitude between legitimate samples.
+    Zero-row partitions are excluded here -- that is the completeness check's empty-partition case --
+    so this screen judges only partitions that are present and non-empty.
+    """
+    expected = set(expected_samples)
+    rows_by_sample = {
+        sample_id: total_rows
+        for table_name, sample_id, total_rows in partition_rows
+        if family_for_table(table_name, superpartitioned_table_prefixes) == family
+        and sample_id in expected
+        and total_rows and total_rows > 0
+    }
+
+    if not rows_by_sample:
+        return {"family": family, "threshold": threshold, "median": None,
+                "samples_screened": 0, "outliers": []}
+
+    median = statistics.median(rows_by_sample.values())
+    outliers = []
+    if median > 0:
+        floor = median / threshold
+        for sid, rows in rows_by_sample.items():
+            if rows <= floor:
+                outliers.append({"sample_id": sid, "rows": rows, "ratio": round(rows / median, 3)})
+    outliers.sort(key=lambda d: d["ratio"])
+
+    return {
+        "family": family,
+        "threshold": threshold,
+        "median": median,
+        "samples_screened": len(rows_by_sample),
+        "outliers": outliers,
+    }
+
+
 def run_structural_checks(project_id, dataset_name, expected_by_family,
                           superpartitioned_table_prefixes=None, regular_table_prefixes=None,
                           vet_duplication_threshold=DEFAULT_VET_DUPLICATION_THRESHOLD,
@@ -356,10 +422,11 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
     with differing exact counts are ever added this single override would need to become a per-table
     mapping.)
 
-    The returned dict carries flat booleans the WDL reads shallowly (``completeness_ok``,
-    ``cardinality_ok``, ``duplication_flagged``) plus a nested ``details`` block for humans and logs.
-    ``completeness_ok`` and ``cardinality_ok`` are the hard-gate signals; the duplication screen only
-    contributes to the gate when ``strict_vet_screen`` is set.
+    The returned dict carries flat booleans read shallowly downstream (``completeness_ok``,
+    ``cardinality_ok``, ``duplication_flagged``, ``truncation_flagged``) plus a nested ``details``
+    block for humans and logs. ``completeness_ok`` and ``cardinality_ok`` are the hard-gate signals;
+    the duplication and truncation screens contribute to the gate only when ``strict_vet_screen`` is
+    set (otherwise they warn).
     """
     if superpartitioned_table_prefixes is None:
         superpartitioned_table_prefixes = ["vet", "ref_ranges"]
@@ -402,12 +469,20 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
         cardinality[prefix] = result
         cardinality_ok = cardinality_ok and result["ok"]
 
-    # Duplication screen on the usable superpartitioned families only (vet). ref_ranges is recorded
-    # as intentionally unchecked.
+    # Duplication and truncation screens on the usable superpartitioned families only (vet): same
+    # families, same threshold, opposite sides of the median. ref_ranges is recorded as intentionally
+    # unchecked. The truncation screen is the low-side mirror -- it catches a grossly under-rowed
+    # partition, the one truncation source a row-count gate can produce cheaply (see
+    # assess_truncation_screen for why an exact load-vs-source comparison would add nothing here).
     duplication = {}
+    truncation = {}
     for family in duplication_screen_families:
         if family in superpartitioned_table_prefixes:
             duplication[family] = assess_duplication_screen(
+                partition_rows, family, expected_by_family.get(family, set()),
+                superpartitioned_table_prefixes, vet_duplication_threshold,
+            )
+            truncation[family] = assess_truncation_screen(
                 partition_rows, family, expected_by_family.get(family, set()),
                 superpartitioned_table_prefixes, vet_duplication_threshold,
             )
@@ -424,16 +499,19 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
     }
 
     duplication_flagged = any(d["outliers"] for d in duplication.values())
+    truncation_flagged = any(t["outliers"] for t in truncation.values())
 
     return {
         "completeness_ok": completeness["ok"],
         "cardinality_ok": cardinality_ok,
         "duplication_flagged": duplication_flagged,
+        "truncation_flagged": truncation_flagged,
         "strict_vet_screen": strict_vet_screen,
         "details": {
             "family_completeness": completeness,
             "cardinality": cardinality,
             "duplication_screen": duplication,
+            "truncation_screen": truncation,
             "duplication_unscreened": unscreened,
         },
     }

@@ -24,6 +24,7 @@ from verify_structural_checks import (
     assess_family_completeness,
     assess_cardinality,
     assess_duplication_screen,
+    assess_truncation_screen,
     run_structural_checks,
 )
 
@@ -280,6 +281,49 @@ class TestAssessDuplicationScreen(unittest.TestCase):
         self.assertEqual(r["outliers"], [])
 
 
+class TestAssessTruncationScreen(unittest.TestCase):
+    """Low-side mirror of the duplication screen: flags a grossly under-rowed vet partition."""
+
+    def test_flags_low_outlier(self):
+        # sample 9 has 1 row where its peers have 100 -- a truncated partition. floor = 100/1.6 = 62.5.
+        part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 1)]
+        r = assess_truncation_screen(part, "vet", set(range(1, 10)), ["vet", "ref_ranges"], 1.6)
+        self.assertEqual(r["median"], 100)
+        self.assertEqual([o["sample_id"] for o in r["outliers"]], [9])
+        self.assertAlmostEqual(r["outliers"][0]["ratio"], 0.01)
+
+    def test_uniform_no_outliers(self):
+        part = [("vet_001", i, 100) for i in range(1, 6)]
+        r = assess_truncation_screen(part, "vet", set(range(1, 6)), ["vet", "ref_ranges"], 1.6)
+        self.assertEqual(r["outliers"], [])
+
+    def test_mild_dip_within_threshold_not_flagged(self):
+        # A sample at 70% of the median is above the floor (median/1.6 = 62.5%) and must not flag.
+        part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 70)]
+        r = assess_truncation_screen(part, "vet", set(range(1, 10)), ["vet", "ref_ranges"], 1.6)
+        self.assertEqual(r["outliers"], [])
+
+    def test_zero_row_partition_not_screened(self):
+        # A 0-row partition is the completeness check's empty case, not truncation's: it is excluded
+        # here (only present, non-empty partitions are judged) so it is not double-reported.
+        part = [("vet_001", i, 100) for i in range(1, 6)] + [("vet_001", 6, 0)]
+        r = assess_truncation_screen(part, "vet", set(range(1, 7)), ["vet", "ref_ranges"], 1.6)
+        self.assertEqual(r["samples_screened"], 5)
+        self.assertEqual(r["outliers"], [])
+
+    def test_other_family_not_screened(self):
+        part = [("vet_001", i, 100) for i in range(1, 6)]
+        r = assess_truncation_screen(part, "ref_ranges", set(range(1, 6)), ["vet", "ref_ranges"], 1.6)
+        self.assertEqual(r["samples_screened"], 0)
+        self.assertEqual(r["outliers"], [])
+
+    def test_only_expected_samples_screened(self):
+        part = [("vet_001", i, 100) for i in range(1, 6)] + [("vet_001", 99, 1)]
+        r = assess_truncation_screen(part, "vet", set(range(1, 6)), ["vet", "ref_ranges"], 1.6)
+        self.assertEqual(r["samples_screened"], 5)
+        self.assertEqual(r["outliers"], [])
+
+
 class TestRunStructuralChecks(unittest.TestCase):
     """run_structural_checks with the two BigQuery helpers patched (no BQ touched)."""
 
@@ -336,6 +380,38 @@ class TestRunStructuralChecks(unittest.TestCase):
         self.assertTrue(r["completeness_ok"])
         self.assertTrue(r["cardinality_ok"])
         self.assertFalse(r["strict_vet_screen"])
+
+    def test_nonzero_truncated_vet_partition_flagged_not_gated_by_default(self):
+        # Regression for the Copilot finding: a vet partition present with a *nonzero* but grossly
+        # truncated row count (1 where peers have 100) passes completeness (it is not empty) and is not
+        # a high-side duplicate, yet the low-side truncation screen surfaces it. Warn-only by default,
+        # so the hard gates stay green and deletion is not blocked unless --strict-vet-screen is set.
+        part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 1)]
+        part += [("ref_ranges_001", i, 50) for i in range(1, 10)]
+        self._patch(part, {i: 24 for i in range(1, 10)})
+        exp = {"vet": set(range(1, 10)), "ref_ranges": set(range(1, 10)),
+               "sample_chromosome_ploidy": set(range(1, 10))}
+
+        r = run_structural_checks("proj", "ds", exp, strict_vet_screen=False)
+        self.assertTrue(r["truncation_flagged"])
+        self.assertFalse(r["duplication_flagged"])
+        # The hard gates do not see it -- present and non-empty, uniform ploidy.
+        self.assertTrue(r["completeness_ok"])
+        self.assertTrue(r["cardinality_ok"])
+        truncation = r["details"]["truncation_screen"]["vet"]
+        self.assertEqual([o["sample_id"] for o in truncation["outliers"]], [9])
+
+    def test_truncation_screen_covers_vet_only(self):
+        # ref_ranges is deliberately unscreened (wide per-sample distribution), so its detail is a
+        # zero-sample screen even when a ref_ranges partition is tiny.
+        part = ([("vet_001", i, 100) for i in (1, 2)]
+                + [("ref_ranges_001", 1, 50), ("ref_ranges_001", 2, 1)])
+        self._patch(part, {1: 24, 2: 24})
+        exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
+        r = run_structural_checks("proj", "ds", exp)
+        self.assertFalse(r["truncation_flagged"])
+        self.assertIn("vet", r["details"]["truncation_screen"])
+        self.assertNotIn("ref_ranges", r["details"]["truncation_screen"])
 
     def test_expected_ploidy_override_gates_uniform_wrong_count(self):
         # Every sample uniformly carries 25 ploidy rows. Mode-based inference passes (25 is the mode);

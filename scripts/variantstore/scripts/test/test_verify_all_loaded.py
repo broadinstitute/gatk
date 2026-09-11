@@ -37,17 +37,19 @@ ALL_PAIRS = {
 
 
 def _structural(completeness_ok=True, cardinality_ok=True, duplication_flagged=False,
-                strict_vet_screen=False):
+                truncation_flagged=False, strict_vet_screen=False):
     """A run_structural_checks return value with the keys verify_all_loaded consumes."""
     return {
         "completeness_ok": completeness_ok,
         "cardinality_ok": cardinality_ok,
         "duplication_flagged": duplication_flagged,
+        "truncation_flagged": truncation_flagged,
         "strict_vet_screen": strict_vet_screen,
         "details": {
             "family_completeness": {"ok": completeness_ok, "per_family": {}},
             "cardinality": {},
             "duplication_screen": {},
+            "truncation_screen": {},
             "duplication_unscreened": {"families": ["ref_ranges"], "reason": "not screened"},
         },
     }
@@ -98,6 +100,7 @@ class TestHappyPath(VerifyAllLoadedTestBase):
         self.assertTrue(r["family_completeness_ok"])
         self.assertTrue(r["ploidy_cardinality_ok"])
         self.assertFalse(r["vet_duplication_flagged"])
+        self.assertFalse(r["vet_truncation_flagged"])
         self.assertIn("structural_checks", r)
         # The JSON on disk matches the returned dict.
         self.assertEqual(self._written_json(), r)
@@ -147,6 +150,22 @@ class TestStructuralChecksGate(VerifyAllLoadedTestBase):
         self.assertFalse(r["all_loaded"])
         self.assertFalse(r["structural_checks_ok"])
         self.assertTrue(r["vet_duplication_flagged"])
+
+    def test_vet_truncation_warns_by_default(self):
+        r = self._run(set(ALL_PAIRS), _structural(truncation_flagged=True))
+        self.assertTrue(r["all_loaded"])
+        self.assertTrue(r["structural_checks_ok"])
+        self.assertTrue(r["vet_truncation_flagged"])
+
+    def test_vet_truncation_gates_under_strict(self):
+        r = self._run(
+            set(ALL_PAIRS),
+            _structural(truncation_flagged=True, strict_vet_screen=True),
+            strict_vet_screen=True,
+        )
+        self.assertFalse(r["all_loaded"])
+        self.assertFalse(r["structural_checks_ok"])
+        self.assertTrue(r["vet_truncation_flagged"])
 
 
 class TestStructuralDetailCapped(VerifyAllLoadedTestBase):
