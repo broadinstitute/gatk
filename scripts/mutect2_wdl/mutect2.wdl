@@ -272,8 +272,8 @@ workflow Mutect2 {
             call PlotModeledSegments as PlotModeledSegmentsNormal {
                 input:
                     entity_id = "normal",
-                    het_allelic_counts = ModelSegmentsNormal.het_allelic_counts,
-                    modeled_segments = ModelSegmentsNormal.modeled_segments,
+                    het_allelic_counts = select_first([ModelSegmentsNormal.het_allelic_counts]),
+                    modeled_segments = select_first([ModelSegmentsNormal.modeled_segments]),
                     ref_dict = ref_dict,
                     gatk_override = gatk_override,
                     gatk_docker = gatk_docker
