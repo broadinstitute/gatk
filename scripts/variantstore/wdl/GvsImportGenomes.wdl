@@ -60,10 +60,12 @@ workflow GvsImportGenomes {
     Boolean use_alternate_parquet_delete_strategy = false
 
     # Independent post-load structural checks (VS-1989). The vet duplication screen flags any sample
-    # whose vet row count is >= this ratio of the callset median; by default it only warns, and gates
-    # deletion (all_loaded=false) only when parquet_strict_vet_screen is set.
+    # whose vet row count is >= this ratio of the callset median (and the truncation screen the low-side
+    # mirror). By default a flag blocks deletion of the source Parquet -- the load still succeeds and
+    # its Parquet is retained; set parquet_allow_flagged_vet_loads to waive the screens and delete
+    # anyway.
     Float parquet_vet_duplication_threshold = 1.6
-    Boolean parquet_strict_vet_screen = false
+    Boolean parquet_allow_flagged_vet_loads = false
     # If set, the exact per-sample ploidy row count to validate against (e.g. 24 for WGS) instead of
     # the callset mode. Leave unset to infer the reference from the data (correct for exome/BGE/chrM).
     Int? parquet_expected_ploidy_rows_per_sample
@@ -75,7 +77,7 @@ workflow GvsImportGenomes {
     # VS-1989 independent post-load structural checks; documented so these verification controls are
     # discoverable (womtool inputs, Terra, integration tests) alongside use_parquet_ingest.
     parquet_vet_duplication_threshold: "VS-1989 post-load verification: ratio-to-callset-median at or above which a vet sample's row count is flagged as a possible duplicate, and (mirrored) at or below median/ratio as a possible truncation. Must be > 1; default 1.6."
-    parquet_strict_vet_screen: "VS-1989 post-load verification: when true, a vet duplication- or truncation-screen flag fails verification and blocks Parquet deletion; when false (default) the screens only warn. Family completeness and ploidy cardinality always gate regardless."
+    parquet_allow_flagged_vet_loads: "VS-1989 post-load verification: when false (default), a vet duplication- or truncation-screen flag blocks deletion of the source Parquet (the load still succeeds and its Parquet is retained); when true the screens are waived and deletion proceeds despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless."
     parquet_expected_ploidy_rows_per_sample: "VS-1989 post-load verification: exact per-sample sample_chromosome_ploidy row count to validate against (e.g. 24 for WGS) instead of the inferred callset mode; leave unset to infer from the data (correct for exome/BGE/chrM)."
   }
 
@@ -314,7 +316,7 @@ workflow GvsImportGenomes {
         regular_table_prefixes = parquet_regular_prefixes,
         superpartitioned_table_prefixes = parquet_superpartitioned_prefixes,
         vet_duplication_threshold = parquet_vet_duplication_threshold,
-        strict_vet_screen = parquet_strict_vet_screen,
+        allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
         expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
         verification_diagnostics_gcs_dir = defined_parquet_output_dir + "/verification_diagnostics",
         billing_project_id = billing_project_id,
@@ -322,7 +324,7 @@ workflow GvsImportGenomes {
         variants_docker = effective_variants_docker,
     }
 
-    if (delete_parquet_files_after_loading && VerifyParquetLoading.all_loaded) {
+    if (delete_parquet_files_after_loading && VerifyParquetLoading.safe_to_delete_parquet) {
       call DeleteParquetFiles {
         input:
           output_gcs_dir = defined_parquet_output_dir,
@@ -385,15 +387,19 @@ workflow GvsImportGenomes {
     #@ except: UnnecessaryFunctionCall
     Array[File] load_data_stderrs = select_first([select_all(GenerateParquetFilesFromInputGVCFs.stderr), select_all(LoadDataViaBigQueryWriteAPI.stderr)])
     Boolean? parquet_loading_verified = VerifyParquetLoading.all_loaded
+    Boolean? parquet_safe_to_delete = VerifyParquetLoading.safe_to_delete_parquet
     Int? parquet_files_loaded = VerifyParquetLoading.loaded_files
     Int? parquet_total_files = VerifyParquetLoading.total_files
-    # Independent structural-check observability (VS-1989). Both warn-only vet screens -- duplication and
-    # truncation -- are surfaced here: they are warn-only by default, so either can be observed true on a
-    # successful run. The composite structural verdict and its family-completeness / ploidy-cardinality
-    # components are hard checks that fail the fail-loud VerifyParquetLoading task, whose outputs Cromwell
-    # then never delocalizes -- so they could only ever be read as true and are not published. The full
-    # verdict (including those components) is written to verification_results.json, copied to a durable
-    # diagnostics path on failure.
+    # Independent structural-check observability (VS-1989). parquet_loading_verified (all_loaded) is the
+    # factual "load complete?" verdict; parquet_safe_to_delete (safe_to_delete_parquet) is the deletion
+    # gate. They differ exactly when a vet screen flagged on an otherwise-complete load -- a case that
+    # now SUCCEEDS (all_loaded true) yet retains its Parquet (safe_to_delete_parquet false) unless
+    # parquet_allow_flagged_vet_loads waived the screens. Both vet screen flags are surfaced so that
+    # difference is observable on a successful run. The family-completeness / ploidy-cardinality
+    # components are exact checks that fail the fail-loud VerifyParquetLoading task, whose outputs
+    # Cromwell then never delocalizes -- so they could only ever be read as true and are not published;
+    # the full verdict is written to verification_results.json, copied to a durable diagnostics path on
+    # failure.
     Boolean? parquet_vet_duplication_flagged = VerifyParquetLoading.vet_duplication_flagged
     Boolean? parquet_vet_truncation_flagged = VerifyParquetLoading.vet_truncation_flagged
   }
@@ -1400,9 +1406,10 @@ task VerifyParquetLoading {
     File gcs_files_list
     Array[String] regular_table_prefixes = ["sample_chromosome_ploidy"]
     Array[String] superpartitioned_table_prefixes = ["vet", "ref_ranges"]
-    # Independent structural checks (VS-1989): duplication-screen ratio and whether a flag gates deletion.
+    # Independent structural checks (VS-1989): duplication-screen ratio and whether a screen flag is
+    # waived. By default (false) a flag blocks Parquet deletion; true waives the screens.
     Float vet_duplication_threshold = 1.6
-    Boolean strict_vet_screen = false
+    Boolean allow_flagged_vet_loads = false
     # Exact per-sample ploidy row count to validate against (e.g. 24 for WGS); unset infers the mode.
     Int? expected_ploidy_rows_per_sample
     # Optional durable location for the verdict JSON. This task is fail-loud -- a bad load exits non-zero
@@ -1440,7 +1447,7 @@ task VerifyParquetLoading {
       --regular-table-prefixes ~{sep=" " regular_table_prefixes} \
       --superpartitioned-table-prefixes ~{sep=" " superpartitioned_table_prefixes} \
       --vet-duplication-threshold ~{vet_duplication_threshold} \
-      ~{true="--strict-vet-screen" false="" strict_vet_screen} \
+      ~{true="--allow-flagged-vet-loads" false="" allow_flagged_vet_loads} \
       ~{"--expected-ploidy-rows-per-sample " + expected_ploidy_rows_per_sample} \
       --output-dir verification_output || rc=$?
 
@@ -1467,17 +1474,23 @@ task VerifyParquetLoading {
     # TODO: Sprocket flags read_json indexing as invalid on Union type; fix by upgrading to WDL 1.1 and using struct coercion — see VS-1957.
     File results_json = "verification_output/verification_results.json"
     Boolean all_loaded = read_json(results_json)["all_loaded"]
+    # The deletion gate DeleteParquetFiles is conditioned on: all_loaded AND no unwaived vet-screen flag.
+    # Distinct from all_loaded so a flagged-but-complete load succeeds (all_loaded true, this task exits
+    # zero) yet retains its Parquet (safe_to_delete_parquet false). Meaningful precisely on a task that
+    # succeeds, so -- unlike the exact-check components below -- it is safe to publish as a task output.
+    Boolean safe_to_delete_parquet = read_json(results_json)["safe_to_delete_parquet"]
     Int total_files = read_json(results_json)["total_files"]
     Int loaded_files = read_json(results_json)["loaded_files"]
     Int missing_files = read_json(results_json)["missing_files"]
     File? missing_files_list = "verification_output/missing_files.txt"
-    # Independent structural-check observability (VS-1989), read shallowly. Both warn-only vet screens --
-    # duplication and truncation -- are exposed as task outputs: warn-only by default, so they are
-    # meaningful on a task that succeeds. The composite structural verdict and its family-completeness /
-    # ploidy-cardinality components are hard checks -- when any fails, verify_all_loaded.py exits non-zero
-    # and this task fails, at which point Cromwell does not evaluate these outputs at all. Publishing them
-    # as task outputs would therefore only ever yield true, so they are omitted; the complete verdict
-    # lives in results_json (copied to the durable diagnostics path on failure).
+    # Independent structural-check observability (VS-1989), read shallowly. Both vet screens --
+    # duplication and truncation -- are exposed as task outputs: they never fail all_loaded (they gate
+    # safe_to_delete_parquet instead), so they are meaningful on a task that succeeds. The
+    # family-completeness / ploidy-cardinality components are exact checks -- when any fails,
+    # verify_all_loaded.py exits non-zero and this task fails, at which point Cromwell does not evaluate
+    # these outputs at all. Publishing them as task outputs would therefore only ever yield true, so they
+    # are omitted; the complete verdict lives in results_json (copied to the durable diagnostics path on
+    # failure).
     Boolean vet_duplication_flagged = read_json(results_json)["vet_duplication_flagged"]
     Boolean vet_truncation_flagged = read_json(results_json)["vet_truncation_flagged"]
     Boolean done = true

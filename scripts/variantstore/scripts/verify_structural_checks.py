@@ -303,7 +303,7 @@ def assess_duplication_screen(partition_rows, family, expected_samples,
     """
     Flag samples in ``family`` whose ``total_rows`` is at least ``threshold`` times the callset
     median -- a heuristic screen for duplication. Returns the flagged samples; the caller decides
-    whether flags gate (strict) or merely warn (default).
+    whether a flag blocks Parquet deletion (the default) or is waived (``allow_flagged_vet_loads``).
 
     Only meaningful for families with a tight per-sample distribution (``vet``); callers must not
     apply it to ``ref_ranges``.
@@ -346,7 +346,8 @@ def assess_truncation_screen(partition_rows, family, expected_samples,
     mirror of ``assess_duplication_screen`` and a heuristic screen for a grossly truncated partition.
     The same ``threshold`` governs both sides: a sample reads as a possible duplicate above
     ``threshold * median`` and as a possible truncation below ``median / threshold``. Returns the
-    flagged samples; the caller decides whether flags gate (strict) or merely warn (default).
+    flagged samples; the caller decides whether a flag blocks Parquet deletion (the default) or is
+    waived (``allow_flagged_vet_loads``).
 
     This is the only cheap detector for the one truncation source the rest of the row-count gate
     misses: a Parquet file generated upstream with far fewer rows than its peers. Truncation cannot
@@ -399,7 +400,7 @@ def assess_truncation_screen(partition_rows, family, expected_samples,
 def run_structural_checks(project_id, dataset_name, expected_by_family,
                           superpartitioned_table_prefixes=None, regular_table_prefixes=None,
                           vet_duplication_threshold=DEFAULT_VET_DUPLICATION_THRESHOLD,
-                          strict_vet_screen=False,
+                          allow_flagged_vet_loads=False,
                           expected_ploidy_rows_per_sample=None,
                           duplication_screen_families=None,
                           cardinality_table_prefixes=None):
@@ -425,9 +426,11 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
 
     The returned dict carries flat booleans read shallowly downstream (``completeness_ok``,
     ``cardinality_ok``, ``duplication_flagged``, ``truncation_flagged``) plus a nested ``details``
-    block for humans and logs. ``completeness_ok`` and ``cardinality_ok`` are the hard-gate signals;
-    the duplication and truncation screens contribute to the gate only when ``strict_vet_screen`` is
-    set (otherwise they warn).
+    block for humans and logs. ``completeness_ok`` and ``cardinality_ok`` are the exact signals that
+    gate ``all_loaded`` (and so the fail-loud abort). The duplication and truncation screens never
+    affect ``all_loaded``; they gate only the separate ``safe_to_delete_parquet`` predicate, and there
+    only when ``allow_flagged_vet_loads`` is false (its default). ``allow_flagged_vet_loads`` itself is
+    carried through unchanged, purely so the log summary can say whether a flag will block deletion.
     """
     # Reject a nonsensical ratio before any BigQuery read. 0 divides by zero in the truncation screen
     # (median / threshold); any value <= 1 makes ordinary samples satisfy an outlier condition on both
@@ -523,7 +526,7 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
         "cardinality_ok": cardinality_ok,
         "duplication_flagged": duplication_flagged,
         "truncation_flagged": truncation_flagged,
-        "strict_vet_screen": strict_vet_screen,
+        "allow_flagged_vet_loads": allow_flagged_vet_loads,
         "details": {
             "family_completeness": completeness,
             "cardinality": cardinality,

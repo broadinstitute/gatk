@@ -374,25 +374,27 @@ class TestRunStructuralChecks(unittest.TestCase):
         exp = {"vet": set(range(1, 10)), "ref_ranges": set(range(1, 10)),
                "sample_chromosome_ploidy": set(range(1, 10))}
 
-        r = run_structural_checks("proj", "ds", exp, strict_vet_screen=False)
+        r = run_structural_checks("proj", "ds", exp, allow_flagged_vet_loads=False)
         self.assertTrue(r["duplication_flagged"])
-        # Completeness and cardinality (the hard gates) are unaffected by a warn-only screen.
+        # Completeness and cardinality (the exact checks that gate all_loaded) are unaffected by a
+        # screen flag; the screen only bears on safe_to_delete_parquet.
         self.assertTrue(r["completeness_ok"])
         self.assertTrue(r["cardinality_ok"])
-        self.assertFalse(r["strict_vet_screen"])
+        self.assertFalse(r["allow_flagged_vet_loads"])
 
     def test_nonzero_truncated_vet_partition_flagged_not_gated_by_default(self):
         # Regression for the Copilot finding: a vet partition present with a *nonzero* but grossly
         # truncated row count (1 where peers have 100) passes completeness (it is not empty) and is not
-        # a high-side duplicate, yet the low-side truncation screen surfaces it. Warn-only by default,
-        # so the hard gates stay green and deletion is not blocked unless --strict-vet-screen is set.
+        # a high-side duplicate, yet the low-side truncation screen surfaces it. The exact checks stay
+        # green (so all_loaded stays true); the flag bears only on safe_to_delete_parquet, which blocks
+        # deletion by default unless --allow-flagged-vet-loads is set.
         part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 1)]
         part += [("ref_ranges_001", i, 50) for i in range(1, 10)]
         self._patch(part, {i: 24 for i in range(1, 10)})
         exp = {"vet": set(range(1, 10)), "ref_ranges": set(range(1, 10)),
                "sample_chromosome_ploidy": set(range(1, 10))}
 
-        r = run_structural_checks("proj", "ds", exp, strict_vet_screen=False)
+        r = run_structural_checks("proj", "ds", exp, allow_flagged_vet_loads=False)
         self.assertTrue(r["truncation_flagged"])
         self.assertFalse(r["duplication_flagged"])
         # The hard gates do not see it -- present and non-empty, uniform ploidy.

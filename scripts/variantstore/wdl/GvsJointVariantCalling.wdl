@@ -38,9 +38,10 @@ workflow GvsJointVariantCalling {
         Boolean use_parquet_ingest = false
         String? parquet_output_gcs_dir
         # Independent post-load structural checks (VS-1989), forwarded through GvsBulkIngestGenomes to
-        # GvsImportGenomes. Defaults preserve warn-only vet screening and mode-inferred ploidy.
+        # GvsImportGenomes. Defaults keep the vet screens blocking deletion on a flag and ploidy
+        # mode-inferred.
         Float parquet_vet_duplication_threshold = 1.6
-        Boolean parquet_strict_vet_screen = false
+        Boolean parquet_allow_flagged_vet_loads = false
         Int? parquet_expected_ploidy_rows_per_sample
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
         String? billing_project_id
@@ -105,7 +106,7 @@ workflow GvsJointVariantCalling {
         # GvsImportGenomes; documented so these verification controls are discoverable (womtool inputs,
         # Terra, integration tests).
         parquet_vet_duplication_threshold: "VS-1989 post-load verification: ratio-to-callset-median at or above which a vet sample's row count is flagged as a possible duplicate, and (mirrored) at or below median/ratio as a possible truncation. Must be > 1; default 1.6."
-        parquet_strict_vet_screen: "VS-1989 post-load verification: when true, a vet duplication- or truncation-screen flag fails verification and blocks Parquet deletion; when false (default) the screens only warn. Family completeness and ploidy cardinality always gate regardless."
+        parquet_allow_flagged_vet_loads: "VS-1989 post-load verification: when false (default), a vet duplication- or truncation-screen flag blocks deletion of the source Parquet (the load still succeeds and its Parquet is retained); when true the screens are waived and deletion proceeds despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless."
         parquet_expected_ploidy_rows_per_sample: "VS-1989 post-load verification: exact per-sample sample_chromosome_ploidy row count to validate against (e.g. 24 for WGS) instead of the inferred callset mode; leave unset to infer from the data (correct for exome/BGE/chrM)."
     }
 
@@ -182,7 +183,7 @@ workflow GvsJointVariantCalling {
             use_parquet_ingest = use_parquet_ingest,
             parquet_output_gcs_dir = parquet_output_gcs_dir,
             parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
-            parquet_strict_vet_screen = parquet_strict_vet_screen,
+            parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
             parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
     }
 

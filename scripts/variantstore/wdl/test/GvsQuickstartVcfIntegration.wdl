@@ -23,9 +23,10 @@ workflow GvsQuickstartVcfIntegration {
         String? expected_dragen_version
         Boolean use_parquet_ingest = true
         # VS-1989 independent post-load structural checks, forwarded through GvsJointVariantCalling so an
-        # integration run can exercise them (e.g. set parquet_strict_vet_screen = true to gate on the screens).
+        # integration run can exercise them (e.g. set parquet_allow_flagged_vet_loads = true to waive the
+        # screens and let deletion proceed despite a flag).
         Float parquet_vet_duplication_threshold = 1.6
-        Boolean parquet_strict_vet_screen = false
+        Boolean parquet_allow_flagged_vet_loads = false
         Int? parquet_expected_ploidy_rows_per_sample
         String drop_state = "FORTY"
         Boolean bgzip_output_vcfs = false
@@ -142,7 +143,7 @@ workflow GvsQuickstartVcfIntegration {
             use_parquet_ingest = use_parquet_ingest,
             parquet_output_gcs_dir = parquet_output_gcs_dir,
             parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
-            parquet_strict_vet_screen = parquet_strict_vet_screen,
+            parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
             parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
     }
 

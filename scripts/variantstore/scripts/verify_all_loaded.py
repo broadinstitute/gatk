@@ -13,8 +13,12 @@ Two layers of verification run here, and only together do they gate deletion of 
 2. Independent structural checks (verify_structural_checks.py). These ask "how many rows?" via
    INFORMATION_SCHEMA.PARTITIONS.total_rows and a per-sample COUNT(*) on the ploidy table -- signals
    the loader predicate never consults -- so they can catch partial loads and duplication. Family
-   completeness and ploidy cardinality gate deletion; the vet duplication screen warns by default and
-   only gates under --strict-vet-screen.
+   completeness and ploidy cardinality are exact checks: they gate all_loaded, the factual "is the
+   load complete?" signal that fail-loud aborts on. The vet duplication and truncation screens are
+   heuristics -- they never affect all_loaded, and instead gate the separate safe_to_delete_parquet
+   predicate, which is what authorizes deleting the source Parquet. A screen flag blocks that deletion
+   by default and is waived only with --allow-flagged-vet-loads, so a flagged-but-complete load
+   succeeds and simply retains its Parquet rather than failing the import.
 
 Neither layer requires or consults a parquet_load_status tracking table.
 """
@@ -100,55 +104,51 @@ def _log_structural_summary(structural):
         level = "  [duplication]"
         if not outliers:
             log.info(f"{level} {family}: no samples >= {screen['threshold']}x median ({screen['median']})")
-        elif structural["strict_vet_screen"]:
-            log.error(f"{level} {family}: {len(outliers)} sample(s) >= {screen['threshold']}x median (STRICT: gating)")
+        elif structural["allow_flagged_vet_loads"]:
+            log.warning(f"{level} {family}: {len(outliers)} sample(s) >= {screen['threshold']}x median (warning only; --allow-flagged-vet-loads set)")
         else:
-            log.warning(f"{level} {family}: {len(outliers)} sample(s) >= {screen['threshold']}x median (warning only)")
+            log.error(f"{level} {family}: {len(outliers)} sample(s) >= {screen['threshold']}x median (blocks Parquet deletion)")
 
     for family, screen in sorted(details.get("truncation_screen", {}).items()):
         outliers = screen["outliers"]
         level = "  [truncation]"
         if not outliers:
             log.info(f"{level} {family}: no samples <= median/{screen['threshold']} ({screen['median']})")
-        elif structural["strict_vet_screen"]:
-            log.error(f"{level} {family}: {len(outliers)} sample(s) <= median/{screen['threshold']} (STRICT: gating)")
+        elif structural["allow_flagged_vet_loads"]:
+            log.warning(f"{level} {family}: {len(outliers)} sample(s) <= median/{screen['threshold']} (warning only; --allow-flagged-vet-loads set)")
         else:
-            log.warning(f"{level} {family}: {len(outliers)} sample(s) <= median/{screen['threshold']} (warning only)")
+            log.error(f"{level} {family}: {len(outliers)} sample(s) <= median/{screen['threshold']} (blocks Parquet deletion)")
 
     unscreened = details["duplication_unscreened"]
     if unscreened["families"]:
         log.info(f"  [duplication] not screened for {unscreened['families']}: {unscreened['reason']}")
 
 
-def compute_structural_checks_ok(structural, strict_vet_screen):
+def compute_structural_checks_ok(structural):
     """
-    Reduce a run_structural_checks result to the single structural boolean that feeds the deletion gate.
+    Reduce a run_structural_checks result to the exact structural boolean that feeds all_loaded.
 
-    Only the exact checks gate unconditionally: family completeness (every expected sample present and
+    Only the exact checks contribute: family completeness (every expected sample present and
     non-empty) and per-sample ploidy cardinality. The duplication and truncation screens are
-    heuristics and gate only when ``strict_vet_screen`` is set; otherwise they warn. Keeping a
-    heuristic off the default gate is deliberate -- a heuristic's false negatives would lend false
-    confidence before an irreversible delete, whereas a false positive only over-retains Parquet, which
-    is safe.
+    heuristics and deliberately do NOT gate all_loaded -- all_loaded is the factual "is the load
+    complete?" signal that fail-loud aborts on, and a heuristic flag does not make a complete load
+    incomplete. The screens instead gate the separate safe_to_delete_parquet predicate (see
+    compute_safe_to_delete_parquet).
     """
-    return (
-        structural["completeness_ok"]
-        and structural["cardinality_ok"]
-        and not (strict_vet_screen
-                 and (structural["duplication_flagged"] or structural["truncation_flagged"]))
-    )
+    return structural["completeness_ok"] and structural["cardinality_ok"]
 
 
 def compute_all_loaded(missing_pairs, unmatched_files, structural_checks_ok):
     """
-    The deletion gate. Returns True only when it is safe to delete the source Parquet: no
-    (table, sample_id) pair the loader should have produced is missing from BigQuery, no GCS file was
-    left unmatched, and the independent structural checks pass (see compute_structural_checks_ok).
+    The factual "is the load complete?" gate, and the signal fail-loud aborts on. Returns True only
+    when no (table, sample_id) pair the loader should have produced is missing from BigQuery, no GCS
+    file was left unmatched, and the exact structural checks pass (see compute_structural_checks_ok).
 
-    This is the single predicate DeleteParquetFiles is downstream of. It is kept a pure function of its
-    inputs so the deletion-authorizing logic stays trivially testable in isolation -- a regression here
-    authorizes an irreversible delete, so it is the one place in this module that most warrants direct
-    unit tests.
+    all_loaded is deliberately NOT the deletion gate: the heuristic vet screens are excluded here so a
+    flagged-but-complete load still reads as loaded and its task succeeds (retaining its Parquet)
+    rather than aborting the import. Whether it is safe to delete the source Parquet is the separate
+    compute_safe_to_delete_parquet predicate, which layers the screen policy on top of this. Kept a
+    pure function of its inputs so both predicates stay trivially testable in isolation.
     """
     return (
         len(missing_pairs) == 0
@@ -157,16 +157,35 @@ def compute_all_loaded(missing_pairs, unmatched_files, structural_checks_ok):
     )
 
 
+def compute_safe_to_delete_parquet(all_loaded, structural, allow_flagged_vet_loads):
+    """
+    The deletion gate -- the single predicate DeleteParquetFiles is downstream of. Returns True only
+    when the load is factually complete (all_loaded) AND no heuristic vet screen objects, unless the
+    operator has explicitly waived the screens with allow_flagged_vet_loads.
+
+    Gating the irreversible delete on a screen flag by default is the safe direction: a screen false
+    positive here only over-retains Parquet (cheap and reversible), whereas trusting a flagged load and
+    deleting its source is not. Waiving the screens is therefore an opt-out (--allow-flagged-vet-loads),
+    so the default never deletes anything a screen objected to. Kept a pure function so the
+    deletion-authorizing logic is unit-tested in isolation -- a regression here authorizes an
+    irreversible delete.
+    """
+    if not all_loaded:
+        return False
+    if allow_flagged_vet_loads:
+        return True
+    return not (structural["duplication_flagged"] or structural["truncation_flagged"])
+
+
 def describe_incomplete_reasons(results):
     """
     Human-readable reasons a verification came back not-all-loaded, for the fail-loud error line.
 
     Kept a pure function of the results dict so the operator-facing diagnosis is unit-tested: this line
-    is what an operator reads when a run has aborted, and a strict-screen failure that named the wrong
-    screen -- or fell through to "unknown reasons" -- would misdirect them. The duplication and
-    truncation screens only block deletion under --strict-vet-screen, in which case structural_checks_ok
-    is False while the exact checks (completeness, cardinality) still pass; report whichever screen(s)
-    actually flagged.
+    is what an operator reads when a run has aborted. Only the exact checks can make all_loaded false
+    (missing/unmatched files, family completeness, ploidy cardinality); the vet duplication and
+    truncation screens never fail all_loaded -- they gate safe_to_delete_parquet instead -- so they are
+    deliberately absent here.
     """
     reasons = []
     missing_count = results.get("missing_files", 0) or 0
@@ -179,20 +198,13 @@ def describe_incomplete_reasons(results):
         reasons.append("family completeness check failed (missing or empty partitions)")
     if not results.get("ploidy_cardinality_ok", True):
         reasons.append("ploidy cardinality check failed (missing or off-reference samples)")
-    if (not results.get("structural_checks_ok", True)
-            and results.get("family_completeness_ok", True)
-            and results.get("ploidy_cardinality_ok", True)):
-        if results.get("vet_duplication_flagged"):
-            reasons.append("vet duplication screen flagged samples (--strict-vet-screen)")
-        if results.get("vet_truncation_flagged"):
-            reasons.append("vet truncation screen flagged samples (--strict-vet-screen)")
     return reasons
 
 
 def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
                       superpartitioned_table_prefixes=None, regular_table_prefixes=None,
                       vet_duplication_threshold=DEFAULT_VET_DUPLICATION_THRESHOLD,
-                      strict_vet_screen=False,
+                      allow_flagged_vet_loads=False,
                       expected_ploidy_rows_per_sample=None):
     """
     Compare GCS-derived (table_name, sample_id) pairs against what is actually
@@ -207,8 +219,10 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
         superpartitioned_table_prefixes: Prefixes for superpartitioned tables (default: ["vet", "ref_ranges"])
         regular_table_prefixes: Prefixes for regular tables (default: ["sample_chromosome_ploidy"])
         vet_duplication_threshold: Ratio-to-median above which a vet sample is flagged (default 1.6)
-        strict_vet_screen: If True, a vet duplication flag fails verification (blocking deletion);
-            if False (default) it only warns.
+        allow_flagged_vet_loads: If False (default), a vet duplication- or truncation-screen flag
+            blocks deletion of the source Parquet (the load still succeeds -- all_loaded stays factual
+            -- and the Parquet is retained). If True, the screens are waived and deletion may proceed
+            despite a flag.
         expected_ploidy_rows_per_sample: If set, the exact per-sample ploidy row count to validate
             against (e.g. 24 for WGS) instead of the callset mode; leave unset to infer from the data.
 
@@ -287,8 +301,12 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
     # loader itself scatters over. A sample for which Parquet generation never produced output files
     # at all -- as opposed to a sample whose files were produced but never loaded into BigQuery -- was
     # never "expected" by this listing in the first place, so it is invisible to every check below,
-    # not just to the missing_pairs check above. Closing that would need an expected-sample source
-    # independent of GCS, e.g. sample_info/external_sample_names. See VS-1989.
+    # not just to the missing_pairs check above. Closing this needs an expected-sample source that
+    # does not derive from GCS: specifically this run's input sample set (the ingest FOFN). Note that
+    # sample_info cannot serve this wholesale -- it accumulates every sample ever ingested, including
+    # ones since withdrawn or deleted, so comparing against it in bulk would false-positive samples
+    # that are legitimately absent from this run; the expected set has to be scoped to the FOFN for
+    # this run. Tracked as a follow-up in VS-2016 (family-completeness independence); see also VS-1989.
     expected_by_family = defaultdict(set)
     for table_name, sample_id in all_gcs_pairs:
         family = family_for_table(table_name, superpartitioned_table_prefixes)
@@ -303,15 +321,21 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
         superpartitioned_table_prefixes=superpartitioned_table_prefixes,
         regular_table_prefixes=regular_table_prefixes,
         vet_duplication_threshold=vet_duplication_threshold,
-        strict_vet_screen=strict_vet_screen,
+        allow_flagged_vet_loads=allow_flagged_vet_loads,
         expected_ploidy_rows_per_sample=expected_ploidy_rows_per_sample,
     )
     _log_structural_summary(structural)
 
-    # The structural half of the deletion gate (exact checks gate; heuristics warn unless strict) and
-    # the full gate itself are pure helpers, so the deletion-authorizing logic is tested in isolation.
-    structural_checks_ok = compute_structural_checks_ok(structural, strict_vet_screen)
+    # Two separate predicates, both pure helpers so the logic is unit-tested in isolation:
+    #  * all_loaded -- factual "is the load complete?", from the exact checks only; fail-loud aborts on
+    #    it, so a heuristic screen flag must NOT enter here or a complete load would wrongly abort.
+    #  * safe_to_delete_parquet -- the deletion gate, which layers the vet screen policy on top of
+    #    all_loaded: a flag blocks deletion unless allow_flagged_vet_loads waives the screens.
+    structural_checks_ok = compute_structural_checks_ok(structural)
     all_loaded = compute_all_loaded(missing_pairs, unmatched_files, structural_checks_ok)
+    safe_to_delete_parquet = compute_safe_to_delete_parquet(
+        all_loaded, structural, allow_flagged_vet_loads
+    )
 
     # Write list of missing file paths if there are any
     missing_files_list_path = None
@@ -334,6 +358,9 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
 
     results_dict = {
         "all_loaded": all_loaded,
+        # The deletion gate DeleteParquetFiles is downstream of: all_loaded AND no unwaived vet-screen
+        # flag. Distinct from all_loaded so a flagged-but-complete load succeeds yet retains Parquet.
+        "safe_to_delete_parquet": safe_to_delete_parquet,
         "total_files": total_files,
         "loaded_files": loaded_files_count,
         "missing_files": missing_files_count,
@@ -396,11 +423,12 @@ def main():
         )
     )
     parser.add_argument(
-        "--strict-vet-screen",
+        "--allow-flagged-vet-loads",
         action="store_true",
         help=(
-            "Treat vet duplication- or truncation-screen flags as a failure (blocking Parquet "
-            "deletion). By default both screens only warn."
+            "Permit deleting the source Parquet even when the vet duplication or truncation screen "
+            "flags a sample. By default a screen flag blocks deletion (the load still succeeds and its "
+            "Parquet is retained); pass this to waive the screens and allow deletion anyway."
         )
     )
     parser.add_argument(
@@ -423,7 +451,7 @@ def main():
         superpartitioned_table_prefixes=args.superpartitioned_table_prefixes,
         regular_table_prefixes=args.regular_table_prefixes,
         vet_duplication_threshold=args.vet_duplication_threshold,
-        strict_vet_screen=args.strict_vet_screen,
+        allow_flagged_vet_loads=args.allow_flagged_vet_loads,
         expected_ploidy_rows_per_sample=args.expected_ploidy_rows_per_sample,
     )
 

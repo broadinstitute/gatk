@@ -1,8 +1,11 @@
 """
-Unit tests for verify_all_loaded.py, focused on the VS-1989 composition change: the independent
-structural checks must be able to block Parquet deletion (all_loaded=False) even when the
-shared-predicate presence check is fully satisfied, and the results JSON must carry both the new
-structural booleans and the pre-existing keys the WDL already reads.
+Unit tests for verify_all_loaded.py, focused on the VS-1989 composition change and its Part-2 split of
+the deletion gate: the exact structural checks (family completeness, ploidy cardinality) block
+all_loaded -- the factual "is the load complete?" signal fail-loud aborts on -- even when the
+shared-predicate presence check is fully satisfied; while the heuristic vet duplication/truncation
+screens never touch all_loaded and instead gate the separate safe_to_delete_parquet predicate, blocking
+deletion by default and waived only under allow_flagged_vet_loads. The results JSON must carry both
+predicates plus the structural booleans and the pre-existing keys the WDL already reads.
 
 The BigQuery-touching helpers (get_already_loaded_tables_and_sample_ids, run_structural_checks) are
 patched; the real GCS-path parser runs against realistic fixture paths.
@@ -37,14 +40,14 @@ ALL_PAIRS = {
 
 
 def _structural(completeness_ok=True, cardinality_ok=True, duplication_flagged=False,
-                truncation_flagged=False, strict_vet_screen=False):
+                truncation_flagged=False, allow_flagged_vet_loads=False):
     """A run_structural_checks return value with the keys verify_all_loaded consumes."""
     return {
         "completeness_ok": completeness_ok,
         "cardinality_ok": cardinality_ok,
         "duplication_flagged": duplication_flagged,
         "truncation_flagged": truncation_flagged,
-        "strict_vet_screen": strict_vet_screen,
+        "allow_flagged_vet_loads": allow_flagged_vet_loads,
         "details": {
             "family_completeness": {"ok": completeness_ok, "per_family": {}},
             "cardinality": {},
@@ -63,7 +66,7 @@ class VerifyAllLoadedTestBase(unittest.TestCase):
             f.write("\n".join(FIXTURE_FILES) + "\n")
         self.out_dir = os.path.join(self.tmp, "out")
 
-    def _run(self, loaded_pairs, structural, strict_vet_screen=False,
+    def _run(self, loaded_pairs, structural, allow_flagged_vet_loads=False,
              expected_ploidy_rows_per_sample=None):
         with patch("verify_all_loaded.get_already_loaded_tables_and_sample_ids",
                    return_value=loaded_pairs), \
@@ -75,7 +78,7 @@ class VerifyAllLoadedTestBase(unittest.TestCase):
                 dataset_name="ds",
                 gcs_files_list=self.gcs_list,
                 output_dir=self.out_dir,
-                strict_vet_screen=strict_vet_screen,
+                allow_flagged_vet_loads=allow_flagged_vet_loads,
                 expected_ploidy_rows_per_sample=expected_ploidy_rows_per_sample,
             )
 
@@ -89,6 +92,7 @@ class TestHappyPath(VerifyAllLoadedTestBase):
         r = self._run(set(ALL_PAIRS), _structural())
 
         self.assertTrue(r["all_loaded"])
+        self.assertTrue(r["safe_to_delete_parquet"])
         # Pre-existing keys the WDL already reads must be preserved.
         self.assertEqual(r["total_files"], 6)
         self.assertEqual(r["loaded_files"], 6)
@@ -121,51 +125,63 @@ class TestHappyPath(VerifyAllLoadedTestBase):
         self.assertIsNone(self.mock_struct.call_args.kwargs["expected_ploidy_rows_per_sample"])
 
 
-class TestStructuralChecksGate(VerifyAllLoadedTestBase):
-    def test_cardinality_failure_blocks_deletion(self):
-        # Every pair is present to the shared predicate, but a partial load fails cardinality.
+class TestExactChecksGateAllLoaded(VerifyAllLoadedTestBase):
+    """The exact checks fail all_loaded (and so safe_to_delete_parquet) even when the shared predicate
+    sees every pair present."""
+
+    def test_cardinality_failure_blocks_all_loaded(self):
         r = self._run(set(ALL_PAIRS), _structural(cardinality_ok=False))
         self.assertFalse(r["all_loaded"])
+        self.assertFalse(r["safe_to_delete_parquet"])
         self.assertFalse(r["structural_checks_ok"])
         self.assertFalse(r["ploidy_cardinality_ok"])
         self.assertEqual(r["missing_files"], 0)
 
-    def test_completeness_failure_blocks_deletion(self):
+    def test_completeness_failure_blocks_all_loaded(self):
         r = self._run(set(ALL_PAIRS), _structural(completeness_ok=False))
         self.assertFalse(r["all_loaded"])
+        self.assertFalse(r["safe_to_delete_parquet"])
         self.assertFalse(r["family_completeness_ok"])
 
-    def test_vet_duplication_warns_by_default(self):
+
+class TestVetScreensGateDeletionNotAllLoaded(VerifyAllLoadedTestBase):
+    """A vet-screen flag is orthogonal to load completeness: all_loaded stays True (so the task
+    succeeds), but the flag blocks Parquet deletion by default and is waived only under
+    allow_flagged_vet_loads."""
+
+    def test_duplication_flag_blocks_deletion_but_not_all_loaded(self):
         r = self._run(set(ALL_PAIRS), _structural(duplication_flagged=True))
         self.assertTrue(r["all_loaded"])
         self.assertTrue(r["structural_checks_ok"])
         self.assertTrue(r["vet_duplication_flagged"])
+        self.assertFalse(r["safe_to_delete_parquet"])
 
-    def test_vet_duplication_gates_under_strict(self):
+    def test_duplication_flag_waived_allows_deletion(self):
         r = self._run(
             set(ALL_PAIRS),
-            _structural(duplication_flagged=True, strict_vet_screen=True),
-            strict_vet_screen=True,
+            _structural(duplication_flagged=True, allow_flagged_vet_loads=True),
+            allow_flagged_vet_loads=True,
         )
-        self.assertFalse(r["all_loaded"])
-        self.assertFalse(r["structural_checks_ok"])
+        self.assertTrue(r["all_loaded"])
         self.assertTrue(r["vet_duplication_flagged"])
+        self.assertTrue(r["safe_to_delete_parquet"])
 
-    def test_vet_truncation_warns_by_default(self):
+    def test_truncation_flag_blocks_deletion_but_not_all_loaded(self):
         r = self._run(set(ALL_PAIRS), _structural(truncation_flagged=True))
         self.assertTrue(r["all_loaded"])
         self.assertTrue(r["structural_checks_ok"])
         self.assertTrue(r["vet_truncation_flagged"])
+        self.assertFalse(r["safe_to_delete_parquet"])
 
-    def test_vet_truncation_gates_under_strict(self):
+    def test_truncation_flag_waived_allows_deletion(self):
         r = self._run(
             set(ALL_PAIRS),
-            _structural(truncation_flagged=True, strict_vet_screen=True),
-            strict_vet_screen=True,
+            _structural(truncation_flagged=True, allow_flagged_vet_loads=True),
+            allow_flagged_vet_loads=True,
         )
-        self.assertFalse(r["all_loaded"])
-        self.assertFalse(r["structural_checks_ok"])
+        self.assertTrue(r["all_loaded"])
         self.assertTrue(r["vet_truncation_flagged"])
+        self.assertTrue(r["safe_to_delete_parquet"])
 
 
 class TestStructuralDetailCapped(VerifyAllLoadedTestBase):
@@ -203,31 +219,29 @@ class TestStructuralDetailCapped(VerifyAllLoadedTestBase):
 
 
 class TestComputeStructuralChecksOk(unittest.TestCase):
-    """The structural half of the deletion gate, isolated: exact checks gate, heuristics warn unless strict."""
+    """The exact structural signal that feeds all_loaded: completeness and cardinality only. The vet
+    screens are deliberately excluded -- they gate safe_to_delete_parquet, not all_loaded."""
 
-    def _ok(self, structural, strict):
-        return verify_all_loaded.compute_structural_checks_ok(structural, strict)
+    def _ok(self, structural):
+        return verify_all_loaded.compute_structural_checks_ok(structural)
 
     def test_all_ok_passes(self):
-        self.assertTrue(self._ok(_structural(), False))
+        self.assertTrue(self._ok(_structural()))
 
-    def test_completeness_failure_gates_unconditionally(self):
-        self.assertFalse(self._ok(_structural(completeness_ok=False), False))
+    def test_completeness_failure_gates(self):
+        self.assertFalse(self._ok(_structural(completeness_ok=False)))
 
-    def test_cardinality_failure_gates_unconditionally(self):
-        self.assertFalse(self._ok(_structural(cardinality_ok=False), False))
+    def test_cardinality_failure_gates(self):
+        self.assertFalse(self._ok(_structural(cardinality_ok=False)))
 
-    def test_duplication_warns_by_default_gates_under_strict(self):
-        self.assertTrue(self._ok(_structural(duplication_flagged=True), False))
-        self.assertFalse(self._ok(_structural(duplication_flagged=True), True))
-
-    def test_truncation_warns_by_default_gates_under_strict(self):
-        self.assertTrue(self._ok(_structural(truncation_flagged=True), False))
-        self.assertFalse(self._ok(_structural(truncation_flagged=True), True))
+    def test_screen_flags_do_not_affect_exact_signal(self):
+        self.assertTrue(self._ok(_structural(duplication_flagged=True)))
+        self.assertTrue(self._ok(_structural(truncation_flagged=True)))
 
 
 class TestComputeAllLoaded(unittest.TestCase):
-    """The deletion gate proper: safe to delete only when nothing is missing/unmatched and structural checks pass."""
+    """The factual load-complete gate (what fail-loud aborts on): True only when nothing is
+    missing/unmatched and the exact structural checks pass. The vet screens never enter here."""
 
     def test_true_when_everything_clean(self):
         self.assertTrue(verify_all_loaded.compute_all_loaded(set(), [], True))
@@ -242,18 +256,47 @@ class TestComputeAllLoaded(unittest.TestCase):
         self.assertFalse(verify_all_loaded.compute_all_loaded(set(), [], False))
 
 
+class TestComputeSafeToDeleteParquet(unittest.TestCase):
+    """The deletion gate proper: all_loaded AND no unwaived vet-screen flag."""
+
+    def _safe(self, all_loaded, structural, allow):
+        return verify_all_loaded.compute_safe_to_delete_parquet(all_loaded, structural, allow)
+
+    def test_requires_all_loaded(self):
+        # Even with no flags and the screens waived, an incomplete load is never safe to delete.
+        self.assertFalse(self._safe(False, _structural(), False))
+        self.assertFalse(self._safe(False, _structural(), True))
+
+    def test_clean_load_is_safe(self):
+        self.assertTrue(self._safe(True, _structural(), False))
+
+    def test_duplication_flag_blocks_by_default(self):
+        self.assertFalse(self._safe(True, _structural(duplication_flagged=True), False))
+
+    def test_truncation_flag_blocks_by_default(self):
+        self.assertFalse(self._safe(True, _structural(truncation_flagged=True), False))
+
+    def test_flags_waived_when_allowed(self):
+        self.assertTrue(self._safe(True, _structural(duplication_flagged=True), True))
+        self.assertTrue(self._safe(True, _structural(truncation_flagged=True), True))
+        self.assertTrue(self._safe(
+            True, _structural(duplication_flagged=True, truncation_flagged=True), True))
+
+
 class TestSharedPredicateStillGates(VerifyAllLoadedTestBase):
     def test_missing_pair_blocks_even_when_structural_ok(self):
         loaded = set(ALL_PAIRS) - {("vet_001", 2)}
         r = self._run(loaded, _structural())
         self.assertFalse(r["all_loaded"])
+        self.assertFalse(r["safe_to_delete_parquet"])
         self.assertEqual(r["missing_files"], 1)
         self.assertTrue(r["structural_checks_ok"])
         self.assertTrue(os.path.exists(r["missing_files_list"]))
 
 
 class TestDescribeIncompleteReasons(unittest.TestCase):
-    """The fail-loud operator message names every not-all-loaded cause, including a strict truncation-only failure."""
+    """The fail-loud operator message names every not-all-loaded cause. Only the exact checks appear;
+    a vet-screen flag never fails all_loaded, so it must not surface here."""
 
     def _reasons(self, **over):
         base = {
@@ -261,9 +304,6 @@ class TestDescribeIncompleteReasons(unittest.TestCase):
             "unmatched_files": 0,
             "family_completeness_ok": True,
             "ploidy_cardinality_ok": True,
-            "structural_checks_ok": True,
-            "vet_duplication_flagged": False,
-            "vet_truncation_flagged": False,
         }
         base.update(over)
         return verify_all_loaded.describe_incomplete_reasons(base)
@@ -281,21 +321,10 @@ class TestDescribeIncompleteReasons(unittest.TestCase):
         self.assertTrue(any("family completeness" in r for r in reasons))
         self.assertTrue(any("ploidy cardinality" in r for r in reasons))
 
-    def test_strict_duplication_only_named(self):
-        reasons = self._reasons(structural_checks_ok=False, vet_duplication_flagged=True)
-        self.assertEqual(reasons, ["vet duplication screen flagged samples (--strict-vet-screen)"])
-
-    def test_strict_truncation_only_named(self):
-        # The regression: a truncation-only strict failure must not fall through to "unknown reasons".
-        reasons = self._reasons(structural_checks_ok=False, vet_truncation_flagged=True)
-        self.assertEqual(reasons, ["vet truncation screen flagged samples (--strict-vet-screen)"])
-
-    def test_strict_both_screens_named(self):
-        reasons = self._reasons(structural_checks_ok=False,
-                                vet_duplication_flagged=True, vet_truncation_flagged=True)
-        self.assertEqual(len(reasons), 2)
-        self.assertTrue(any("duplication" in r for r in reasons))
-        self.assertTrue(any("truncation" in r for r in reasons))
+    def test_screen_flags_do_not_appear(self):
+        # Screens gate safe_to_delete_parquet, never all_loaded, so they must not appear as a
+        # fail-loud reason even when flagged.
+        self.assertEqual(self._reasons(vet_duplication_flagged=True, vet_truncation_flagged=True), [])
 
 
 if __name__ == "__main__":

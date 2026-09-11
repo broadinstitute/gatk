@@ -38,12 +38,12 @@ workflow GvsQuickstartIntegration {
         Boolean use_parquet_ingest = true
         # VS-1989 independent post-load structural checks, forwarded to every Parquet-ingest sub-workflow
         # (the VCF VETS/VQSR/exome/BGE calls and the Beta GvsJointVariantCalling call) so an integration
-        # run can exercise them; e.g. set parquet_strict_vet_screen = true to gate on the screens. Leave
-        # parquet_expected_ploidy_rows_per_sample unset unless every cohort in the run shares that exact
-        # per-sample row count -- the exome/BGE cohorts do not match the WGS value, so a top-level override
-        # would misfit them.
+        # run can exercise them; e.g. set parquet_allow_flagged_vet_loads = true to waive the screens and
+        # let deletion proceed despite a flag. Leave parquet_expected_ploidy_rows_per_sample unset unless
+        # every cohort in the run shares that exact per-sample row count -- the exome/BGE cohorts do not
+        # match the WGS value, so a top-level override would misfit them.
         Float parquet_vet_duplication_threshold = 1.6
-        Boolean parquet_strict_vet_screen = false
+        Boolean parquet_allow_flagged_vet_loads = false
         Int? parquet_expected_ploidy_rows_per_sample
         # DRAGEN version asserted by the header-validation check. Left unset, the BGE call defaults to
         # the triplet its samples carry ("3.7.8") and the other header-checked calls run consistency-
@@ -191,7 +191,7 @@ workflow GvsQuickstartIntegration {
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 use_parquet_ingest = use_parquet_ingest,
                 parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
-                parquet_strict_vet_screen = parquet_strict_vet_screen,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
                 parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRIntegration {
@@ -222,7 +222,7 @@ workflow GvsQuickstartIntegration {
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 use_parquet_ingest = use_parquet_ingest,
                 parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
-                parquet_strict_vet_screen = parquet_strict_vet_screen,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
                 parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
         }
 
@@ -277,7 +277,7 @@ workflow GvsQuickstartIntegration {
                 target_interval_list = target_interval_list,
                 use_parquet_ingest = use_parquet_ingest,
                 parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
-                parquet_strict_vet_screen = parquet_strict_vet_screen,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
                 parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
         }
 
@@ -326,7 +326,7 @@ workflow GvsQuickstartIntegration {
                 target_interval_list = target_interval_list,
                 use_parquet_ingest = use_parquet_ingest,
                 parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
-                parquet_strict_vet_screen = parquet_strict_vet_screen,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
                 parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
         }
 
@@ -382,7 +382,7 @@ workflow GvsQuickstartIntegration {
                 use_parquet_ingest = use_parquet_ingest,
                 parquet_output_gcs_dir = parquet_output_gcs_dir,
                 parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
-                parquet_strict_vet_screen = parquet_strict_vet_screen,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
                 parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
         }
 

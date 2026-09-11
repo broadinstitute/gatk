@@ -69,10 +69,10 @@ workflow GvsBulkIngestGenomes {
         # `parquet_output_gcs_dir` must be defined if `use_parquet_ingest` is true.
         String? parquet_output_gcs_dir
         # Independent post-load structural checks (VS-1989), forwarded to GvsImportGenomes; see that
-        # workflow. Defaults preserve warn-only vet screening and mode-inferred ploidy, so leaving them
-        # unset changes nothing.
+        # workflow. Defaults keep the vet screens blocking deletion on a flag and ploidy mode-inferred,
+        # so leaving them unset changes nothing.
         Float parquet_vet_duplication_threshold = 1.6
-        Boolean parquet_strict_vet_screen = false
+        Boolean parquet_allow_flagged_vet_loads = false
         Int? parquet_expected_ploidy_rows_per_sample
 
         Boolean use_compressed_references = false
@@ -86,7 +86,7 @@ workflow GvsBulkIngestGenomes {
         sample_set_name: "The recommended way to load samples; Sample sets must be created by the user. If no sample_set_name is specified, all samples will be loaded into GVS"
         bulk_ingest_fofn: "An explicitly specified FOFN of VCFs to be ingested. If specified, the workflow will not generate a FOFN from the data table. This can be useful for avoiding the scale limitations of Terra data tables. The format is tab delimited with no header: sample_name<tab>gvcf_file_path<tab>gvcf_index_file_path. If this value is specified, none of the data table parameters should be specified."
         parquet_vet_duplication_threshold: "VS-1989 post-load verification, forwarded to GvsImportGenomes: ratio-to-callset-median at or above which a vet sample's row count is flagged as a possible duplicate, and (mirrored) at or below median/ratio as a possible truncation. Must be > 1; default 1.6."
-        parquet_strict_vet_screen: "VS-1989 post-load verification, forwarded to GvsImportGenomes: when true, a vet duplication- or truncation-screen flag fails verification and blocks Parquet deletion; when false (default) the screens only warn. Family completeness and ploidy cardinality always gate regardless."
+        parquet_allow_flagged_vet_loads: "VS-1989 post-load verification, forwarded to GvsImportGenomes: when false (default), a vet duplication- or truncation-screen flag blocks deletion of the source Parquet (the load still succeeds and its Parquet is retained); when true the screens are waived and deletion proceeds despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless."
         parquet_expected_ploidy_rows_per_sample: "VS-1989 post-load verification, forwarded to GvsImportGenomes: exact per-sample sample_chromosome_ploidy row count to validate against (e.g. 24 for WGS) instead of the inferred callset mode; leave unset to infer from the data (correct for exome/BGE/chrM)."
     }
 
@@ -188,7 +188,7 @@ workflow GvsBulkIngestGenomes {
             use_parquet_ingest = use_parquet_ingest,
             parquet_output_gcs_dir = parquet_output_gcs_dir,
             parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
-            parquet_strict_vet_screen = parquet_strict_vet_screen,
+            parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
             parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
             is_wgs = is_wgs,
     }
