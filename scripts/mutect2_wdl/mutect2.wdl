@@ -815,9 +815,11 @@ task MergeAllelicCounts {
 
         # header of first file
         grep '^[#@]' ~{first_table} > merged.tsv
+        grep -v '^[#@]' ~{first_table} | head -n 1 >> merged.tsv
 
-        for file in ~{sep=' -I ' input_tables}; do
-            grep -v '^[#@]' $file >> merged.tsv
+        for file in ~{sep=' ' input_tables}; do
+            # tail -n +2 skips the CONTIG   POSITION. . . line
+            grep -v '^[#@]' $file | tail -n +2 >> merged.tsv
         done
     }
 
