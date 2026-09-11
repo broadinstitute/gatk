@@ -308,6 +308,8 @@ workflow GvsImportGenomes {
         vet_duplication_threshold = parquet_vet_duplication_threshold,
         strict_vet_screen = parquet_strict_vet_screen,
         expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
+        verification_diagnostics_gcs_dir = defined_parquet_output_dir + "/verification_diagnostics",
+        billing_project_id = billing_project_id,
         go = LoadParquetFilesToBQ.done,
         variants_docker = effective_variants_docker,
     }
@@ -377,10 +379,12 @@ workflow GvsImportGenomes {
     Boolean? parquet_loading_verified = VerifyParquetLoading.all_loaded
     Int? parquet_files_loaded = VerifyParquetLoading.loaded_files
     Int? parquet_total_files = VerifyParquetLoading.total_files
-    # Independent structural-check observability (VS-1989).
-    Boolean? parquet_structural_checks_ok = VerifyParquetLoading.structural_checks_ok
-    Boolean? parquet_family_completeness_ok = VerifyParquetLoading.family_completeness_ok
-    Boolean? parquet_ploidy_cardinality_ok = VerifyParquetLoading.ploidy_cardinality_ok
+    # Independent structural-check observability (VS-1989). Only the vet-duplication screen is surfaced
+    # here: it is warn-only by default, so it can be observed true on a successful run. The composite
+    # structural verdict and its family-completeness / ploidy-cardinality components are hard checks that
+    # fail the fail-loud VerifyParquetLoading task, whose outputs Cromwell then never delocalizes -- so
+    # they could only ever be read as true and are not published. The full verdict (including those
+    # components) is written to verification_results.json, copied to a durable diagnostics path on failure.
     Boolean? parquet_vet_duplication_flagged = VerifyParquetLoading.vet_duplication_flagged
   }
 }
@@ -1391,6 +1395,13 @@ task VerifyParquetLoading {
     Boolean strict_vet_screen = false
     # Exact per-sample ploidy row count to validate against (e.g. 24 for WGS); unset infers the mode.
     Int? expected_ploidy_rows_per_sample
+    # Optional durable location for the verdict JSON. This task is fail-loud -- a bad load exits non-zero
+    # and aborts the workflow -- and Cromwell does not delocalize a failed task's outputs, so copying the
+    # results JSON here keeps the diagnostic recoverable at a predictable path on failure. Unset -> no copy
+    # (the JSON still lives only in the task execution directory).
+    String? verification_diagnostics_gcs_dir
+    # Billing project for the diagnostics copy, required when the target bucket is requester-pays.
+    String? billing_project_id
     # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
     # is passed here to prevent this task from running until the upstream task has completed.
     #@ except: UnusedInput
@@ -1407,6 +1418,11 @@ task VerifyParquetLoading {
     set -o errexit -o nounset -o xtrace -o pipefail
     mkdir -p verification_output
 
+    # This verification is fail-loud: verify_all_loaded.py exits non-zero when the load is incomplete, and
+    # a non-zero task aborts the workflow before any irreversible Parquet deletion. Capture that exit code
+    # (rather than letting errexit abort here) so we can first copy the verdict JSON somewhere durable --
+    # Cromwell never delocalizes a failed task's outputs -- and then re-raise the code below.
+    rc=0
     python3 /app/verify_all_loaded.py \
       --project-id ~{project_id} \
       --dataset-name ~{dataset_name} \
@@ -1416,7 +1432,18 @@ task VerifyParquetLoading {
       --vet-duplication-threshold ~{vet_duplication_threshold} \
       ~{true="--strict-vet-screen" false="" strict_vet_screen} \
       ~{"--expected-ploidy-rows-per-sample " + expected_ploidy_rows_per_sample} \
-      --output-dir verification_output
+      --output-dir verification_output || rc=$?
+
+    # Copy the verdict JSON to a durable location if one was configured, so the diagnostic survives the
+    # fail-loud abort above. The copy must never mask the verification verdict, hence the trailing `|| true`.
+    diagnostics_dir='~{default="" verification_diagnostics_gcs_dir}'
+    if [[ -n "${diagnostics_dir}" && -f verification_output/verification_results.json ]]
+    then
+      gcloud storage cp ~{"--billing-project " + billing_project_id} \
+        verification_output/verification_results.json "${diagnostics_dir%/}/verification_results.json" || true
+    fi
+
+    exit $rc
   >>>
 
   runtime {
@@ -1434,11 +1461,13 @@ task VerifyParquetLoading {
     Int loaded_files = read_json(results_json)["loaded_files"]
     Int missing_files = read_json(results_json)["missing_files"]
     File? missing_files_list = "verification_output/missing_files.txt"
-    # Independent structural-check outcomes (VS-1989), read shallowly. structural_checks_ok is the
-    # composite that (together with the shared-predicate presence check) determines all_loaded.
-    Boolean structural_checks_ok = read_json(results_json)["structural_checks_ok"]
-    Boolean family_completeness_ok = read_json(results_json)["family_completeness_ok"]
-    Boolean ploidy_cardinality_ok = read_json(results_json)["ploidy_cardinality_ok"]
+    # Independent structural-check observability (VS-1989), read shallowly. Only the vet-duplication
+    # screen is exposed as a task output: it is warn-only by default, so it is meaningful on a task that
+    # succeeds. The composite structural verdict and its family-completeness / ploidy-cardinality
+    # components are hard checks -- when any fails, verify_all_loaded.py exits non-zero and this task
+    # fails, at which point Cromwell does not evaluate these outputs at all. Publishing them as task
+    # outputs would therefore only ever yield true, so they are omitted; the complete verdict lives in
+    # results_json (copied to the durable diagnostics path on failure).
     Boolean vet_duplication_flagged = read_json(results_json)["vet_duplication_flagged"]
     Boolean done = true
   }
