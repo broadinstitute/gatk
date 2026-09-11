@@ -258,9 +258,10 @@ workflow Mutect2 {
             }
 
             Int model_segments_normal_disk = ceil(size(MergeNormalAllelicCounts.merged_table, "GB")) + emergency_extra_disk
+            String normal_entity = "normal"
             call ModelSegments as ModelSegmentsNormal {
                 input:
-                    entity_id = "normal",
+                    entity_id = normal_entity,
                     allelic_counts = MergeNormalAllelicCounts.merged_table,
                     min_total_allele_count = model_segments_min_total_allele_count,
                     model_segments_extra_args = model_segments_extra_args,
@@ -271,7 +272,7 @@ workflow Mutect2 {
 
             call PlotModeledSegments as PlotModeledSegmentsNormal {
                 input:
-                    entity_id = "normal",
+                    entity_id = normal_entity,
                     het_allelic_counts = select_first([ModelSegmentsNormal.het_allelic_counts]),
                     modeled_segments = select_first([ModelSegmentsNormal.modeled_segments]),
                     ref_dict = ref_dict,
@@ -282,9 +283,10 @@ workflow Mutect2 {
 
         Int model_segments_normal_portion = if defined(normal_reads) then ceil(size(MergeNormalAllelicCounts.merged_table, "GB")) else 0
         Int model_segments_tumor_disk = ceil(size(MergeTumorAllelicCounts.merged_table, "GB")) + model_segments_normal_portion + emergency_extra_disk
+        String tumor_entity = "tumor"
         call ModelSegments as ModelSegmentsTumor {
             input:
-                entity_id = "tumor",
+                entity_id = tumor_entity,
                 allelic_counts = MergeTumorAllelicCounts.merged_table,
                 normal_allelic_counts = MergeNormalAllelicCounts.merged_table,
                 min_total_allele_count = model_segments_min_total_allele_count,
@@ -296,7 +298,7 @@ workflow Mutect2 {
 
         call PlotModeledSegments as PlotModeledSegmentsTumor {
             input:
-                entity_id = "tumor",
+                entity_id = tumor_entity,
                 het_allelic_counts = ModelSegmentsTumor.het_allelic_counts,
                 modeled_segments = ModelSegmentsTumor.modeled_segments,
                 ref_dict = ref_dict,
