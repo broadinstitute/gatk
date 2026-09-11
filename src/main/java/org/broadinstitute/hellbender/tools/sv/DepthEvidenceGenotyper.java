@@ -6,7 +6,6 @@ import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.GenotypesContext;
 import org.apache.commons.math3.distribution.NormalDistribution;
-import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
@@ -17,7 +16,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
 import org.broadinstitute.hellbender.utils.tsv.TableColumnCollection;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
-import picard.util.MathUtil;
 
 import java.util.*;
 import java.util.function.Function;
@@ -182,33 +180,43 @@ public class DepthEvidenceGenotyper {
         return new DepthGenotypeResult(medians, copyStates, genotypeQuals, variantQual);
     }
 
-    public List<CopyStateStats> train(final Collection<DepthGenotypeResult> genotypes, final int numTrainingStates) {
-        final int[] copyStates = genotypes.stream().map(DepthGenotypeResult::copyStates).flatMapToInt(Arrays::stream).toArray();
-        final double[] sampleDepths = genotypes.stream().map(DepthGenotypeResult::sampleDepths).flatMapToDouble(Arrays::stream).toArray();
-        final List<CopyStateStats> trained = new ArrayList<>(numTrainingStates);
+    public List<CopyStateStats> train(final Iterable<DepthGenotypeResult> genotypes, final int numTrainingStates) {
+        // Accumulate per-copy-state mean and Bessel-corrected variance in a single streaming pass
+        // (Welford). The previous implementation materialised every observation -- one record with
+        // per-sample arrays per training interval, plus an int[] and double[] flattening of all of
+        // them and a boxed index list per state -- so peak memory scaled with
+        // (training intervals x batch size) and exhausted the TrainSVGenotyping task's 16 GiB on a
+        // 156-sample whole-genome batch. The estimates are unchanged: same mean, same (n-1) SD,
+        // same fallbacks for empty states and single-observation states.
+        final long[] counts = new long[numTrainingStates];
         final double[] means = new double[numTrainingStates];
+        final double[] m2 = new double[numTrainingStates];
         final double[] stdDevs = new double[numTrainingStates];
-        for (int i = 0; i < numTrainingStates; i++) {
-            final List<Integer> samples = new ArrayList<>();
-            for (int j = 0; j < sampleDepths.length; j++) {
-                if (copyStates[j] == i) {
-                    samples.add(j);
+        for (final DepthGenotypeResult result : genotypes) {
+            final int[] copyStates = result.copyStates();
+            final double[] sampleDepths = result.sampleDepths();
+            for (int j = 0; j < copyStates.length && j < sampleDepths.length; j++) {
+                final int state = copyStates[j];
+                if (state < 0 || state >= numTrainingStates) {
+                    continue;
                 }
+                final double depth = sampleDepths[j];
+                counts[state]++;
+                final double delta = depth - means[state];
+                means[state] += delta / counts[state];
+                m2[state] += delta * (depth - means[state]);
             }
-            if (samples.isEmpty()) {
+        }
+        final List<CopyStateStats> trained = new ArrayList<>(numTrainingStates);
+        for (int i = 0; i < numTrainingStates; i++) {
+            if (counts[i] == 0) {
                 means[i] = DEFAULT_COPY_STATE_INCREMENT * i;
                 stdDevs[i] = i == 0 ? DEFAULT_COPY_STATE_INCREMENT * 0.5 : stdDevs[i - 1];
+            } else if (counts[i] > 1) {
+                stdDevs[i] = Math.sqrt(m2[i] / (counts[i] - 1));
             } else {
-                final double[] depths = new double[samples.size()];
-                for (int j = 0; j < samples.size(); j++) {
-                    depths[j] = sampleDepths[samples.get(j)];
-                }
-                means[i] = MathUtil.mean(depths);
-                // Use Bessel-corrected (sample) stddev to match v1.1's R sd() behavior.
-                // For n=1, StandardDeviation returns NaN (same as R's sd()), so fall back
-                // to the previous state's stddev, matching v1.1's generate_cutoff.R.
-                final double sd = depths.length > 1 ? new StandardDeviation().evaluate(depths) : Double.NaN;
-                stdDevs[i] = Double.isNaN(sd) ? (i == 0 ? DEFAULT_COPY_STATE_INCREMENT * 0.5 : stdDevs[i - 1]) : sd;
+                // n == 1: undefined sample SD, same as R's sd() -> NaN -> previous state's SD.
+                stdDevs[i] = i == 0 ? DEFAULT_COPY_STATE_INCREMENT * 0.5 : stdDevs[i - 1];
             }
         }
         for (int i = 0; i < numTrainingStates; i++) {
