@@ -387,13 +387,15 @@ workflow GvsImportGenomes {
     Boolean? parquet_loading_verified = VerifyParquetLoading.all_loaded
     Int? parquet_files_loaded = VerifyParquetLoading.loaded_files
     Int? parquet_total_files = VerifyParquetLoading.total_files
-    # Independent structural-check observability (VS-1989). Only the vet-duplication screen is surfaced
-    # here: it is warn-only by default, so it can be observed true on a successful run. The composite
-    # structural verdict and its family-completeness / ploidy-cardinality components are hard checks that
-    # fail the fail-loud VerifyParquetLoading task, whose outputs Cromwell then never delocalizes -- so
-    # they could only ever be read as true and are not published. The full verdict (including those
-    # components) is written to verification_results.json, copied to a durable diagnostics path on failure.
+    # Independent structural-check observability (VS-1989). Both warn-only vet screens -- duplication and
+    # truncation -- are surfaced here: they are warn-only by default, so either can be observed true on a
+    # successful run. The composite structural verdict and its family-completeness / ploidy-cardinality
+    # components are hard checks that fail the fail-loud VerifyParquetLoading task, whose outputs Cromwell
+    # then never delocalizes -- so they could only ever be read as true and are not published. The full
+    # verdict (including those components) is written to verification_results.json, copied to a durable
+    # diagnostics path on failure.
     Boolean? parquet_vet_duplication_flagged = VerifyParquetLoading.vet_duplication_flagged
+    Boolean? parquet_vet_truncation_flagged = VerifyParquetLoading.vet_truncation_flagged
   }
 }
 
@@ -1469,14 +1471,15 @@ task VerifyParquetLoading {
     Int loaded_files = read_json(results_json)["loaded_files"]
     Int missing_files = read_json(results_json)["missing_files"]
     File? missing_files_list = "verification_output/missing_files.txt"
-    # Independent structural-check observability (VS-1989), read shallowly. Only the vet-duplication
-    # screen is exposed as a task output: it is warn-only by default, so it is meaningful on a task that
-    # succeeds. The composite structural verdict and its family-completeness / ploidy-cardinality
-    # components are hard checks -- when any fails, verify_all_loaded.py exits non-zero and this task
-    # fails, at which point Cromwell does not evaluate these outputs at all. Publishing them as task
-    # outputs would therefore only ever yield true, so they are omitted; the complete verdict lives in
-    # results_json (copied to the durable diagnostics path on failure).
+    # Independent structural-check observability (VS-1989), read shallowly. Both warn-only vet screens --
+    # duplication and truncation -- are exposed as task outputs: warn-only by default, so they are
+    # meaningful on a task that succeeds. The composite structural verdict and its family-completeness /
+    # ploidy-cardinality components are hard checks -- when any fails, verify_all_loaded.py exits non-zero
+    # and this task fails, at which point Cromwell does not evaluate these outputs at all. Publishing them
+    # as task outputs would therefore only ever yield true, so they are omitted; the complete verdict
+    # lives in results_json (copied to the durable diagnostics path on failure).
     Boolean vet_duplication_flagged = read_json(results_json)["vet_duplication_flagged"]
+    Boolean vet_truncation_flagged = read_json(results_json)["vet_truncation_flagged"]
     Boolean done = true
   }
 }
