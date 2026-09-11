@@ -126,8 +126,8 @@ public class DiscordantPairEvidenceGenotyper {
             if (p == 0) {
                 throw new IllegalArgumentException("Precision error - quality cutoff " + qualityCutoff + " is too high");
             }
-            final double qual = QualityUtils.errorProbToQual(p);
-            if (qual > qualityCutoff) {
+            final double qual = -10.0 * Math.log10(p);
+            if (qual >= qualityCutoff) {
                 return Math.max(i - 1, 1);
             }
             i++;
@@ -170,7 +170,7 @@ public class DiscordantPairEvidenceGenotyper {
         final double hetMedian = MEDIAN.evaluate(hetCounts);
         final double[] deviations = DoubleStream.of(hetCounts).map(d -> Math.abs(d - hetMedian)).toArray();
         final double hetMad = MEDIAN.evaluate(deviations);
-        hetCutoff = hetMedian + 1.645 * hetMad;
+        hetCutoff = hetMedian + 1.4826 * 1.645 * hetMad;
         firstPassMade = true;
     }
 
