@@ -18,7 +18,7 @@ Four tasks coordinate loading, verification, and cleanup after the `LoadData` sc
 | `DiscoverParquetFiles` | Lists all Parquet files in GCS, filters out already-loaded `(table_name, sample_id)` pairs by querying BigQuery directly, and emits one FOFN per target table.                                                                                                                                          |
 | `LoadParquetFilesToBQ` | Scattered across all tables; loads each FOFN into its BigQuery table in batches of up to 10,000 files per load job.                                                                                                                                                                                     |
 | `VerifyParquetLoading` | Re-queries BigQuery after all loads complete, runs exact structural checks (`completeness`, `cardinality`, `cross_family`) to gate `all_loaded`, and evaluates cohort duplication/truncation screens to gate `safe_to_delete_parquet`. Fails the workflow if any expected data is missing or corrupted. |
-| `CleanUpParquetFiles`  | Deletes temporary GCS Parquet files only if `safe_to_delete_parquet` is true.                                                                                                                                                                                                                           |
+| `DeleteParquetFiles`   | Deletes temporary GCS Parquet files only if `safe_to_delete_parquet` is true.                                                                                                                                                                                                                           |
 
 ## Python Scripts (`scripts/variantstore/scripts/`)
 
