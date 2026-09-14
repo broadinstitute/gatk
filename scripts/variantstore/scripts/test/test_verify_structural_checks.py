@@ -103,7 +103,10 @@ class TestGetPloidyRowCounts(unittest.TestCase):
     def test_query_groups_by_sample(self, mock_bq):
         mock_client = MagicMock()
         mock_bq.Client.return_value = mock_client
-        mock_client.query.return_value = [_row(sample_id=1, n=24), _row(sample_id=2, n=24)]
+        mock_client.query.return_value = [
+            _row(sample_id=1, n=24, n_distinct=24),
+            _row(sample_id=2, n=24, n_distinct=24),
+        ]
 
         result = get_ploidy_row_counts("proj", "ds", "sample_chromosome_ploidy")
 
@@ -111,7 +114,8 @@ class TestGetPloidyRowCounts(unittest.TestCase):
         self.assertIn("sample_chromosome_ploidy", query)
         self.assertIn("GROUP BY sample_id", query)
         self.assertIn("COUNT(*)", query)
-        self.assertEqual(result, {1: 24, 2: 24})
+        self.assertIn("COUNT(DISTINCT chromosome)", query)
+        self.assertEqual(result, {1: (24, 24), 2: (24, 24)})
 
     def test_invalid_table_raises(self):
         with self.assertRaises(ValueError):
@@ -145,16 +149,30 @@ class TestAssessCardinality(unittest.TestCase):
         self.assertEqual(r["min"], 20)
         self.assertEqual(r["max"], 48)
 
+    def test_duplicate_flagged_without_override(self):
+        # Duplicated ploidy load (48 vs modal 24) is caught by mode-inferred duplication check
+        r = assess_cardinality({1: 24, 2: 24, 3: 48, 4: 24}, {1, 2, 3, 4})
+        self.assertFalse(r["ok"])
+        self.assertEqual([d["sample_id"] for d in r["deviating_samples"]], [3])
+
+    def test_two_sample_duplicate_flagged_without_override(self):
+        # In a two-sample load {1: 24, 2: 48}, baseline is min (24) and sample 2 (48 >= 1.5x) is flagged
+        r = assess_cardinality({1: 24, 2: 48}, {1, 2})
+        self.assertFalse(r["ok"])
+        self.assertEqual([d["sample_id"] for d in r["deviating_samples"]], [2])
+        self.assertEqual(r["baseline"], 24)
+
     def test_heterogeneous_counts_pass_without_override(self):
-        # Valid samples can have differing ploidy row counts (due to RefRangesCreator interval coverage);
-        # without an explicit override, cardinality uniformity is not assumed and does not fail.
-        r = assess_cardinality({1: 24, 2: 24, 3: 23, 4: 24, 5: 24}, set(range(1, 6)))
+        # Valid samples can have differing contig counts (e.g. 23 vs 24 or 25 with chrM);
+        # without an override, minority contig counts pass as long as they are not duplicated.
+        r = assess_cardinality({1: 24, 2: 24, 3: 23, 4: 25, 5: 24}, set(range(1, 6)))
         self.assertTrue(r["ok"])
         self.assertEqual(r["mode"], 24)
         self.assertEqual(r["min"], 23)
-        self.assertEqual(r["max"], 24)
+        self.assertEqual(r["max"], 25)
         self.assertEqual(r["deviating_samples"], [])
-        self.assertEqual(r["reference_source"], "none")
+        self.assertEqual(r["reference_source"], "mode")
+        self.assertEqual(r["reference_count"], 24)
 
     def test_extra_samples_in_table_ignored(self):
         # A sample already in the table from a prior load (99) is not expected this run: ignored.
@@ -172,10 +190,11 @@ class TestAssessCardinality(unittest.TestCase):
         self.assertTrue(r["ok"])
         self.assertIsNone(r["mode"])
 
-    def test_reference_source_is_none_by_default(self):
+    def test_reference_source_is_mode_by_default(self):
         r = assess_cardinality({1: 24, 2: 24}, {1, 2})
-        self.assertEqual(r["reference_source"], "none")
-        self.assertIsNone(r["reference_count"])
+        self.assertEqual(r["reference_source"], "mode")
+        self.assertEqual(r["reference_count"], 24)
+        self.assertEqual(r["baseline"], 24)
         self.assertEqual(r["mode"], 24)
 
     def test_override_matching_constant_passes(self):
@@ -193,8 +212,28 @@ class TestAssessCardinality(unittest.TestCase):
         r = assess_cardinality(counts, {1, 2, 3}, expected_count=24)
         self.assertFalse(r["ok"])
         self.assertEqual(r["mode"], 25)
-        self.assertEqual(r["reference_count"], 24)
-        self.assertEqual([d["sample_id"] for d in r["deviating_samples"]], [1, 2, 3])
+
+    def test_distinct_chromosome_duplication_flagged(self):
+        # Sample 2 has 48 rows across only 24 distinct chromosomes (duplicated load).
+        counts = {1: (24, 24), 2: (48, 24)}
+        r = assess_cardinality(counts, {1, 2})
+        self.assertFalse(r["ok"])
+        self.assertEqual([d["sample_id"] for d in r["deviating_samples"]], [2])
+
+    def test_distinct_chromosome_singleton_duplication_flagged(self):
+        # A single-sample cohort with duplicated rows cannot be caught by cohort consensus, but is
+        # caught by COUNT(*) > COUNT(DISTINCT chromosome).
+        counts = {1: (48, 24)}
+        r = assess_cardinality(counts, {1})
+        self.assertFalse(r["ok"])
+        self.assertEqual([d["sample_id"] for d in r["deviating_samples"]], [1])
+
+    def test_distinct_chromosome_heterogeneous_counts_pass(self):
+        # Legitimate contig coverage variations (23, 24, 25) pass when row counts match distinct chromosomes.
+        counts = {1: (23, 23), 2: (24, 24), 3: (25, 25)}
+        r = assess_cardinality(counts, {1, 2, 3})
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["deviating_samples"], [])
 
     def test_override_still_catches_missing(self):
         r = assess_cardinality({1: 24, 2: 24}, {1, 2, 3}, expected_count=24)
@@ -365,6 +404,8 @@ class TestAssessDuplicationScreen(unittest.TestCase):
         part = [("vet_001", 1, 100), ("vet_001", 2, 200)]
         r = assess_duplication_screen(part, "vet", {1, 2}, ["vet", "ref_ranges"], 1.6)
         self.assertEqual(r["samples_screened"], 2)
+        self.assertEqual(r["median"], 150)
+        self.assertEqual(r["baseline"], 100)
         self.assertEqual([o["sample_id"] for o in r["outliers"]], [2])
         self.assertAlmostEqual(r["outliers"][0]["ratio"], 2.0)
 
@@ -377,6 +418,7 @@ class TestAssessTruncationScreen(unittest.TestCase):
         part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 1)]
         r = assess_truncation_screen(part, "vet", set(range(1, 10)), ["vet", "ref_ranges"], 1.6)
         self.assertEqual(r["median"], 100)
+        self.assertEqual(r["baseline"], 100)
         self.assertEqual([o["sample_id"] for o in r["outliers"]], [9])
         self.assertAlmostEqual(r["outliers"][0]["ratio"], 0.01)
 
@@ -424,6 +466,8 @@ class TestAssessTruncationScreen(unittest.TestCase):
         part = [("vet_001", 1, 100), ("vet_001", 2, 200)]
         r = assess_truncation_screen(part, "vet", {1, 2}, ["vet", "ref_ranges"], 1.6)
         self.assertEqual(r["samples_screened"], 2)
+        self.assertEqual(r["median"], 150)
+        self.assertEqual(r["baseline"], 200)
         self.assertEqual([o["sample_id"] for o in r["outliers"]], [1])
         self.assertAlmostEqual(r["outliers"][0]["ratio"], 0.5)
 
@@ -560,6 +604,18 @@ class TestRunStructuralChecks(unittest.TestCase):
         r = run_structural_checks("proj", "ds", exp)
         self.assertTrue(r["completeness_ok"])
         self.assertTrue(r["cardinality_ok"])
+
+    def test_duplicated_ploidy_fails_cardinality_without_override(self):
+        part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
+        self._patch(part, {1: 24, 2: 48})  # sample 2 duplicated ploidy load (48 vs 24)
+        exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
+        r = run_structural_checks("proj", "ds", exp)
+        self.assertTrue(r["completeness_ok"])
+        self.assertFalse(r["cardinality_ok"])
+        self.assertEqual(
+            r["details"]["cardinality"]["sample_chromosome_ploidy"]["deviating_samples"][0]["sample_id"],
+            2,
+        )
 
     def test_vet_duplication_flag_warns_not_gates_by_default(self):
         part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 300)]

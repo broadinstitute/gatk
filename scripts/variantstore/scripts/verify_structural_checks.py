@@ -79,14 +79,14 @@ log = logging.getLogger(__name__)
 # docstring). Callers may override.
 DEFAULT_DUPLICATION_SCREEN_FAMILIES = ["vet"]
 
-# Regular (non-superpartitioned) tables held to an exact per-sample row count by the cardinality
-# check when an explicit expected count is configured (e.g. expected_ploidy_rows_per_sample=24 for WGS).
-# When no override is configured, cohort-wide uniformity is not enforced because producers
-# (RefRangesCreator.java:88-124) only write ploidy rows for contigs with usable reference blocks and
-# extraction (ExtractCohortEngine.java:641-679) defaults missing entries to diploid, allowing valid
-# samples to have differing ploidy row counts. Only ploidy qualifies for cardinality checking:
-# tables whose per-sample count legitimately varies across samples (such as vcf_header_lines_scratch)
-# are excluded from cardinality checking entirely.
+# Regular (non-superpartitioned) tables held to cardinality consistency by the cardinality check.
+# When an explicit expected count is configured (e.g. expected_ploidy_rows_per_sample=24 for WGS),
+# all expected samples must match that exact count. When unset, the callset mode is inferred:
+# legitimate contig variations (such as 23 or 25 when mode is 24, since RefRangesCreator only records
+# ploidy for contigs with usable reference blocks) pass, while duplicated loads (>= 1.5x baseline, such
+# as 48 vs 24) are flagged as deviating and fail cardinality. Only ploidy qualifies for cardinality
+# checking: tables whose per-sample count legitimately varies across samples (such as
+# vcf_header_lines_scratch) are excluded entirely.
 DEFAULT_CARDINALITY_TABLE_PREFIXES = ["sample_chromosome_ploidy"]
 
 # Families that Parquet generation produces TOGETHER, per sample, so their sample sets must be
@@ -167,23 +167,50 @@ def get_partition_row_counts(project_id, dataset_name, superpartitioned_table_pr
         raise
 
 
+def _extract_count_info(val):
+    """
+    Extract (row_count, distinct_chromosomes) from a count value that may be:
+    - a raw int: e.g. 24 -> (24, None)
+    - a tuple: e.g. (24, 24) -> (24, 24)
+    - a dict: e.g. {"count": 24, "distinct": 24} -> (24, 24)
+    """
+    if isinstance(val, tuple):
+        return val[0], (val[1] if len(val) > 1 else None)
+    if isinstance(val, dict):
+        return val.get("count", val.get("total", 0)), val.get("distinct")
+    return val, None
+
+
 def get_ploidy_row_counts(project_id, dataset_name, ploidy_table):
     """
-    Return ``{sample_id: row_count}`` for a regular (non-superpartitioned) per-sample table by
-    grouping on ``sample_id``. Samples with zero rows simply do not appear.
+    Return per-sample row counts for a regular (non-superpartitioned) table. For tables containing
+    a ``chromosome`` column (such as ``sample_chromosome_ploidy``), returns
+    ``{sample_id: (row_count, distinct_chromosome_count)}`` so duplicate row detection can compare
+    COUNT(*) against COUNT(DISTINCT chromosome). For other regular tables, returns ``{sample_id: row_count}``.
+    Samples with zero rows do not appear.
     """
     _validate_table_prefixes([], [ploidy_table])
 
-    query = f"""
-        SELECT sample_id AS sample_id, COUNT(*) AS n
-        FROM `{project_id}.{dataset_name}.{ploidy_table}`
-        GROUP BY sample_id
-    """
+    if ploidy_table == "sample_chromosome_ploidy":
+        query = f"""
+            SELECT sample_id AS sample_id, COUNT(*) AS n, COUNT(DISTINCT chromosome) AS n_distinct
+            FROM `{project_id}.{dataset_name}.{ploidy_table}`
+            GROUP BY sample_id
+        """
+    else:
+        query = f"""
+            SELECT sample_id AS sample_id, COUNT(*) AS n
+            FROM `{project_id}.{dataset_name}.{ploidy_table}`
+            GROUP BY sample_id
+        """
 
     try:
         client = bigquery.Client(project=project_id)
         results = client.query(query)
-        counts = {row.sample_id: row.n for row in results}
+        if ploidy_table == "sample_chromosome_ploidy":
+            counts = {row.sample_id: (row.n, getattr(row, "n_distinct", None)) for row in results}
+        else:
+            counts = {row.sample_id: row.n for row in results}
         log.info(f"Read per-sample row counts for {len(counts)} samples from {ploidy_table}")
         return counts
     except Exception as e:
@@ -219,7 +246,10 @@ def assess_family_completeness(partition_rows, regular_counts, expected_by_famil
 
     for prefix in regular_table_prefixes:
         counts = regular_counts.get(prefix, {})
-        present_by_family[prefix] = {sid for sid, n in counts.items() if n and n > 0}
+        present_by_family[prefix] = {
+            sid for sid, val in counts.items()
+            if _extract_count_info(val)[0] and _extract_count_info(val)[0] > 0
+        }
 
     per_family = {}
     overall_ok = True
@@ -307,27 +337,31 @@ def assess_cross_family_consistency(expected_by_family, co_produced_families):
 
 def assess_cardinality(counts, expected_samples, expected_count=None):
     """
-    Check that every expected sample has the expected per-sample row count (when an exact override is
-    configured) and that none is missing.
+    Check that every expected sample has the expected per-sample row count and that none is missing
+    or duplicated.
 
     When ``expected_count`` is supplied, cardinality is strictly enforced against that exact constant
     (e.g. pass 24 for a WGS ploidy table). Any sample whose row count differs from ``expected_count``
     is flagged as deviating, failing ``ok``.
 
-    When ``expected_count`` is None, cohort-wide uniformity is NOT enforced. RefRangesCreator only records
-    ploidy for contigs with usable reference blocks (RefRangesCreator.java:88-124), so valid samples
-    can legitimately have different ploidy row counts. In this mode, observed distribution metrics
-    (mode, min, max) are reported for observability, and ``ok`` requires only that no expected samples
-    are missing (having 0 rows).
+    When ``expected_count`` is None, duplication is detected via two complementary mechanisms:
+    1. Exact chromosome collision: SamplePloidyCreator writes at most one row per chromosome, so
+       comparing COUNT(*) against COUNT(DISTINCT chromosome) identifies duplicated loads exactly
+       while allowing legitimate contig variations (such as 23 vs 24 or 25 with chrM).
+    2. Modal ratio: row count >= 1.5x baseline (mode or min for N=2) flags duplicated loads (such as
+       48 vs 24) when per-chromosome details are not available.
 
-    ``counts`` is ``{sample_id: row_count}``; only ``expected_samples`` are assessed (extra samples
-    already in the table from prior loads are ignored).
+    ``counts`` can map sample_id to raw row counts (int), tuples ``(total_rows, distinct_chromosomes)``,
+    or dicts ``{"count": int, "distinct": int}``. Only ``expected_samples`` are assessed.
     """
     expected = set(expected_samples)
-    present = {sid: counts[sid] for sid in expected if sid in counts and counts[sid] > 0}
+    present = {
+        sid: counts[sid] for sid in expected
+        if sid in counts and (_extract_count_info(counts[sid])[0] or 0) > 0
+    }
     missing = sorted(expected - set(present))
 
-    reference_source = "override" if expected_count is not None else "none"
+    reference_source = "override" if expected_count is not None else "mode"
 
     if not present:
         return {
@@ -335,6 +369,7 @@ def assess_cardinality(counts, expected_samples, expected_count=None):
             "mode": None,
             "reference_count": expected_count,
             "reference_source": reference_source,
+            "baseline": None,
             "min": None,
             "max": None,
             "distinct_samples": 0,
@@ -343,24 +378,32 @@ def assess_cardinality(counts, expected_samples, expected_count=None):
             "deviating_samples": [],
         }
 
-    values = list(present.values())
+    values = [_extract_count_info(val)[0] for val in present.values()]
     observed_mode = Counter(values).most_common(1)[0][0]
 
     if expected_count is not None:
-        deviating = sorted(
-            ({"sample_id": sid, "count": n} for sid, n in present.items() if n != expected_count),
-            key=lambda d: d["sample_id"],
-        )
-        ok = not missing and not deviating
-    else:
+        reference = expected_count
+        baseline = expected_count
         deviating = []
-        ok = not missing
+        for sid, val in sorted(present.items(), key=lambda d: d[0]):
+            n, n_distinct = _extract_count_info(val)
+            if n != expected_count or (n_distinct is not None and n > n_distinct):
+                deviating.append({"sample_id": sid, "count": n})
+    else:
+        reference = observed_mode
+        baseline = min(values) if len(values) == 2 else observed_mode
+        deviating = []
+        for sid, val in sorted(present.items(), key=lambda d: d[0]):
+            n, n_distinct = _extract_count_info(val)
+            if (n_distinct is not None and n > n_distinct) or (baseline > 0 and n / baseline >= 1.5):
+                deviating.append({"sample_id": sid, "count": n})
 
     return {
-        "ok": ok,
+        "ok": not missing and not deviating,
         "mode": observed_mode,
-        "reference_count": expected_count,
+        "reference_count": reference,
         "reference_source": reference_source,
+        "baseline": baseline,
         "min": min(values),
         "max": max(values),
         "distinct_samples": len(present),
@@ -390,7 +433,7 @@ def assess_duplication_screen(partition_rows, family, expected_samples,
     }
 
     if not rows_by_sample:
-        return {"family": family, "threshold": threshold, "median": None,
+        return {"family": family, "threshold": threshold, "median": None, "baseline": None,
                 "samples_screened": 0, "outliers": [], "singleton_flagged": False}
 
     median = statistics.median(rows_by_sample.values())
@@ -412,6 +455,7 @@ def assess_duplication_screen(partition_rows, family, expected_samples,
         "family": family,
         "threshold": threshold,
         "median": median,
+        "baseline": baseline,
         "samples_screened": len(rows_by_sample),
         "outliers": outliers,
         "singleton_flagged": singleton_flagged,
@@ -455,7 +499,7 @@ def assess_truncation_screen(partition_rows, family, expected_samples,
     }
 
     if not rows_by_sample:
-        return {"family": family, "threshold": threshold, "median": None,
+        return {"family": family, "threshold": threshold, "median": None, "baseline": None,
                 "samples_screened": 0, "outliers": [], "singleton_flagged": False}
 
     median = statistics.median(rows_by_sample.values())
@@ -477,6 +521,7 @@ def assess_truncation_screen(partition_rows, family, expected_samples,
         "family": family,
         "threshold": threshold,
         "median": median,
+        "baseline": baseline,
         "samples_screened": len(rows_by_sample),
         "outliers": outliers,
         "singleton_flagged": singleton_flagged,
@@ -506,12 +551,12 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
     "deviating" and fail a valid ingest; completeness alone covers it.
 
     ``expected_ploidy_rows_per_sample``, when set, is the exact per-sample row count each
-    cardinality-checked table is validated against (e.g. 24 for WGS). When unset, cohort-wide
-    uniformity is not enforced (valid samples may legitimately have differing contig coverage in
-    RefRangesCreator); observed mode, min, and max are reported for observability and all samples
-    with > 0 rows pass cardinality. (Today ploidy is the only cardinality-checked table; if others
-    with differing exact counts are ever added this single override would need to become a per-table
-    mapping.)
+    cardinality-checked table is validated against (e.g. 24 for WGS). When unset, the callset's
+    modal count is used as the reference baseline: legitimate contig variations (e.g. 23 or 25 when
+    mode is 24, as RefRangesCreator only records ploidy for contigs with usable reference blocks) pass,
+    while duplicated loads (>= 1.5x baseline, such as 48 vs 24) are flagged as deviating and fail
+    cardinality. (Today ploidy is the only cardinality-checked table; if others with differing exact
+    counts are ever added this single override would need to become a per-table mapping.)
 
     The returned dict carries flat booleans read shallowly downstream (``completeness_ok``,
     ``cardinality_ok``, ``cross_family_ok``, ``duplication_flagged``, ``truncation_flagged``) plus a

@@ -350,5 +350,56 @@ class TestDescribeIncompleteReasons(unittest.TestCase):
         self.assertEqual(self._reasons(vet_duplication_flagged=True, vet_truncation_flagged=True), [])
 
 
+class TestLogStructuralSummary(unittest.TestCase):
+    def test_two_sample_duplication_and_truncation_logs_baseline(self):
+        structural = {
+            "allow_flagged_vet_loads": False,
+            "details": {
+                "family_completeness": {"ok": True, "per_family": {}},
+                "cross_family_consistency": {"ok": True, "union_size": 2, "per_family": {}},
+                "cardinality": {
+                    "sample_chromosome_ploidy": {
+                        "ok": True,
+                        "reference_source": "mode",
+                        "reference_count": 24,
+                        "mode": 24,
+                        "min": 23,
+                        "max": 24,
+                        "distinct_samples": 2,
+                    }
+                },
+                "duplication_screen": {
+                    "vet": {
+                        "threshold": 1.6,
+                        "median": 150,
+                        "baseline": 100,
+                        "samples_screened": 2,
+                        "outliers": [{"sample_id": 2, "rows": 200, "ratio": 2.0}],
+                        "singleton_flagged": False,
+                    }
+                },
+                "truncation_screen": {
+                    "vet": {
+                        "threshold": 1.6,
+                        "median": 150,
+                        "baseline": 200,
+                        "samples_screened": 2,
+                        "outliers": [{"sample_id": 1, "rows": 100, "ratio": 0.5}],
+                        "singleton_flagged": False,
+                    }
+                },
+                "duplication_unscreened": {"families": [], "reason": ""},
+            },
+        }
+        with self.assertLogs("verify_all_loaded", level="INFO") as cm:
+            verify_all_loaded._log_structural_summary(structural)
+
+        logs = "\n".join(cm.output)
+        self.assertIn("1 sample(s) >= 1.6x baseline (100) (blocks Parquet deletion)", logs)
+        self.assertIn("1 sample(s) <= baseline/1.6 (200) (blocks Parquet deletion)", logs)
+        self.assertIn("modal count 24 rows/sample, no duplications detected", logs)
+
+
 if __name__ == "__main__":
     unittest.main()
+

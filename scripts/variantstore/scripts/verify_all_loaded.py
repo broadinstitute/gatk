@@ -106,46 +106,50 @@ def _log_structural_summary(structural):
                 )
             else:
                 log.info(
-                    f"  [cardinality] {table}: {card['distinct_samples']} samples present "
-                    f"(no exact-count override; mode={card['mode']}, min={card['min']}, max={card['max']})"
+                    f"  [cardinality] {table}: {card['distinct_samples']} samples present, modal count {card['mode']} rows/sample, no duplications detected "
+                    f"(min={card['min']}, max={card['max']})"
                 )
         else:
-            ref_desc = f"{card.get('reference_count')} rows/sample ({card.get('reference_source', 'none')})"
+            ref_desc = f"{card.get('reference_count')} rows/sample ({card.get('reference_source', 'mode')})"
             log.error(
                 f"  [cardinality] {table}: expected {ref_desc}, observed mode={card['mode']} "
                 f"min={card['min']} max={card['max']}; "
-                f"{len(card['missing_samples'])} missing, {len(card['deviating_samples'])} off-reference"
+                f"{len(card['missing_samples'])} missing, {len(card['deviating_samples'])} deviating/duplicated"
             )
 
     for family, screen in sorted(details["duplication_screen"].items()):
         outliers = screen["outliers"]
         level = "  [duplication]"
+        baseline = screen.get("baseline", screen.get("median"))
+        base_desc = "baseline" if screen.get("samples_screened") == 2 else "median"
         if screen.get("singleton_flagged"):
             if structural["allow_flagged_vet_loads"]:
                 log.warning(f"{level} {family}: singleton load has no cohort consensus; duplication screening is disabled (warning only; --allow-flagged-vet-loads set)")
             else:
                 log.error(f"{level} {family}: singleton load has no cohort consensus; duplication screening is disabled (blocks Parquet deletion)")
         elif not outliers:
-            log.info(f"{level} {family}: no samples >= {screen['threshold']}x median ({screen['median']})")
+            log.info(f"{level} {family}: no samples >= {screen['threshold']}x {base_desc} ({baseline})")
         elif structural["allow_flagged_vet_loads"]:
-            log.warning(f"{level} {family}: {len(outliers)} sample(s) >= {screen['threshold']}x median (warning only; --allow-flagged-vet-loads set)")
+            log.warning(f"{level} {family}: {len(outliers)} sample(s) >= {screen['threshold']}x {base_desc} ({baseline}) (warning only; --allow-flagged-vet-loads set)")
         else:
-            log.error(f"{level} {family}: {len(outliers)} sample(s) >= {screen['threshold']}x median (blocks Parquet deletion)")
+            log.error(f"{level} {family}: {len(outliers)} sample(s) >= {screen['threshold']}x {base_desc} ({baseline}) (blocks Parquet deletion)")
 
     for family, screen in sorted(details.get("truncation_screen", {}).items()):
         outliers = screen["outliers"]
         level = "  [truncation]"
+        baseline = screen.get("baseline", screen.get("median"))
+        base_desc = "baseline" if screen.get("samples_screened") == 2 else "median"
         if screen.get("singleton_flagged"):
             if structural["allow_flagged_vet_loads"]:
                 log.warning(f"{level} {family}: singleton load has no cohort consensus; truncation screening is disabled (warning only; --allow-flagged-vet-loads set)")
             else:
                 log.error(f"{level} {family}: singleton load has no cohort consensus; truncation screening is disabled (blocks Parquet deletion)")
         elif not outliers:
-            log.info(f"{level} {family}: no samples <= median/{screen['threshold']} ({screen['median']})")
+            log.info(f"{level} {family}: no samples <= {base_desc}/{screen['threshold']} ({baseline})")
         elif structural["allow_flagged_vet_loads"]:
-            log.warning(f"{level} {family}: {len(outliers)} sample(s) <= median/{screen['threshold']} (warning only; --allow-flagged-vet-loads set)")
+            log.warning(f"{level} {family}: {len(outliers)} sample(s) <= {base_desc}/{screen['threshold']} ({baseline}) (warning only; --allow-flagged-vet-loads set)")
         else:
-            log.error(f"{level} {family}: {len(outliers)} sample(s) <= median/{screen['threshold']} (blocks Parquet deletion)")
+            log.error(f"{level} {family}: {len(outliers)} sample(s) <= {base_desc}/{screen['threshold']} ({baseline}) (blocks Parquet deletion)")
 
     unscreened = details["duplication_unscreened"]
     if unscreened["families"]:

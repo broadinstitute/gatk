@@ -39,13 +39,13 @@ Verification enforces a two-tier safety contract separating workflow success fro
 Determines whether BigQuery ingestion succeeded. Governed exclusively by **exact** checks:
 - **File Presence**: Every `(table_name, sample_id)` pair discovered in GCS must be confirmed present in BigQuery.
 - **Family Completeness**: Every expected sample partition in superpartitioned tables (`vet_%`, `ref_ranges_%`) and every expected sample row in regular tables (`sample_chromosome_ploidy`, `vcf_header_lines_scratch`) must contain $> 0$ rows.
-- **Ploidy Cardinality Consistency**: When an explicit exact count is configured via `--expected-ploidy-rows-per-sample` (e.g. `24` for WGS), every expected sample must have exactly that count. When unset, cohort-wide uniformity is not enforced because producers only write ploidy entries for contigs with usable reference blocks; observational metrics (mode, min, max) are reported without failing minority counts.
+- **Ploidy Cardinality Consistency**: Since `SamplePloidyCreator` emits at most one row per chromosome per sample, `COUNT(*) == COUNT(DISTINCT chromosome)` is verified per sample to detect duplicated row ingestion exactly while allowing legitimate contig variations (such as 23 vs 24 or 25 with chrM). When an explicit exact count is configured via `--expected-ploidy-rows-per-sample` (e.g. `24` for WGS), every expected sample must also match that exact count.
 - **Cross-Family Consistency**: A sample present in any co-produced family (`vet`, `ref_ranges`, `sample_chromosome_ploidy`, and conditionally `vcf_header_lines_scratch` when loaded alongside data) must be present in all configured co-produced families.
 
 If any exact check fails, `all_loaded` is `false`, and `VerifyParquetLoading` exits non-zero, immediately aborting the workflow.
 
 ### 2. `safe_to_delete_parquet` (Deletion Gate)
-A conservative gate governing whether `CleanUpParquetFiles` is permitted to delete the source Parquet files from GCS:
+A conservative gate governing whether `DeleteParquetFiles` is permitted to delete the source Parquet files from GCS:
 - Requires `all_loaded == true`.
 - Evaluates the cohort duplication screen (default ceiling: $1.6\times$ median / lower baseline for $N=2$) and truncation screen (default floor: $1/1.6 = 0.625\times$ median / upper baseline for $N=2$) on `vet` row counts.
 - Singletons ($N=1$) are flagged conservatively by default since no cohort consensus baseline exists.
