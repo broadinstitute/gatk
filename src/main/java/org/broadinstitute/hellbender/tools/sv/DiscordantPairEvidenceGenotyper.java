@@ -10,7 +10,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.aggregation.DiscordantPairEvidenceTester;
 import org.broadinstitute.hellbender.tools.sv.aggregation.EvidenceStatUtils;
 import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngine;
-import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
