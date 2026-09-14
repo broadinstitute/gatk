@@ -1452,9 +1452,11 @@ task VerifyParquetLoading {
       --output-dir verification_output || rc=$?
 
     # Copy the verdict JSON to a durable location if one was configured, so the diagnostic survives the
-    # fail-loud abort above. The copy must never mask the verification verdict, hence the trailing `|| true`.
+    # fail-loud abort above. The copy must only happen on failure ($rc -ne 0) so a successful retry does
+    # not overwrite the failure diagnostic that this path is meant to preserve. The copy must never mask
+    # the verification verdict, hence the trailing `|| true`.
     diagnostics_dir='~{default="" verification_diagnostics_gcs_dir}'
-    if [[ -n "${diagnostics_dir}" && -f verification_output/verification_results.json ]]
+    if [[ $rc -ne 0 && -n "${diagnostics_dir}" && -f verification_output/verification_results.json ]]
     then
       gcloud storage cp ~{"--billing-project " + billing_project_id} \
         verification_output/verification_results.json "${diagnostics_dir%/}/verification_results.json" || true

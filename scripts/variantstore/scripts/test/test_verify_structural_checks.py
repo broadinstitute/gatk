@@ -347,6 +347,15 @@ class TestAssessDuplicationScreen(unittest.TestCase):
         self.assertEqual(r["outliers"], [])
         self.assertTrue(r["singleton_flagged"])
 
+    def test_two_sample_load_with_duplication_flagged(self):
+        # Regression for two-sample median averaging: with row counts 100 and 200, median is 150
+        # which would give ratio 1.333 (< 1.6). Using the lower baseline catches sample 2 at 2.0x.
+        part = [("vet_001", 1, 100), ("vet_001", 2, 200)]
+        r = assess_duplication_screen(part, "vet", {1, 2}, ["vet", "ref_ranges"], 1.6)
+        self.assertEqual(r["samples_screened"], 2)
+        self.assertEqual([o["sample_id"] for o in r["outliers"]], [2])
+        self.assertAlmostEqual(r["outliers"][0]["ratio"], 2.0)
+
 
 class TestAssessTruncationScreen(unittest.TestCase):
     """Low-side mirror of the duplication screen: flags a grossly under-rowed vet partition."""
@@ -396,6 +405,15 @@ class TestAssessTruncationScreen(unittest.TestCase):
         self.assertEqual(r["samples_screened"], 1)
         self.assertEqual(r["outliers"], [])
         self.assertTrue(r["singleton_flagged"])
+
+    def test_two_sample_load_with_truncation_flagged(self):
+        # Regression for two-sample median averaging: with row counts 100 and 200, median is 150
+        # which would give ratio 0.667 (> 0.625). Using the upper baseline catches sample 1 at 0.5x.
+        part = [("vet_001", 1, 100), ("vet_001", 2, 200)]
+        r = assess_truncation_screen(part, "vet", {1, 2}, ["vet", "ref_ranges"], 1.6)
+        self.assertEqual(r["samples_screened"], 2)
+        self.assertEqual([o["sample_id"] for o in r["outliers"]], [1])
+        self.assertAlmostEqual(r["outliers"][0]["ratio"], 0.5)
 
 
 class TestRunStructuralChecks(unittest.TestCase):
@@ -489,6 +507,31 @@ class TestRunStructuralChecks(unittest.TestCase):
         self.assertTrue(r["cardinality_ok"])
         self.assertTrue(r["cross_family_ok"])
         self.assertEqual(r["details"]["cross_family_consistency"]["per_family"], {})
+
+    def test_combined_header_and_data_missing_header_fails_cross_family(self):
+        # When headers and data are loaded together (e.g. GvsQuickstartIntegration with load_vcf_headers=true),
+        # vcf_header_lines_scratch is included in the cross-family check. If sample 3's header Parquet never
+        # landed, cross_family_ok fails so safe_to_delete_parquet is blocked.
+        part = ([("vet_001", i, 100) for i in (1, 2, 3)]
+                + [("ref_ranges_001", i, 50) for i in (1, 2, 3)])
+        counts_by_table = {
+            "sample_chromosome_ploidy": {1: 24, 2: 24, 3: 24},
+            "vcf_header_lines_scratch": {1: 30, 2: 45},
+        }
+        self._patch_regular(part, counts_by_table)
+        exp = {"vet": {1, 2, 3}, "ref_ranges": {1, 2, 3},
+               "sample_chromosome_ploidy": {1, 2, 3}, "vcf_header_lines_scratch": {1, 2}}
+
+        r = run_structural_checks(
+            "proj", "ds", exp,
+            superpartitioned_table_prefixes=["vet", "ref_ranges"],
+            regular_table_prefixes=["sample_chromosome_ploidy", "vcf_header_lines_scratch"],
+        )
+        self.assertFalse(r["cross_family_ok"])
+        self.assertEqual(
+            r["details"]["cross_family_consistency"]["per_family"]["vcf_header_lines_scratch"]["missing_samples"],
+            [3],
+        )
 
     def test_partial_ploidy_load_fails_cardinality(self):
         part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]

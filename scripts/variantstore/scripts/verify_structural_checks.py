@@ -391,10 +391,14 @@ def assess_duplication_screen(partition_rows, family, expected_samples,
                 "samples_screened": 0, "outliers": [], "singleton_flagged": False}
 
     median = statistics.median(rows_by_sample.values())
+    # In a two-sample load, median averages the two values, diluting a 2x duplicate to 1.333x
+    # (which misses the default 1.6x threshold). Use the lower value as the duplication baseline.
+    baseline = min(rows_by_sample.values()) if len(rows_by_sample) == 2 else median
+
     outliers = []
-    if median > 0:
+    if baseline > 0:
         for sid, rows in rows_by_sample.items():
-            ratio = rows / median
+            ratio = rows / baseline
             if ratio >= threshold:
                 outliers.append({"sample_id": sid, "rows": rows, "ratio": round(ratio, 3)})
     outliers.sort(key=lambda d: d["ratio"], reverse=True)
@@ -452,12 +456,16 @@ def assess_truncation_screen(partition_rows, family, expected_samples,
                 "samples_screened": 0, "outliers": [], "singleton_flagged": False}
 
     median = statistics.median(rows_by_sample.values())
+    # In a two-sample load, median averages the two values, diluting a 0.5x truncation to 0.667x
+    # (which misses the default 1/1.6 = 0.625 floor). Use the upper value as the truncation baseline.
+    baseline = max(rows_by_sample.values()) if len(rows_by_sample) == 2 else median
+
     outliers = []
-    if median > 0:
-        floor = median / threshold
+    if baseline > 0:
+        floor = baseline / threshold
         for sid, rows in rows_by_sample.items():
             if rows <= floor:
-                outliers.append({"sample_id": sid, "rows": rows, "ratio": round(rows / median, 3)})
+                outliers.append({"sample_id": sid, "rows": rows, "ratio": round(rows / baseline, 3)})
     outliers.sort(key=lambda d: d["ratio"])
 
     singleton_flagged = len(rows_by_sample) == 1
@@ -562,6 +570,13 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
     # assess_cross_family_consistency).
     configured_families = set(superpartitioned_table_prefixes) | set(regular_table_prefixes)
     active_co_produced_families = [f for f in co_produced_families if f in configured_families]
+    # If the header family is configured and at least one data family is present in this run,
+    # headers and data are being loaded together (e.g. GvsQuickstartIntegration with load_vcf_headers=true).
+    # Include headers in the cross-family check so a missing header Parquet cannot authorize deleting
+    # an incomplete source set. Keep it excluded for a true headers-only run (no data families present).
+    header_family = "vcf_header_lines_scratch"
+    if header_family in configured_families and any(expected_by_family.get(f) for f in active_co_produced_families):
+        active_co_produced_families.append(header_family)
     cross_family = assess_cross_family_consistency(expected_by_family, active_co_produced_families)
 
     # Per-sample cardinality consistency, applied only to regular tables that carry a UNIFORM
