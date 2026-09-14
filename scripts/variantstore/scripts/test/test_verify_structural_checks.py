@@ -340,6 +340,13 @@ class TestAssessDuplicationScreen(unittest.TestCase):
         self.assertEqual(r["samples_screened"], 5)
         self.assertEqual(r["outliers"], [])
 
+    def test_singleton_is_flagged(self):
+        part = [("vet_001", 1, 100)]
+        r = assess_duplication_screen(part, "vet", {1}, ["vet", "ref_ranges"], 1.6)
+        self.assertEqual(r["samples_screened"], 1)
+        self.assertEqual(r["outliers"], [])
+        self.assertTrue(r["singleton_flagged"])
+
 
 class TestAssessTruncationScreen(unittest.TestCase):
     """Low-side mirror of the duplication screen: flags a grossly under-rowed vet partition."""
@@ -382,6 +389,13 @@ class TestAssessTruncationScreen(unittest.TestCase):
         r = assess_truncation_screen(part, "vet", set(range(1, 6)), ["vet", "ref_ranges"], 1.6)
         self.assertEqual(r["samples_screened"], 5)
         self.assertEqual(r["outliers"], [])
+
+    def test_singleton_is_flagged(self):
+        part = [("vet_001", 1, 100)]
+        r = assess_truncation_screen(part, "vet", {1}, ["vet", "ref_ranges"], 1.6)
+        self.assertEqual(r["samples_screened"], 1)
+        self.assertEqual(r["outliers"], [])
+        self.assertTrue(r["singleton_flagged"])
 
 
 class TestRunStructuralChecks(unittest.TestCase):
@@ -519,6 +533,20 @@ class TestRunStructuralChecks(unittest.TestCase):
         self.assertTrue(r["cardinality_ok"])
         truncation = r["details"]["truncation_screen"]["vet"]
         self.assertEqual([o["sample_id"] for o in truncation["outliers"]], [9])
+
+    def test_singleton_is_flagged_by_run_structural_checks(self):
+        # A single-sample load has no cohort consensus. run_structural_checks must flag both screens
+        # so deletion is blocked by default.
+        part = [("vet_001", 1, 100), ("ref_ranges_001", 1, 50)]
+        self._patch(part, {1: 24})
+        exp = {"vet": {1}, "ref_ranges": {1}, "sample_chromosome_ploidy": {1}}
+
+        r = run_structural_checks("proj", "ds", exp, allow_flagged_vet_loads=False)
+        self.assertTrue(r["duplication_flagged"])
+        self.assertTrue(r["truncation_flagged"])
+        # Factual gates remain ok (as long as presence, family completeness, and ploidy cardinality are good)
+        self.assertTrue(r["completeness_ok"])
+        self.assertTrue(r["cardinality_ok"])
 
     def test_truncation_screen_covers_vet_only(self):
         # ref_ranges is deliberately unscreened (wide per-sample distribution), so its detail is a

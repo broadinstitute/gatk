@@ -388,7 +388,7 @@ def assess_duplication_screen(partition_rows, family, expected_samples,
 
     if not rows_by_sample:
         return {"family": family, "threshold": threshold, "median": None,
-                "samples_screened": 0, "outliers": []}
+                "samples_screened": 0, "outliers": [], "singleton_flagged": False}
 
     median = statistics.median(rows_by_sample.values())
     outliers = []
@@ -399,12 +399,15 @@ def assess_duplication_screen(partition_rows, family, expected_samples,
                 outliers.append({"sample_id": sid, "rows": rows, "ratio": round(ratio, 3)})
     outliers.sort(key=lambda d: d["ratio"], reverse=True)
 
+    singleton_flagged = len(rows_by_sample) == 1
+
     return {
         "family": family,
         "threshold": threshold,
         "median": median,
         "samples_screened": len(rows_by_sample),
         "outliers": outliers,
+        "singleton_flagged": singleton_flagged,
     }
 
 
@@ -414,7 +417,7 @@ def assess_truncation_screen(partition_rows, family, expected_samples,
     Flag samples in ``family`` whose ``total_rows`` is at most ``median / threshold`` -- the low-side
     mirror of ``assess_duplication_screen`` and a heuristic screen for a grossly truncated partition.
     The same ``threshold`` governs both sides: a sample reads as a possible duplicate above
-    ``threshold * median`` and as a possible truncation below ``median / threshold``. Returns the
+    `threshold * median`` and as a possible truncation below ``median / threshold``. Returns the
     flagged samples; the caller decides whether a flag blocks Parquet deletion (the default) or is
     waived (``allow_flagged_vet_loads``).
 
@@ -446,7 +449,7 @@ def assess_truncation_screen(partition_rows, family, expected_samples,
 
     if not rows_by_sample:
         return {"family": family, "threshold": threshold, "median": None,
-                "samples_screened": 0, "outliers": []}
+                "samples_screened": 0, "outliers": [], "singleton_flagged": False}
 
     median = statistics.median(rows_by_sample.values())
     outliers = []
@@ -457,12 +460,15 @@ def assess_truncation_screen(partition_rows, family, expected_samples,
                 outliers.append({"sample_id": sid, "rows": rows, "ratio": round(rows / median, 3)})
     outliers.sort(key=lambda d: d["ratio"])
 
+    singleton_flagged = len(rows_by_sample) == 1
+
     return {
         "family": family,
         "threshold": threshold,
         "median": median,
         "samples_screened": len(rows_by_sample),
         "outliers": outliers,
+        "singleton_flagged": singleton_flagged,
     }
 
 
@@ -606,8 +612,8 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
         "families": sorted(f for f in superpartitioned_table_prefixes if f not in duplication),
     }
 
-    duplication_flagged = any(d["outliers"] for d in duplication.values())
-    truncation_flagged = any(t["outliers"] for t in truncation.values())
+    duplication_flagged = any(d["outliers"] or d.get("singleton_flagged", False) for d in duplication.values())
+    truncation_flagged = any(t["outliers"] or t.get("singleton_flagged", False) for t in truncation.values())
 
     return {
         "completeness_ok": completeness["ok"],

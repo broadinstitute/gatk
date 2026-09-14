@@ -114,7 +114,12 @@ def _log_structural_summary(structural):
     for family, screen in sorted(details["duplication_screen"].items()):
         outliers = screen["outliers"]
         level = "  [duplication]"
-        if not outliers:
+        if screen.get("singleton_flagged"):
+            if structural["allow_flagged_vet_loads"]:
+                log.warning(f"{level} {family}: singleton load has no cohort consensus; duplication screening is disabled (warning only; --allow-flagged-vet-loads set)")
+            else:
+                log.error(f"{level} {family}: singleton load has no cohort consensus; duplication screening is disabled (blocks Parquet deletion)")
+        elif not outliers:
             log.info(f"{level} {family}: no samples >= {screen['threshold']}x median ({screen['median']})")
         elif structural["allow_flagged_vet_loads"]:
             log.warning(f"{level} {family}: {len(outliers)} sample(s) >= {screen['threshold']}x median (warning only; --allow-flagged-vet-loads set)")
@@ -124,7 +129,12 @@ def _log_structural_summary(structural):
     for family, screen in sorted(details.get("truncation_screen", {}).items()):
         outliers = screen["outliers"]
         level = "  [truncation]"
-        if not outliers:
+        if screen.get("singleton_flagged"):
+            if structural["allow_flagged_vet_loads"]:
+                log.warning(f"{level} {family}: singleton load has no cohort consensus; truncation screening is disabled (warning only; --allow-flagged-vet-loads set)")
+            else:
+                log.error(f"{level} {family}: singleton load has no cohort consensus; truncation screening is disabled (blocks Parquet deletion)")
+        elif not outliers:
             log.info(f"{level} {family}: no samples <= median/{screen['threshold']} ({screen['median']})")
         elif structural["allow_flagged_vet_loads"]:
             log.warning(f"{level} {family}: {len(outliers)} sample(s) <= median/{screen['threshold']} (warning only; --allow-flagged-vet-loads set)")
