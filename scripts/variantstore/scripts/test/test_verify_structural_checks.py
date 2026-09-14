@@ -137,13 +137,24 @@ class TestAssessCardinality(unittest.TestCase):
         self.assertFalse(r["ok"])
         self.assertEqual(r["missing_samples"], [3])
 
-    def test_partial_and_duplicate_flagged(self):
-        # sample 3 short (partial load), sample 4 doubled (duplication).
-        r = assess_cardinality({1: 24, 2: 24, 3: 20, 4: 48, 5: 24}, set(range(1, 6)))
+    def test_partial_and_duplicate_flagged_with_override(self):
+        # sample 3 short (partial load), sample 4 doubled (duplication) when override is provided.
+        r = assess_cardinality({1: 24, 2: 24, 3: 20, 4: 48, 5: 24}, set(range(1, 6)), expected_count=24)
         self.assertFalse(r["ok"])
         self.assertEqual({d["sample_id"] for d in r["deviating_samples"]}, {3, 4})
         self.assertEqual(r["min"], 20)
         self.assertEqual(r["max"], 48)
+
+    def test_heterogeneous_counts_pass_without_override(self):
+        # Valid samples can have differing ploidy row counts (due to RefRangesCreator interval coverage);
+        # without an explicit override, cardinality uniformity is not assumed and does not fail.
+        r = assess_cardinality({1: 24, 2: 24, 3: 23, 4: 24, 5: 24}, set(range(1, 6)))
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["mode"], 24)
+        self.assertEqual(r["min"], 23)
+        self.assertEqual(r["max"], 24)
+        self.assertEqual(r["deviating_samples"], [])
+        self.assertEqual(r["reference_source"], "none")
 
     def test_extra_samples_in_table_ignored(self):
         # A sample already in the table from a prior load (99) is not expected this run: ignored.
@@ -161,10 +172,11 @@ class TestAssessCardinality(unittest.TestCase):
         self.assertTrue(r["ok"])
         self.assertIsNone(r["mode"])
 
-    def test_reference_source_is_mode_by_default(self):
+    def test_reference_source_is_none_by_default(self):
         r = assess_cardinality({1: 24, 2: 24}, {1, 2})
-        self.assertEqual(r["reference_source"], "mode")
-        self.assertEqual(r["reference_count"], 24)
+        self.assertEqual(r["reference_source"], "none")
+        self.assertIsNone(r["reference_count"])
+        self.assertEqual(r["mode"], 24)
 
     def test_override_matching_constant_passes(self):
         r = assess_cardinality({1: 24, 2: 24, 3: 24}, {1, 2, 3}, expected_count=24)
@@ -537,9 +549,17 @@ class TestRunStructuralChecks(unittest.TestCase):
         part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
         self._patch(part, {1: 24, 2: 20})  # sample 2 short
         exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
-        r = run_structural_checks("proj", "ds", exp)
+        r = run_structural_checks("proj", "ds", exp, expected_ploidy_rows_per_sample=24)
         self.assertTrue(r["completeness_ok"])
         self.assertFalse(r["cardinality_ok"])
+
+    def test_heterogeneous_ploidy_passes_without_override(self):
+        part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
+        self._patch(part, {1: 24, 2: 20})  # sample 2 legitimately has fewer contigs
+        exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
+        r = run_structural_checks("proj", "ds", exp)
+        self.assertTrue(r["completeness_ok"])
+        self.assertTrue(r["cardinality_ok"])
 
     def test_vet_duplication_flag_warns_not_gates_by_default(self):
         part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 300)]

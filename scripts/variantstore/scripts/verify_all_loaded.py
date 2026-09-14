@@ -99,12 +99,18 @@ def _log_structural_summary(structural):
                     )
 
     for table, card in sorted(details["cardinality"].items()):
-        ref_desc = f"{card.get('reference_count')} rows/sample ({card.get('reference_source', 'mode')})"
         if card["ok"]:
-            log.info(
-                f"  [cardinality] {table}: {card['distinct_samples']} samples, all with {ref_desc}"
-            )
+            if card.get("reference_source") == "override":
+                log.info(
+                    f"  [cardinality] {table}: {card['distinct_samples']} samples, all with {card.get('reference_count')} rows/sample (override)"
+                )
+            else:
+                log.info(
+                    f"  [cardinality] {table}: {card['distinct_samples']} samples present "
+                    f"(no exact-count override; mode={card['mode']}, min={card['min']}, max={card['max']})"
+                )
         else:
+            ref_desc = f"{card.get('reference_count')} rows/sample ({card.get('reference_source', 'none')})"
             log.error(
                 f"  [cardinality] {table}: expected {ref_desc}, observed mode={card['mode']} "
                 f"min={card['min']} max={card['max']}; "

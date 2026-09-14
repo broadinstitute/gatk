@@ -79,14 +79,14 @@ log = logging.getLogger(__name__)
 # docstring). Callers may override.
 DEFAULT_DUPLICATION_SCREEN_FAMILIES = ["vet"]
 
-# Regular (non-superpartitioned) tables held to a UNIFORM per-sample row count by the cardinality
-# check. Only ploidy qualifies: its per-sample row count is a fixed function of the reference (the
-# non-PAR contig count). This is deliberately an allowlist, not a denylist -- a regular table whose
-# per-sample row count legitimately varies must be completeness-checked but never cardinality-checked,
-# and the safe default for any newly added regular table is "completeness only". In particular
-# ``vcf_header_lines_scratch`` writes one row per header line and header counts differ across samples
-# (VcfHeaderLineScratchCreator#apply), so including it here would false-positive every sample as
-# "deviating" and fail a valid headers-only ingest.
+# Regular (non-superpartitioned) tables held to an exact per-sample row count by the cardinality
+# check when an explicit expected count is configured (e.g. expected_ploidy_rows_per_sample=24 for WGS).
+# When no override is configured, cohort-wide uniformity is not enforced because producers
+# (RefRangesCreator.java:88-124) only write ploidy rows for contigs with usable reference blocks and
+# extraction (ExtractCohortEngine.java:641-679) defaults missing entries to diploid, allowing valid
+# samples to have differing ploidy row counts. Only ploidy qualifies for cardinality checking:
+# tables whose per-sample count legitimately varies across samples (such as vcf_header_lines_scratch)
+# are excluded from cardinality checking entirely.
 DEFAULT_CARDINALITY_TABLE_PREFIXES = ["sample_chromosome_ploidy"]
 
 # Families that Parquet generation produces TOGETHER, per sample, so their sample sets must be
@@ -307,20 +307,18 @@ def assess_cross_family_consistency(expected_by_family, co_produced_families):
 
 def assess_cardinality(counts, expected_samples, expected_count=None):
     """
-    Check that every expected sample has the *same* per-sample row count and that none is missing.
+    Check that every expected sample has the expected per-sample row count (when an exact override is
+    configured) and that none is missing.
 
-    By default the reference is the callset's own modal count, deliberately *not* a fixed number: for
-    ploidy the intuitive "24" is emergent (the count of distinct non-PAR contigs, which chrM or
-    non-WGS ingest can change), so hardcoding it would false-positive on exome/BGE/chrM callsets. A
-    sample below the reference indicates a partial load; a sample at a multiple of it indicates
-    duplication (subject to PLOIDY_BACKFILL_CAVEAT).
+    When ``expected_count`` is supplied, cardinality is strictly enforced against that exact constant
+    (e.g. pass 24 for a WGS ploidy table). Any sample whose row count differs from ``expected_count``
+    is flagged as deviating, failing ``ok``.
 
-    When ``expected_count`` is supplied the reference becomes that exact constant instead of the mode
-    (e.g. pass 24 for a WGS ploidy table). This recovers the ticket's exact-cardinality guarantee and
-    closes the one gap mode-based detection has -- if a majority of samples share the *wrong* count,
-    that wrong count becomes the mode and the correct minority would otherwise be flagged. The
-    observed mode is always reported alongside, so a mismatch between an override and reality is
-    visible rather than silently overriding it.
+    When ``expected_count`` is None, cohort-wide uniformity is NOT enforced. RefRangesCreator only records
+    ploidy for contigs with usable reference blocks (RefRangesCreator.java:88-124), so valid samples
+    can legitimately have different ploidy row counts. In this mode, observed distribution metrics
+    (mode, min, max) are reported for observability, and ``ok`` requires only that no expected samples
+    are missing (having 0 rows).
 
     ``counts`` is ``{sample_id: row_count}``; only ``expected_samples`` are assessed (extra samples
     already in the table from prior loads are ignored).
@@ -329,7 +327,7 @@ def assess_cardinality(counts, expected_samples, expected_count=None):
     present = {sid: counts[sid] for sid in expected if sid in counts and counts[sid] > 0}
     missing = sorted(expected - set(present))
 
-    reference_source = "override" if expected_count is not None else "mode"
+    reference_source = "override" if expected_count is not None else "none"
 
     if not present:
         return {
@@ -347,16 +345,21 @@ def assess_cardinality(counts, expected_samples, expected_count=None):
 
     values = list(present.values())
     observed_mode = Counter(values).most_common(1)[0][0]
-    reference = expected_count if expected_count is not None else observed_mode
-    deviating = sorted(
-        ({"sample_id": sid, "count": n} for sid, n in present.items() if n != reference),
-        key=lambda d: d["sample_id"],
-    )
+
+    if expected_count is not None:
+        deviating = sorted(
+            ({"sample_id": sid, "count": n} for sid, n in present.items() if n != expected_count),
+            key=lambda d: d["sample_id"],
+        )
+        ok = not missing and not deviating
+    else:
+        deviating = []
+        ok = not missing
 
     return {
-        "ok": not missing and not deviating,
+        "ok": ok,
         "mode": observed_mode,
-        "reference_count": reference,
+        "reference_count": expected_count,
         "reference_source": reference_source,
         "min": min(values),
         "max": max(values),
@@ -503,8 +506,10 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
     "deviating" and fail a valid ingest; completeness alone covers it.
 
     ``expected_ploidy_rows_per_sample``, when set, is the exact per-sample row count each
-    cardinality-checked table is validated against instead of the callset mode; leave it unset to
-    infer the reference from the data. (Today ploidy is the only cardinality-checked table; if others
+    cardinality-checked table is validated against (e.g. 24 for WGS). When unset, cohort-wide
+    uniformity is not enforced (valid samples may legitimately have differing contig coverage in
+    RefRangesCreator); observed mode, min, and max are reported for observability and all samples
+    with > 0 rows pass cardinality. (Today ploidy is the only cardinality-checked table; if others
     with differing exact counts are ever added this single override would need to become a per-table
     mapping.)
 
