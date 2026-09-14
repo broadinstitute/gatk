@@ -197,7 +197,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
         fullName = "af-annotations",
         doc="List of mappings from sample name to corresponding annotation storing alt allele frequencies.  Mappings use colon as separator."
     )
-    private List<String> afAnnotations;
+    private List<String> afAnnotations = new ArrayList<>();
 
     /**
      * List of mappings between sample names in the evaluation vcf and in the truth vcf.  Corresponding sample names should be separated by colons.  If no mappings is passed for a particular sample, it is
@@ -208,8 +208,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             doc = "List of mappings between corresponding eval and truth sample names.  Mappings use colon as separator.",
             optional = true
     )
-    private List<String> sampleMappings;
-
+    private List<String> sampleMappings = new ArrayList<>();
 
     /**
      * Number of bins to bin sites by alt allele frequency for correlation calculation.  (nBins - 1) bins will be spaced equally in log space between firstBinRightEdge and 1.  The first bin will span 0 to firstBinRightEdge.
@@ -272,9 +271,9 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
     final List<GenotypeType> genotypeTypes = Arrays.asList(GenotypeType.HOM_REF, GenotypeType.HET, GenotypeType.HOM_VAR);
     @Override
     public void onTraversalStart() {
-        if (forceCompareSingleSample && sampleMappings.size() > 0) {
-            throw new GATKException("Cannot use --force-compare-single-sample and --sample-mappings arguments together");
-        }
+        if (forceCompareSingleSample && !sampleMappings.isEmpty()) {
+             throw new GATKException("Cannot use --force-compare-single-sample and --sample-mappings arguments together");
+         }
 
         final VCFHeader header = getEvalHeader();
         final VCFHeader truthHeader = getTruthHeader();
@@ -284,9 +283,9 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
         //create a set of the unique annotations that will need to be extracted for each site
         afAnnotationSet.addAll(afAnnotationsMap.values());
 
-        if (sampleMappings.size() > 0) {
-            loadMapping(sampleMappings, sampleMap);
-        }
+        if (!sampleMappings.isEmpty()) {
+             loadMapping(sampleMappings, sampleMap);
+         }
 
         if (forceCompareSingleSample) {
             if (samples.size() != 1 || truthSamples.size() != 1) {
@@ -357,9 +356,9 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             indelCalibrations.add(theseIndelGPCalibrationMetrics);
         }
 
-        if (aggregators.size() == 0) {
-            throw new GATKException("There are no valid comparisons to preform, there is likely a mistake in sample or af annotation mappings.");
-        }
+        if (aggregators.isEmpty()) {
+             throw new GATKException("There are no valid comparisons to preform, there is likely a mistake in sample or af annotation mappings.");
+         }
     }
 
     /**
@@ -412,7 +411,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
 
     @Override
     protected boolean shouldVariantsBeMatched(final VariantContext truth, final VariantContext eval) {
-        return truth.getAlleles().containsAll(eval.getAlleles());
+        return new HashSet<>(truth.getAlleles()).containsAll(eval.getAlleles());
     }
 
     @Override
@@ -461,22 +460,22 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                 }
 
                 if (ac != null) {
-                    final Integer acBin = ac < maxACBin ? ac - 1 : maxACBin -1;
+                    final int acBin = ac < maxACBin ? ac - 1 : maxACBin -1;
                     acSnpMetrics.get(i).get(acBin).incrementMetrics(concordanceState);
                 }
 
                 // calibration
-                if (evalGenotype.hasExtendedAttribute("GP")) {
-                    final List<String> gpStrings = ParsingUtils.split((String)evalGenotype.getExtendedAttribute("GP"), ',');
-                    if(gpStrings.size()== 3) {
-                        for (int j=0; j<3; j++) {
-                            final double gp = VCFUtils.parseVcfDouble(gpStrings.get(j));
-                            final int gp_bin = gp == 1? nCalibrationBins - 1 : (int) (gp * nCalibrationBins);
-                            final GenotypeType truthGenotypeType = truthGenotype == null? GenotypeType.HOM_REF : truthGenotype.getType();
-                            final GenotypeType thisGenotypeType = genotypeTypes.get(j);
-                            snpCalibrations.get(i).get(gp_bin).get(j).increment(thisGenotypeType == truthGenotypeType);
-                        }
-                    }
+                if (evalGenotype != null && evalGenotype.hasExtendedAttribute("GP")) {
+                     final List<String> gpStrings = ParsingUtils.split((String)evalGenotype.getExtendedAttribute("GP"), ',');
+                     if(gpStrings.size()== 3) {
+                          for (int j=0; j<3; j++) {
+                              final double gp = VCFUtils.parseVcfDouble(gpStrings.get(j));
+                              final int gp_bin = gp == 1? nCalibrationBins - 1 : (int) (gp * nCalibrationBins);
+                              final GenotypeType truthGenotypeType = truthGenotype == null? GenotypeType.HOM_REF : truthGenotype.getType();
+                              final GenotypeType thisGenotypeType = genotypeTypes.get(j);
+                              snpCalibrations.get(i).get(gp_bin).get(j).increment(thisGenotypeType == truthGenotypeType);
+                          }
+                     }
                 }
 
             } else if (evalVC.isIndel()) {
@@ -489,22 +488,22 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                 }
 
                 if (ac != null) {
-                    final Integer acBin = ac < maxACBin ? ac - 1 : maxACBin -1;
+                    final int acBin = ac < maxACBin ? ac - 1 : maxACBin -1;
                     acIndelMetrics.get(i).get(acBin).incrementMetrics(concordanceState);
                 }
 
                 // calibration
-                if (evalGenotype.hasExtendedAttribute("GP")) {
-                    final List<String> gpStrings = ParsingUtils.split((String)evalGenotype.getExtendedAttribute("GP"), ',');
-                    if(gpStrings.size()== 3) {
-                        for (int j=0; j<3; j++) {
-                            final double gp = VCFUtils.parseVcfDouble(gpStrings.get(j));
-                            final int gp_bin = gp == 1? nCalibrationBins - 1 : (int) (gp * nCalibrationBins);
-                            final GenotypeType truthGenotypeType = truthGenotype == null? GenotypeType.HOM_REF : truthGenotype.getType();
-                            final GenotypeType thisGenotypeType = genotypeTypes.get(j);
-                            indelCalibrations.get(i).get(gp_bin).get(j).increment(thisGenotypeType == truthGenotypeType);
-                        }
-                    }
+                if (evalGenotype != null && evalGenotype.hasExtendedAttribute("GP")) {
+                     final List<String> gpStrings = ParsingUtils.split((String)evalGenotype.getExtendedAttribute("GP"), ',');
+                     if(gpStrings.size()== 3) {
+                          for (int j=0; j<3; j++) {
+                              final double gp = VCFUtils.parseVcfDouble(gpStrings.get(j));
+                              final int gp_bin = gp == 1? nCalibrationBins - 1 : (int) (gp * nCalibrationBins);
+                              final GenotypeType truthGenotypeType = truthGenotype == null? GenotypeType.HOM_REF : truthGenotype.getType();
+                              final GenotypeType thisGenotypeType = genotypeTypes.get(j);
+                              indelCalibrations.get(i).get(gp_bin).get(j).increment(thisGenotypeType == truthGenotypeType);
+                          }
+                     }
                 }
             }
         }
@@ -569,7 +568,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             }
             final Double af = afList.get(index);
             if (af < 0 || af > 1) {
-                throw new GATKException("Invalid AF value " + af + " at " + vc.getContig() + ":" + vc.getStart() + " for allele " + vc.getAlternateAllele(index-1));
+                throw new GATKException("Invalid AF value " + af + " at " + vc.getContig() + ":" + vc.getStart() + " for allele " + vc.getAlternateAllele(index));
             }
             afMap.put(afAnnotation, af);
         }
@@ -599,294 +598,307 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
 
     @Override
     protected boolean genotypesAgree(final Genotype geno1, final Genotype geno2) {
-        if (geno1 != null && geno1.getPloidy() != geno2.getPloidy()) {
-            //situation could arise from haploid vs diploid on X
-            if (!allowDifferingPloidy) {
-                throw new GATKException("sample " + geno1.getSampleName() + " is ploidy " + geno1.getPloidy() + " while truth sample " + geno2.getSampleName() + " is ploidy " + geno2.getPloidy() + "." +
-                        "  This may be due to haploid vs diploid representation on X.  If you would like to allow for this TYPE of data, use the allowDifferingPloidy argument.");
-            }
-
-            //build a set of all alleles in truth and eval genotypes.  If sets are the same, then genotypes "agree", if different, then genotypes "agree".  so 0/0 and 0 agree, 1/1 and 1 agree, but 0/1 and 1 disagree.
-            final Set<Allele> truthAlleles = new HashSet<>(geno1.getAlleles());
-            final Set<Allele> evalAlleles = new HashSet<>(geno2.getAlleles());
-
-            return truthAlleles.equals(evalAlleles);
-        } else {
-            return super.genotypesAgree(geno1, geno2);
+        if (geno1 == null || geno2 == null) {
+            return false;
         }
+         if (geno1.getPloidy() != geno2.getPloidy()) {
+             //situation could arise from haploid vs diploid on X
+             if (!allowDifferingPloidy) {
+                 throw new GATKException("sample " + geno1.getSampleName() + " is ploidy " + geno1.getPloidy() + " while truth sample " + geno2.getSampleName() + " is ploidy " + geno2.getPloidy() + "." +
+                         "  This may be due to haploid vs diploid representation on X.  If you would like to allow for this TYPE of data, use the allowDifferingPloidy argument.");
+             }
+
+             //build a set of all alleles in truth and eval genotypes.  If sets are the same, then genotypes "agree", if different, then genotypes "agree".  so 0/0 and 0 agree, 1/1 and 1 agree, but 0/1 and 1 disagree.
+             final Set<Allele> truthAlleles = new HashSet<>(geno1.getAlleles());
+             final Set<Allele> evalAlleles = new HashSet<>(geno2.getAlleles());
+
+             return truthAlleles.equals(evalAlleles);
+         } else {
+             return super.genotypesAgree(geno1, geno2);
+         }
     }
 
     @Override
     protected ConcordanceState getConcordanceState(final Genotype truth, final Genotype eval, final boolean evalWasFiltered) {
-        if (truth != null && truth.getPloidy() != eval.getPloidy()) {
-            //situation could arise from haploid vs diploid on X
-            if (!allowDifferingPloidy) {
-                throw new GATKException("sample " + eval.getSampleName() + " is ploidy " + eval.getPloidy() + " while truth sample " + truth.getSampleName() + " is ploidy " + truth.getPloidy() + "." +
-                        "  This may be due to haploid vs diploid representation on X.  If you would like to allow for this TYPE of data, use the allowDifferingPloidy argument.");
-            }
-
-            //build a set of all alleles in truth and eval genotypes.  If sets are the same, then genotypes "agree", if different, then genotypes "agree".  so 0/0 and 0 agree, 1/1 and 1 agree, but 0/1 and 1 disagree.
-            final Set<Allele> truthAlleles = new HashSet<>(truth.getAlleles());
-            final Set<Allele> evalAlleles = new HashSet<>(eval.getAlleles());
-
-            final boolean isPositiveEval = isPositive(eval);
-            final boolean isPositiveTruth = isPositive(truth);
-            final boolean genotypesAgree = truthAlleles.equals(evalAlleles);
-
-            return evaluateConcordanceState(isPositiveEval, isPositiveTruth, genotypesAgree, evalWasFiltered);
+        if (evalWasFiltered && truth != null && eval != null && !isPositive(truth) && !isPositive(eval)) {
+            return ConcordanceState.TRUE_NEGATIVE;
         }
+        if (truth != null && eval != null && truth.getPloidy() != eval.getPloidy()) {
+             //situation could arise from haploid vs diploid on X
+             if (!allowDifferingPloidy) {
+                 throw new GATKException("sample " + eval.getSampleName() + " is ploidy " + eval.getPloidy() + " while truth sample " + truth.getSampleName() + " is ploidy " + truth.getPloidy() + "." +
+                         "  This may be due to haploid vs diploid representation on X.  If you would like to allow for this TYPE of data, use the allowDifferingPloidy argument.");
+             }
 
-        //now normal situation, agree on ploidy.
-        return super.getConcordanceState(truth, eval, evalWasFiltered);
-    }
+             //build a set of all alleles in truth and eval genotypes.  If sets are the same, then genotypes "agree", if different, then genotypes "agree".  so 0/0 and 0 agree, 1/1 and 1 agree, but 0/1 and 1 disagree.
+             final Set<Allele> truthAlleles = new HashSet<>(truth.getAlleles());
+             final Set<Allele> evalAlleles = new HashSet<>(eval.getAlleles());
 
+             final boolean isPositiveEval = isPositive(eval) && !evalWasFiltered;
+             final boolean isPositiveTruth = isPositive(truth);
+             final boolean genotypesAgree = truthAlleles.equals(evalAlleles);
 
+             if (evalWasFiltered) {
+                 if (genotypesAgree) {
+                     return isPositiveTruth ? ConcordanceState.FILTERED_FALSE_NEGATIVE : ConcordanceState.TRUE_NEGATIVE;
+                 }
+                 return isPositive(eval) ? ConcordanceState.FILTERED_TRUE_NEGATIVE : ConcordanceState.FILTERED_FALSE_NEGATIVE;
+             }
 
-    @Override
-    public Object onTraversalSuccess() {
-        final MetricsFile<AFCorrelationMetric, Integer> correlationWriter = getMetricsFile();
-        for (final List<AFCorrelationAggregator> theseAggregators : aggregators ) {
-            for (final AFCorrelationAggregator aggregator : theseAggregators) {
-                correlationWriter.addMetric(new AFCorrelationMetric(aggregator));
-            }
-        }
-        correlationWriter.write(outputFile.toPath().toFile());
+             return evaluateConcordanceState(isPositiveEval, isPositiveTruth, genotypesAgree, false);
+         }
 
-        //write out accuracy results
-        final MetricsFile<AccuracyMetrics, Integer> accuracyWriter = getMetricsFile();
-        snpMetrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
-        indelMetrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
-        accuracyWriter.addAllMetrics(snpMetrics);
-        accuracyWriter.addAllMetrics(indelMetrics);
-        accuracyWriter.write(outputAccuracyFile.toPath().toFile());
-
-        final MetricsFile<AFAccuracyMetrics, Integer> afAccuracryWriter = getMetricsFile();
-        for (final List<AFAccuracyMetrics> metrics : afSnpMetrics) {
-            metrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
-            afAccuracryWriter.addAllMetrics(metrics);
-        }
-        for (final List<AFAccuracyMetrics> metrics : afIndelMetrics) {
-            metrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
-            afAccuracryWriter.addAllMetrics(metrics);
-        }
-        afAccuracryWriter.write(outputAccuracyAFFile.toPath().toFile());
-
-        if (outputAccuracyACFile != null) {
-            final MetricsFile<ACAccuracyMetrics, Integer> acAccuracyMetricsWriter = getMetricsFile();
-            for (final List<ACAccuracyMetrics> metrics : acSnpMetrics) {
-                metrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
-                acAccuracyMetricsWriter.addAllMetrics(metrics);
-            }
-            for (final List<ACAccuracyMetrics> metrics : acIndelMetrics) {
-                metrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
-                acAccuracyMetricsWriter.addAllMetrics(metrics);
-            }
-            acAccuracyMetricsWriter.write(outputAccuracyACFile.toPath().toFile());
-        }
-
-        if (outputCalibrationFile != null) {
-            final MetricsFile<GPCalibrationMetrics, Integer> calibrationMetricsWriter = getMetricsFile();
-            for (final List<List<GPCalibrationMetrics>> metricsList : snpCalibrations) {
-                for (final List<GPCalibrationMetrics> metrics : metricsList) {
-                    calibrationMetricsWriter.addAllMetrics(metrics);
-                }
-            }
-            for (final List<List<GPCalibrationMetrics>> metricsList : indelCalibrations) {
-                for (final List<GPCalibrationMetrics> metrics : metricsList) {
-                    calibrationMetricsWriter.addAllMetrics(metrics);
-                }
-            }
-            calibrationMetricsWriter.write(outputCalibrationFile.toPath().toFile());
-        }
-        return null;
-    }
-
-    /**
-     * get the af bin to assign a particular site to based on its allele frequency
-     */
-    int getBin(double af) {
-        if (af < firstBinRightEdge) {
-            return 0;
-        }
-
-        return (int)Math.ceil((1-Math.log10(af)/Math.log10(firstBinRightEdge)) * (nBins - 1));
-    }
-
-    /**
-     * A class for holding Pearson correlation aggregators for a particular sample and af bin.
-     */
-    private static final class AFCorrelationAggregator {
-        final double binCenter;
-        final String sampleName;
-        final PearsonCorrelationAggregator snp_pearsonCorrelationAggregator = new PearsonCorrelationAggregator();
-        final PearsonCorrelationAggregator indel_pearsonCorrelationAggregator = new PearsonCorrelationAggregator();
-
-        AFCorrelationAggregator(final double binCenter, final String sampleName) {
-            this.binCenter = binCenter;
-            this.sampleName = sampleName;
-        }
-    }
-
-     public static final class AFCorrelationMetric extends MetricBase {
-        public double BIN_CENTER;
-        public String SAMPLE;
-        public double SNP_CORRELATION;
-        public double SNP_SITES;
-        public double INDEL_CORRELATION;
-        public double INDEL_SITES;
-
-        AFCorrelationMetric(final AFCorrelationAggregator afCorrelationAggregator) {
-            BIN_CENTER = afCorrelationAggregator.binCenter;
-            SAMPLE = afCorrelationAggregator.sampleName;
-            SNP_CORRELATION = afCorrelationAggregator.snp_pearsonCorrelationAggregator.getCorrelation();
-            SNP_SITES = afCorrelationAggregator.snp_pearsonCorrelationAggregator.n;
-            INDEL_CORRELATION = afCorrelationAggregator.indel_pearsonCorrelationAggregator.getCorrelation();
-            INDEL_SITES = afCorrelationAggregator.indel_pearsonCorrelationAggregator.n;
-        }
-    }
-
-    /**
-     * A class used to calculate Pearson correlation in a single pass with minimal memory usage
-     */
-    static final class PearsonCorrelationAggregator {
-        /*
-        We will calculate r using the formula r = (<xy> - <x><y>)/(sqrt(<x^2> - <x>^2) * sqrt(<y^2> - <y>^2)).  So we need to store
-        1) the sums of:
-            xy
-            x
-            y
-            x^2
-            y^2
-        2) the total number of entries
-
-        From these we can calculate all the required expectation values.
-         */
-        private double sum_xy;
-        private double sum_x;
-        private double sum_y;
-        private double sum_x2;
-        private double sum_y2;
-        private int n;
-
-        void addEntry(final double x, final double y) {
-            sum_xy += x*y;
-            sum_x += x;
-            sum_y += y;
-            sum_x2 += x*x;
-            sum_y2 += y*y;
-            n++;
-        }
-
-        double getCorrelation() {
-            // r = (<xy> - <x><y>)/(sqrt(<x^2> - <x>^2) * sqrt(<y^2> - <y>^2))
-            final double n_d = n;
-            final double e_xy = sum_xy/n_d;
-            final double e_x = sum_x/n_d;
-            final double e_y = sum_y/n_d;
-            final double e_x2 = sum_x2/n_d;
-            final double e_y2 = sum_y2/n_d;
-
-            return (e_xy - e_x * e_y)/(Math.sqrt(e_x2 - e_x*e_x)* Math.sqrt(e_y2 - e_y*e_y));
-        }
-    }
-
-    public static class GPCalibrationMetrics extends MetricBase {
-        public String SAMPLE;
-        public double GP_BIN_CENTER;
-        public VariantContext.Type TYPE;
-        public GenotypeType GTYPE;
-        public int CORRECT;
-        public int TOTAL;
-
-        GPCalibrationMetrics(final String sample, final double bin_center, final VariantContext.Type type,
-                             final GenotypeType gtype) {
-            this.SAMPLE = sample;
-            this.GP_BIN_CENTER = bin_center;
-            this.TYPE = type;
-            this.GTYPE = gtype;
-        }
-
-        void increment(final boolean isCorrect) {
-            TOTAL++;
-            if (isCorrect) {
-                CORRECT++;
-            }
-        }
-    }
-
-    /**
-     * A class to store accuracy metrics
-     */
-    public static class AccuracyMetrics extends MetricBase {
-        public String SAMPLE;
-        public VariantContext.Type TYPE;
-        public int TRUE_POSITIVES;
-        public int TRUE_NEGATIVES;
-        public int FALSE_POSITIVES;
-        public int FALSE_NEGATIVES;
-        public double RECALL;
-        public double PRECISION;
-        public double ACCURACY;
+         //now normal situation, agree on ploidy.
+         return super.getConcordanceState(truth, eval, evalWasFiltered);
+     }
 
 
-        AccuracyMetrics(final VariantContext.Type type, final String sampleName) {
-            this.TYPE = type;
-            this.SAMPLE = sampleName;
-        }
 
-        void incrementMetrics(final ConcordanceState concordanceState) {
-            switch (concordanceState) {
-                case TRUE_POSITIVE:
-                    TRUE_POSITIVES++;
-                    break;
-                case TRUE_NEGATIVE:
-                case FILTERED_TRUE_NEGATIVE:
-                    TRUE_NEGATIVES++;
-                    break;
-                case FALSE_POSITIVE:
-                    FALSE_POSITIVES++;
-                    break;
-                case FALSE_NEGATIVE:
-                case FILTERED_FALSE_NEGATIVE:
-                    FALSE_NEGATIVES++;
-            }
-        }
+     @Override
+     public Object onTraversalSuccess() {
+         final MetricsFile<AFCorrelationMetric, Integer> correlationWriter = getMetricsFile();
+         for (final List<AFCorrelationAggregator> theseAggregators : aggregators ) {
+             for (final AFCorrelationAggregator aggregator : theseAggregators) {
+                 correlationWriter.addMetric(new AFCorrelationMetric(aggregator));
+             }
+         }
+         correlationWriter.write(outputFile.toPath().toFile());
 
-        void calculateDerivedMetrics() {
-            // recall = TP/(TP + FN)
-            RECALL = TRUE_POSITIVES /((double) TRUE_POSITIVES + (double) FALSE_NEGATIVES);
+         //write out accuracy results
+         final MetricsFile<AccuracyMetrics, Integer> accuracyWriter = getMetricsFile();
+         snpMetrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
+         indelMetrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
+         accuracyWriter.addAllMetrics(snpMetrics);
+         accuracyWriter.addAllMetrics(indelMetrics);
+         accuracyWriter.write(outputAccuracyFile.toPath().toFile());
 
-            // precision = TP/(TP + FP)
-            PRECISION = TRUE_POSITIVES /((double) TRUE_POSITIVES + (double) FALSE_POSITIVES);
+         final MetricsFile<AFAccuracyMetrics, Integer> afAccuracryWriter = getMetricsFile();
+         for (final List<AFAccuracyMetrics> metrics : afSnpMetrics) {
+             metrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
+             afAccuracryWriter.addAllMetrics(metrics);
+         }
+         for (final List<AFAccuracyMetrics> metrics : afIndelMetrics) {
+             metrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
+             afAccuracryWriter.addAllMetrics(metrics);
+         }
+         afAccuracryWriter.write(outputAccuracyAFFile.toPath().toFile());
 
-            // accuracy = (TP + FN) / (TP + FP + TN + FN)
-            // this is the fraction of sites correctly genotyped
-            ACCURACY = (TRUE_POSITIVES + TRUE_NEGATIVES)/(double)(TRUE_POSITIVES + FALSE_POSITIVES + TRUE_NEGATIVES + FALSE_NEGATIVES);
-        }
-    }
+         if (outputAccuracyACFile != null) {
+             final MetricsFile<ACAccuracyMetrics, Integer> acAccuracyMetricsWriter = getMetricsFile();
+             for (final List<ACAccuracyMetrics> metrics : acSnpMetrics) {
+                 metrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
+                 acAccuracyMetricsWriter.addAllMetrics(metrics);
+             }
+             for (final List<ACAccuracyMetrics> metrics : acIndelMetrics) {
+                 metrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
+                 acAccuracyMetricsWriter.addAllMetrics(metrics);
+             }
+             acAccuracyMetricsWriter.write(outputAccuracyACFile.toPath().toFile());
+         }
 
-    /**
-     * A class to store accuracy metrics for a particular frequency bin
-     */
-    public static final class AFAccuracyMetrics extends AccuracyMetrics {
-        public double BIN_CENTER;
+         if (outputCalibrationFile != null) {
+             final MetricsFile<GPCalibrationMetrics, Integer> calibrationMetricsWriter = getMetricsFile();
+             for (final List<List<GPCalibrationMetrics>> metricsList : snpCalibrations) {
+                 for (final List<GPCalibrationMetrics> metrics : metricsList) {
+                     calibrationMetricsWriter.addAllMetrics(metrics);
+                 }
+             }
+             for (final List<List<GPCalibrationMetrics>> metricsList : indelCalibrations) {
+                 for (final List<GPCalibrationMetrics> metrics : metricsList) {
+                     calibrationMetricsWriter.addAllMetrics(metrics);
+                 }
+             }
+             calibrationMetricsWriter.write(outputCalibrationFile.toPath().toFile());
+         }
+         return null;
+     }
 
-        AFAccuracyMetrics(final double binCenter, final VariantContext.Type type, final String sampleName) {
-            super(type, sampleName);
-            BIN_CENTER = binCenter;
-        }
-    }
+     /**
+      * get the af bin to assign a particular site to based on its allele frequency
+      */
+     int getBin(double af) {
+         if (af < firstBinRightEdge) {
+             return 0;
+         }
 
-    /**
-     * A class to store accuracy metrics for a particular AC bin
-     */
-    public static final class ACAccuracyMetrics extends AccuracyMetrics {
-        public double AC;
+         return (int)Math.ceil((1-Math.log10(af)/Math.log10(firstBinRightEdge)) * (nBins - 1));
+     }
 
-        ACAccuracyMetrics(final double ac, final VariantContext.Type type, final String sampleName) {
-            super(type, sampleName);
-            AC = ac;
-        }
-    }
+     /**
+      * A class for holding Pearson correlation aggregators for a particular sample and af bin.
+      */
+     private static final class AFCorrelationAggregator {
+         final double binCenter;
+         final String sampleName;
+         final PearsonCorrelationAggregator snp_pearsonCorrelationAggregator = new PearsonCorrelationAggregator();
+         final PearsonCorrelationAggregator indel_pearsonCorrelationAggregator = new PearsonCorrelationAggregator();
+
+         AFCorrelationAggregator(final double binCenter, final String sampleName) {
+             this.binCenter = binCenter;
+             this.sampleName = sampleName;
+         }
+     }
+
+      public static final class AFCorrelationMetric extends MetricBase {
+          public double BIN_CENTER;
+          public String SAMPLE;
+          public double SNP_CORRELATION;
+          public double SNP_SITES;
+          public double INDEL_CORRELATION;
+          public double INDEL_SITES;
+
+          AFCorrelationMetric(final AFCorrelationAggregator afCorrelationAggregator) {
+              BIN_CENTER = afCorrelationAggregator.binCenter;
+              SAMPLE = afCorrelationAggregator.sampleName;
+              SNP_CORRELATION = afCorrelationAggregator.snp_pearsonCorrelationAggregator.getCorrelation();
+              SNP_SITES = afCorrelationAggregator.snp_pearsonCorrelationAggregator.n;
+              INDEL_CORRELATION = afCorrelationAggregator.indel_pearsonCorrelationAggregator.getCorrelation();
+              INDEL_SITES = afCorrelationAggregator.indel_pearsonCorrelationAggregator.n;
+          }
+      }
+
+      /**
+       * A class used to calculate Pearson correlation in a single pass with minimal memory usage
+       */
+      static final class PearsonCorrelationAggregator {
+          /*
+          We will calculate r using the formula r = (<xy> - <x><y>)/(sqrt(<x^2> - <x>^2) * sqrt(<y^2> - <y>^2)).  So we need to store
+          1) the sums of:
+              xy
+              x
+              y
+              x^2
+              y^2
+          2) the total number of entries
+
+          From these we can calculate all the required expectation values.
+           */
+          private double sum_xy;
+          private double sum_x;
+          private double sum_y;
+          private double sum_x2;
+          private double sum_y2;
+          private int n;
+
+          void addEntry(final double x, final double y) {
+              sum_xy += x*y;
+              sum_x += x;
+              sum_y += y;
+              sum_x2 += x*x;
+              sum_y2 += y*y;
+              n++;
+          }
+
+          double getCorrelation() {
+              // r = (<xy> - <x><y>)/(sqrt(<x^2> - <x>^2) * sqrt(<y^2> - <y>^2))
+              final double n_d = n;
+              final double e_xy = sum_xy/n_d;
+              final double e_x = sum_x/n_d;
+              final double e_y = sum_y/n_d;
+              final double e_x2 = sum_x2/n_d;
+              final double e_y2 = sum_y2/n_d;
+
+              return (e_xy - e_x * e_y)/(Math.sqrt(e_x2 - e_x*e_x)* Math.sqrt(e_y2 - e_y*e_y));
+          }
+      }
+
+      public static class GPCalibrationMetrics extends MetricBase {
+          public String SAMPLE;
+          public double GP_BIN_CENTER;
+          public VariantContext.Type TYPE;
+          public GenotypeType GTYPE;
+          public int CORRECT;
+          public int TOTAL;
+
+          GPCalibrationMetrics(final String sample, final double bin_center, final VariantContext.Type type,
+                               final GenotypeType gtype) {
+              this.SAMPLE = sample;
+              this.GP_BIN_CENTER = bin_center;
+              this.TYPE = type;
+              this.GTYPE = gtype;
+          }
+
+          void increment(final boolean isCorrect) {
+              TOTAL++;
+              if (isCorrect) {
+                  CORRECT++;
+              }
+          }
+      }
+
+      /**
+       * A class to store accuracy metrics
+       */
+      public static class AccuracyMetrics extends MetricBase {
+          public String SAMPLE;
+          public VariantContext.Type TYPE;
+          public int TRUE_POSITIVES;
+          public int TRUE_NEGATIVES;
+          public int FALSE_POSITIVES;
+          public int FALSE_NEGATIVES;
+          public double RECALL;
+          public double PRECISION;
+          public double ACCURACY;
+
+
+          AccuracyMetrics(final VariantContext.Type type, final String sampleName) {
+              this.TYPE = type;
+              this.SAMPLE = sampleName;
+          }
+
+          void incrementMetrics(final ConcordanceState concordanceState) {
+              switch (concordanceState) {
+                  case TRUE_POSITIVE:
+                      TRUE_POSITIVES++;
+                      break;
+                  case TRUE_NEGATIVE:
+                  case FILTERED_TRUE_NEGATIVE:
+                      TRUE_NEGATIVES++;
+                      break;
+                  case FALSE_POSITIVE:
+                      FALSE_POSITIVES++;
+                      break;
+                  case FALSE_NEGATIVE:
+                  case FILTERED_FALSE_NEGATIVE:
+                      FALSE_NEGATIVES++;
+              }
+          }
+
+          void calculateDerivedMetrics() {
+              // recall = TP/(TP + FN)
+              RECALL = TRUE_POSITIVES /((double) TRUE_POSITIVES + (double) FALSE_NEGATIVES);
+
+              // precision = TP/(TP + FP)
+              PRECISION = TRUE_POSITIVES /((double) TRUE_POSITIVES + (double) FALSE_POSITIVES);
+
+              // accuracy = (TP + FN) / (TP + FP + TN + FN)
+              // this is the fraction of sites correctly genotyped
+              ACCURACY = (TRUE_POSITIVES + TRUE_NEGATIVES)/(double)(TRUE_POSITIVES + FALSE_POSITIVES + TRUE_NEGATIVES + FALSE_NEGATIVES);
+          }
+      }
+
+      /**
+       * A class to store accuracy metrics for a particular frequency bin
+       */
+      public static final class AFAccuracyMetrics extends AccuracyMetrics {
+          public double BIN_CENTER;
+
+          AFAccuracyMetrics(final double binCenter, final VariantContext.Type type, final String sampleName) {
+              super(type, sampleName);
+              BIN_CENTER = binCenter;
+          }
+      }
+
+      /**
+       * A class to store accuracy metrics for a particular AC bin
+       */
+      public static final class ACAccuracyMetrics extends AccuracyMetrics {
+          public double AC;
+
+          ACAccuracyMetrics(final double ac, final VariantContext.Type type, final String sampleName) {
+              super(type, sampleName);
+              AC = ac;
+          }
+      }
 
 }

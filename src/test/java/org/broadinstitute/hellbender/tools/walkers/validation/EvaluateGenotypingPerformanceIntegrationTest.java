@@ -45,8 +45,9 @@ public class EvaluateGenotypingPerformanceIntegrationTest extends CommandLinePro
     void integrationTests(final String eval, final String truth, final File expectedCorrelation, final File expectedAccuracy, final List<String> additionalArgs) throws IOException {
         final File outputCorrelation = createTempFile("correlation", ".tsv");
         final File outputAccuracy = createTempFile("accuracy", ".tsv");
+        final File outputAccuracyAF = createTempFile("accuracy_af", ".tsv");
 
-        runCommandLine(buildArgs(eval, truth, outputCorrelation.getAbsolutePath(), outputAccuracy.getAbsolutePath(), additionalArgs));
+        runCommandLine(buildArgs(eval, truth, outputCorrelation.getAbsolutePath(), outputAccuracy.getAbsolutePath(), outputAccuracyAF.getAbsolutePath(), additionalArgs));
 
         IntegrationTestSpec.assertEqualTextFiles(outputCorrelation, expectedCorrelation, "#");
         IntegrationTestSpec.assertEqualTextFiles(outputAccuracy, expectedAccuracy, "#");
@@ -67,11 +68,12 @@ public class EvaluateGenotypingPerformanceIntegrationTest extends CommandLinePro
     @Test(dataProvider = "exceptionProducingDataProvider", expectedExceptions = GATKException.class)
     void exceptionProducingTests(final String eval, final String truth, final List<String> additionalArgs) {
         runCommandLine(buildArgs(eval, truth,
-                createTempFile("correlation", ".tsv").getAbsolutePath(), createTempFile("accuracy", ".tsv").getAbsolutePath(),
+                createTempFile("correlation", ".tsv").getAbsolutePath(), createTempFile("accuracy", ".tsv").getAbsolutePath(), createTempFile("accuracy_af", ".tsv").getAbsolutePath(),
                 additionalArgs));
     }
 
-    List<String> buildArgs(final String evalPath, final String truthPath, final String outputCorrelationPath, final String outputAccuracyPath, final List<String> additionalArgs) {
+    List<String> buildArgs(final String evalPath, final String truthPath, final String outputCorrelationPath, final String outputAccuracyPath,
+                           final String outputAccuracyAFPath, final List<String> additionalArgs) {
         final List<String> args = new ArrayList<>(Arrays.asList(
                 "--first-bin-right-edge", "0.1",
                 "-nbins", "5",
@@ -80,7 +82,8 @@ public class EvaluateGenotypingPerformanceIntegrationTest extends CommandLinePro
                 "--eval", evalPath,
                 "--truth", truthPath,
                 "--O", outputCorrelationPath,
-                "--OA", outputAccuracyPath
+                "--OA", outputAccuracyPath,
+                "--output-accuracy-af", outputAccuracyAFPath
         ));
         args.addAll(additionalArgs);
 

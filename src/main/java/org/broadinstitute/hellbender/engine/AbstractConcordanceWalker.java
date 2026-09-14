@@ -347,17 +347,18 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
             final Queue<TruthVersusEval> queue = new ArrayDeque<>();
             Set<VariantContext> unmatchedTruth  = new HashSet<>(truthVariants);
             for (final VariantContext eval : evalVariants) {
-                boolean matched = false;
+                VariantContext matchedTruth = null;
                 for (final VariantContext truth : truthVariants) {
                     if (shouldVariantsBeMatched(truth, eval)) {
-                        if (!matched) {
-                            queue.add(new TruthVersusEval(truth, eval));
-                            matched = true;
+                        if (matchedTruth == null || truth.getID().equals(eval.getID())) {
+                            matchedTruth = truth;
                         }
                         unmatchedTruth.remove(truth);
                     }
                 }
-                if (!matched) {
+                if (matchedTruth != null) {
+                    queue.add(new TruthVersusEval(matchedTruth, eval));
+                } else {
                     queue.add(TruthVersusEval.evalOnly(eval));
                 }
             }
