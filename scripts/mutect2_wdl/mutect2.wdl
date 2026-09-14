@@ -253,7 +253,7 @@ workflow Mutect2 {
         if (defined(normal_reads)) {
             call MergeAllelicCounts as MergeNormalAllelicCounts {
                 input:
-                    input_tables = M2.tumor_allelic_counts,
+                    input_tables = M2.normal_allelic_counts,
                     runtime_params = standard_runtime
             }
 
@@ -1024,7 +1024,7 @@ task PlotModeledSegments {
     runtime {
         docker: "~{gatk_docker}"
         memory: machine_mem_mb + " MB"
-        disks: "local-disk " + disk_space_gb + if use_ssd then " SSD" else " HDD"
+        disks: "local-disk " + select_first([disk_space_gb, 100]) + if use_ssd then " SSD" else " HDD"
         cpu: select_first([cpu, 1])
         preemptible: select_first([preemptible_attempts, 5])
     }
