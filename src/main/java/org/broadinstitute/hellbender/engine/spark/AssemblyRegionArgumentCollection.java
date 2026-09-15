@@ -3,7 +3,13 @@ package org.broadinstitute.hellbender.engine.spark;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
+import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.downsampling.ChainedReadsDownsampler;
+import org.broadinstitute.hellbender.utils.downsampling.MaxDepthDownsampler;
+import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
+import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 
 import java.io.Serializable;
 
@@ -134,8 +140,28 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public int maxEffectiveDepth = 0;
 
     @Advanced
-    @Argument(fullName = MAX_EFFECTIVE_DEPTH_WINDOW_LONG_NAME, doc = "Width in bases of the read-start windows within which reads are randomly ordered before applying --" + MAX_EFFECTIVE_DEPTH_LONG_NAME + ". Larger windows randomize the kept subset more evenly at the cost of buffering more reads (at most --" + MAX_STARTS_LONG_NAME + " times the window width).", optional = true, minValue = 1)
+    @Argument(fullName = MAX_EFFECTIVE_DEPTH_WINDOW_LONG_NAME, doc = "Width in bases of the read-start windows within which reads are randomly ordered before applying --" + MAX_EFFECTIVE_DEPTH_LONG_NAME + ". Should be several read lengths wide: larger windows randomize the kept subset more evenly and keep the retained depth closer to the cap, at the cost of buffering more reads (at most --" + MAX_STARTS_LONG_NAME + " times the window width).", optional = true, minValue = 1)
     public int maxEffectiveDepthWindow = 1000;
+
+    /**
+     * Creates the reads downsampler implied by these arguments: the per-alignment-start cap
+     * ({@link #maxReadsPerAlignmentStart}) followed by the per-position depth cap ({@link #maxEffectiveDepth}),
+     * either alone if only one is enabled, or null if neither is.
+     *
+     * @param header header of the reads to be downsampled
+     * @param nonRandomDownsamplingMode if true, downsampling is made deterministic (for tests)
+     * @return a downsampler, or null if no downsampling was requested
+     */
+    public ReadsDownsampler createReadsDownsampler(final SAMFileHeader header, final boolean nonRandomDownsamplingMode) {
+        final ReadsDownsampler perStart = maxReadsPerAlignmentStart > 0 ?
+                new PositionalDownsampler(maxReadsPerAlignmentStart, header, nonRandomDownsamplingMode) : null;
+        final ReadsDownsampler depthCap = maxEffectiveDepth > 0 ?
+                new MaxDepthDownsampler(maxEffectiveDepth, maxEffectiveDepthWindow, header, nonRandomDownsamplingMode ? null : Utils.getRandomGenerator()) : null;
+        if (perStart != null && depthCap != null) {
+            return new ChainedReadsDownsampler(perStart, depthCap);
+        }
+        return perStart != null ? perStart : depthCap;
+    }
 
     @Hidden
     @Argument(fullName = "enable-legacy-assembly-region-trimming", doc = "Revert changes to the assembly region windows, this will result in less consistent results for assembly window boundaries", optional = true)

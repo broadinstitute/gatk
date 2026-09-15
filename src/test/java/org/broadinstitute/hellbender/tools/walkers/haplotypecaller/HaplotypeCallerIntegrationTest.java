@@ -383,6 +383,50 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     /*
      * Test that in GVCF mode we're consistent with past GATK4 results
      */
+    private File runHaplotypeCallerWithMaxEffectiveDepth(final String inputFileName, final String referenceFileName, final String maxEffectiveDepth, final String outputPrefix) {
+        Utils.resetRandomGenerator();
+        final File output = createTempFile(outputPrefix, ".vcf");
+        final List<String> args = new ArrayList<>(Arrays.asList(
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", output.getAbsolutePath(),
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false"));
+        if (maxEffectiveDepth != null) {
+            args.addAll(Arrays.asList("--" + AssemblyRegionArgumentCollection.MAX_EFFECTIVE_DEPTH_LONG_NAME, maxEffectiveDepth,
+                    "--" + AssemblyRegionArgumentCollection.MAX_EFFECTIVE_DEPTH_WINDOW_LONG_NAME, "500"));
+        }
+        runCommandLine(args);
+        return output;
+    }
+
+    /**
+     * A depth cap far above any depth in the input must leave the output bit-identical to the run without it:
+     * no window can discard a read, so the downsampler never touches the read stream.
+     */
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testMaxEffectiveDepthAboveAllDepthsIsANoOp(final String inputFileName, final String referenceFileName) throws Exception {
+        final File uncapped = runHaplotypeCallerWithMaxEffectiveDepth(inputFileName, referenceFileName, null, "testMaxEffectiveDepth.uncapped");
+        final File capped = runHaplotypeCallerWithMaxEffectiveDepth(inputFileName, referenceFileName, "100000", "testMaxEffectiveDepth.highCap");
+
+        IntegrationTestSpec.assertEqualTextFiles(capped, uncapped);
+    }
+
+    /**
+     * A depth cap below the input's depth must be honored: the run completes, emits calls, and the capped
+     * read set changes the output relative to the uncapped run.
+     */
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testMaxEffectiveDepthBelowInputDepthChangesOutput(final String inputFileName, final String referenceFileName) throws Exception {
+        final File uncapped = runHaplotypeCallerWithMaxEffectiveDepth(inputFileName, referenceFileName, null, "testMaxEffectiveDepth.uncapped");
+        final File capped = runHaplotypeCallerWithMaxEffectiveDepth(inputFileName, referenceFileName, "5", "testMaxEffectiveDepth.lowCap");
+
+        final List<VariantContext> cappedCalls = VariantContextTestUtils.getVariantContexts(capped);
+        final List<VariantContext> uncappedCalls = VariantContextTestUtils.getVariantContexts(uncapped);
+        Assert.assertFalse(cappedCalls.isEmpty(), "the capped run emitted no variants");
+        Assert.assertNotEquals(cappedCalls.size(), uncappedCalls.size(), "a cap of 5 on ~30x data should change the calls");
+    }
+
     @Test(dataProvider="HaplotypeCallerTestInputs")
     public void testGVCFModeIsConsistentWithPastResults(final String inputFileName, final String referenceFileName) throws Exception {
         Utils.resetRandomGenerator();

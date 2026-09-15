@@ -31,6 +31,11 @@ import java.util.Random;
  *
  * Depth is counted per sample over the aligned span of each read (soft clips excluded, deletions included).
  * Reads without an assigned position are passed through untouched.
+ *
+ * The cap is a floor-preserving target rather than a hard ceiling: a read is judged before the later reads that
+ * will cover its right end have arrived, so kept depth overshoots the cap by up to about one read's worth of
+ * reads at the end of each window. Windows should therefore be several read lengths wide; the overshoot grows
+ * as the window shrinks below a read length.
  */
 public final class MaxDepthDownsampler extends ReadsDownsampler {
 

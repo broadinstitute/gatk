@@ -11,10 +11,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IGVUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.downsampling.ChainedReadsDownsampler;
-import org.broadinstitute.hellbender.utils.downsampling.MaxDepthDownsampler;
-import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 
 import java.io.IOException;
@@ -144,12 +140,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
     }
 
     protected ReadsDownsampler createDownsampler() {
-        final ReadsDownsampler perStart = assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, getHeaderForReads(), nonRandomDownsamplingMode) : null;
-        final ReadsDownsampler depthCap = assemblyRegionArgs.maxEffectiveDepth > 0 ? new MaxDepthDownsampler(assemblyRegionArgs.maxEffectiveDepth, assemblyRegionArgs.maxEffectiveDepthWindow, getHeaderForReads(), nonRandomDownsamplingMode ? null : Utils.getRandomGenerator()) : null;
-        if (perStart != null && depthCap != null) {
-            return new ChainedReadsDownsampler(perStart, depthCap);
-        }
-        return perStart != null ? perStart : depthCap;
+        return assemblyRegionArgs.createReadsDownsampler(getHeaderForReads(), nonRandomDownsamplingMode);
     }
 
     /**
