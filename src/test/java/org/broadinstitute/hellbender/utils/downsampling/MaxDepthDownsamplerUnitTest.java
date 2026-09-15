@@ -379,6 +379,15 @@ public final class MaxDepthDownsamplerUnitTest extends GATKBaseTest {
     }
 
     @Test(expectedExceptions = IllegalStateException.class)
+    public void testPositionedReadAfterUnplacedReadIsRejected() {
+        final SAMFileHeader header = headerWithSample("s1");
+        final MaxDepthDownsampler downsampler = new MaxDepthDownsampler(10, 300, header, new Random(1));
+        downsampler.submit(read(header, "a", 1));
+        downsampler.submit(ArtificialReadUtils.createArtificialUnmappedRead(header, new byte[]{'A'}, new byte[]{30}));
+        downsampler.submit(read(header, "b", 2));
+    }
+
+    @Test(expectedExceptions = IllegalStateException.class)
     public void testUnsortedInputIsRejected() {
         final SAMFileHeader header = headerWithSample("s1");
         final MaxDepthDownsampler downsampler = new MaxDepthDownsampler(10, 300, header, new Random(1));

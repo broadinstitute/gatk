@@ -84,13 +84,14 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
     @Override
     public void submit(final GATKRead newRead) {
         Utils.nonNull(newRead, "newRead");
+        checkSortOrder(newRead);
+        previousRead = newRead;
         if (ReadUtils.readHasNoAssignedPosition(newRead)) {
             // Unplaced reads sort after all positioned reads, so flush the window first to keep the output ordered.
             finalizeWindow();
             finalizedReads.add(newRead);
             return;
         }
-        checkSortOrder(newRead);
         if (!isInCurrentWindow(newRead)) {
             finalizeWindow();
             if (windowContig == null || !windowContig.equals(newRead.getAssignedContig())) {
@@ -100,7 +101,6 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
             windowStart = newRead.getAssignedStart();
         }
         pendingWindow.add(newRead);
-        previousRead = newRead;
     }
 
     private boolean isInCurrentWindow(final GATKRead read) {
