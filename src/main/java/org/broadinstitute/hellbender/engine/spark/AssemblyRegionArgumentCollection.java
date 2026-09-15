@@ -3,7 +3,13 @@ package org.broadinstitute.hellbender.engine.spark;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
+import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.downsampling.ChainedReadsDownsampler;
+import org.broadinstitute.hellbender.utils.downsampling.MaxDepthDownsampler;
+import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
+import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 
 import java.io.Serializable;
 
@@ -16,6 +22,8 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public static final String MAX_ASSEMBLY_LONG_NAME = "max-assembly-region-size";
     public static final String ASSEMBLY_PADDING_LONG_NAME = "assembly-region-padding";
     public static final String MAX_STARTS_LONG_NAME = "max-reads-per-alignment-start";
+    public static final String MAX_EFFECTIVE_DEPTH_LONG_NAME = "max-effective-depth";
+    public static final String MAX_EFFECTIVE_DEPTH_WINDOW_LONG_NAME = "max-effective-depth-window";
     public static final String THRESHOLD_LONG_NAME = "active-probability-threshold";
     public static final String PROPAGATION_LONG_NAME = "max-prob-propagation-distance";
 
@@ -123,6 +131,38 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     @Argument(fullName = MAX_STARTS_LONG_NAME, doc = "Maximum number of reads to retain per alignment start position. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
     public int maxReadsPerAlignmentStart = defaultMaxReadsPerAlignmentStart();
 
+    /**
+     * Unlike the per-alignment-start cap above, this bounds the depth at every position, so a collapsed repeat
+     * where reads start at every base cannot flood an assembly region with tens of thousands of reads. Positions
+     * whose depth is already at or below the cap are never touched, so regions of ordinary depth are unaffected.
+     */
+    @Argument(fullName = MAX_EFFECTIVE_DEPTH_LONG_NAME, doc = "Randomly discard reads, within windows of read starts, so that positions deeper than this keep about this many reads per sample (never fewer, and up to roughly one read length of extra reads near window ends); positions at or below this depth keep all their reads. Applied after --" + MAX_STARTS_LONG_NAME + ". Set to 0 to disable.", optional = true)
+    public int maxEffectiveDepth = 0;
+
+    @Advanced
+    @Argument(fullName = MAX_EFFECTIVE_DEPTH_WINDOW_LONG_NAME, doc = "Width in bases of the read-start windows within which reads are randomly ordered before applying --" + MAX_EFFECTIVE_DEPTH_LONG_NAME + ". Should be several read lengths wide: larger windows randomize the kept subset more evenly and keep the retained depth closer to the cap, at the cost of buffering more reads (at most --" + MAX_STARTS_LONG_NAME + " times the window width while that cap is enabled).", optional = true, minValue = 1)
+    public int maxEffectiveDepthWindow = 1000;
+
+    /**
+     * Creates the reads downsampler implied by these arguments: the per-alignment-start cap
+     * ({@link #maxReadsPerAlignmentStart}) followed by the per-position depth cap ({@link #maxEffectiveDepth}),
+     * either alone if only one is enabled, or null if neither is.
+     *
+     * @param header header of the reads to be downsampled
+     * @param nonRandomDownsamplingMode if true, downsampling is made deterministic (for tests)
+     * @return a downsampler, or null if no downsampling was requested
+     */
+    public ReadsDownsampler createReadsDownsampler(final SAMFileHeader header, final boolean nonRandomDownsamplingMode) {
+        final ReadsDownsampler perStart = maxReadsPerAlignmentStart > 0 ?
+                new PositionalDownsampler(maxReadsPerAlignmentStart, header, nonRandomDownsamplingMode) : null;
+        final ReadsDownsampler depthCap = maxEffectiveDepth > 0 ?
+                new MaxDepthDownsampler(maxEffectiveDepth, maxEffectiveDepthWindow, header, nonRandomDownsamplingMode ? null : Utils.getRandomGenerator()) : null;
+        if (perStart != null && depthCap != null) {
+            return new ChainedReadsDownsampler(perStart, depthCap);
+        }
+        return perStart != null ? perStart : depthCap;
+    }
+
     @Hidden
     @Argument(fullName = "enable-legacy-assembly-region-trimming", doc = "Revert changes to the assembly region windows, this will result in less consistent results for assembly window boundaries", optional = true)
     public boolean enableLegacyAssemblyRegionTrimming = false;
@@ -172,6 +212,14 @@ public class AssemblyRegionArgumentCollection implements Serializable {
 
         if ( maxReadsPerAlignmentStart < 0 ) {
             throw new CommandLineException.BadArgumentValue("maxReadsPerAlignmentStart must be >= 0");
+        }
+
+        if ( maxEffectiveDepth < 0 ) {
+            throw new CommandLineException.BadArgumentValue("maxEffectiveDepth must be >= 0");
+        }
+
+        if ( maxEffectiveDepthWindow <= 0 ) {
+            throw new CommandLineException.BadArgumentValue("maxEffectiveDepthWindow must be > 0");
         }
 
         if ( snpPaddingForGenotyping < 0 ) {
