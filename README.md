@@ -63,7 +63,7 @@ releases of the toolkit.
 * To build GATK:
     * A Java 17 JDK
     * Git 2.5 or greater
-    * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greater. Required to download the large files used to build GATK, and
+    * [git-lfs](https://git-lfs.github.com/) 1.1.0 or greaterr. Required to download the large files used to build GATK, and
       test files required to run the test suite. Run `git lfs install` after downloading, followed by `git lfs pull` from
       the root of your git clone to download all of the large files, including those required to run the test suite. The
       full download is approximately 5 gigabytes. Alternatively, if you are just building GATK and not running the test
