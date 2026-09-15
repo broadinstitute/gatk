@@ -16,6 +16,8 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public static final String MAX_ASSEMBLY_LONG_NAME = "max-assembly-region-size";
     public static final String ASSEMBLY_PADDING_LONG_NAME = "assembly-region-padding";
     public static final String MAX_STARTS_LONG_NAME = "max-reads-per-alignment-start";
+    public static final String MAX_EFFECTIVE_DEPTH_LONG_NAME = "max-effective-depth";
+    public static final String MAX_EFFECTIVE_DEPTH_WINDOW_LONG_NAME = "max-effective-depth-window";
     public static final String THRESHOLD_LONG_NAME = "active-probability-threshold";
     public static final String PROPAGATION_LONG_NAME = "max-prob-propagation-distance";
 
@@ -122,6 +124,18 @@ public class AssemblyRegionArgumentCollection implements Serializable {
 
     @Argument(fullName = MAX_STARTS_LONG_NAME, doc = "Maximum number of reads to retain per alignment start position. Reads above this threshold will be downsampled. Set to 0 to disable.", optional = true)
     public int maxReadsPerAlignmentStart = defaultMaxReadsPerAlignmentStart();
+
+    /**
+     * Unlike the per-alignment-start cap above, this bounds the depth at every position, so a collapsed repeat
+     * where reads start at every base cannot flood an assembly region with tens of thousands of reads. Positions
+     * whose depth is already at or below the cap are never touched, so regions of ordinary depth are unaffected.
+     */
+    @Argument(fullName = MAX_EFFECTIVE_DEPTH_LONG_NAME, doc = "Randomly discard reads, within windows of read starts, so that no position retains more than this many reads per sample where it had more; positions at or below this depth keep all their reads. Applied after --" + MAX_STARTS_LONG_NAME + ". Set to 0 to disable.", optional = true)
+    public int maxEffectiveDepth = 0;
+
+    @Advanced
+    @Argument(fullName = MAX_EFFECTIVE_DEPTH_WINDOW_LONG_NAME, doc = "Width in bases of the read-start windows within which reads are randomly ordered before applying --" + MAX_EFFECTIVE_DEPTH_LONG_NAME + ".", optional = true, minValue = 1)
+    public int maxEffectiveDepthWindow = 300;
 
     @Hidden
     @Argument(fullName = "enable-legacy-assembly-region-trimming", doc = "Revert changes to the assembly region windows, this will result in less consistent results for assembly window boundaries", optional = true)

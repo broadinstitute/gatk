@@ -1,0 +1,251 @@
+package org.broadinstitute.hellbender.utils.downsampling;
+
+import htsjdk.samtools.SAMFileHeader;
+import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
+import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
+import org.broadinstitute.hellbender.utils.read.ReadUtils;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
+
+/**
+ * Max-depth downsampler: caps the per-sample depth at every reference position at {@code maxDepth}, while
+ * guaranteeing that no position ends up with fewer reads than {@code min(original depth, maxDepth)}.
+ *
+ * Reads are buffered in windows of {@code windowSize} bases of alignment start. When a window is finalized,
+ * its reads are visited in random order (or arrival order in non-random mode) and a read is discarded only
+ * if every position it spans already holds {@code maxDepth} kept reads; otherwise it is kept and its span is
+ * counted. Kept reads are emitted in their original coordinate order.
+ *
+ * Because a read can only be discarded once {@code maxDepth} reads already cover its whole span, a window
+ * whose reads plus the still-open kept reads from earlier windows number at most {@code maxDepth} cannot
+ * discard anything; such windows are passed through without any per-base work. In ordinary sequence that is
+ * almost every window, so the downsampler only does real work in collapsed repeats and other ultra-deep
+ * regions. Any region whose depth never exceeds {@code maxDepth} is passed through unchanged.
+ *
+ * Depth is counted per sample over the aligned span of each read (soft clips excluded, deletions included).
+ * Reads without an assigned position are passed through untouched.
+ */
+public final class MaxDepthDownsampler extends ReadsDownsampler {
+
+    private final int maxDepth;
+    private final int windowSize;
+    private final SAMFileHeader header;
+    /** Source of the per-window visiting order; null means arrival order (deterministic, for tests). */
+    private final Random random;
+
+    private String windowContig;
+    private int windowStart;
+    private final List<GATKRead> pendingWindow;
+    /** Kept reads, per sample, that may still overlap positions at or beyond the current window start. */
+    private final Map<String, List<GATKRead>> openKeptBySample;
+    private List<GATKRead> finalizedReads;
+    private GATKRead previousRead;
+
+    /**
+     * @param maxDepth maximum kept depth per sample at any position; must be > 0
+     * @param windowSize width, in bases of alignment start, of the windows within which reads are randomly
+     *                   ordered before capping; must be > 0
+     * @param header header used to resolve sample names and to check sort order
+     * @param random source of randomness for the per-window visiting order, or null to visit reads in
+     *               arrival order
+     */
+    public MaxDepthDownsampler(final int maxDepth, final int windowSize, final SAMFileHeader header, final Random random) {
+        Utils.validateArg(maxDepth > 0, "maxDepth must be > 0");
+        Utils.validateArg(windowSize > 0, "windowSize must be > 0");
+        this.maxDepth = maxDepth;
+        this.windowSize = windowSize;
+        this.header = Utils.nonNull(header);
+        this.random = random;
+        this.pendingWindow = new ArrayList<>();
+        this.openKeptBySample = new HashMap<>();
+        this.finalizedReads = new ArrayList<>();
+        clearItems();
+        resetStats();
+    }
+
+    @Override
+    public void submit(final GATKRead newRead) {
+        Utils.nonNull(newRead, "newRead");
+        if (ReadUtils.readHasNoAssignedPosition(newRead)) {
+            finalizedReads.add(newRead);
+            return;
+        }
+        checkSortOrder(newRead);
+        if (windowContig == null || !windowContig.equals(newRead.getAssignedContig())
+                || newRead.getAssignedStart() >= windowStart + windowSize) {
+            finalizeWindow();
+            if (windowContig == null || !windowContig.equals(newRead.getAssignedContig())) {
+                openKeptBySample.clear();
+            }
+            windowContig = newRead.getAssignedContig();
+            windowStart = newRead.getAssignedStart();
+        }
+        pendingWindow.add(newRead);
+        previousRead = newRead;
+    }
+
+    private void checkSortOrder(final GATKRead newRead) {
+        if (previousRead != null && ReadCoordinateComparator.compareCoordinates(previousRead, newRead, header) > 0) {
+            throw new IllegalStateException(
+                    String.format("Reads must be coordinate sorted (earlier %s later %s)", previousRead, newRead));
+        }
+    }
+
+    private void finalizeWindow() {
+        if (pendingWindow.isEmpty()) {
+            return;
+        }
+        // Group the window's reads by sample, remembering each read's position in the window so that the
+        // survivors can be emitted in their original order.
+        final Map<String, List<Integer>> indicesBySample = new HashMap<>();
+        for (int i = 0; i < pendingWindow.size(); i++) {
+            indicesBySample.computeIfAbsent(sampleKey(pendingWindow.get(i)), k -> new ArrayList<>()).add(i);
+        }
+        final boolean[] keep = new boolean[pendingWindow.size()];
+        for (final Map.Entry<String, List<Integer>> entry : indicesBySample.entrySet()) {
+            capSample(entry.getKey(), entry.getValue(), keep);
+        }
+        for (int i = 0; i < pendingWindow.size(); i++) {
+            if (keep[i]) {
+                finalizedReads.add(pendingWindow.get(i));
+            } else {
+                incrementNumberOfDiscardedItems(1);
+            }
+        }
+        pendingWindow.clear();
+    }
+
+    /** Decides, for one sample, which of the window's reads (given by index into pendingWindow) survive. */
+    private void capSample(final String sample, final List<Integer> indices, final boolean[] keep) {
+        final List<GATKRead> open = openKeptBySample.computeIfAbsent(sample, k -> new ArrayList<>());
+        // Kept reads ending before this window starts cannot overlap anything still to come.
+        open.removeIf(r -> r.getEnd() < windowStart);
+
+        if (open.size() + indices.size() <= maxDepth) {
+            // No position can reach maxDepth before the last read is placed, so nothing can be discarded.
+            for (final int i : indices) {
+                keep[i] = true;
+                open.add(pendingWindow.get(i));
+            }
+            return;
+        }
+
+        int maxEnd = windowStart;
+        for (final GATKRead r : open) {
+            maxEnd = Math.max(maxEnd, r.getEnd());
+        }
+        for (final int i : indices) {
+            maxEnd = Math.max(maxEnd, spanEnd(pendingWindow.get(i)));
+        }
+        final int[] depth = new int[maxEnd - windowStart + 1];
+        for (final GATKRead r : open) {
+            addSpan(depth, Math.max(r.getStart(), windowStart), r.getEnd());
+        }
+
+        final List<Integer> order = new ArrayList<>(indices);
+        if (random != null) {
+            Collections.shuffle(order, random);
+        }
+        for (final int i : order) {
+            final GATKRead read = pendingWindow.get(i);
+            final int start = read.getAssignedStart();
+            final int end = spanEnd(read);
+            if (anyPositionBelowCap(depth, start, end)) {
+                keep[i] = true;
+                addSpan(depth, start, end);
+                open.add(read);
+            }
+        }
+    }
+
+    /** Aligned end of the read's span, falling back to its start for reads that report no span. */
+    private static int spanEnd(final GATKRead read) {
+        return Math.max(read.getEnd(), read.getAssignedStart());
+    }
+
+    private boolean anyPositionBelowCap(final int[] depth, final int start, final int end) {
+        for (int p = start; p <= end; p++) {
+            if (depth[p - windowStart] < maxDepth) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void addSpan(final int[] depth, final int start, final int end) {
+        for (int p = start; p <= end; p++) {
+            depth[p - windowStart]++;
+        }
+    }
+
+    private String sampleKey(final GATKRead read) {
+        final String sample = ReadUtils.getSampleName(read, header);
+        return sample == null ? "" : sample;
+    }
+
+    @Override
+    public boolean hasFinalizedItems() {
+        return !finalizedReads.isEmpty();
+    }
+
+    @Override
+    public List<GATKRead> consumeFinalizedItems() {
+        final List<GATKRead> toReturn = finalizedReads;
+        finalizedReads = new ArrayList<>();
+        return toReturn;
+    }
+
+    @Override
+    public boolean hasPendingItems() {
+        return !pendingWindow.isEmpty();
+    }
+
+    @Override
+    public GATKRead peekFinalized() {
+        return finalizedReads.isEmpty() ? null : finalizedReads.get(0);
+    }
+
+    @Override
+    public GATKRead peekPending() {
+        return pendingWindow.isEmpty() ? null : pendingWindow.get(0);
+    }
+
+    @Override
+    public int size() {
+        return finalizedReads.size() + pendingWindow.size();
+    }
+
+    @Override
+    public void signalEndOfInput() {
+        finalizeWindow();
+    }
+
+    @Override
+    public void clearItems() {
+        pendingWindow.clear();
+        openKeptBySample.clear();
+        finalizedReads.clear();
+        windowContig = null;
+        previousRead = null;
+    }
+
+    @Override
+    public boolean requiresCoordinateSortOrder() {
+        return true;
+    }
+
+    @Override
+    public void signalNoMoreReadsBefore(final GATKRead read) {
+        Utils.nonNull(read, "read");
+        if (windowContig != null && (!windowContig.equals(read.getAssignedContig())
+                || read.getAssignedStart() >= windowStart + windowSize)) {
+            finalizeWindow();
+        }
+    }
+}
