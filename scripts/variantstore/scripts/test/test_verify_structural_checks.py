@@ -249,6 +249,39 @@ class TestAssessCardinality(unittest.TestCase):
         self.assertFalse(r["ok"])
         self.assertEqual([d["sample_id"] for d in r["deviating_samples"]], [2])
 
+    def test_tied_mode_partial_load_flags_truncated_samples(self):
+        # 4-sample cohort with tied mode {20: 2, 24: 2}. Chooses 24 as conservative mode;
+        # samples 1 and 2 (count 20) are flagged as below the 22-row contig floor.
+        counts = {1: 20, 2: 20, 3: 24, 4: 24}
+        r = assess_cardinality(counts, {1, 2, 3, 4})
+        self.assertFalse(r["ok"])
+        self.assertEqual(r["mode"], 24)
+        self.assertEqual([d["sample_id"] for d in r["deviating_samples"]], [1, 2])
+
+    def test_tied_mode_order_independence(self):
+        # Reversing insertion order yields identical results independent of dict iteration.
+        counts = {1: 24, 2: 24, 3: 20, 4: 20}
+        r = assess_cardinality(counts, {1, 2, 3, 4})
+        self.assertFalse(r["ok"])
+        self.assertEqual(r["mode"], 24)
+        self.assertEqual([d["sample_id"] for d in r["deviating_samples"]], [3, 4])
+
+    def test_tied_mode_heterogeneous_passes(self):
+        # Tied mode between 23 and 24 (e.g. 2 females and 2 males) chooses 24 and passes.
+        counts = {1: 23, 2: 23, 3: 24, 4: 24}
+        r = assess_cardinality(counts, {1, 2, 3, 4})
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["mode"], 24)
+        self.assertEqual(r["deviating_samples"], [])
+
+    def test_tied_mode_duplicated_flags_duplicates(self):
+        # Tied mode between 24 and 48 chooses 24 as un-duplicated baseline; samples 3 and 4 flagged.
+        counts = {1: 24, 2: 24, 3: 48, 4: 48}
+        r = assess_cardinality(counts, {1, 2, 3, 4})
+        self.assertFalse(r["ok"])
+        self.assertEqual(r["mode"], 24)
+        self.assertEqual([d["sample_id"] for d in r["deviating_samples"]], [3, 4])
+
     def test_override_still_catches_missing(self):
         r = assess_cardinality({1: 24, 2: 24}, {1, 2, 3}, expected_count=24)
         self.assertFalse(r["ok"])

@@ -383,7 +383,25 @@ def assess_cardinality(counts, expected_samples, expected_count=None):
         }
 
     values = [_extract_count_info(val)[0] for val in present.values()]
-    observed_mode = Counter(values).most_common(1)[0][0]
+    freq = Counter(values)
+    max_freq = max(freq.values())
+    top_modes = sorted([val for val, count in freq.items() if count == max_freq])
+
+    if len(top_modes) == 1:
+        observed_mode = top_modes[0]
+    else:
+        # Non-unique modes (e.g. {20, 20, 24, 24} or {23, 23, 24, 24}):
+        # Break ties deterministically independent of dictionary iteration order. If tied modes
+        # include a gross duplicate (ratio >= 1.5), choose the lower count as the un-duplicated
+        # baseline (e.g. 24 over 48). Otherwise, choose the higher count as the conservative
+        # complete-genome baseline (e.g. 24 over 20), ensuring truncated samples missing autosomes
+        # (< mode - 2) are reliably flagged.
+        min_top = top_modes[0]
+        max_top = top_modes[-1]
+        if min_top > 0 and max_top / min_top >= 1.5:
+            observed_mode = min_top
+        else:
+            observed_mode = max_top
 
     if expected_count is not None:
         reference = expected_count
