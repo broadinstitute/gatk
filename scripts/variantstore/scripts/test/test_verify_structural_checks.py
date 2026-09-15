@@ -235,6 +235,20 @@ class TestAssessCardinality(unittest.TestCase):
         self.assertTrue(r["ok"])
         self.assertEqual(r["deviating_samples"], [])
 
+    def test_below_mode_partial_load_flagged(self):
+        # Sample 2 has 20 rows when modal count is 24 (missing autosomes). Flagged as a partial load.
+        counts = {1: (24, 24), 2: (20, 20), 3: (24, 24)}
+        r = assess_cardinality(counts, {1, 2, 3})
+        self.assertFalse(r["ok"])
+        self.assertEqual([d["sample_id"] for d in r["deviating_samples"]], [2])
+
+    def test_below_mode_two_sample_partial_load_flagged(self):
+        # In a 2-sample cohort, a sample with 20 rows is flagged against the upper baseline (24).
+        counts = {1: 24, 2: 20}
+        r = assess_cardinality(counts, {1, 2})
+        self.assertFalse(r["ok"])
+        self.assertEqual([d["sample_id"] for d in r["deviating_samples"]], [2])
+
     def test_override_still_catches_missing(self):
         r = assess_cardinality({1: 24, 2: 24}, {1, 2, 3}, expected_count=24)
         self.assertFalse(r["ok"])
@@ -599,11 +613,23 @@ class TestRunStructuralChecks(unittest.TestCase):
 
     def test_heterogeneous_ploidy_passes_without_override(self):
         part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
-        self._patch(part, {1: 24, 2: 20})  # sample 2 legitimately has fewer contigs
+        self._patch(part, {1: 24, 2: 23})  # sample 2 legitimately has 23 contigs (female sample lacking chrY)
         exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
         r = run_structural_checks("proj", "ds", exp)
         self.assertTrue(r["completeness_ok"])
         self.assertTrue(r["cardinality_ok"])
+
+    def test_partial_ploidy_fails_cardinality_without_override(self):
+        part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
+        self._patch(part, {1: 24, 2: 20})  # sample 2 has 20 contigs (missing autosomes -> partial load)
+        exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
+        r = run_structural_checks("proj", "ds", exp)
+        self.assertTrue(r["completeness_ok"])
+        self.assertFalse(r["cardinality_ok"])
+        self.assertEqual(
+            r["details"]["cardinality"]["sample_chromosome_ploidy"]["deviating_samples"][0]["sample_id"],
+            2,
+        )
 
     def test_duplicated_ploidy_fails_cardinality_without_override(self):
         part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]

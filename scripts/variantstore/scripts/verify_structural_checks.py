@@ -239,6 +239,10 @@ def assess_family_completeness(partition_rows, regular_counts, expected_by_famil
         fam = family_for_table(table_name, superpartitioned_table_prefixes)
         if fam is None:
             continue
+        # Nonzero partition row count check. Per VS-1989 design (see module docstring Scope notes),
+        # exact per-file Parquet footer reads are intentionally deferred due to pyarrow dependency and
+        # scale limits at 400k+ samples. BigQuery load jobs commit atomically; partial/truncated data is
+        # screened downstream via assess_truncation_screen on vet and assess_cardinality on ploidy.
         if total_rows and total_rows > 0:
             present_by_family[fam].add(sample_id)
         else:
@@ -344,12 +348,12 @@ def assess_cardinality(counts, expected_samples, expected_count=None):
     (e.g. pass 24 for a WGS ploidy table). Any sample whose row count differs from ``expected_count``
     is flagged as deviating, failing ``ok``.
 
-    When ``expected_count`` is None, duplication is detected via two complementary mechanisms:
+    When ``expected_count`` is None, duplication and partial loads are detected via:
     1. Exact chromosome collision: SamplePloidyCreator writes at most one row per chromosome, so
-       comparing COUNT(*) against COUNT(DISTINCT chromosome) identifies duplicated loads exactly
-       while allowing legitimate contig variations (such as 23 vs 24 or 25 with chrM).
-    2. Modal ratio: row count >= 1.5x baseline (mode or min for N=2) flags duplicated loads (such as
-       48 vs 24) when per-chromosome details are not available.
+       comparing COUNT(*) against COUNT(DISTINCT chromosome) identifies duplicated loads exactly.
+    2. Modal ratio: row count >= 1.5x baseline flags duplicated loads (such as 48 vs 24).
+    3. Modal floor: row count < mode - 2 (for mode >= 10) flags partial loads missing autosomes (such
+       as 20 vs 24) while allowing legitimate karyotype variations (such as 23 vs 24 or 25 with chrM).
 
     ``counts`` can map sample_id to raw row counts (int), tuples ``(total_rows, distinct_chromosomes)``,
     or dicts ``{"count": int, "distinct": int}``. Only ``expected_samples`` are assessed.
@@ -391,12 +395,41 @@ def assess_cardinality(counts, expected_samples, expected_count=None):
                 deviating.append({"sample_id": sid, "count": n})
     else:
         reference = observed_mode
-        baseline = min(values) if len(values) == 2 else observed_mode
         deviating = []
-        for sid, val in sorted(present.items(), key=lambda d: d[0]):
-            n, n_distinct = _extract_count_info(val)
-            if (n_distinct is not None and n > n_distinct) or (baseline > 0 and n / baseline >= 1.5):
-                deviating.append({"sample_id": sid, "count": n})
+        if len(values) == 2:
+            lower_val = min(values)
+            upper_val = max(values)
+            baseline = lower_val
+            if lower_val > 0 and upper_val / lower_val >= 1.5:
+                # Duplication for N=2: flag the high sample (and any chromosome collision)
+                for sid, val in sorted(present.items(), key=lambda d: d[0]):
+                    n, n_distinct = _extract_count_info(val)
+                    if (n_distinct is not None and n > n_distinct) or n == upper_val:
+                        deviating.append({"sample_id": sid, "count": n})
+            elif upper_val >= 10 and lower_val < upper_val - 2:
+                # Truncation for N=2: flag the low sample (and any chromosome collision)
+                for sid, val in sorted(present.items(), key=lambda d: d[0]):
+                    n, n_distinct = _extract_count_info(val)
+                    if (n_distinct is not None and n > n_distinct) or n == lower_val:
+                        deviating.append({"sample_id": sid, "count": n})
+            else:
+                # Permitted minor variation (e.g. 23 vs 24): flag only chromosome collision
+                for sid, val in sorted(present.items(), key=lambda d: d[0]):
+                    n, n_distinct = _extract_count_info(val)
+                    if n_distinct is not None and n > n_distinct:
+                        deviating.append({"sample_id": sid, "count": n})
+        else:
+            baseline = observed_mode
+            # Legitimate karyotype variations in human callsets include female samples lacking chrY
+            # (mode - 1), or samples lacking chrM when mode includes it (mode - 2). A count below
+            # mode - 2 indicates missing autosomes (a partial ploidy load), which fails cardinality.
+            min_allowed = max(1, observed_mode - 2) if observed_mode >= 10 else max(1, observed_mode - 1)
+            for sid, val in sorted(present.items(), key=lambda d: d[0]):
+                n, n_distinct = _extract_count_info(val)
+                if ((n_distinct is not None and n > n_distinct)
+                        or (baseline > 0 and n / baseline >= 1.5)
+                        or (n < min_allowed)):
+                    deviating.append({"sample_id": sid, "count": n})
 
     return {
         "ok": not missing and not deviating,
