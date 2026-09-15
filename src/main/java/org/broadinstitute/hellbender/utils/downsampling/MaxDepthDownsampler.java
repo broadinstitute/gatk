@@ -22,9 +22,10 @@ import java.util.Random;
  * if every position it spans already holds {@code maxDepth} kept reads; otherwise it is kept and its span is
  * counted. Kept reads are emitted in their original coordinate order.
  *
- * Because a read can only be discarded once {@code maxDepth} reads already cover its whole span, a window
- * whose reads plus the still-open kept reads from earlier windows number at most {@code maxDepth} cannot
- * discard anything; such windows are passed through without any per-base work. In ordinary sequence that is
+ * Because a read can only be discarded once {@code maxDepth} reads already cover its whole span, a window in
+ * which no position can be covered by more than {@code maxDepth} reads (bounded by the still-open kept reads
+ * plus the most window reads starting within one read span of each other) cannot discard anything; such
+ * windows are passed through without any per-base work. In ordinary sequence that is
  * almost every window, so the downsampler only does real work in collapsed repeats and other ultra-deep
  * regions. Any region whose depth never exceeds {@code maxDepth} is passed through unchanged.
  *
@@ -127,8 +128,8 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
         // Kept reads ending before this window starts cannot overlap anything still to come.
         open.removeIf(r -> r.getEnd() < windowStart);
 
-        if (open.size() + indices.size() <= maxDepth) {
-            // No position can reach maxDepth before the last read is placed, so nothing can be discarded.
+        if (open.size() + maxReadsStartingWithinOneSpan(indices) <= maxDepth) {
+            // No position can reach maxDepth before the last read covering it is placed, so nothing can be discarded.
             for (final int i : indices) {
                 keep[i] = true;
                 open.add(pendingWindow.get(i));
@@ -162,6 +163,28 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
                 open.add(read);
             }
         }
+    }
+
+    /**
+     * Upper bound on the number of the window's reads covering any single position: the most reads whose starts
+     * fall within one maximal read span of each other. Reads are in start order, so this is a sliding count.
+     */
+    private int maxReadsStartingWithinOneSpan(final List<Integer> indices) {
+        int maxSpan = 1;
+        for (final int i : indices) {
+            final GATKRead r = pendingWindow.get(i);
+            maxSpan = Math.max(maxSpan, spanEnd(r) - r.getAssignedStart() + 1);
+        }
+        int best = 0;
+        int left = 0;
+        for (int right = 0; right < indices.size(); right++) {
+            final int rightStart = pendingWindow.get(indices.get(right)).getAssignedStart();
+            while (pendingWindow.get(indices.get(left)).getAssignedStart() <= rightStart - maxSpan) {
+                left++;
+            }
+            best = Math.max(best, right - left + 1);
+        }
+        return best;
     }
 
     /** Aligned end of the read's span, falling back to its start for reads that report no span. */

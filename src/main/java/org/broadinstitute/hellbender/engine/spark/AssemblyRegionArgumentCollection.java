@@ -134,8 +134,8 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public int maxEffectiveDepth = 0;
 
     @Advanced
-    @Argument(fullName = MAX_EFFECTIVE_DEPTH_WINDOW_LONG_NAME, doc = "Width in bases of the read-start windows within which reads are randomly ordered before applying --" + MAX_EFFECTIVE_DEPTH_LONG_NAME + ".", optional = true, minValue = 1)
-    public int maxEffectiveDepthWindow = 300;
+    @Argument(fullName = MAX_EFFECTIVE_DEPTH_WINDOW_LONG_NAME, doc = "Width in bases of the read-start windows within which reads are randomly ordered before applying --" + MAX_EFFECTIVE_DEPTH_LONG_NAME + ". Larger windows randomize the kept subset more evenly at the cost of buffering more reads (at most --" + MAX_STARTS_LONG_NAME + " times the window width).", optional = true, minValue = 1)
+    public int maxEffectiveDepthWindow = 1000;
 
     @Hidden
     @Argument(fullName = "enable-legacy-assembly-region-trimming", doc = "Revert changes to the assembly region windows, this will result in less consistent results for assembly window boundaries", optional = true)
