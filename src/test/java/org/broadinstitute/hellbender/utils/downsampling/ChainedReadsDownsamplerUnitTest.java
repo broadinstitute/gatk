@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
@@ -117,8 +118,17 @@ public final class ChainedReadsDownsamplerUnitTest extends GATKBaseTest {
         Assert.assertEquals(chained.getNumberOfDiscardedItems(), 0);
     }
 
-    @Test(expectedExceptions = IllegalArgumentException.class)
-    public void testNullStagesAreRejected() {
-        new ChainedReadsDownsampler(null, new MaxDepthDownsampler(50, 300, header, new Random(1)));
+    @DataProvider(name = "nullStages")
+    public Object[][] nullStages() {
+        final ReadsDownsampler stage = new MaxDepthDownsampler(50, 300, header, new Random(1));
+        return new Object[][] {
+                { null, stage },
+                { stage, null },
+        };
+    }
+
+    @Test(dataProvider = "nullStages", expectedExceptions = IllegalArgumentException.class)
+    public void testNullStagesAreRejected(final ReadsDownsampler first, final ReadsDownsampler second) {
+        new ChainedReadsDownsampler(first, second);
     }
 }

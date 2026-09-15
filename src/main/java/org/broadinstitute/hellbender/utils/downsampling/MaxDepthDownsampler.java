@@ -25,17 +25,23 @@ import java.util.Random;
  * Because a read can only be discarded once {@code maxDepth} reads already cover its whole span, a window in
  * which no position can be covered by more than {@code maxDepth} reads (bounded by the still-open kept reads
  * plus the most window reads starting within one read span of each other) cannot discard anything; such
- * windows are passed through without any per-base work. In ordinary sequence that is
- * almost every window, so the downsampler only does real work in collapsed repeats and other ultra-deep
- * regions. Any region whose depth never exceeds {@code maxDepth} is passed through unchanged.
+ * windows are passed through without any per-base work. In ordinary sequence that is almost every window, so
+ * the downsampler only does real work in collapsed repeats and other ultra-deep regions. Any region whose
+ * depth never exceeds {@code maxDepth} is passed through unchanged.
  *
  * Depth is counted per sample over the aligned span of each read (soft clips excluded, deletions included).
- * Reads without an assigned position are passed through untouched.
+ * Depth is only tracked for one window's width past the end of the current window; a read whose span reaches
+ * beyond that is always kept, which keeps memory and work proportional to the window rather than to the
+ * longest read span. Reads without an assigned position are passed through untouched, after any buffered
+ * positioned reads.
  *
  * The cap is a floor-preserving target rather than a hard ceiling: a read is judged before the later reads that
  * will cover its right end have arrived, so kept depth overshoots the cap by up to about one read's worth of
  * reads at the end of each window. Windows should therefore be several read lengths wide; the overshoot grows
  * as the window shrinks below a read length.
+ *
+ * The downsampler can be reused across inputs: {@link #signalEndOfInput()} flushes the current window and
+ * resets all positional state, so a subsequent input may start at any position.
  */
 public final class MaxDepthDownsampler extends ReadsDownsampler {
 
@@ -79,12 +85,13 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
     public void submit(final GATKRead newRead) {
         Utils.nonNull(newRead, "newRead");
         if (ReadUtils.readHasNoAssignedPosition(newRead)) {
+            // Unplaced reads sort after all positioned reads, so flush the window first to keep the output ordered.
+            finalizeWindow();
             finalizedReads.add(newRead);
             return;
         }
         checkSortOrder(newRead);
-        if (windowContig == null || !windowContig.equals(newRead.getAssignedContig())
-                || newRead.getAssignedStart() >= windowStart + windowSize) {
+        if (!isInCurrentWindow(newRead)) {
             finalizeWindow();
             if (windowContig == null || !windowContig.equals(newRead.getAssignedContig())) {
                 openKeptBySample.clear();
@@ -94,6 +101,11 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
         }
         pendingWindow.add(newRead);
         previousRead = newRead;
+    }
+
+    private boolean isInCurrentWindow(final GATKRead read) {
+        return windowContig != null && windowContig.equals(read.getAssignedContig())
+                && read.getAssignedStart() < (long) windowStart + windowSize;
     }
 
     private void checkSortOrder(final GATKRead newRead) {
@@ -131,7 +143,7 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
     private void capSample(final String sample, final List<Integer> indices, final boolean[] keep) {
         final List<GATKRead> open = openKeptBySample.computeIfAbsent(sample, k -> new ArrayList<>());
         // Kept reads ending before this window starts cannot overlap anything still to come.
-        open.removeIf(r -> r.getEnd() < windowStart);
+        open.removeIf(r -> spanEnd(r) < windowStart);
 
         if (open.size() + maxReadsStartingWithinOneSpan(indices) <= maxDepth) {
             // No position can reach maxDepth before the last read covering it is placed, so nothing can be discarded.
@@ -142,16 +154,12 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
             return;
         }
 
-        int maxEnd = windowStart;
+        // Depth is tracked from the window start to one window's width past its end; reads reaching beyond
+        // that are always kept, so the array never grows with a single read's span.
+        final int trackedEnd = (int) Math.min((long) windowStart + 2L * windowSize - 1, Integer.MAX_VALUE);
+        final int[] depth = new int[trackedEnd - windowStart + 1];
         for (final GATKRead r : open) {
-            maxEnd = Math.max(maxEnd, r.getEnd());
-        }
-        for (final int i : indices) {
-            maxEnd = Math.max(maxEnd, spanEnd(pendingWindow.get(i)));
-        }
-        final int[] depth = new int[maxEnd - windowStart + 1];
-        for (final GATKRead r : open) {
-            addSpan(depth, Math.max(r.getStart(), windowStart), r.getEnd());
+            addSpan(depth, Math.max(r.getAssignedStart(), windowStart), Math.min(spanEnd(r), trackedEnd));
         }
 
         final List<Integer> order = new ArrayList<>(indices);
@@ -162,9 +170,9 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
             final GATKRead read = pendingWindow.get(i);
             final int start = read.getAssignedStart();
             final int end = spanEnd(read);
-            if (anyPositionBelowCap(depth, start, end)) {
+            if (end > trackedEnd || anyPositionBelowCap(depth, start, end)) {
                 keep[i] = true;
-                addSpan(depth, start, end);
+                addSpan(depth, start, Math.min(end, trackedEnd));
                 open.add(read);
             }
         }
@@ -175,15 +183,15 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
      * fall within one maximal read span of each other. Reads are in start order, so this is a sliding count.
      */
     private int maxReadsStartingWithinOneSpan(final List<Integer> indices) {
-        int maxSpan = 1;
+        long maxSpan = 1;
         for (final int i : indices) {
             final GATKRead r = pendingWindow.get(i);
-            maxSpan = Math.max(maxSpan, spanEnd(r) - r.getAssignedStart() + 1);
+            maxSpan = Math.max(maxSpan, (long) spanEnd(r) - r.getAssignedStart() + 1);
         }
         int best = 0;
         int left = 0;
         for (int right = 0; right < indices.size(); right++) {
-            final int rightStart = pendingWindow.get(indices.get(right)).getAssignedStart();
+            final long rightStart = pendingWindow.get(indices.get(right)).getAssignedStart();
             while (pendingWindow.get(indices.get(left)).getAssignedStart() <= rightStart - maxSpan) {
                 left++;
             }
@@ -192,7 +200,7 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
         return best;
     }
 
-    /** Aligned end of the read's span, falling back to its start for reads that report no span. */
+    /** Aligned end of the read's span, falling back to its assigned start for reads that report no span. */
     private static int spanEnd(final GATKRead read) {
         return Math.max(read.getEnd(), read.getAssignedStart());
     }
@@ -252,6 +260,10 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
     @Override
     public void signalEndOfInput() {
         finalizeWindow();
+        // The next input, if any, may start anywhere, and kept reads from this input must not count against it.
+        openKeptBySample.clear();
+        windowContig = null;
+        previousRead = null;
     }
 
     @Override
@@ -271,8 +283,7 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
     @Override
     public void signalNoMoreReadsBefore(final GATKRead read) {
         Utils.nonNull(read, "read");
-        if (windowContig != null && (!windowContig.equals(read.getAssignedContig())
-                || read.getAssignedStart() >= windowStart + windowSize)) {
+        if (windowContig != null && !isInCurrentWindow(read)) {
             finalizeWindow();
         }
     }

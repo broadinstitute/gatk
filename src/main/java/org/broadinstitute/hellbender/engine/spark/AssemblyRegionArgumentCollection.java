@@ -136,11 +136,11 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      * where reads start at every base cannot flood an assembly region with tens of thousands of reads. Positions
      * whose depth is already at or below the cap are never touched, so regions of ordinary depth are unaffected.
      */
-    @Argument(fullName = MAX_EFFECTIVE_DEPTH_LONG_NAME, doc = "Randomly discard reads, within windows of read starts, so that no position retains more than this many reads per sample where it had more; positions at or below this depth keep all their reads. Applied after --" + MAX_STARTS_LONG_NAME + ". Set to 0 to disable.", optional = true)
+    @Argument(fullName = MAX_EFFECTIVE_DEPTH_LONG_NAME, doc = "Randomly discard reads, within windows of read starts, so that positions deeper than this keep about this many reads per sample (never fewer, and up to roughly one read length of extra reads near window ends); positions at or below this depth keep all their reads. Applied after --" + MAX_STARTS_LONG_NAME + ". Set to 0 to disable.", optional = true)
     public int maxEffectiveDepth = 0;
 
     @Advanced
-    @Argument(fullName = MAX_EFFECTIVE_DEPTH_WINDOW_LONG_NAME, doc = "Width in bases of the read-start windows within which reads are randomly ordered before applying --" + MAX_EFFECTIVE_DEPTH_LONG_NAME + ". Should be several read lengths wide: larger windows randomize the kept subset more evenly and keep the retained depth closer to the cap, at the cost of buffering more reads (at most --" + MAX_STARTS_LONG_NAME + " times the window width).", optional = true, minValue = 1)
+    @Argument(fullName = MAX_EFFECTIVE_DEPTH_WINDOW_LONG_NAME, doc = "Width in bases of the read-start windows within which reads are randomly ordered before applying --" + MAX_EFFECTIVE_DEPTH_LONG_NAME + ". Should be several read lengths wide: larger windows randomize the kept subset more evenly and keep the retained depth closer to the cap, at the cost of buffering more reads (at most --" + MAX_STARTS_LONG_NAME + " times the window width while that cap is enabled).", optional = true, minValue = 1)
     public int maxEffectiveDepthWindow = 1000;
 
     /**
@@ -212,6 +212,14 @@ public class AssemblyRegionArgumentCollection implements Serializable {
 
         if ( maxReadsPerAlignmentStart < 0 ) {
             throw new CommandLineException.BadArgumentValue("maxReadsPerAlignmentStart must be >= 0");
+        }
+
+        if ( maxEffectiveDepth < 0 ) {
+            throw new CommandLineException.BadArgumentValue("maxEffectiveDepth must be >= 0");
+        }
+
+        if ( maxEffectiveDepthWindow <= 0 ) {
+            throw new CommandLineException.BadArgumentValue("maxEffectiveDepthWindow must be > 0");
         }
 
         if ( snpPaddingForGenotyping < 0 ) {

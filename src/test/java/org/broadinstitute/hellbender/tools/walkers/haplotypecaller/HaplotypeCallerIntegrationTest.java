@@ -421,10 +421,14 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File uncapped = runHaplotypeCallerWithMaxEffectiveDepth(inputFileName, referenceFileName, null, "testMaxEffectiveDepth.uncapped");
         final File capped = runHaplotypeCallerWithMaxEffectiveDepth(inputFileName, referenceFileName, "5", "testMaxEffectiveDepth.lowCap");
 
-        final List<VariantContext> cappedCalls = VariantContextTestUtils.getVariantContexts(capped);
-        final List<VariantContext> uncappedCalls = VariantContextTestUtils.getVariantContexts(uncapped);
+        final List<String> cappedCalls = VariantContextTestUtils.getVariantContexts(capped).stream()
+                .map(vc -> vc.getContig() + ":" + vc.getStart() + ":" + vc.getAlleles() + ":" + vc.getGenotype(0).getGenotypeString())
+                .collect(Collectors.toList());
+        final List<String> uncappedCalls = VariantContextTestUtils.getVariantContexts(uncapped).stream()
+                .map(vc -> vc.getContig() + ":" + vc.getStart() + ":" + vc.getAlleles() + ":" + vc.getGenotype(0).getGenotypeString())
+                .collect(Collectors.toList());
         Assert.assertFalse(cappedCalls.isEmpty(), "the capped run emitted no variants");
-        Assert.assertNotEquals(cappedCalls.size(), uncappedCalls.size(), "a cap of 5 on ~30x data should change the calls");
+        Assert.assertNotEquals(cappedCalls, uncappedCalls, "a cap of 5 on ~30x data should change the calls");
     }
 
     @Test(dataProvider="HaplotypeCallerTestInputs")

@@ -287,15 +287,55 @@ public final class MaxDepthDownsamplerUnitTest extends GATKBaseTest {
     }
 
     @Test
-    public void testReadsWithoutAnAssignedPositionPassThrough() {
+    public void testReadsWithoutAnAssignedPositionPassThroughAfterBufferedReads() {
         final SAMFileHeader header = headerWithSample("s1");
         final List<GATKRead> reads = new ArrayList<>(pileOfReads(header, 1, 50, 1));
         final GATKRead unmapped = ArtificialReadUtils.createArtificialUnmappedRead(header, new byte[]{'A'}, new byte[]{30});
         reads.add(unmapped);
 
-        final List<GATKRead> out = runDownsampler(new MaxDepthDownsampler(10, 300, header, new Random(1)), reads);
+        final List<GATKRead> out = runDownsampler(new MaxDepthDownsampler(1000, 300, header, new Random(1)), reads);
 
-        Assert.assertTrue(out.contains(unmapped));
+        Assert.assertEquals(out, reads, "the unplaced read must come out after the positioned reads it followed");
+    }
+
+    @Test
+    public void testDownsamplerCanBeReusedAfterEndOfInput() {
+        final SAMFileHeader header = headerWithSample("s1");
+        final int cap = 150;
+        final MaxDepthDownsampler downsampler = new MaxDepthDownsampler(cap, 300, header, new Random(1));
+        // First input: a 1,000x block. Second input: overlapping, earlier-starting reads at 100x (under the cap),
+        // as happens when one downsampler serves consecutive padded shards.
+        final List<GATKRead> deep = pileOfReads(header, 500, 800, 10);
+        final List<GATKRead> shallow = pileOfReads(header, 400, 900, 1);
+
+        final List<GATKRead> keptDeep = runDownsampler(downsampler, deep);
+        final List<GATKRead> keptShallow = runDownsampler(downsampler, shallow);
+
+        Assert.assertTrue(keptDeep.size() < deep.size());
+        // Nothing from the first input may count against the second: it is under the cap everywhere, so all of it survives.
+        Assert.assertEquals(keptShallow, shallow);
+        // Calling end-of-input again must be harmless.
+        downsampler.signalEndOfInput();
+        Assert.assertFalse(downsampler.hasFinalizedItems());
+    }
+
+    @Test
+    public void testReadsReachingBeyondTheTrackedSpanAreAlwaysKept() {
+        final SAMFileHeader header = headerWithSample("s1");
+        final int windowSize = 100;
+        final List<GATKRead> reads = new ArrayList<>(pileOfReads(header, 1, 100, 10)); // 1,000x, far over the cap
+        // A spliced-style read whose span (100M then a 5 kb skip then 100M) reaches far past the tracked region.
+        final GATKRead longSpan = ArtificialReadUtils.createArtificialRead(header, "spliced", 0, 50,
+                new byte[200], new byte[200], "100M5000N100M");
+        longSpan.setReadGroup(header.getReadGroups().get(0).getId());
+        reads.add(longSpan);
+        reads.sort(new ReadCoordinateComparator(header));
+
+        final List<GATKRead> out = runDownsampler(new MaxDepthDownsampler(20, windowSize, header, new Random(2)), reads);
+
+        Assert.assertTrue(names(out).contains("spliced"), "a read reaching beyond the tracked span must be kept");
+        Assert.assertTrue(out.size() < reads.size());
+        assertCoordinateSorted(out, header);
     }
 
     @Test
