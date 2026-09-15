@@ -32,6 +32,21 @@ workflow GvsJointVariantCalling {
         Boolean use_compressed_references = false
         Boolean load_vet_and_ref_ranges = true
         Boolean load_vcf_headers = false
+
+        # Begin GvsValidateVcfHeaders (VS-1966 / VS-1995)
+        # When true (default), validate the VCF headers before vet/ref data ingest. An initial headers-only
+        # ingest pass populates header tables and runs GvsValidateVcfHeaders. If validation passes, the
+        # workflow proceeds to vet/ref data ingest; if validation fails and fail_on_validation_errors is true,
+        # it halts fast before any expensive vet/ref compute is spent. Set to false to bypass pre-ingest
+        # header checks.
+        Boolean validate_vcf_headers = true
+        # Exact triplet ('3.7.8', AoU) or a range with optional interval notation ('3.4.12-3.7.8',
+        # '[3.7.8-3.8)', '(3.7-3.8)'); see GvsValidateVcfHeaders.
+        String? expected_dragen_version
+        Boolean require_reblocking = true
+        Boolean fail_on_validation_errors = true
+        # End GvsValidateVcfHeaders
+
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
         # *NOTE* Parquet ingest off here by default until Parquet becomes the default ingest mode for Beta!
@@ -158,6 +173,10 @@ workflow GvsJointVariantCalling {
             use_compressed_references = use_compressed_references,
             load_vcf_headers = load_vcf_headers,
             load_vet_and_ref_ranges = load_vet_and_ref_ranges,
+            validate_vcf_headers = validate_vcf_headers,
+            expected_dragen_version = expected_dragen_version,
+            require_reblocking = require_reblocking,
+            fail_on_validation_errors = fail_on_validation_errors,
             workspace_bucket = effective_workspace_bucket,
             workspace_id = effective_workspace_id,
             tighter_gcp_quotas = tighter_gcp_quotas,
@@ -274,5 +293,8 @@ workflow GvsJointVariantCalling {
         String recorded_git_hash = effective_git_hash
         Boolean done = true
         Boolean used_tighter_gcp_quotas = BulkIngestGenomes.used_tighter_gcp_quotas
+        Boolean? vcf_headers_validation_passed = BulkIngestGenomes.vcf_headers_validation_passed
+        File? vcf_headers_validation_report = BulkIngestGenomes.vcf_headers_validation_report
+        String? vcf_headers_validation_report_contents = BulkIngestGenomes.vcf_headers_validation_report_contents
     }
 }
