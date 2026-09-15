@@ -36,6 +36,15 @@ workflow GvsQuickstartIntegration {
         Int? maximum_alternate_alleles
         File? gatk_override
         Boolean use_parquet_ingest = true
+        # VS-1989 independent post-load structural checks, forwarded to every Parquet-ingest sub-workflow
+        # (the VCF VETS/VQSR/exome/BGE calls and the Beta GvsJointVariantCalling call) so an integration
+        # run can exercise them; e.g. set parquet_allow_flagged_vet_loads = true to waive the screens and
+        # let deletion proceed despite a flag. Leave parquet_expected_ploidy_rows_per_sample unset unless
+        # every cohort in the run shares that exact per-sample row count -- the exome/BGE cohorts do not
+        # match the WGS value, so a top-level override would misfit them.
+        Float parquet_vet_duplication_threshold = 1.6
+        Boolean parquet_allow_flagged_vet_loads = false
+        Int? parquet_expected_ploidy_rows_per_sample
         # DRAGEN version asserted by the header-validation check. Left unset, the BGE call defaults to
         # the triplet its samples carry ("3.7.8") and the other header-checked calls run consistency-
         # only. When set, this value flows to BOTH the VETS/Hail (WGS) call and the BGE call. The WGS
@@ -181,6 +190,9 @@ workflow GvsQuickstartIntegration {
                 submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 use_parquet_ingest = use_parquet_ingest,
+                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+                parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRIntegration {
             input:
@@ -209,6 +221,9 @@ workflow GvsQuickstartIntegration {
                 submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 use_parquet_ingest = use_parquet_ingest,
+                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+                parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
         }
 
         if (QuickstartVcfVQSRIntegration.used_tighter_gcp_quotas) {
@@ -261,6 +276,9 @@ workflow GvsQuickstartIntegration {
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 target_interval_list = target_interval_list,
                 use_parquet_ingest = use_parquet_ingest,
+                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+                parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
         }
 
         if (QuickstartVcfExomeIntegration.used_tighter_gcp_quotas) {
@@ -307,6 +325,9 @@ workflow GvsQuickstartIntegration {
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 target_interval_list = target_interval_list,
                 use_parquet_ingest = use_parquet_ingest,
+                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+                parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
         }
 
         if (QuickstartVcfBgeIntegration.used_tighter_gcp_quotas) {
@@ -360,6 +381,9 @@ workflow GvsQuickstartIntegration {
                 collect_variant_calling_metrics = collect_variant_calling_metrics,
                 use_parquet_ingest = use_parquet_ingest,
                 parquet_output_gcs_dir = parquet_output_gcs_dir,
+                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+                parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
         }
 
         if (!QuickstartBeta.used_tighter_gcp_quotas) {
