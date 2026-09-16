@@ -506,6 +506,27 @@ confirm the invariants hold and the version breakdown matches expectations. If a
 A/B check against a BQ-loaded dataset is wanted, the same tables can be compared directly
 (distinct-hash sets, the (sample_id, hash) set, and reconstructed per-sample text).
 
+**Implemented (VS-1966):** all three groups above are now automated by the
+`GvsValidateVcfHeaders.wdl` workflow (script `scripts/variantstore/scripts/check_vcf_headers.py`),
+run after the headers-only ingest and before the vet/ref data ingest. It enforces the integrity
+invariants (group 1) and referential integrity as fatal checks, adds a fatal reblocking check
+(every non-control, non-withdrawn sample has a `ReblockGVCF` command line), reports the
+shared-blob distribution (group 2) informationally, and turns the DRAGEN-version report (group 3)
+into a fatal consistency check — all samples must share one version *triplet* (e.g. `3.7.8`), and
+if `expected_dragen_version` is supplied every sample must match it. Because the queries are
+path-agnostic (§3) this validates a Parquet-loaded dataset identically to a BQ-loaded one. The
+workflow emits the VS-1215 "small report" as its `validation_report` output and, with
+`fail_on_validation_errors = true` (default), fails the workflow before any data-ingest compute is
+spent.
+
+**Cost & runtime (AC3):** the validation is four BigQuery scans over the small header tables
+(`vcf_header_lines` is one row per distinct header line, `sample_vcf_header` one row per
+sample×chunk) plus a single small VM task — on the order of pennies and a few minutes even at AoU
+scale, negligible against the vet/ref ingest it gates. Its whole purpose is to *save* cost: catching
+a mis-processed cohort here avoids ingesting hundreds of thousands of samples that would have to be
+thrown away. This is separate from the header-*ingest* cost of the extra headers-only load pass,
+which is accounted for in §5.
+
 ---
 
 ## 8. Open questions / risks
