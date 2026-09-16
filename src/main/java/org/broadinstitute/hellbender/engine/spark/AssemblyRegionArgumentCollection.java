@@ -156,10 +156,15 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     }
 
     /**
-     * As {@link #createReadsDownsampler(SAMFileHeader)}, with the option of deterministic downsampling for tests.
+     * As {@link #createReadsDownsampler(SAMFileHeader)}, with a switch between the two selection modes. Both are
+     * reproducible: the random mode draws from the process-wide seeded generator, so the same input and the same
+     * sequence of earlier draws give the same result; the non-random mode selects by arrival order instead, so its
+     * result depends only on the reads themselves. The latter exists for tests, where expected outputs should not
+     * move when unrelated code consumes the shared generator.
      *
      * @param header header of the reads to be downsampled
-     * @param nonRandomDownsamplingMode if true, downsampling is made deterministic (for tests)
+     * @param nonRandomDownsamplingMode false for seeded random selection (the normal mode); true for predictable,
+     *                                  non-randomized selection by arrival order (for tests)
      * @return a downsampler, or null if no downsampling was requested
      */
     public ReadsDownsampler createReadsDownsampler(final SAMFileHeader header, final boolean nonRandomDownsamplingMode) {

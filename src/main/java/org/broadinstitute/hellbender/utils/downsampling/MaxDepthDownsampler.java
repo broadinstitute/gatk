@@ -48,7 +48,7 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
     private final int maxDepth;
     private final int windowSize;
     private final SAMFileHeader header;
-    /** Source of the per-window visiting order; null means arrival order (deterministic, for tests). */
+    /** Source of the per-window visiting order; null means arrival order (predictable, non-randomized; for tests). */
     private final Random random;
 
     private String windowContig;
@@ -64,8 +64,8 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
      * @param windowSize width, in bases of alignment start, of the windows within which reads are randomly
      *                   ordered before capping; must be > 0
      * @param header header used to resolve sample names and to check sort order
-     * @param random source of randomness for the per-window visiting order, or null to visit reads in
-     *               arrival order
+     * @param random seeded source of the per-window visiting order (the normal, reproducible random mode), or
+     *               null to visit reads in arrival order (predictable, non-randomized; for tests)
      */
     public MaxDepthDownsampler(final int maxDepth, final int windowSize, final SAMFileHeader header, final Random random) {
         Utils.validateArg(maxDepth > 0, "maxDepth must be > 0");
