@@ -511,10 +511,15 @@ task ScanVdsForDropouts {
             hail_temp_path="~{hail_temp_path}"
         fi
 
-        # Declare the report outputs up front so they always exist. Cromwell resolves task
-        # outputs regardless of which branch ran, and only the scan action produces these.
-        echo "action '~{action}' does not produce a report; see the scan action." > report.tsv
-        cp report.tsv adjudicate.sql
+        # Both output files must exist because Cromwell resolves task outputs regardless of
+        # which branch ran. Each states what it is and why it is empty. An earlier version
+        # copied the report's placeholder into the SQL file, which shipped an
+        # adjudicate_<mode>.sql whose contents talked about reports -- a plausibly named
+        # output with irrelevant text in it, which is worse than no file at all.
+        echo "# No findings report: action '~{action}' does not produce one; only scan does." \
+            > report.tsv
+        echo "-- No adjudication SQL: action '~{action}' does not produce any; only scan does." \
+            > adjudicate.sql
 
         # Build the arguments JSON for the script that will run inside the Hail cluster.
         # run_in_hail_cluster.py renders each key as `--key value`, so every key must be
@@ -623,15 +628,40 @@ task ScanVdsForDropouts {
                 detect_args+=(--project-id "~{default='' bq_project_id}")
                 detect_args+=(--dataset-name "~{default='' bq_dataset_name}")
                 detect_args+=(--reference-schema ~{reference_schema})
+            else
+                # Adjudication is half the method: the screen produces candidates and
+                # BigQuery decides whether each is real. Skipping it silently would leave
+                # unproven findings looking finished, so say so in the file and in the log.
+                cat > adjudicate.sql <<'NO_SQL_GENERATED'
+-- No adjudication SQL was generated, because bq_project_id and bq_dataset_name were not
+-- supplied to this workflow.
+--
+-- The screen only identifies candidates; BigQuery is what establishes whether the data is
+-- genuinely missing rather than merely anomalous. Findings are unproven without it.
+--
+-- No need to re-run the scan. The summary it wrote is enough, and judging is pure Python:
+--
+--   python3 vds_dropout_detect.py \
+--     --summary <summary.tsv> --superpartitions <superpartitions.tsv> --mode <mode> \
+--     --project-id <project> --dataset-name <dataset> --sql-path adjudicate.sql
+--
+-- Or pass bq_project_id and bq_dataset_name next time; they can be supplied alongside
+-- sample_map_path, in which case the map is reused and only the SQL is generated.
+NO_SQL_GENERATED
+                echo "WARNING: bq_project_id/bq_dataset_name were not supplied, so no" >&2
+                echo "         adjudication SQL was generated. The candidates in" >&2
+                echo "         report_~{mode}.tsv are unproven until checked against" >&2
+                echo "         BigQuery. See adjudicate_~{mode}.sql for how to generate it" >&2
+                echo "         without re-running the scan." >&2
             fi
 
             python3 ~{vds_dropout_detect_script} "${detect_args[@]}" | tee -a scan.log
 
             gsutil cp ./report.tsv "~{output_prefix}/report_~{mode}.tsv"
-            if [[ -f ./adjudicate.sql ]]
-            then
-                gsutil cp ./adjudicate.sql "~{output_prefix}/adjudicate_~{mode}.sql"
-            fi
+            # Unconditional: the file always exists and always says something true about
+            # itself. The former `-f` guard could never be false, since the placeholder
+            # above guarantees the path.
+            gsutil cp ./adjudicate.sql "~{output_prefix}/adjudicate_~{mode}.sql"
         fi
 
         gsutil cp scan.log "~{output_prefix}/scan_~{action}_~{mode}.log"

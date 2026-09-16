@@ -60,6 +60,10 @@ JOB_CLIENT_CRASH_MARKERS = (
 JOB_REATTACH_ATTEMPTS = 5
 JOB_REATTACH_DELAY_SECONDS = 30
 
+# Tearing down a wide autoscaling cluster takes a while, and gcloud's default operation
+# timeout is short enough that a large cluster can outlast it even when the delete succeeds.
+CLUSTER_DELETE_TIMEOUT = '45m'
+
 PARTIAL_CAPACITY_MARKERS = (
     'Timed out waiting for',
     'minimum required datanodes',
@@ -276,6 +280,26 @@ def resolve_zones(zones, region, workspace_project):
     return [zone.strip() for zone in zones.split(',') if zone.strip()]
 
 
+def cluster_exists(cluster_name, region, workspace_project, account):
+    """Whether the cluster is still present.
+
+    Used to tell a delete that genuinely failed from one that succeeded while gcloud gave
+    up waiting on the operation -- a real distinction for a wide cluster, and the difference
+    between an orphan that bills and a false alarm.
+    """
+    describe_cmd = unwrap(f"""
+        gcloud dataproc clusters describe {cluster_name}
+          --project {workspace_project}
+          --region {region}
+          --account {account}
+          --format='value(status.state)'
+          --quiet
+    """)
+    pipe = os.popen(describe_cmd + " 2>/dev/null")
+    output = pipe.read()
+    return pipe.close() is None and bool(output.strip())
+
+
 def delete_failed_cluster(cluster_name, region, workspace_project):
     """Best-effort teardown so the cluster name is free for the next attempt.
 
@@ -476,17 +500,26 @@ def run_in_existing_cluster(cluster_name, account, region, workspace_project,
                   --project {workspace_project}
                   --region {region}
                   --account {account}
+                  --timeout={CLUSTER_DELETE_TIMEOUT}
                   --quiet
                   {cluster_name}
 
             """)
 
-            pipe = os.popen(delete_cmd)
-            pipe.read()
-            wait_status = pipe.close()
-            if wait_status:
-                exit_code = os.waitstatus_to_exitcode(wait_status)
-                raise RuntimeError(f"Unexpected exit code deleting cluster: {exit_code}")
+            exit_code, _ = run_streaming(delete_cmd)
+            if exit_code:
+                # Never raise from here. Deleting the cluster is cleanup, not the
+                # deliverable: raising failed workflows whose expensive work had already
+                # succeeded, and because this is a finally block it would also replace any
+                # exception from the try -- reporting a teardown timeout while discarding
+                # the real reason the job failed.
+                if cluster_exists(cluster_name, region, workspace_project, account):
+                    info(f"ERROR: cluster {cluster_name} could not be deleted and is still "
+                         f"present, so it is still billing. Delete it with:{delete_cmd}")
+                else:
+                    info(f"Cluster {cluster_name} is gone. The delete succeeded and gcloud "
+                         f"merely stopped waiting on the operation (exit {exit_code}); "
+                         f"tearing down a wide cluster can outlast its own timeout.")
 
 
 if __name__ == "__main__":

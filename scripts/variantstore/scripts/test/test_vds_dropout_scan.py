@@ -19,6 +19,8 @@ import os
 import pathlib
 import re
 import tempfile
+import threading
+import time
 import types
 import unittest
 
@@ -127,6 +129,57 @@ class TestWdlGeneratedSampleMap(unittest.TestCase):
         wdl = self.read(self.WDL)
         task = wdl.split('task GenerateSampleMap', 1)[1].split('command <<<', 1)[0]
         self.assertIn('volatile: true', task)
+
+
+class TestPlaceholderOutputs(unittest.TestCase):
+    """Both task outputs must exist and describe themselves accurately.
+
+    Cromwell resolves task outputs regardless of which branch ran, so both files are
+    created up front. An earlier version copied the report's placeholder into the SQL file,
+    which shipped an adjudicate_<mode>.sql whose text talked about reports -- a plausibly
+    named output containing something irrelevant, which reads as a real result.
+    """
+
+    WDL = (pathlib.Path(__file__).resolve().parents[2]
+           / 'wdl' / 'GvsValidateVdsCompleteness.wdl')
+
+    def wdl(self):
+        if not self.WDL.exists():
+            self.skipTest(f'{self.WDL} not available in this test environment')
+        return self.WDL.read_text()
+
+    def scan_task(self):
+        return self.wdl().split('task ScanVdsForDropouts', 1)[1]
+
+    def test_placeholders_are_not_copies_of_each_other(self):
+        body = self.scan_task()
+        self.assertNotIn('cp report.tsv adjudicate.sql', body)
+
+    def test_each_placeholder_names_its_own_purpose(self):
+        body = self.scan_task().split('command <<<', 1)[1]
+        head = body.split('bq query', 1)[0]
+        self.assertIn('No findings report', head)
+        self.assertIn('No adjudication SQL', head)
+
+    def test_skipped_adjudication_is_explained_in_the_file(self):
+        body = self.scan_task()
+        self.assertIn('NO_SQL_GENERATED', body)
+        self.assertIn('unproven', body)
+
+    def test_skipped_adjudication_warns_on_stderr(self):
+        """A silently missing adjudication leaves candidates looking settled."""
+        body = self.scan_task()
+        self.assertIn('WARNING: bq_project_id/bq_dataset_name were not supplied', body)
+
+    def test_the_file_says_how_to_recover_without_re_running_the_scan(self):
+        body = self.scan_task()
+        self.assertIn('vds_dropout_detect.py', body)
+        self.assertIn('No need to re-run the scan', body)
+
+    def test_no_dead_existence_guard_on_the_sql_upload(self):
+        """The placeholder guarantees the path, so `-f` could never be false."""
+        body = self.scan_task()
+        self.assertNotIn('if [[ -f ./adjudicate.sql ]]', body)
 
 
 class TestSampleMapParsing(unittest.TestCase):
@@ -313,6 +366,63 @@ class TestExecutorSummary(unittest.TestCase):
         """An empty map would otherwise report -1 executors."""
         text = self.summary_with(lambda: self._context(size=0))
         self.assertIn('0 executor(s)', text)
+
+
+class TestWidthHeartbeat(unittest.TestCase):
+    """Cluster width is a profile, not a number, so it is sampled rather than snapshotted.
+
+    A reading taken before an aggregation starts is taken before autoscaling has seen the
+    work and is systematically low; one at the end misses a slow ramp. Reading a pre-ramp
+    snapshot as characteristic is how this project produced two wrong cost estimates, so
+    the log records the shape instead.
+    """
+
+    def setUp(self):
+        self.original = vds.executor_summary
+        self.addCleanup(lambda: setattr(vds, 'executor_summary', self.original))
+
+    def capture(self, sampler, duration=0.5, interval=0.1):
+        vds.executor_summary = sampler
+        buffer = io.StringIO()
+        with contextlib.redirect_stdout(buffer):
+            with vds.width_heartbeat('label', interval_seconds=interval):
+                time.sleep(duration)
+        return buffer.getvalue()
+
+    def test_samples_more_than_once(self):
+        output = self.capture(lambda: '590 executor(s), ~2360 task slot(s)')
+        self.assertGreater(output.count('label'), 1)
+
+    def test_reports_elapsed_and_width(self):
+        output = self.capture(lambda: '590 executor(s), ~2360 task slot(s)')
+        self.assertIn('min elapsed', output)
+        self.assertIn('2360 task slot(s)', output)
+
+    def test_thread_stops_when_the_block_exits(self):
+        self.capture(lambda: 'steady')
+        remaining = [t for t in threading.enumerate() if t.name == 'width-heartbeat']
+        self.assertEqual([], remaining)
+
+    def test_thread_is_a_daemon_so_it_cannot_hold_the_process_open(self):
+        names = []
+        vds.executor_summary = lambda: 'steady'
+        with contextlib.redirect_stdout(io.StringIO()):
+            with vds.width_heartbeat('label', interval_seconds=5):
+                names = [(t.name, t.daemon) for t in threading.enumerate()
+                         if t.name == 'width-heartbeat']
+        self.assertEqual([('width-heartbeat', True)], names)
+
+    def test_a_failing_sampler_neither_raises_nor_stops_the_heartbeat(self):
+        """This annotates a log line; it has no business failing a ten-hour run."""
+        def boom():
+            raise RuntimeError('py4j unavailable')
+        self.capture(boom)   # must not raise
+        remaining = [t for t in threading.enumerate() if t.name == 'width-heartbeat']
+        self.assertEqual([], remaining)
+
+    def test_interval_default_is_sane_for_a_long_aggregation(self):
+        self.assertGreaterEqual(vds.WIDTH_HEARTBEAT_SECONDS, 60)
+        self.assertLessEqual(vds.WIDTH_HEARTBEAT_SECONDS, 1800)
 
 
 class TestContigCheckpointing(unittest.TestCase):

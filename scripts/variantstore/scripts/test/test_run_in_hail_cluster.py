@@ -10,6 +10,8 @@ The module imports google.cloud and ijson at top level, neither of which is need
 functions under test, so they are stubbed before import.
 """
 
+import ast
+import pathlib
 import sys
 import types
 import unittest
@@ -170,6 +172,54 @@ class TestClientCrashDetection(unittest.TestCase):
         self.assertGreater(runner.JOB_REATTACH_ATTEMPTS, 1)
         self.assertLess(runner.JOB_REATTACH_ATTEMPTS, 20)
         self.assertGreater(runner.JOB_REATTACH_DELAY_SECONDS, 0)
+
+
+class TestClusterTeardown(unittest.TestCase):
+    """Teardown is cleanup, not the deliverable.
+
+    A delete that timed out failed a workflow whose 12-hour aggregation had already
+    succeeded and written its summary, and because the delete runs in a finally block, a
+    raise there would also have replaced any exception from the try -- reporting a teardown
+    timeout while discarding the real reason a job failed.
+    """
+
+    @staticmethod
+    def _finally_body():
+        """AST of the teardown block, so comments about raising are not mistaken for it."""
+        source = pathlib.Path(runner.__file__).read_text()
+        tree = ast.parse(source)
+        target = next(n for n in ast.walk(tree)
+                      if isinstance(n, ast.FunctionDef)
+                      and n.name == 'run_in_existing_cluster')
+        tries = [n for n in ast.walk(target) if isinstance(n, ast.Try) and n.finalbody]
+        self_check = tries[0]
+        return self_check.finalbody
+
+    def test_teardown_never_raises(self):
+        """Parsed rather than grepped: the comment explaining this contains the word."""
+        raises = [n for body in self._finally_body()
+                  for n in ast.walk(body) if isinstance(n, ast.Raise)]
+        self.assertEqual([], raises,
+                         msg='a raise in the finally block replaces any exception from '
+                             'the try, and fails runs whose work already succeeded')
+
+    def test_teardown_distinguishes_a_real_failure_from_a_slow_one(self):
+        calls = [n.func.id for body in self._finally_body() for n in ast.walk(body)
+                 if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)]
+        self.assertIn('cluster_exists', calls)
+
+    def test_delete_has_a_generous_operation_timeout(self):
+        """A wide cluster can outlast gcloud's default timeout while deleting fine."""
+        self.assertTrue(runner.CLUSTER_DELETE_TIMEOUT.endswith('m'))
+        self.assertGreaterEqual(int(runner.CLUSTER_DELETE_TIMEOUT.rstrip('m')), 30)
+        source = pathlib.Path(runner.__file__).read_text()
+        self.assertIn('--timeout={CLUSTER_DELETE_TIMEOUT}', source)
+
+    def test_cluster_exists_reports_false_for_a_missing_cluster(self):
+        """Backed by a describe that exits non-zero when the cluster is gone."""
+        self.assertFalse(runner.cluster_exists(
+            'definitely-not-a-real-cluster-vs1998', 'us-central1',
+            'not-a-real-project-vs1998', 'nobody@example.com'))
 
 
 class TestRunStreaming(unittest.TestCase):

@@ -106,6 +106,7 @@ import contextlib
 import datetime
 import os
 import sys
+import threading
 import time
 from collections import defaultdict
 from typing import IO, Iterable, Mapping, Sequence
@@ -120,6 +121,10 @@ DEFAULT_BIN_SIZE = 50_000
 # Below this many partitions the aggregation cannot use the cluster, which on an AoU-scale
 # VDS turns a nominally small interval into hours of single-threaded streaming.
 MIN_HEALTHY_PARTITIONS = 8
+
+# How often to sample cluster width during a long aggregation. A contig takes tens of
+# minutes, so this is a handful of lines each.
+WIDTH_HEARTBEAT_SECONDS = 300
 MODES = ('variants', 'references')
 ACTIONS = ('scan', 'full-depth')
 
@@ -513,6 +518,41 @@ def executor_summary() -> str:
     return ', '.join(parts)
 
 
+@contextlib.contextmanager
+def width_heartbeat(label: str, interval_seconds: int = WIDTH_HEARTBEAT_SECONDS):
+    """Log cluster width periodically while a long aggregation runs.
+
+    Endpoint readings describe an autoscaling cluster poorly. One taken before the
+    aggregation starts is taken before autoscaling has seen the work, so it reflects
+    whatever the previous unit of work left behind and is systematically low; one taken at
+    the end misses a slow ramp entirely. Cost is per-partition time divided by concurrent
+    tasks, so the term being divided by is a profile, not a number -- and reading a
+    pre-ramp snapshot as though it were characteristic is exactly how this project
+    produced two wrong cost estimates.
+
+    A daemon thread, and every sample is wrapped, so nothing here can fail or delay the run
+    it is describing.
+    """
+    stop = threading.Event()
+
+    def sample() -> None:
+        started = time.monotonic()
+        while not stop.wait(interval_seconds):
+            try:
+                elapsed = (time.monotonic() - started) / 60
+                announce(f'{label}: {elapsed:,.1f} min elapsed, {executor_summary()}')
+            except Exception:  # pragma: no cover - never worth failing a run over
+                pass
+
+    thread = threading.Thread(target=sample, daemon=True, name='width-heartbeat')
+    thread.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        thread.join(timeout=5)
+
+
 def matrix_partition_count(matrix) -> int:
     """Partitions the aggregation will run over, i.e. its maximum parallelism.
 
@@ -751,9 +791,13 @@ def _scan_one_contig(args, contig: str):
         vds = read_and_subset_vds(args.vds_path, intervals)
     matrix, counts = _screening_matrix(args, vds)
 
-    announce(f'{contig}: cluster width {executor_summary()}')
-    with step(f'{contig}: aggregating {args.mode} into {args.bin_size:,} bp bins'):
+    # Explicitly labeled: autoscaling has not seen this contig's work yet, so this is a
+    # floor rather than the width the aggregation will actually run at.
+    announce(f'{contig}: cluster width before autoscaling responds: {executor_summary()}')
+    with step(f'{contig}: aggregating {args.mode} into {args.bin_size:,} bp bins'), \
+            width_heartbeat(f'{contig}: aggregating'):
         totals = aggregate_totals(matrix, args.mode, args.bin_size)
+    announce(f'{contig}: cluster width at completion: {executor_summary()}')
 
     n_rows = write_lines(shard, SUMMARY_HEADER,
                          format_summary_rows(totals, args.bin_size))
@@ -774,10 +818,11 @@ def _scan_intervals(args, requested_intervals: Sequence[str]) -> int:
         vds = read_and_subset_vds(args.vds_path, intervals)
     matrix, counts = _screening_matrix(args, vds)
 
-    announce(f'Cluster width at start of aggregation: {executor_summary()}')
-    with step(f'Aggregating {args.mode} into {args.bin_size:,} bp bins'):
+    announce(f'Cluster width before autoscaling responds: {executor_summary()}')
+    with step(f'Aggregating {args.mode} into {args.bin_size:,} bp bins'), \
+            width_heartbeat('Aggregating'):
         totals = aggregate_totals(matrix, args.mode, args.bin_size)
-    announce(f'Cluster width at end of aggregation:   {executor_summary()}')
+    announce(f'Cluster width at completion: {executor_summary()}')
 
     n_rows = write_lines(args.summary_path, SUMMARY_HEADER,
                          format_summary_rows(totals, args.bin_size))
