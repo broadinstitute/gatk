@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.Downsampler;
 import org.broadinstitute.hellbender.utils.downsampling.LevelingDownsampler;
 
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.List;
@@ -24,7 +25,9 @@ final class PerSampleReadStateManager implements Iterable<AlignmentStateMachine>
      * The state machines must be ordered by the alignment start of their underlying reads, with the
      * lowest alignment starts on the left, and the largest on the right
      */
-    private List<AlignmentStateMachine> readStatesByAlignmentStart = new LinkedList<>();
+    // Walked in full at every locus; finished states are removed by in-place compaction in
+    // updateReadStates. The downsampling path may replace it with a list of its own type.
+    private List<AlignmentStateMachine> readStatesByAlignmentStart = new ArrayList<>();
 
     private final Downsampler<LinkedList<AlignmentStateMachine>> levelingDownsampler;
     private final int downsamplingTarget;
@@ -181,21 +184,25 @@ final class PerSampleReadStateManager implements Iterable<AlignmentStateMachine>
      * @return the number of states we're removed after advancing
      */
     public int updateReadStates() {
-        int nRemoved = 0;
-        final Iterator<AlignmentStateMachine> it = iterator();
-        while (it.hasNext()) {
-            final AlignmentStateMachine state = it.next();
+        // Advance every state and compact the surviving ones to the front, preserving order.
+        final List<AlignmentStateMachine> states = readStatesByAlignmentStart;
+        final int n = states.size();
+        int kept = 0;
+        for (int next = 0; next < n; next++) {
+            final AlignmentStateMachine state = states.get(next);
             final CigarOperator op = state.stepForwardOnGenome();
-            if (op == null) {
-                // we discard the read only when we are past its end AND indel at the end of the read (if any) was
-                // already processed. Keeping the read state that returned null upon stepForwardOnGenome() is safe
-                // as the next call to stepForwardOnGenome() will return null again AND will clear hadIndel() flag.
-                it.remove();                                                // we've stepped off the end of the object
-                nRemoved++;
+            // we discard the read only when we are past its end AND indel at the end of the read (if any) was
+            // already processed. Keeping the read state that returned null upon stepForwardOnGenome() is safe
+            // as the next call to stepForwardOnGenome() will return null again AND will clear hadIndel() flag.
+            if (op != null) {
+                // Move the surviving state into the next kept slot, which is at or before its current one.
+                states.set(kept++, state);
             }
         }
-
-        return nRemoved;
+        if (kept < n) {
+            states.subList(kept, n).clear();
+        }
+        return n - kept;
     }
 
     /**
