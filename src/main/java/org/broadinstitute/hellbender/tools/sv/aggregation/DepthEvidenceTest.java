@@ -70,8 +70,8 @@ public class DepthEvidenceTest {
         Utils.nonNull(record);
         Utils.nonNull(result);
         final Map<String, Object> refinedAttr = new HashMap<>(record.getAttributes());
-        refinedAttr.put(GATKSVVCFConstants.READ_DEPTH_QUALITY_ATTRIBUTE, Math.min(-10. * Math.log10(result.pValue()), maxQual));
-        refinedAttr.put(GATKSVVCFConstants.READ_DEPTH_SECOND_MAX_QUALITY_ATTRIBUTE, Math.min(-10. * Math.log10(result.secondMaxP()), maxQual));
+        refinedAttr.put(GATKSVVCFConstants.READ_DEPTH_QUALITY_ATTRIBUTE, Math.min(-Math.log10(result.pValue()), maxQual));
+        refinedAttr.put(GATKSVVCFConstants.READ_DEPTH_SECOND_MAX_QUALITY_ATTRIBUTE, Math.min(-Math.log10(result.secondMaxP()), maxQual));
         refinedAttr.put(GATKSVVCFConstants.READ_DEPTH_MEDIAN_SEPARATION_ATTRIBUTE, result.medianSeparation());
 
         // Create new record

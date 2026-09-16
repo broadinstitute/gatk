@@ -6,7 +6,6 @@ import org.broadinstitute.hellbender.tools.sv.DiscordantPairEvidence;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.Utils;
 
 public class DiscordantPairEvidenceAggregator extends SVEvidenceAggregator<DiscordantPairEvidence> {
 
@@ -46,9 +45,13 @@ public class DiscordantPairEvidenceAggregator extends SVEvidenceAggregator<Disco
     @Override
     public boolean evidenceFilter(final SVCallRecord call, final DiscordantPairEvidence evidence) {
         final SimpleInterval startInterval = getDiscordantPairStartInterval(call);
-        Utils.nonNull(startInterval);
+        if (startInterval == null) {
+            return false;
+        }
         final SimpleInterval endInterval = getDiscordantPairEndInterval(call);
-        Utils.nonNull(endInterval);
+        if (endInterval == null || call.getStrandA() == null || call.getStrandB() == null) {
+            return false;
+        }
         return discordantPairOverlapsInterval(evidence, startInterval, endInterval)
                 && evidence.getStartStrand() == call.getStrandA()
                 && evidence.getEndStrand() == call.getStrandB();
@@ -56,6 +59,9 @@ public class DiscordantPairEvidenceAggregator extends SVEvidenceAggregator<Disco
 
     protected SimpleInterval getDiscordantPairStartInterval(final SVCallRecord call) {
         final String contig = call.getContigA();
+        if (contig == null || dictionary.getSequence(contig) == null) {
+            return null;
+        }
         if (call.getStrandA() != null && call.getStrandA()) {
             return IntervalUtils.trimIntervalToContig(contig, call.getPositionA() - outerWindow, call.getPositionA() + innerWindow, dictionary.getSequence(contig).getSequenceLength());
         } else {
@@ -65,6 +71,9 @@ public class DiscordantPairEvidenceAggregator extends SVEvidenceAggregator<Disco
 
     protected SimpleInterval getDiscordantPairEndInterval(final SVCallRecord call) {
         final String contig = call.getContigB();
+        if (contig == null || dictionary.getSequence(contig) == null) {
+            return null;
+        }
         if (call.getStrandB() != null && call.getStrandB()) {
             return IntervalUtils.trimIntervalToContig(contig, call.getPositionB() - outerWindow, call.getPositionB() + innerWindow, dictionary.getSequence(contig).getSequenceLength());
         } else {

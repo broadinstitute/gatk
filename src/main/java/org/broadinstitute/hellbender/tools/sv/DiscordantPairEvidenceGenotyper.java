@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.sv;
 
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.OverlapDetector;
+import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.commons.math3.distribution.NormalDistribution;
 import org.apache.commons.math3.distribution.PoissonDistribution;
 import org.apache.commons.math3.stat.descriptive.rank.Median;
@@ -9,7 +10,6 @@ import org.broadinstitute.hellbender.tools.spark.sv.utils.GATKSVVCFConstants;
 import org.broadinstitute.hellbender.tools.sv.aggregation.DiscordantPairEvidenceTester;
 import org.broadinstitute.hellbender.tools.sv.aggregation.EvidenceStatUtils;
 import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngine;
-import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -91,14 +91,24 @@ public class DiscordantPairEvidenceGenotyper {
         this.variantIntervals = new HashMap<>();
     }
 
-    public void registerVariantForOverlapCheck(final SVCallRecord record) {
-        if ((record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DEL || record.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.DUP) && !record.isDepthOnly()) {
-            final SimpleInterval interval = new SimpleInterval(record.getContigA(), record.getPositionA(), record.getPositionB());
-            if (variantIntervals.containsKey(record.getId())) {
-                throw new IllegalArgumentException("Duplicate variant ID: " + record.getId());
-            }
-            variantIntervals.put(record.getId(), interval);
+    public void registerVariantForOverlapCheck(final VariantContext variant) {
+        final String svTypeStr = variant.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
+        if (svTypeStr == null) {
+            return;
         }
+        if (!svTypeStr.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.DEL.name())
+                && !svTypeStr.equals(GATKSVVCFConstants.StructuralVariantAnnotationType.DUP.name())) {
+            return;
+        }
+        final List<String> algorithms = variant.getAttributeAsStringList(GATKSVVCFConstants.ALGORITHMS_ATTRIBUTE, null);
+        if (algorithms.size() == 1 && GATKSVVCFConstants.DEPTH_ALGORITHM.equals(algorithms.get(0))) {
+            return; // depth-only
+        }
+        final SimpleInterval interval = new SimpleInterval(variant.getContig(), variant.getStart(), variant.getEnd());
+        if (variantIntervals.containsKey(variant.getID())) {
+            throw new IllegalArgumentException("Duplicate variant ID: " + variant.getID());
+        }
+        variantIntervals.put(variant.getID(), interval);
     }
 
     public void aggregateOverlapCheckIntervals() {
@@ -115,8 +125,8 @@ public class DiscordantPairEvidenceGenotyper {
             if (p == 0) {
                 throw new IllegalArgumentException("Precision error - quality cutoff " + qualityCutoff + " is too high");
             }
-            final double qual = QualityUtils.errorProbToQual(p);
-            if (qual > qualityCutoff) {
+            final double qual = -10.0 * Math.log10(p);
+            if (qual >= qualityCutoff) {
                 return Math.max(i - 1, 1);
             }
             i++;
@@ -159,7 +169,7 @@ public class DiscordantPairEvidenceGenotyper {
         final double hetMedian = MEDIAN.evaluate(hetCounts);
         final double[] deviations = DoubleStream.of(hetCounts).map(d -> Math.abs(d - hetMedian)).toArray();
         final double hetMad = MEDIAN.evaluate(deviations);
-        hetCutoff = hetMedian + 1.645 * hetMad;
+        hetCutoff = hetMedian + 1.4826 * 1.645 * hetMad;
         firstPassMade = true;
     }
 
@@ -197,11 +207,26 @@ public class DiscordantPairEvidenceGenotyper {
         Utils.validate(!homCounts.isEmpty(), "No discordant pair counts after second pass");
         Utils.validate(!hetCounts.isEmpty(), "No discordant pair counts after second pass");
         Utils.validate(!secondPassMade, "Second pass has already been made");
-        final double homMedian = MEDIAN.evaluate(homCounts.stream().mapToDouble(Double::valueOf).toArray());
-        final double hetMedian = MEDIAN.evaluate(hetCounts.stream().mapToDouble(Double::valueOf).toArray());
-        final double sdHet = 1.645 * MEDIAN.evaluate(hetCounts.stream().mapToDouble(d -> Math.abs(d - hetMedian)).toArray());
+        final double[] homArr = homCounts.stream().mapToDouble(Double::valueOf).toArray();
+        final double[] hetArr = hetCounts.stream().mapToDouble(Double::valueOf).toArray();
+        final double homMedian = MEDIAN.evaluate(homArr);
+        final double hetMedian = MEDIAN.evaluate(hetArr);
+        final double hetMadValue = MEDIAN.evaluate(DoubleStream.of(hetArr).map(d -> Math.abs(d - hetMedian)).toArray());
+        final double sdHet = 1.645 * 1.4826 * hetMadValue;
         secondPassMade = true;
+        // Free training accumulation lists that are no longer needed
+        hetCounts.clear();
+        homCounts.clear();
         return new DiscordantPairGenotypeParameters(trainingMinCount, homMedian, sdHet);
+    }
+
+    /**
+     * Clears the first-pass training data (per-variant normalized counts and depth genotypes).
+     * Call this after all consumers of {@link #isTrainingRecord} have finished (i.e. after SR
+     * first pass finalization) to free significant heap memory.
+     */
+    public void clearTrainingData() {
+        firstPassCounts.clear();
     }
 
     public DiscordantPairGenotypeResult genotype(final SVCallRecord record, final List<DiscordantPairEvidence> evidence,

@@ -183,6 +183,7 @@ public final class GATKSVVCFConstants {
     public static final String PESR_QUALITY_ATTRIBUTE = "PESRQ";
     public static final String PESR_CARRIER_SIGNAL_ATTRIBUTE = "PESRCS";
     public static final String BAF_HET_RATIO_ATTRIBUTE = "BAF_HET_RATIO";
+    public static final String BAF_DEL_LOGLIK_ATTRIBUTE = "BAF_DEL_LOGLIK";
     public static final String BAF_KS_STAT_ATTRIBUTE = "BAF_KS_STAT";
     public static final String BAF_KS_Q_ATTRIBUTE = "BAF_KS_Q";
 
