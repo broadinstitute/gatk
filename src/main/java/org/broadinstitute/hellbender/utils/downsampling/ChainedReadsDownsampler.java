@@ -54,9 +54,11 @@ public final class ChainedReadsDownsampler extends ReadsDownsampler {
 
     @Override
     public GATKRead peekPending() {
-        return Optional.ofNullable(first.peekPending())
+        // The pending item nearest to being emitted is the one furthest down the chain: waiting in the second
+        // stage, then finalized by the first stage but not yet handed over, then still pending in the first stage.
+        return Optional.ofNullable(second.peekPending())
                 .or(() -> Optional.ofNullable(first.peekFinalized()))
-                .orElse(second.peekPending());
+                .orElse(first.peekPending());
     }
 
     @Override

@@ -44,7 +44,7 @@ public final class AssemblyRegionArgumentCollectionUnitTest extends GATKBaseTest
 
     @Test
     public void testDefaultsProduceOnlyThePerStartDownsampler() {
-        final ReadsDownsampler downsampler = new AssemblyRegionArgumentCollection().createReadsDownsampler(header, false);
+        final ReadsDownsampler downsampler = new AssemblyRegionArgumentCollection().createReadsDownsampler(header);
         Assert.assertEquals(downsampler.getClass(), PositionalDownsampler.class);
     }
 

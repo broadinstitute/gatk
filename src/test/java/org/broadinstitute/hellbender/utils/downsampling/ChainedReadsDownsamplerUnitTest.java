@@ -86,10 +86,12 @@ public final class ChainedReadsDownsamplerUnitTest extends GATKBaseTest {
         Assert.assertEquals(chained.peekPending(), first);
 
         chained.submit(ArtificialReadUtils.createArtificialRead(header, "b", 0, 2, 100));
-        // "a" moved into the depth stage's window; still pending from the outside.
+        // "a" moved into the depth stage's window; still pending from the outside, and it is the pending read
+        // nearest to being emitted, ahead of "b" which is still in the positional stage.
         Assert.assertTrue(chained.hasPendingItems());
         Assert.assertFalse(chained.hasFinalizedItems());
         Assert.assertEquals(chained.size(), 2);
+        Assert.assertEquals(chained.peekPending(), first);
 
         chained.signalNoMoreReadsBefore(ArtificialReadUtils.createArtificialRead(header, "far", 0, 1000, 100));
         Assert.assertTrue(chained.hasFinalizedItems());

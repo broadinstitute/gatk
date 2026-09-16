@@ -149,6 +149,16 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      * either alone if only one is enabled, or null if neither is.
      *
      * @param header header of the reads to be downsampled
+     * @return a downsampler, or null if no downsampling was requested
+     */
+    public ReadsDownsampler createReadsDownsampler(final SAMFileHeader header) {
+        return createReadsDownsampler(header, false);
+    }
+
+    /**
+     * As {@link #createReadsDownsampler(SAMFileHeader)}, with the option of deterministic downsampling for tests.
+     *
+     * @param header header of the reads to be downsampled
      * @param nonRandomDownsamplingMode if true, downsampling is made deterministic (for tests)
      * @return a downsampler, or null if no downsampling was requested
      */

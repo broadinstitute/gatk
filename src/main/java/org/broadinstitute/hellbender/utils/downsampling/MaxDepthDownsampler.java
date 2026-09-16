@@ -92,7 +92,7 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
             finalizedReads.add(newRead);
             return;
         }
-        if (!isInCurrentWindow(newRead)) {
+        if (!startsInCurrentWindow(newRead)) {
             finalizeWindow();
             if (windowContig == null || !windowContig.equals(newRead.getAssignedContig())) {
                 openKeptBySample.clear();
@@ -103,7 +103,12 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
         pendingWindow.add(newRead);
     }
 
-    private boolean isInCurrentWindow(final GATKRead read) {
+    /**
+     * Whether the read starts inside the current window. Only the window's upper bound is tested: reads arrive
+     * coordinate sorted ({@link #checkSortOrder} has already rejected any that do not), so a read on the window's
+     * contig cannot start before {@code windowStart}.
+     */
+    private boolean startsInCurrentWindow(final GATKRead read) {
         return windowContig != null && windowContig.equals(read.getAssignedContig())
                 && read.getAssignedStart() < (long) windowStart + windowSize;
     }
@@ -283,7 +288,7 @@ public final class MaxDepthDownsampler extends ReadsDownsampler {
     @Override
     public void signalNoMoreReadsBefore(final GATKRead read) {
         Utils.nonNull(read, "read");
-        if (windowContig != null && !isInCurrentWindow(read)) {
+        if (windowContig != null && !startsInCurrentWindow(read)) {
             finalizeWindow();
         }
     }
