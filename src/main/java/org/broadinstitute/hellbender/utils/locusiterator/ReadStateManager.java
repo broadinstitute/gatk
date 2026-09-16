@@ -10,18 +10,15 @@ import java.util.*;
 /**
  * Manages and updates mapping from sample -> Iterable<AlignmentStateMachine>
  */
-final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleReadStateManager>> {
-    private final Collection<String> samples;
+final class ReadStateManager {
     private final PeekableIterator<GATKRead> iterator;
     private final SamplePartitioner samplePartitioner;
 
     /**
-     * A mapping from sample name -> the per sample read state manager that manages
-     *
-     * IT IS CRITICAL THAT THIS BE A LINKED HASH MAP, SO THAT THE ITERATION OF THE MAP OCCURS IN THE SAME
-     * ORDER AS THE ORIGINAL SAMPLES
+     * Per-sample read state managers, in the order the samples were provided upon construction.
+     * Every per-locus scan walks this array directly.
      */
-    private final Map<String, PerSampleReadStateManager> readStatesBySample = new LinkedHashMap<>();
+    private final PerSampleReadStateManager[] readStateManagers;
 
     private int totalReadStates = 0;
 
@@ -33,28 +30,21 @@ final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleRead
         Utils.nonNull(samples, "samples");
         Utils.nonNull(info, "downsampling info");
         Utils.nonNull(header, "header");
-        this.samples = samples;
         this.iterator = new PeekableIterator<>(source);
 
-        for (final String sample : samples) {
-            // because this is a linked hash map the order of iteration will be in sample order
-            readStatesBySample.put(sample, new PerSampleReadStateManager(info));
-        }
+        readStateManagers = samples.stream()
+                .map(sample -> new PerSampleReadStateManager(sample, info))
+                .toArray(PerSampleReadStateManager[]::new);
 
         samplePartitioner = new SamplePartitioner(info, samples, header);
     }
 
     /**
-     * Returns a iterator over all the sample -> per-sample read state managers with each sample in this read state manager.
-     *
-     * The order of iteration is the same as the order of the samples provided upon construction to this
-     * ReadStateManager.
-     *
-     * @return Iterator over sample + per sample read state manager pairs for this read state manager.
+     * The per-sample read state managers, in the order of the samples provided upon construction.
+     * Callers iterate the array directly and must not modify it.
      */
-    @Override
-    public Iterator<Map.Entry<String, PerSampleReadStateManager>> iterator() {
-        return readStatesBySample.entrySet().iterator();
+    public PerSampleReadStateManager[] perSampleManagers() {
+        return readStateManagers;
     }
 
     public boolean isEmpty() {
@@ -70,19 +60,8 @@ final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleRead
         return totalReadStates;
     }
 
-    /**
-     * Retrieves the total number of reads in the manager in the given sample.
-     *
-     * @param sample The sample.
-     * @return Total number of reads in the given sample.
-     */
-    public int size(final String sample) {
-        Utils.nonNull(sample);
-        return readStatesBySample.get(sample).size();
-    }
-
     public AlignmentStateMachine getFirst() {
-        for ( final PerSampleReadStateManager manager : readStatesBySample.values() ) {
+        for ( final PerSampleReadStateManager manager : readStateManagers ) {
             if ( ! manager.isEmpty() ) {
                 return manager.getFirst();
             }
@@ -99,7 +78,7 @@ final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleRead
      * of the next pileup.
      */
     public void updateReadStates() {
-        for (final PerSampleReadStateManager perSampleReadStateManager : readStatesBySample.values() ) {
+        for (final PerSampleReadStateManager perSampleReadStateManager : readStateManagers) {
             totalReadStates -= perSampleReadStateManager.updateReadStates();
         }
     }
@@ -147,11 +126,8 @@ final class ReadStateManager implements Iterable<Map.Entry<String, PerSampleRead
 
         samplePartitioner.doneSubmittingReads();
 
-        for (final String sample : samples) {
-            final Collection<GATKRead> newReads = samplePartitioner.getReadsForSample(sample);
-
-            final PerSampleReadStateManager statesBySample = readStatesBySample.get(sample);
-            addReadsToSample(statesBySample, newReads);
+        for (final PerSampleReadStateManager manager : readStateManagers) {
+            addReadsToSample(manager, samplePartitioner.getReadsForSample(manager.getSampleName()));
         }
 
         samplePartitioner.reset();

@@ -294,8 +294,7 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
             // HaplotypeCaller by quite a bit!
             final List<PileupElement> allPileupElements = new ArrayList<>(100);
 
-            for (final Map.Entry<String, PerSampleReadStateManager> sampleStatePair : readStates) {
-                final PerSampleReadStateManager readState = sampleStatePair.getValue();
+            for (final PerSampleReadStateManager readState : readStates.perSampleManagers()) {
                 final Iterator<AlignmentStateMachine> iterator = readState.iterator();
 
                 while (iterator.hasNext()) {

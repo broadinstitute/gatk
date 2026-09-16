@@ -39,7 +39,7 @@ public final class PerSampleReadStateManagerUnitTest extends LocusIteratorByStat
                     .map(stackReads -> stackReads.stream().map(AlignmentStateMachine::new).collect(Collectors.toList()))
                     .collect(Collectors.toList());
 
-            final PerSampleReadStateManager perSampleReadStateManager = new PerSampleReadStateManager(LocusIteratorByState.NO_DOWNSAMPLING);
+            final PerSampleReadStateManager perSampleReadStateManager = new PerSampleReadStateManager("sample", LocusIteratorByState.NO_DOWNSAMPLING);
             recordStatesByAlignmentStart.stream().map(LinkedList<AlignmentStateMachine>::new).forEach(perSampleReadStateManager::addStatesAtNextAlignmentStart);
 
             Assert.assertEquals(reads.size(), perSampleReadStateManager.size());
