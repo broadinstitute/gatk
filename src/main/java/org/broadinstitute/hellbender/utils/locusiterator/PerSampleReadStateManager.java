@@ -26,6 +26,7 @@ final class PerSampleReadStateManager implements Iterable<AlignmentStateMachine>
      */
     private List<AlignmentStateMachine> readStatesByAlignmentStart = new LinkedList<>();
 
+    private final String sampleName;
     private final Downsampler<LinkedList<AlignmentStateMachine>> levelingDownsampler;
     private final int downsamplingTarget;
 
@@ -41,10 +42,12 @@ final class PerSampleReadStateManager implements Iterable<AlignmentStateMachine>
 
     /**
      * Create a new PerSampleReadStateManager with downsampling parameters as requested by LIBSDownsamplingInfo
+     * @param sampleName the sample whose read states this manager holds; null for reads with no sample
      * @param info the downsampling params we want to use
      */
-    public PerSampleReadStateManager(final LIBSDownsamplingInfo info) {
+    public PerSampleReadStateManager(final String sampleName, final LIBSDownsamplingInfo info) {
         Utils.nonNull(info);
+        this.sampleName = sampleName;
         this.downsamplingTarget = info.isPerformDownsampling() ? info.getToCoverage() : -1;
         this.levelingDownsampler = info.isPerformDownsampling()
                 ? new LevelingDownsampler<>(info.getToCoverage())
@@ -126,6 +129,10 @@ final class PerSampleReadStateManager implements Iterable<AlignmentStateMachine>
      * Is downsampling enabled for this manager?
      * @return true if we are downsampling, false otherwise
      */
+    public String getSampleName() {
+        return sampleName;
+    }
+
     private boolean isDownsampling() {
         return levelingDownsampler != null;
     }
