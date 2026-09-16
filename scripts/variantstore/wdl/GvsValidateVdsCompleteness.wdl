@@ -633,21 +633,21 @@ task ScanVdsForDropouts {
                 # BigQuery decides whether each is real. Skipping it silently would leave
                 # unproven findings looking finished, so say so in the file and in the log.
                 cat > adjudicate.sql <<'NO_SQL_GENERATED'
--- No adjudication SQL was generated, because bq_project_id and bq_dataset_name were not
--- supplied to this workflow.
---
--- The screen only identifies candidates; BigQuery is what establishes whether the data is
--- genuinely missing rather than merely anomalous. Findings are unproven without it.
---
--- No need to re-run the scan. The summary it wrote is enough, and judging is pure Python:
---
---   python3 vds_dropout_detect.py \
---     --summary <summary.tsv> --superpartitions <superpartitions.tsv> --mode <mode> \
---     --project-id <project> --dataset-name <dataset> --sql-path adjudicate.sql
---
--- Or pass bq_project_id and bq_dataset_name next time; they can be supplied alongside
--- sample_map_path, in which case the map is reused and only the SQL is generated.
-NO_SQL_GENERATED
+        -- No adjudication SQL was generated, because bq_project_id and bq_dataset_name were not
+        -- supplied to this workflow.
+        --
+        -- The screen only identifies candidates; BigQuery is what establishes whether the data is
+        -- genuinely missing rather than merely anomalous. Findings are unproven without it.
+        --
+        -- No need to re-run the scan. The summary it wrote is enough, and judging is pure Python:
+        --
+        --   python3 vds_dropout_detect.py \
+        --     --summary <summary.tsv> --superpartitions <superpartitions.tsv> --mode <mode> \
+        --     --project-id <project> --dataset-name <dataset> --sql-path adjudicate.sql
+        --
+        -- Or pass bq_project_id and bq_dataset_name next time; they can be supplied alongside
+        -- sample_map_path, in which case the map is reused and only the SQL is generated.
+        NO_SQL_GENERATED
                 echo "WARNING: bq_project_id/bq_dataset_name were not supplied, so no" >&2
                 echo "         adjudication SQL was generated. The candidates in" >&2
                 echo "         report_~{mode}.tsv are unproven until checked against" >&2
