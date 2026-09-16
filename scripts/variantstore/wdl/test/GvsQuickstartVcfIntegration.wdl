@@ -136,12 +136,12 @@ workflow GvsQuickstartVcfIntegration {
             extract_output_gcs_dir = extract_output_gcs_dir,
             use_parquet_ingest = use_parquet_ingest,
             parquet_output_gcs_dir = parquet_output_gcs_dir,
+            validate_vcf_headers = validate_vcf_headers,
+            expected_dragen_version = expected_dragen_version,
     }
 
-    # VS-1966: if headers were loaded, validate them end to end and fail the test if validation fails.
-    # The quickstart gVCFs are reblocked (reblocking is a GVS prerequisite) and predate DRAGEN, so
-    # this asserts a PASS with require_reblocking on and no expected DRAGEN version (informational).
-    if (load_vcf_headers && validate_vcf_headers) {
+    # If pre-ingest validation was disabled but headers were loaded, validate them here.
+    if (load_vcf_headers && !validate_vcf_headers) {
         call ValidateVcfHeaders.GvsValidateVcfHeaders as ValidateHeaders {
             input:
                 go = JointVariantCalling.done,
@@ -222,8 +222,8 @@ workflow GvsQuickstartVcfIntegration {
         String recorded_git_hash = effective_git_hash
         Boolean done = true
         Boolean used_tighter_gcp_quotas = JointVariantCalling.used_tighter_gcp_quotas
-        Boolean? vcf_headers_validation_passed = ValidateHeaders.validation_passed
-        File? vcf_headers_validation_report = ValidateHeaders.validation_report
+        Boolean? vcf_headers_validation_passed = select_first([JointVariantCalling.vcf_headers_validation_passed, ValidateHeaders.validation_passed])
+        File? vcf_headers_validation_report = select_first([JointVariantCalling.vcf_headers_validation_report, ValidateHeaders.validation_report])
     }
 }
 
