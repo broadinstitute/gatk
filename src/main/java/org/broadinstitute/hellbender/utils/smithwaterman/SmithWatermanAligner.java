@@ -43,7 +43,7 @@ public interface SmithWatermanAligner extends Closeable {
          */
         FASTEST_AVAILABLE( () -> {
             try {
-                return new SmithWatermanIntelAligner();
+                return new SmithWatermanNativeAligner();
             } catch (UserException.HardwareFeatureException exception) {
                 logger.warn("***********************************************************************************************");
                 logger.warn("*** WARNING: no native Smith-Waterman library is available for this platform: " + exception.getMessage());
@@ -56,7 +56,7 @@ public interface SmithWatermanAligner extends Closeable {
         /**
          * use the native Smith-Waterman aligner; fails if no native library is available for this platform
          */
-        AVX_ENABLED(SmithWatermanIntelAligner::new),
+        AVX_ENABLED(SmithWatermanNativeAligner::new),
 
         /**
          * use the pure java implementation of Smith-Waterman, works on all hardware
