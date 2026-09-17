@@ -57,6 +57,36 @@ def scale_superpartition(summary: vdd.Summary, superpartition: int, factor: floa
         row[j] *= factor
 
 
+def _argv_for(
+        summary: vdd.Summary,
+        directory: str,
+        mode: str,
+        report_path: str,
+        extra: list[str] | None = None,
+) -> list[str]:
+    """Serialize a summary to disk and build the argv that makes main() read it.
+
+    Most tests call analyze() directly, which is enough for the judging logic. A few need
+    main(), because some decisions -- notably which floor applies in which mode -- are made
+    while parsing arguments and are invisible from analyze().
+    """
+    sp_path = os.path.join(directory, 'superpartitions.tsv')
+    with open(sp_path, 'wt') as handle:
+        handle.write('superpartition\tn_samples\n')
+        for sp in summary.superpartitions:
+            handle.write(f'{sp}\t{summary.n_samples[sp]}\n')
+
+    summary_path = os.path.join(directory, 'summary.tsv')
+    with open(summary_path, 'wt') as handle:
+        handle.write('contig\tbin_start\tbin_end\tsuperpartition\tobserved\n')
+        for (contig, start, end), row in zip(summary.bins, summary.observed):
+            for sp, value in zip(summary.superpartitions, row):
+                handle.write(f'{contig}\t{start}\t{end}\t{sp}\t{value:g}\n')
+
+    return ['--summary', summary_path, '--superpartitions', sp_path,
+            '--mode', mode, '--report-path', report_path] + (extra or [])
+
+
 def rectangles_for(report: vdd.Report, superpartition: int) -> list[vdd.Rectangle]:
     return [r for r in report.rectangles if r.superpartition == superpartition]
 
@@ -236,6 +266,120 @@ class TestFalsePositiveGuards(unittest.TestCase):
         self.assertEqual(1, len(rectangles_for(report, 83)))
 
 
+class TestCoverageFraction(unittest.TestCase):
+    """The references-mode evidence floor.
+
+    ``min_expected`` is an absolute count, which is a sound floor for the variants metric
+    and no floor at all for the references metric: covered bases run to hundreds per block,
+    so 30 is a fraction of one block. Without a floor scaled to the metric, every dead
+    region of the genome -- centromere, satellite array, assembly gap -- gets judged on the
+    ratio between two near-zero numbers. On Foxtrot r2 that was the entire candidate list.
+
+    Note the reference cell values below dwarf the variant ones the other tests use. That is
+    the point: one sample fully covered across a 50 kb bin contributes 50,000, where in
+    variants mode it contributes a few dozen entries. A floor stated as a count cannot serve
+    both.
+    """
+
+    @staticmethod
+    def _cell_for(coverage_fraction: float) -> float:
+        """Covered bases for a cell in which every sample is covered this fraction of the bin."""
+        return coverage_fraction * BIN_SIZE * N_SAMPLES
+
+    def _dead_region(self, coverage_fraction: float) -> vdd.Summary:
+        """A summary at the given per-sample coverage, with sp 83 empty over bins 10-18."""
+        summary = build_summary(cell_value=self._cell_for(coverage_fraction))
+        for i in range(10, 19):
+            set_cell(summary, i, 83, 0.0)
+        return summary
+
+    def test_dead_region_is_not_flagged_in_references_mode(self):
+        # 0.01% of the bin covered: nobody has data here, so nobody is missing any.
+        summary = self._dead_region(0.0001)
+        report = vdd.analyze(summary, min_coverage_fraction=0.05)
+        self.assertEqual([], rectangles_for(report, 83))
+        self.assertEqual(len(summary.bins), report.n_bins_skipped_sparse)
+
+    def test_dead_region_would_be_flagged_without_the_floor(self):
+        """Shows the floor is doing the work, not some other guard."""
+        summary = self._dead_region(0.0001)
+        report = vdd.analyze(summary, min_coverage_fraction=None)
+        self.assertEqual(1, len(rectangles_for(report, 83)))
+
+    def test_well_covered_region_still_flags(self):
+        """The floor must not cost sensitivity where there is real coverage to lose."""
+        summary = self._dead_region(0.90)
+        report = vdd.analyze(summary, min_coverage_fraction=0.05)
+        self.assertEqual(1, len(rectangles_for(report, 83)))
+        self.assertEqual(0, report.n_bins_skipped_sparse)
+
+    def test_floor_is_a_fraction_of_bin_width_not_an_absolute(self):
+        """The same cell value passes in a narrow bin and fails in a four-times wider one."""
+        narrow = self._dead_region(0.10)
+        self.assertEqual(1, len(rectangles_for(
+            vdd.analyze(narrow, min_coverage_fraction=0.05), 83)))
+
+        wide = self._dead_region(0.10)
+        for i, (contig, start, _) in enumerate(wide.bins):
+            wide.bins[i] = (contig, start, start + BIN_SIZE * 4)
+        self.assertEqual([], rectangles_for(
+            vdd.analyze(wide, min_coverage_fraction=0.05), 83))
+
+    def test_skipped_bins_are_reported_not_silently_dropped(self):
+        summary = self._dead_region(0.0001)
+        report = vdd.analyze(summary, min_coverage_fraction=0.05)
+        digest = vdd.format_summary(report, 'references')
+        self.assertIn('below coverage floor', digest)
+        self.assertIn(f'{len(summary.bins):,}', digest)
+        self.assertEqual(0, report.n_bins_considered)
+
+    def test_default_floor_is_applied_in_references_mode(self):
+        """Through main(), since the mode gate and the default both live there."""
+        summary = self._dead_region(0.0001)
+        with tempfile.TemporaryDirectory() as tmp:
+            report_path = os.path.join(tmp, 'report.tsv')
+            self.assertEqual(0, vdd.main(_argv_for(
+                summary, tmp, mode='references', report_path=report_path)))
+            with open(report_path) as handle:
+                self.assertNotIn('\t83\t', handle.read())
+
+    def test_excluded_bins_are_named_not_just_counted(self):
+        """A claim that a region is clean is worth only as much as the list of gaps in it."""
+        summary = self._dead_region(0.0001)
+        with tempfile.TemporaryDirectory() as tmp:
+            sparse_path = os.path.join(tmp, 'sparse.tsv')
+            self.assertEqual(0, vdd.main(_argv_for(
+                summary, tmp, mode='references',
+                report_path=os.path.join(tmp, 'report.tsv'),
+                extra=['--sparse-bins-path', sparse_path])))
+            with open(sparse_path) as handle:
+                rows = handle.read().strip().split('\n')
+
+        self.assertEqual('contig\tbin_start\tbin_end\tcoverage_fraction', rows[0])
+        self.assertEqual(len(summary.bins), len(rows) - 1)
+        contig, start, end, fraction = rows[1].split('\t')
+        self.assertEqual(summary.bins[0][0], contig)
+        self.assertEqual((int(start), int(end)), summary.bins[0][1:])
+        self.assertAlmostEqual(0.0001, float(fraction), places=6)
+
+    def test_variants_mode_ignores_the_coverage_floor(self):
+        """An entry count has no denominator, so the CLI must not apply the floor to it.
+
+        A variants cell of 7,500 entries is 0.15% of a 50 kb bin by this arithmetic, so were
+        the gate written backwards a threshold of 0.05 would erase a total dropout.
+        """
+        summary = build_summary(cell_value=CELL)
+        for i in range(10, 19):
+            set_cell(summary, i, 83, 0.0)
+        with tempfile.TemporaryDirectory() as tmp:
+            report_path = os.path.join(tmp, 'report.tsv')
+            self.assertEqual(0, vdd.main(_argv_for(
+                summary, tmp, mode='variants', report_path=report_path,
+                extra=['--min-coverage-fraction', '0.05'])))
+            with open(report_path) as handle:
+                self.assertIn('\t83\t', handle.read())
+
+
 class TestGeometry(unittest.TestCase):
 
     def test_single_bin_dropout_is_reported(self):
@@ -365,6 +509,39 @@ class TestBaselineQuantile(unittest.TestCase):
             for j in range(len(row)):
                 row[j] = CELL * (1.0 + 0.05 * (((i + j) % 3) - 1))
         self.assertTrue(vdd.analyze(summary).clean)
+
+
+class TestReportedRange(unittest.TestCase):
+    """`end` is the exclusive bin bound, so anything read as a range must print end - 1.
+
+    The consequence of getting this wrong is mild but corrosive: the stdout digest and the
+    SQL comment claim a 50,001 bp window while the query underneath correctly asks for
+    50,000, and whoever reconciles the two has to work out which is lying.
+    """
+
+    def setUp(self):
+        summary = build_summary()
+        for i in range(10, 19):
+            set_cell(summary, i, 83, 0.0)
+        self.rectangle = rectangles_for(vdd.analyze(summary), 83)[0]
+
+    def test_span_and_printed_range_agree(self):
+        printed = self.rectangle.last_position - self.rectangle.start + 1
+        self.assertEqual(self.rectangle.span, printed)
+
+    def test_digest_prints_the_last_covered_position(self):
+        summary_text = vdd.format_summary(
+            vdd.Report(rectangles=[self.rectangle]), 'variants')
+        self.assertIn(f'{self.rectangle.start:,}-{self.rectangle.last_position:,}',
+                      summary_text)
+        self.assertNotIn(f'-{self.rectangle.end:,} ', summary_text)
+
+    def test_sql_comment_matches_the_location_bound_below_it(self):
+        sql = vdd.adjudication_sql(self.rectangle, project_id='p', dataset_name='d',
+                                   mode='variants')
+        self.assertIn(f'{self.rectangle.start:,}-{self.rectangle.last_position:,}', sql)
+        self.assertIn(str(vdd.encode_location(self.rectangle.contig,
+                                              self.rectangle.last_position)), sql)
 
 
 class TestSuperpartitionScale(unittest.TestCase):

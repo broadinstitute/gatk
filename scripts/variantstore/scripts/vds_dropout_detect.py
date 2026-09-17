@@ -113,6 +113,15 @@ DEFAULT_BASELINE_QUANTILE = 0.75
 DEFAULT_RATIO_THRESHOLD = 0.5
 DEFAULT_SCORE_THRESHOLD = 8.0
 DEFAULT_MIN_EXPECTED = 30.0
+
+# References-only floor, expressed as a fraction of the coverage a bin could possibly hold
+# (n_samples x bin width). The variants metric is an entry count, so `min_expected` is a
+# meaningful absolute floor there. The references metric is covered bases, where one block
+# for one sample contributes hundreds -- so 30 is about a tenth of a single block, i.e. no
+# floor at all. Without this, every dead region (centromere, satellite, assembly gap) fires
+# on the ratio between two near-zero numbers: on Foxtrot r2 that was all 427 candidates,
+# the worst of which held 0.06% of possible coverage.
+DEFAULT_MIN_COVERAGE_FRACTION = 0.05
 # Superpartitions are assigned by ingest order and are not ancestry- or batch-balanced,
 # so real genome-wide variation between them can reach 20-30%. This is therefore the
 # threshold most likely to need tuning against real data; it is deliberately loose.
@@ -386,6 +395,16 @@ class Rectangle:
         return depletion_score(self.observed, self.expected)
 
     @property
+    def last_position(self) -> int:
+        """Last position actually covered. `end` is the exclusive bin bound, one past it.
+
+        Everything a human or BigQuery reads should use this. The TSV keeps the half-open
+        `end` because `span` is defined against it, but a label printed as `start-end` reads
+        as a closed interval and overstates the region by a base.
+        """
+        return self.end - 1
+
+    @property
     def span(self) -> int:
         return self.end - self.start
 
@@ -406,13 +425,36 @@ class SuperpartitionScale:
     relative_scale: float
 
 
+@dataclass(frozen=True)
+class SparseBin:
+    """A bin excluded from the screen for holding too little reference coverage to judge.
+
+    Recorded individually, not just counted, because the deliverable is a claim that a VDS
+    is clean -- and a claim of that shape is only as good as the list of places it did not
+    look. Every one of these should be recognizable as dead sequence; one that is not is
+    itself a finding.
+    """
+
+    contig: str
+    start: int
+    end: int
+    # Baseline covered bases per sample divided by bin width, so 1.0 means a typical sample
+    # is covered across the whole bin.
+    coverage_fraction: float
+
+
 @dataclass
 class Report:
     rectangles: list[Rectangle] = field(default_factory=list)
     superpartition_scales: list[SuperpartitionScale] = field(default_factory=list)
     n_bins_considered: int = 0
     n_bins_skipped_empty: int = 0
+    sparse_bins: list[SparseBin] = field(default_factory=list)
     n_cells_flagged: int = 0
+
+    @property
+    def n_bins_skipped_sparse(self) -> int:
+        return len(self.sparse_bins)
 
     @property
     def clean(self) -> bool:
@@ -512,28 +554,44 @@ def flag_cells(
         ratio_threshold: float = DEFAULT_RATIO_THRESHOLD,
         score_threshold: float = DEFAULT_SCORE_THRESHOLD,
         min_expected: float = DEFAULT_MIN_EXPECTED,
-) -> tuple[list[Cell], int, int]:
+        min_coverage_fraction: float | None = None,
+) -> tuple[list[Cell], int, int, list[SparseBin]]:
     """Flag depleted cells.
 
-    Returns the flagged cells plus counts of bins considered and bins skipped for
-    carrying no data at all.
+    Returns the flagged cells, counts of bins considered and of bins skipped for carrying no
+    data at all, and the bins skipped as too sparsely covered to compare. The last is a list
+    rather than a count because a screen that asserts a region is clean has to be able to
+    say which regions it did not look at.
 
     The ``min_expected`` floor is what stops thin bins from firing on noise: a cell
     expecting five entries and observing none is unremarkable, while one expecting ten
     thousand and observing five hundred is not.
+
+    ``min_coverage_fraction`` is the references-mode equivalent, and is needed because that
+    metric is covered bases rather than a count -- see DEFAULT_MIN_COVERAGE_FRACTION. It is
+    a property of the bin, not of a cell, so it skips the whole bin: in a region no sample
+    covers, no superpartition comparison there means anything.
     """
     counts = [summary.n_samples[sp] for sp in summary.superpartitions]
     flagged: list[Cell] = []
     considered = 0
     skipped = 0
+    sparse: list[SparseBin] = []
 
     for i, row in enumerate(summary.observed):
         baseline_rate = bin_baselines[i]
         if baseline_rate <= 0:
             skipped += 1
             continue
-        considered += 1
         contig, start, end = summary.bins[i]
+        if min_coverage_fraction is not None:
+            width = end - start
+            fraction = baseline_rate / width if width > 0 else 0.0
+            if width > 0 and fraction < min_coverage_fraction:
+                sparse.append(SparseBin(contig=contig, start=start, end=end,
+                                        coverage_fraction=fraction))
+                continue
+        considered += 1
         for j, superpartition in enumerate(summary.superpartitions):
             count = counts[j]
             if count <= 0:
@@ -561,7 +619,7 @@ def flag_cells(
                 expected=expected,
             ))
 
-    return flagged, considered, skipped
+    return flagged, considered, skipped, sparse
 
 
 def merge_cells(cells: Sequence[Cell]) -> list[Rectangle]:
@@ -646,23 +704,26 @@ def analyze(
         min_expected: float = DEFAULT_MIN_EXPECTED,
         scale_threshold: float = DEFAULT_SUPERPARTITION_SCALE_THRESHOLD,
         baseline_quantile: float = DEFAULT_BASELINE_QUANTILE,
+        min_coverage_fraction: float | None = None,
 ) -> Report:
     """Run the full detection pipeline over a parsed summary."""
     bin_baselines = bin_baseline_rates(summary, baseline_quantile)
     scales = superpartition_scales(summary, bin_baselines)
-    cells, considered, skipped = flag_cells(
+    cells, considered, skipped, sparse = flag_cells(
         summary,
         bin_baselines,
         scales,
         ratio_threshold=ratio_threshold,
         score_threshold=score_threshold,
         min_expected=min_expected,
+        min_coverage_fraction=min_coverage_fraction,
     )
     return Report(
         rectangles=merge_cells(cells),
         superpartition_scales=flag_superpartition_scales(summary, scales, scale_threshold),
         n_bins_considered=considered,
         n_bins_skipped_empty=skipped,
+        sparse_bins=sparse,
         n_cells_flagged=len(cells),
     )
 
@@ -698,11 +759,11 @@ def adjudication_sql(
 
     table_index = f'{rectangle.superpartition:03d}'
     start_location = encode_location(rectangle.contig, rectangle.start)
-    # bin_end is exclusive; the last covered position is one before it.
-    end_location = encode_location(rectangle.contig, rectangle.end - 1)
+    end_location = encode_location(rectangle.contig, rectangle.last_position)
 
     header = (
-        f"-- Candidate dropout: {rectangle.contig}:{rectangle.start:,}-{rectangle.end:,} "
+        f"-- Candidate dropout: {rectangle.contig}:{rectangle.start:,}-"
+        f"{rectangle.last_position:,} "
         f"superpartition {rectangle.superpartition}\n"
         f"-- VDS ({rectangle.n_samples:,} samples): observed "
         f"{rectangle.observed:,.0f} vs expected {rectangle.expected:,.0f} "
@@ -725,14 +786,15 @@ def adjudication_sql(
             f'0x{PACKED_CHROMOSOME_MASK:X}) + ((v.packed_ref_data >> {PACKED_POSITION_SHIFT}) & '
             f'0x{PACKED_POSITION_MASK:X})'
         )
-        low, high = packed_ref_data_bounds(rectangle.contig, rectangle.start, rectangle.end - 1)
+        low, high = packed_ref_data_bounds(rectangle.contig, rectangle.start,
+                                           rectangle.last_position)
         # Filter on the packed value, not on the decoded location: packed_ref_data is the
         # clustering field, and a predicate on the decoded expression would prune nothing.
         filter_clause = f'v.packed_ref_data BETWEEN {low} AND {high}'
         note = (
             f"-- Compressed reference schema: filtering on packed_ref_data, the clustering\n"
             f"-- field, over the range encoding {rectangle.contig}:{rectangle.start:,}-"
-            f"{rectangle.end - 1:,}.\n"
+            f"{rectangle.last_position:,}.\n"
         )
 
     return (
@@ -771,12 +833,23 @@ def write_report(report: Report, handle: IO[str]) -> None:
         ]) + '\n')
 
 
+def format_sparse_bins(report: Report) -> str:
+    """TSV of the bins the coverage floor excluded, worst coverage last."""
+    lines = ['contig\tbin_start\tbin_end\tcoverage_fraction']
+    for sparse in sorted(report.sparse_bins, key=lambda b: (-b.coverage_fraction,
+                                                            b.contig, b.start)):
+        lines.append(f'{sparse.contig}\t{sparse.start}\t{sparse.end}\t'
+                     f'{sparse.coverage_fraction:.6g}')
+    return '\n'.join(lines) + '\n'
+
+
 def format_summary(report: Report, mode: str) -> str:
     """Human-readable digest for stdout."""
     lines = [
         f"Mode: {mode}",
         f"Bins considered: {report.n_bins_considered:,}",
         f"Bins skipped (no usable baseline): {report.n_bins_skipped_empty:,}",
+        f"Bins skipped (below coverage floor): {report.n_bins_skipped_sparse:,}",
         f"Cells flagged: {report.n_cells_flagged:,}",
         f"Rectangles after merging: {len(report.rectangles):,}",
     ]
@@ -795,7 +868,7 @@ def format_summary(report: Report, mode: str) -> str:
         lines.append('Candidate dropouts, most severe first:')
         for r in report.rectangles:
             lines.append(
-                f"  {r.contig}:{r.start:,}-{r.end:,} sp {r.superpartition} "
+                f"  {r.contig}:{r.start:,}-{r.last_position:,} sp {r.superpartition} "
                 f"({r.span:,} bp, {r.n_bins} bin(s)) observed {r.observed:,.0f} of "
                 f"expected {r.expected:,.0f} -> {r.ratio * 100:.2f}% present, score {r.score:,.1f}"
             )
@@ -820,6 +893,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                         help='Path to the superpartition/n_samples TSV (optionally gzipped).')
     parser.add_argument('--mode', choices=MODES, default='variants',
                         help='Which metric the summary holds. Default: variants.')
+    parser.add_argument('--sparse-bins-path', default=None,
+                        help='Write the bins excluded by --min-coverage-fraction here, so '
+                             'the screen can state what it did not examine. References '
+                             'mode only.')
     parser.add_argument('--report-path', default=None,
                         help='Write flagged rectangles here as TSV. Omit for stdout digest only.')
     parser.add_argument('--sql-path', default=None,
@@ -845,8 +922,18 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument('--score-threshold', type=float, default=DEFAULT_SCORE_THRESHOLD,
                         help=f'Minimum depletion score to flag. Default: {DEFAULT_SCORE_THRESHOLD}.')
     parser.add_argument('--min-expected', type=float, default=DEFAULT_MIN_EXPECTED,
-                        help=f'Skip cells expecting less than this much data. '
+                        help=f'Skip cells expecting less than this much data. Meaningful in '
+                             f'variants mode, where the metric is an entry count. '
                              f'Default: {DEFAULT_MIN_EXPECTED}.')
+    parser.add_argument('--min-coverage-fraction', type=float,
+                        default=DEFAULT_MIN_COVERAGE_FRACTION,
+                        help='References mode only: skip bins whose baseline covers less than '
+                             'this fraction of (n_samples x bin width). Keeps dead regions -- '
+                             'centromeres, satellite arrays, assembly gaps -- from firing on '
+                             'the ratio between two near-zero numbers. Ignored in variants '
+                             'mode, which has no comparable denominator; use --min-expected '
+                             f'there. Default: {DEFAULT_MIN_COVERAGE_FRACTION}. Use 0 to '
+                             'disable.')
     parser.add_argument('--scale-threshold', type=float,
                         default=DEFAULT_SUPERPARTITION_SCALE_THRESHOLD,
                         help='Flag superpartitions whose global relative scale falls below '
@@ -872,6 +959,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         min_expected=args.min_expected,
         scale_threshold=args.scale_threshold,
         baseline_quantile=args.baseline_quantile,
+        # Only references mode has a denominator for this: covered bases out of
+        # n_samples x bin width. An entry count has no such ceiling.
+        min_coverage_fraction=(args.min_coverage_fraction
+                               if args.mode == 'references' and args.min_coverage_fraction > 0
+                               else None),
     )
 
     print(format_summary(report, args.mode))
@@ -880,6 +972,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         with open(args.report_path, 'wt') as handle:
             write_report(report, handle)
         print(f"\nReport written to: {args.report_path}")
+
+    if args.sparse_bins_path:
+        with open(args.sparse_bins_path, 'wt') as handle:
+            handle.write(format_sparse_bins(report))
+        print(f"Bins below the coverage floor written to: {args.sparse_bins_path}")
 
     if args.sql_path:
         limit = args.max_sql_queries or len(report.rectangles)

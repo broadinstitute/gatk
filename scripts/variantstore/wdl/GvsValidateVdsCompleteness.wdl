@@ -64,6 +64,7 @@ workflow GvsValidateVdsCompleteness {
         Float? ratio_threshold
         Float? score_threshold
         Float? min_expected
+        Float? min_coverage_fraction
         Float? scale_threshold
         Float? baseline_quantile
 
@@ -146,6 +147,9 @@ workflow GvsValidateVdsCompleteness {
         }
         num_local_ssds: {
             help: "Local SSDs per master and worker. Kept at 1 to match the other GVS Hail workflows; lowering it widens the zones able to serve a request, at the cost of diverging from a known-good configuration."
+        }
+        min_coverage_fraction: {
+            help: "References mode only: skip bins whose baseline covers less than this fraction of the bin per sample. Defaults to 0.05. Dead sequence -- centromeres, satellite arrays, assembly gaps -- otherwise gets judged on the ratio between two near-zero numbers, which is where every false positive in the Foxtrot r2 reference scan came from. Bins it excludes are listed in sparse_bins_references.tsv. Has no effect in variants mode, where an entry count has no such denominator; use min_expected there."
         }
         reference_schema: {
             help: "Override for the ref_ranges schema, either compressed or uncompressed. Leave unset to detect it from the dataset. AoU callsets are compressed, where reference adjudication filters on packed_ref_data, the clustering field."
@@ -290,6 +294,7 @@ workflow GvsValidateVdsCompleteness {
             ratio_threshold = ratio_threshold,
             score_threshold = score_threshold,
             min_expected = min_expected,
+            min_coverage_fraction = min_coverage_fraction,
             scale_threshold = scale_threshold,
             baseline_quantile = baseline_quantile,
             bq_project_id = bq_project_id,
@@ -438,6 +443,7 @@ task ScanVdsForDropouts {
         Float? ratio_threshold
         Float? score_threshold
         Float? min_expected
+        Float? min_coverage_fraction
         Float? scale_threshold
         Float? baseline_quantile
 
@@ -520,6 +526,8 @@ task ScanVdsForDropouts {
             > report.tsv
         echo "-- No adjudication SQL: action '~{action}' does not produce any; only scan does." \
             > adjudicate.sql
+        echo "# No excluded-bin list: action '~{action}' does not screen bins; only scan does." \
+            > sparse_bins.tsv
 
         # Build the arguments JSON for the script that will run inside the Hail cluster.
         # run_in_hail_cluster.py renders each key as `--key value`, so every key must be
@@ -615,10 +623,12 @@ task ScanVdsForDropouts {
                 --superpartitions ./superpartitions.tsv
                 --mode ~{mode}
                 --report-path ./report.tsv
+                --sparse-bins-path ./sparse_bins.tsv
             )
             ~{'detect_args+=(--ratio-threshold ' + ratio_threshold + ')'}
             ~{'detect_args+=(--score-threshold ' + score_threshold + ')'}
             ~{'detect_args+=(--min-expected ' + min_expected + ')'}
+            ~{'detect_args+=(--min-coverage-fraction ' + min_coverage_fraction + ')'}
             ~{'detect_args+=(--scale-threshold ' + scale_threshold + ')'}
             ~{'detect_args+=(--baseline-quantile ' + baseline_quantile + ')'}
 
@@ -662,6 +672,11 @@ task ScanVdsForDropouts {
             # itself. The former `-f` guard could never be false, since the placeholder
             # above guarantees the path.
             gsutil cp ./adjudicate.sql "~{output_prefix}/adjudicate_~{mode}.sql"
+            # In references mode the coverage floor drops bins too sparsely covered to
+            # judge, and a clean report is only as strong as the list of places the screen
+            # declined to look. Empty but for its header in variants mode, which has no
+            # such floor.
+            gsutil cp ./sparse_bins.tsv "~{output_prefix}/sparse_bins_~{mode}.tsv"
         fi
 
         gsutil cp scan.log "~{output_prefix}/scan_~{action}_~{mode}.log"
@@ -682,5 +697,6 @@ task ScanVdsForDropouts {
         # Always written, so these resolve for every action; see the command body.
         File report = "report.tsv"
         File adjudication_sql = "adjudicate.sql"
+        File sparse_bins = "sparse_bins.tsv"
     }
 }
