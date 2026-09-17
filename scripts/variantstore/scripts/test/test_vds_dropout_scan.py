@@ -27,6 +27,18 @@ import unittest
 import vds_dropout_scan as vds
 
 
+def variantstore_dir():
+    """The `scripts/variantstore` tree, wherever this test run can see it.
+
+    The docker-mode run in `run_python_unit_tests.sh` bind-mounts it and exports this
+    variable to say where, because the working copy is not otherwise visible inside the
+    container. Falling back to the path relative to this file keeps a bare
+    `PYTHONPATH=. python3 test/test_vds_dropout_scan.py` working.
+    """
+    mounted = os.environ.get('GVS_VARIANTSTORE_DIR')
+    return pathlib.Path(mounted) if mounted else pathlib.Path(__file__).resolve().parents[2]
+
+
 class TestSuperpartitionArithmetic(unittest.TestCase):
     """Must match CAST(CEIL(sample_id / 4000.0) AS INT64) in the Avro export WDL."""
 
@@ -86,11 +98,12 @@ class TestWdlGeneratedSampleMap(unittest.TestCase):
     comparison is drawn against a different cohort than the VDS holds.
     """
 
-    WDL = (pathlib.Path(__file__).resolve().parents[2]
-           / 'wdl' / 'GvsValidateVdsCompleteness.wdl')
+    WDL = variantstore_dir() / 'wdl' / 'GvsValidateVdsCompleteness.wdl'
     def read(self, path):
         if not path.exists():
-            # The Docker test run mounts only the scripts directory.
+            # Left as a skip rather than a failure so the file can be run from a
+            # checkout that does not have the WDL tree, but the docker-mode run does mount
+            # it -- see `variantstore_dir`.
             self.skipTest(f'{path} not available in this test environment')
         return path.read_text()
 
@@ -140,8 +153,7 @@ class TestPlaceholderOutputs(unittest.TestCase):
     named output containing something irrelevant, which reads as a real result.
     """
 
-    WDL = (pathlib.Path(__file__).resolve().parents[2]
-           / 'wdl' / 'GvsValidateVdsCompleteness.wdl')
+    WDL = variantstore_dir() / 'wdl' / 'GvsValidateVdsCompleteness.wdl'
 
     def test_scan_log_is_uploaded_however_the_task_exits(self):
         """The log has to survive the failures it is there to explain.
@@ -313,6 +325,118 @@ class TestOutputPrefixPaths(unittest.TestCase):
             with self.subTest(prefix=prefix):
                 built = self._clean(prefix) + '/summary_references.tsv'
                 self.assertNotIn('//', built.removeprefix('gs://'))
+
+
+class TestCommandBlockIndentation(unittest.TestCase):
+    """Cromwell dedents a `command <<< >>>` block by its common leading whitespace.
+
+    So one line starting at column zero -- a wrapped string, a pasted comment -- drops that
+    common prefix to nothing. Nothing is then stripped, every heredoc terminator in the
+    block keeps indentation that bash requires it not to have, and the script dies with
+    `unexpected end of file` reported at its last line, nowhere near the cause. `womtool
+    validate` passes throughout, and the break only shows up once the task runs in the
+    cloud, which is an expensive place to learn it.
+
+    Two things have to survive that dedent, and the inline Python here needs both: the
+    terminator has to land at column zero or bash never finds it, and the body has to land
+    there too or Python is handed input it rejects. Only the first breaks loudly, and
+    satisfying it alone is the natural response to `unexpected end of file` -- outdent the
+    terminator and move on -- which trades the bash error for `IndentationError` at
+    `"<stdin>", line 1`, naming neither this file nor the task. So both are tested.
+    """
+
+    WDL = TestPlaceholderOutputs.WDL
+    wdl = TestPlaceholderOutputs.wdl
+
+    def command_blocks(self):
+        blocks, current = [], None
+        for line in self.wdl().splitlines():
+            if current is None:
+                if re.search(r'command\s*<<<', line):
+                    current = []
+                continue
+            if line.strip() == '>>>':
+                blocks.append(current)
+                current = None
+                continue
+            current.append(line)
+        self.assertIsNone(current, 'unterminated command block')
+        self.assertTrue(blocks, 'expected at least one command block')
+        return blocks
+
+    @staticmethod
+    def dedent(block):
+        """Cromwell's transformation: strip the whitespace common to every non-blank line."""
+        common = min(len(line) - len(line.lstrip()) for line in block if line.strip())
+        return [line[common:] if line.strip() else line for line in block]
+
+    def test_no_command_line_starts_at_column_zero(self):
+        """The cause, checked directly, because the symptom appears far from it."""
+        for block in self.command_blocks():
+            for line in block:
+                if line.strip():
+                    self.assertTrue(
+                        line.startswith(' '),
+                        f'line at column zero defeats the dedent: {line!r}')
+
+    def test_heredoc_terminators_survive_the_dedent(self):
+        """The property that actually has to hold once Cromwell has rewritten the block."""
+        for block in self.command_blocks():
+            dedented = self.dedent(block)
+            terminators = [line.rstrip() for line in dedented]
+            for line in dedented:
+                if '<<-' in line:
+                    continue  # <<- strips leading tabs, so indentation is fine there.
+                match = re.search(r"<<\s*'?([A-Z_][A-Z0-9_]*)'?\s*$", line)
+                if not match:
+                    continue
+                delimiter = match.group(1)
+                self.assertIn(
+                    delimiter, terminators,
+                    f'heredoc {delimiter} has no terminator at column zero after the '
+                    f'dedent, so bash will read to end of file')
+
+    def python_heredoc_bodies(self):
+        """The dedented body of every heredoc fed to python, keyed by its delimiter."""
+        bodies = {}
+        for block in self.command_blocks():
+            dedented = self.dedent(block)
+            for offset, line in enumerate(dedented):
+                match = re.search(r"<<\s*'?([A-Z_][A-Z0-9_]*)'?\s*$", line)
+                if not match or not re.search(r'\bpython[0-9.]*\b', line[:match.start()]):
+                    continue
+                delimiter = match.group(1)
+                body = []
+                for candidate in dedented[offset + 1:]:
+                    if candidate.rstrip() == delimiter:
+                        break
+                    body.append(candidate)
+                bodies[delimiter] = body
+        self.assertTrue(bodies, 'expected at least one heredoc feeding python')
+        return bodies
+
+    def test_inline_python_is_not_indented_after_the_dedent(self):
+        """Leading whitespace on the first statement is an error, however valid the rest."""
+        for delimiter, body in self.python_heredoc_bodies().items():
+            indents = [len(line) - len(line.lstrip()) for line in body if line.strip()]
+            self.assertEqual(
+                0, min(indents),
+                f'the <<{delimiter} body is still indented by {min(indents)} after the '
+                f'dedent, so python rejects it with IndentationError even though the '
+                f'terminator is where bash wants it')
+
+    def test_inline_python_compiles(self):
+        """Nothing else checks it. pyflakes cannot see Python embedded in a WDL string."""
+        for delimiter, body in self.python_heredoc_bodies().items():
+            # Every placeholder is either bare and numeric or quoted, so one substitution
+            # serves both; the point is the block's structure, not the values Cromwell
+            # interpolates.
+            source = re.sub(r'~\{[^}]*\}', '0', '\n'.join(body))
+            try:
+                compile(source, f'<<{delimiter}', 'exec')
+            except SyntaxError as e:
+                self.fail(f'the <<{delimiter} body does not compile: {e.msg} at line '
+                          f'{e.lineno}: {(e.text or "").rstrip()!r}')
 
 
 class TestSampleMapParsing(unittest.TestCase):

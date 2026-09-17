@@ -548,11 +548,19 @@ task ScanVdsForDropouts {
         # detect ran. An earlier version interpolated the action into "action '~{action}' does
         # not produce one; only scan does", which for action=scan is a sentence that
         # contradicts itself and sent the reader looking for a detect bug that was not there.
+        #
+        # Appended rather than written as one multi-line string: Cromwell dedents a command
+        # block by its common leading whitespace, so a continuation line starting at column
+        # zero drops that common prefix to nothing. Nothing is then stripped, the
+        # PYTHON_HEREDOC terminator below keeps its indentation, and bash never finds it --
+        # `unexpected end of file`, reported at the bottom of the script and pointing
+        # nowhere near the string that caused it.
         if [[ "~{action}" == "scan" ]]
         then
-            placeholder="the scan did not get as far as the detect step, so this file was
-never written. The task failed earlier -- see scan_~{action}_~{mode}.log and the task's
-stderr. This file's presence is the symptom, not the cause."
+            placeholder="the scan did not get as far as the detect step, so this file"
+            placeholder="${placeholder} was never written. The task failed earlier -- see"
+            placeholder="${placeholder} scan_~{action}_~{mode}.log and the task's stderr."
+            placeholder="${placeholder} This file's presence is the symptom, not the cause."
         else
             placeholder="action '~{action}' does not produce this file; only the scan action does."
         fi
