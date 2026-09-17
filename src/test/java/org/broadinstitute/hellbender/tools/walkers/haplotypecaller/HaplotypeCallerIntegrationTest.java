@@ -33,7 +33,6 @@ import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
-import org.broadinstitute.hellbender.utils.text.XReadLines;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
@@ -42,6 +41,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -2193,7 +2193,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name="PairHMMResultsModes")
     public Object[][] PairHMMResultsModes() {
         return new Object[][] {
-                {PairHMM.Implementation.AVX_LOGLESS_CACHING, new File(TEST_FILES_DIR, "expected.AVX.hmmresults.txt")},
+                // The native PairHMM is checked against the Java results within a tolerance, see testPairHMMResultsFile
+                {PairHMM.Implementation.AVX_LOGLESS_CACHING, new File(TEST_FILES_DIR, "expected.Java.hmmresults.txt")},
                 {PairHMM.Implementation.LOGLESS_CACHING, new File(TEST_FILES_DIR, "expected.Java.hmmresults.txt")},
                 {PairHMM.Implementation.ORIGINAL, new File(TEST_FILES_DIR, "expected.Original.hmmresults.txt")},
                 {PairHMM.Implementation.EXACT, new File(TEST_FILES_DIR, "expected.Exact.hmmresults.txt")},
@@ -2208,7 +2209,8 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         final File vcfOutput = createTempFile("hmmResultFileTest", ".vcf");
         final File hmmOutput = createTempFile("hmmResult", ".txt");
 
-        final String hmmOutputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : hmmOutput.getAbsolutePath();
+        final boolean isNative = implementation == PairHMM.Implementation.AVX_LOGLESS_CACHING;
+        final String hmmOutputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS && !isNative ? expected.getAbsolutePath() : hmmOutput.getAbsolutePath();
 
         final String[] args = {
                 "-I", NA12878_20_21_WGS_bam,
@@ -2223,24 +2225,46 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
-            // Travis instances appear to produce subtly different results for the AVX caching results. Here we ensure that
-            // the test is weak enough to pass even if there are some integer rounding mismatches.
-            // TODO It merits investigation into what exactly is mismatching on travis
-            if (implementation == PairHMM.Implementation.AVX_LOGLESS_CACHING) {
-                XReadLines actualLines = new XReadLines(hmmOutput);
-                XReadLines expectedLines = new XReadLines(expected);
-
-                while (actualLines.hasNext() && expectedLines.hasNext()) {
-                    final String expectedLine = expectedLines.next();
-                    final String actualLine = actualLines.next();
-                    Assert.assertEquals(actualLine.split(" ").length, expectedLine.split(" ").length);
-                }
-                Assert.assertEquals(actualLines.hasNext(), expectedLines.hasNext());
-            // For the java HMMs we expect exact matching outputs so we assert that.
+            // The native PairHMM runs in single precision, so its likelihoods are compared to the Java PairHMM's
+            // within a tolerance. The Java PairHMMs must reproduce their recorded output exactly.
+            if (isNative) {
+                assertPairHMMResultsMatch(hmmOutput, expected, NATIVE_PAIR_HMM_TOLERANCE);
             } else {
                 IntegrationTestSpec.assertEqualTextFiles(hmmOutput, expected);
             }
         }
+    }
+
+    /** Largest allowed difference in log10 likelihood between the native and Java PairHMMs, as in VectorPairHMMUnitTest. */
+    private static final double NATIVE_PAIR_HMM_TOLERANCE = 1e-5;
+
+    /**
+     * Asserts that two PairHMM results files record the same read/haplotype pairs, in any order, with log10
+     * likelihoods within {@code tolerance} of each other.
+     */
+    private static void assertPairHMMResultsMatch(final File actual, final File expected, final double tolerance) throws IOException {
+        final List<String[]> actualResults = readPairHMMResults(actual);
+        final List<String[]> expectedResults = readPairHMMResults(expected);
+        Assert.assertEquals(actualResults.size(), expectedResults.size(), "number of recorded read/haplotype pairs");
+        for (int i = 0; i < actualResults.size(); i++) {
+            final String[] actualResult = actualResults.get(i);
+            final String[] expectedResult = expectedResults.get(i);
+            final String pair = String.join(" ", Arrays.copyOf(expectedResult, 6));
+            Assert.assertEquals(String.join(" ", Arrays.copyOf(actualResult, 6)), pair, "read/haplotype pair");
+            Assert.assertEquals(Double.parseDouble(actualResult[6]), Double.parseDouble(expectedResult[6]), tolerance, "likelihood of " + pair);
+        }
+    }
+
+    /**
+     * Reads a PairHMM results file into its space-separated tokens per pair, sorted so that two files recording the
+     * same pairs can be compared line by line.
+     */
+    private static List<String[]> readPairHMMResults(final File file) throws IOException {
+        return Files.readAllLines(file.toPath()).stream()
+                .filter(line -> !line.isEmpty() && !line.startsWith("#"))
+                .map(line -> line.trim().split(" "))
+                .sorted(Comparator.comparing(tokens -> String.join(" ", tokens)))
+                .collect(Collectors.toList());
     }
 
     @Test()
