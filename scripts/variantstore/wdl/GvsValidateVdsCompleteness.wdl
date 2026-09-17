@@ -226,6 +226,25 @@ workflow GvsValidateVdsCompleteness {
 
     String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
 
+    # Normalize the prefix, because one carrying a doubled slash cannot be read back. Every
+    # path here is built by concatenation, so `gs://b/p/` yields `gs://b/p//summary_x.tsv`.
+    # The scan writes through `hl.hadoop_open`, and `org.apache.hadoop.fs.Path` collapses
+    # consecutive slashes, so the object lands at the single-slash name; gsutil does not
+    # collapse them, because a GCS object name is a literal string in which `//` is simply
+    # two characters. The write then succeeds, the scan log looks perfectly healthy, and the
+    # `gsutil cp` that follows reports `No URLs matched` for a file sitting right there
+    # under a name one character shorter. Worse, `GenerateSampleMap` fails whichever way
+    # BigQuery resolves the export URI -- either its `gsutil ls` matches nothing, or it
+    # hands the doubled path to a Hail read that normalizes it away -- so the same input
+    # can also kill a run before it starts.
+    #
+    # Collapsing every run of slashes and then repairing the scheme, rather than a
+    # lookbehind, because Cromwell's `sub` is specified against POSIX ERE and an engine
+    # that rejected `(?<!:)` would fail the workflow outright -- worse than the bug. This
+    # also catches an interior `gs://b/a//c`, which a trailing-slash strip does not.
+    String collapsed_output_prefix = sub(sub(output_prefix, "/+", "/"), "/$", "")
+    String clean_output_prefix = sub(collapsed_output_prefix, "^gs:/", "gs://")
+
     # The ref_ranges schema is a property of the dataset, not a choice, so detect it rather
     # than trusting an input. Only needed when reference adjudication SQL will be generated,
     # which is the only thing the schema affects.
@@ -263,7 +282,7 @@ workflow GvsValidateVdsCompleteness {
                 bq_project_id = select_first([bq_project_id]),
                 bq_dataset_name = select_first([bq_dataset_name]),
                 sample_table = bq_sample_table,
-                output_prefix = output_prefix,
+                output_prefix = clean_output_prefix,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
         }
     }
@@ -283,7 +302,7 @@ workflow GvsValidateVdsCompleteness {
             vds_dropout_detect_script = GetHailScripts.vds_dropout_detect_script,
             action = action,
             vds_path = vds_path,
-            output_prefix = output_prefix,
+            output_prefix = clean_output_prefix,
             mode = mode,
             sample_map_path = effective_sample_map_path,
             superpartition_size = superpartition_size,
@@ -327,6 +346,7 @@ workflow GvsValidateVdsCompleteness {
         String scan_log = ScanVdsForDropouts.scan_log
         File report = ScanVdsForDropouts.report
         File adjudication_sql = ScanVdsForDropouts.adjudication_sql
+        File sparse_bins = ScanVdsForDropouts.sparse_bins
         Boolean done = true
     }
 }
@@ -522,12 +542,23 @@ task ScanVdsForDropouts {
         # copied the report's placeholder into the SQL file, which shipped an
         # adjudicate_<mode>.sql whose contents talked about reports -- a plausibly named
         # output with irrelevant text in it, which is worse than no file at all.
-        echo "# No findings report: action '~{action}' does not produce one; only scan does." \
-            > report.tsv
-        echo "-- No adjudication SQL: action '~{action}' does not produce any; only scan does." \
-            > adjudicate.sql
-        echo "# No excluded-bin list: action '~{action}' does not screen bins; only scan does." \
-            > sparse_bins.tsv
+        # These are defaults, overwritten by the detect step below when action is scan. The
+        # wording has to hold in both cases, because the scan case is the only one in which
+        # anyone reads them: seeing a placeholder after a scan means the task died before
+        # detect ran. An earlier version interpolated the action into "action '~{action}' does
+        # not produce one; only scan does", which for action=scan is a sentence that
+        # contradicts itself and sent the reader looking for a detect bug that was not there.
+        if [[ "~{action}" == "scan" ]]
+        then
+            placeholder="the scan did not get as far as the detect step, so this file was
+never written. The task failed earlier -- see scan_~{action}_~{mode}.log and the task's
+stderr. This file's presence is the symptom, not the cause."
+        else
+            placeholder="action '~{action}' does not produce this file; only the scan action does."
+        fi
+        echo "# No findings report: ${placeholder}" > report.tsv
+        echo "-- No adjudication SQL: ${placeholder}" > adjudicate.sql
+        echo "# No excluded-bin list: ${placeholder}" > sparse_bins.tsv
 
         # Build the arguments JSON for the script that will run inside the Hail cluster.
         # run_in_hail_cluster.py renders each key as `--key value`, so every key must be
@@ -587,6 +618,18 @@ task ScanVdsForDropouts {
             fi
         done
 
+        # Upload the log however this task exits, not just when it succeeds. It used to be
+        # copied at the very end, which made the one artifact worth having after an
+        # hours-long failure the one artifact that a failure guaranteed you would not get:
+        # errexit aborts at the first failing step, and every step that can fail comes
+        # before the upload. The run that prompted this died on a `gsutil cp` and left its
+        # log in Cromwell's stdout only. `|| true` so a failed upload cannot overwrite the
+        # exit code that explains the failure.
+        trap 'if [[ -f scan.log ]]
+              then
+                  gsutil cp scan.log "~{output_prefix}/scan_~{action}_~{mode}.log" || true
+              fi' EXIT
+
         # vds_dropout_detect.py rides along as a secondary file so the Hail job can import it,
         # and so the same module that judges the summary on the cluster is the one CI tested.
         python3 ~{run_in_hail_cluster_script} \
@@ -615,6 +658,40 @@ task ScanVdsForDropouts {
         # re-applied to an existing scan without another cluster.
         if [[ "~{action}" == "scan" ]]
         then
+            # Check both before copying either. A scan that resumed with every contig
+            # already checkpointed complete does not rewrite the superpartition table --
+            # vds_dropout_scan.py leaves the original in place, on the grounds that it is
+            # still correct -- so this path is reachable with a perfectly healthy scan log,
+            # and the bare `gsutil cp` failure that used to result named neither the file nor
+            # the reason.
+            missing=()
+            for required_object in "~{summary_path}" "~{superpartitions_path}"
+            do
+                gsutil -q stat "${required_object}" || missing+=("${required_object}")
+            done
+            if (( ${#missing[@]} ))
+            then
+                echo "ERROR: the scan finished but detect cannot run, because these objects" >&2
+                echo "are not present:" >&2
+                printf '  %s\n' "${missing[@]}" >&2
+                echo "" >&2
+                echo "The usual cause is a scan that resumed with every contig already" >&2
+                echo "complete: it leaves the superpartition table from the original run in" >&2
+                echo "place rather than rewriting it, so if that run never wrote one -- or" >&2
+                echo "wrote it under a different output_prefix -- nothing here will." >&2
+                echo "" >&2
+                echo "A '//' anywhere in the names above means the workflow predates the" >&2
+                echo "output_prefix sanitizing: Hail writes through a path that collapses it" >&2
+                echo "and gsutil reads through one that does not, so the object is present" >&2
+                echo "under the single-slash name. Trim the trailing slash and re-run." >&2
+                echo "" >&2
+                echo "No need to re-scan. Judging is pure Python and needs no cluster:" >&2
+                echo "  python3 vds_dropout_detect.py --summary <summary.tsv> \\" >&2
+                echo "    --superpartitions <superpartitions.tsv> --mode ~{mode}" >&2
+                echo "Or re-run the scan under a fresh output_prefix to rebuild both." >&2
+                exit 1
+            fi
+
             gsutil cp "~{summary_path}" ./summary.tsv
             gsutil cp "~{superpartitions_path}" ./superpartitions.tsv
 
@@ -679,7 +756,7 @@ task ScanVdsForDropouts {
             gsutil cp ./sparse_bins.tsv "~{output_prefix}/sparse_bins_~{mode}.tsv"
         fi
 
-        gsutil cp scan.log "~{output_prefix}/scan_~{action}_~{mode}.log"
+        # scan.log is uploaded by the EXIT trap installed above, so there is no copy here.
     >>>
 
     runtime {

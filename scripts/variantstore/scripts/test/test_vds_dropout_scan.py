@@ -143,6 +143,73 @@ class TestPlaceholderOutputs(unittest.TestCase):
     WDL = (pathlib.Path(__file__).resolve().parents[2]
            / 'wdl' / 'GvsValidateVdsCompleteness.wdl')
 
+    def test_scan_log_is_uploaded_however_the_task_exits(self):
+        """The log has to survive the failures it is there to explain.
+
+        It used to be copied on the last line, after every step that can fail, so under
+        errexit a failing task uploaded nothing and the log from an hours-long run lived
+        only in Cromwell's stdout. That is exactly backwards: a successful run barely needs
+        its log.
+        """
+        body = self.scan_task()
+        end = "fi' EXIT"
+        self.assertIn(end, body, 'the log upload must be registered as an EXIT trap')
+        trap = body[body.index('trap '):body.index(end) + len(end)]
+        self.assertIn('scan_~{action}_~{mode}.log', trap)
+        # `|| true` so a failed upload cannot replace the exit code that explains the failure.
+        self.assertIn('|| true', trap)
+        # And the log may not exist yet, since the trap is installed before it is written.
+        self.assertIn('[[ -f scan.log ]]', trap)
+
+    def test_scan_log_is_not_also_copied_at_the_end(self):
+        """A second copy would be dead code that re-implies the old ordering."""
+        body = self.scan_task()
+        after_trap = body[body.index("fi' EXIT"):]
+        self.assertNotIn('gsutil cp scan.log', after_trap)
+
+    def test_placeholder_does_not_deny_that_scan_produces_output(self):
+        """The scan case is the only one in which a placeholder is ever read.
+
+        The placeholders are written up front and overwritten by detect, so a placeholder
+        surviving a scan means the task died in between. An earlier version interpolated the
+        action into a sentence ending "only scan does", which for action=scan read "action
+        'scan' does not produce one; only scan does" -- self-contradictory exactly when
+        someone was trying to work out why their run failed.
+        """
+        text = self.wdl()
+        self.assertNotIn("does not produce one; only scan does", text)
+        # One sentence cannot serve both cases, so the wording is chosen at run time. The
+        # branch has to sit immediately above the assignment for that to be what picks it.
+        block = text[text.index('if [[ "~{action}" == "scan" ]]'):text.index('> report.tsv')]
+        scan_case, _, other_case = block.partition('else')
+        self.assertIn('placeholder=', scan_case)
+        self.assertIn('did not get as far as the detect step', scan_case)
+        # `~{action}` may appear here -- the log filename carries it -- but nothing in the
+        # scan case may claim the action produces no such file, which is the whole bug.
+        self.assertNotIn('does not produce', scan_case)
+        # The other actions genuinely do not produce these files, so naming the action there
+        # is the useful thing to say -- it is only the scan case that reads as a denial.
+        self.assertIn("action '~{action}' does not produce this file", other_case)
+
+    def test_placeholder_points_at_the_log_rather_than_itself(self):
+        text = self.wdl()
+        block = text[text.index('placeholder='):text.index('> report.tsv')]
+        self.assertIn('scan_~{action}_~{mode}.log', block)
+        self.assertIn('symptom, not the cause', block)
+
+    def test_missing_detect_inputs_are_diagnosed_not_just_fatal(self):
+        """A resumed scan need not rewrite the superpartition table, so this is reachable.
+
+        Without the check the task died on a bare `gsutil cp` failure that named neither the
+        object nor the reason, while the Hail log looked entirely healthy.
+        """
+        text = self.wdl()
+        self.assertIn('gsutil -q stat', text)
+        block = text[text.index('missing=()'):text.index('gsutil cp "~{summary_path}"')]
+        self.assertIn('every contig already', block)
+        self.assertIn('vds_dropout_detect.py', block)
+        self.assertIn('output_prefix', block)
+
     def wdl(self):
         if not self.WDL.exists():
             self.skipTest(f'{self.WDL} not available in this test environment')
@@ -180,6 +247,72 @@ class TestPlaceholderOutputs(unittest.TestCase):
         """The placeholder guarantees the path, so `-f` could never be false."""
         body = self.scan_task()
         self.assertNotIn('if [[ -f ./adjudicate.sql ]]', body)
+
+
+class TestOutputPrefixPaths(unittest.TestCase):
+    """How the task turns `output_prefix` into GCS object names."""
+
+    WDL = TestPlaceholderOutputs.WDL
+    wdl = TestPlaceholderOutputs.wdl
+
+    def test_output_prefix_slashes_are_normalized(self):
+        """A prefix carrying a doubled slash produces objects nothing can read back.
+
+        Every path is built by concatenation, so `gs://b/p/` gives `gs://b/p//summary_x.tsv`.
+        The scan writes through `hl.hadoop_open`, and `org.apache.hadoop.fs.Path` collapses
+        consecutive slashes, so the object lands at the single-slash name. gsutil does not
+        collapse them -- a GCS object name is a literal string -- so the `gsutil cp` that
+        feeds detect reported `No URLs matched` for a file that was sitting right there.
+        Nothing about the run looked wrong until then, which is why this needs a test.
+        """
+        text = self.wdl()
+        self.assertIn('sub(sub(output_prefix, "/+", "/"), "/$", "")', text)
+        self.assertIn('sub(collapsed_output_prefix, "^gs:/", "gs://")', text)
+        # No lookbehind in any pattern: Cromwell's `sub` is specified against POSIX ERE, and
+        # an engine rejecting one would fail the workflow outright -- worse than the bug
+        # being fixed. Checked against the `sub` calls, not the file, since the comment
+        # explaining the choice necessarily quotes the construct it rejects.
+        for line in text.splitlines():
+            expression = line.split('#', 1)[0]
+            if 'sub(' in expression:
+                self.assertNotIn('(?<', expression)
+        # Every task must receive the sanitized value; one raw passthrough reopens the hole.
+        passthroughs = [line.strip() for line in text.splitlines()
+                        if line.strip().startswith('output_prefix =')]
+        self.assertTrue(passthroughs, 'expected at least one output_prefix passthrough')
+        for passthrough in passthroughs:
+            self.assertEqual('output_prefix = clean_output_prefix,', passthrough)
+
+    @staticmethod
+    def _clean(prefix: str) -> str:
+        """The WDL's normalization, in Python. `^`, `+` and `$` mean the same in both."""
+        collapsed = re.sub('/$', '', re.sub('/+', '/', prefix))
+        return re.sub('^gs:/', 'gs://', collapsed)
+
+    def test_normalization_leaves_exactly_one_slash_between_components(self):
+        for given, want in [
+            ('gs://bucket/p/', 'gs://bucket/p'),
+            ('gs://bucket/p//', 'gs://bucket/p'),
+            ('gs://bucket/p', 'gs://bucket/p'),
+            # Interior, which a trailing-slash strip misses and which fails identically.
+            ('gs://bucket/a//b', 'gs://bucket/a/b'),
+            ('gs://bucket/a//b/', 'gs://bucket/a/b'),
+            ('gs://bucket/', 'gs://bucket'),
+            ('/tmp//out/', '/tmp/out'),
+        ]:
+            with self.subTest(prefix=given):
+                self.assertEqual(want, self._clean(given))
+
+    def test_normalization_preserves_the_scheme(self):
+        """The collapse flattens `gs://` too, so the repair has to put it back."""
+        self.assertTrue(self._clean('gs://bucket/p/').startswith('gs://'))
+
+    def test_normalized_paths_survive_concatenation(self):
+        """The property that actually matters: what the task builds must be readable."""
+        for prefix in ['gs://b/p', 'gs://b/p/', 'gs://b/p//', 'gs://b/a//c/']:
+            with self.subTest(prefix=prefix):
+                built = self._clean(prefix) + '/summary_references.tsv'
+                self.assertNotIn('//', built.removeprefix('gs://'))
 
 
 class TestSampleMapParsing(unittest.TestCase):
