@@ -269,11 +269,12 @@ class TestFalsePositiveGuards(unittest.TestCase):
 class TestCoverageFraction(unittest.TestCase):
     """The references-mode evidence floor.
 
-    ``min_expected`` is an absolute count, which is a sound floor for the variants metric
-    and no floor at all for the references metric: covered bases run to hundreds per block,
-    so 30 is a fraction of one block. Without a floor scaled to the metric, every dead
-    region of the genome -- centromere, satellite array, assembly gap -- gets judged on the
-    ratio between two near-zero numbers. On Foxtrot r2 that was the entire candidate list.
+    ``min_expected`` is an absolute count of covered bases summed over every sample in the
+    superpartition, so the value that works scales with n_samples x bin width. It is not
+    that it never bites -- on Foxtrot r2 it would have cleared the false positives at
+    130,000 -- but that the figure is a property of that one callset and bin size, so no
+    default can be right twice. A coverage fraction is per-sample and dimensionless and
+    means the same thing at any scale.
 
     Note the reference cell values below dwarf the variant ones the other tests use. That is
     the point: one sample fully covered across a 50 kb bin contributes 50,000, where in

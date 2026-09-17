@@ -114,13 +114,21 @@ DEFAULT_RATIO_THRESHOLD = 0.5
 DEFAULT_SCORE_THRESHOLD = 8.0
 DEFAULT_MIN_EXPECTED = 30.0
 
-# References-only floor, expressed as a fraction of the coverage a bin could possibly hold
-# (n_samples x bin width). The variants metric is an entry count, so `min_expected` is a
-# meaningful absolute floor there. The references metric is covered bases, where one block
-# for one sample contributes hundreds -- so 30 is about a tenth of a single block, i.e. no
-# floor at all. Without this, every dead region (centromere, satellite, assembly gap) fires
-# on the ratio between two near-zero numbers: on Foxtrot r2 that was all 427 candidates,
-# the worst of which held 0.06% of possible coverage.
+# References-only floor, stated as the share of a bin a typical sample covers.
+#
+# `min_expected` cannot do this job, and not because it is too small to bite -- it very
+# nearly does. It gates on `baseline_rate * scale * n_samples`, which is total covered bases
+# over every sample in the superpartition, so it scales with n_samples x bin width. On
+# Foxtrot r2 (3,971 samples per superpartition, 50 kb bins) the 427 false positives cleared
+# only at 130,000, about 4,300x the default; halve --bin-size or screen a smaller callset
+# and the right value moves proportionally. There is no number to ship as a default.
+#
+# Dividing instead by bin width leaves a per-sample, dimensionless quantity that means the
+# same thing at any callset or bin size. Without some such floor, dead regions -- centromere,
+# satellite, assembly gap -- are judged on the ratio between two near-zero numbers, which is
+# where all 427 came from; the worst held 0.06% of possible coverage. The two agree where
+# they overlap: 130,000 expected over that callset is 0.065% coverage, and the candidate list
+# empties by 0.1%. The 0.05 default sits 50x beyond that.
 DEFAULT_MIN_COVERAGE_FRACTION = 0.05
 # Superpartitions are assigned by ingest order and are not ancestry- or batch-balanced,
 # so real genome-wide variation between them can reach 20-30%. This is therefore the
