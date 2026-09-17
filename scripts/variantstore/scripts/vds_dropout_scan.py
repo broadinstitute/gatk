@@ -96,7 +96,7 @@ holds.
 The map must cover every sample in the VDS.  A VDS sample missing from it is a hard error
 rather than a skip, because screening part of a superpartition biases the peer comparison
 the detector relies on, and would do so silently.  Samples in the map but absent from the
-VDS are ignored, so a map generated after a withdrawal is still usable.
+VDS are ignored.
 """
 
 from __future__ import annotations
