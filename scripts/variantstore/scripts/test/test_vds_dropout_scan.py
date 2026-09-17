@@ -328,21 +328,22 @@ class TestOutputPrefixPaths(unittest.TestCase):
 
 
 class TestCommandBlockIndentation(unittest.TestCase):
-    """Cromwell dedents a `command <<< >>>` block by its common leading whitespace.
+    """This WDL indents its command blocks, so no line in them may sit at column zero.
 
-    So one line starting at column zero -- a wrapped string, a pasted comment -- drops that
-    common prefix to nothing. Nothing is then stripped, every heredoc terminator in the
-    block keeps indentation that bash requires it not to have, and the script dies with
-    `unexpected end of file` reported at its last line, nowhere near the cause. `womtool
-    validate` passes throughout, and the break only shows up once the task runs in the
-    cloud, which is an expensive place to learn it.
+    Cromwell dedents a `command <<< >>>` block by its common leading whitespace, so one
+    line starting at column zero -- a wrapped string, a pasted comment -- drops that common
+    prefix to nothing. Nothing is then stripped, the heredoc terminators keep indentation
+    that bash requires them not to have, and the script dies with `unexpected end of file`
+    reported at its last line, nowhere near the cause. `womtool validate` passes
+    throughout, and the break only shows up once the task runs in the cloud, which is an
+    expensive place to learn it.
 
-    Two things have to survive that dedent, and the inline Python here needs both: the
-    terminator has to land at column zero or bash never finds it, and the body has to land
-    there too or Python is handed input it rejects. Only the first breaks loudly, and
-    satisfying it alone is the natural response to `unexpected end of file` -- outdent the
-    terminator and move on -- which trades the bash error for `IndentationError` at
-    `"<stdin>", line 1`, naming neither this file nor the task. So both are tested.
+    Only the cause is checked here, because it is a choice this file makes rather than a
+    rule: writing the whole block at column zero is equally valid, and three other WDLs in
+    the repo do exactly that. The consequences that are rules for every WDL -- terminators
+    and whitespace-sensitive bodies landing at column zero after the dedent, and the inline
+    Python compiling -- belong to `check-wdl-heredocs` and are asserted over the whole
+    variantstore tree in test_check_wdl_heredocs.py.
     """
 
     WDL = TestPlaceholderOutputs.WDL
@@ -364,12 +365,6 @@ class TestCommandBlockIndentation(unittest.TestCase):
         self.assertTrue(blocks, 'expected at least one command block')
         return blocks
 
-    @staticmethod
-    def dedent(block):
-        """Cromwell's transformation: strip the whitespace common to every non-blank line."""
-        common = min(len(line) - len(line.lstrip()) for line in block if line.strip())
-        return [line[common:] if line.strip() else line for line in block]
-
     def test_no_command_line_starts_at_column_zero(self):
         """The cause, checked directly, because the symptom appears far from it."""
         for block in self.command_blocks():
@@ -378,65 +373,6 @@ class TestCommandBlockIndentation(unittest.TestCase):
                     self.assertTrue(
                         line.startswith(' '),
                         f'line at column zero defeats the dedent: {line!r}')
-
-    def test_heredoc_terminators_survive_the_dedent(self):
-        """The property that actually has to hold once Cromwell has rewritten the block."""
-        for block in self.command_blocks():
-            dedented = self.dedent(block)
-            terminators = [line.rstrip() for line in dedented]
-            for line in dedented:
-                if '<<-' in line:
-                    continue  # <<- strips leading tabs, so indentation is fine there.
-                match = re.search(r"<<\s*'?([A-Z_][A-Z0-9_]*)'?\s*$", line)
-                if not match:
-                    continue
-                delimiter = match.group(1)
-                self.assertIn(
-                    delimiter, terminators,
-                    f'heredoc {delimiter} has no terminator at column zero after the '
-                    f'dedent, so bash will read to end of file')
-
-    def python_heredoc_bodies(self):
-        """The dedented body of every heredoc fed to python, keyed by its delimiter."""
-        bodies = {}
-        for block in self.command_blocks():
-            dedented = self.dedent(block)
-            for offset, line in enumerate(dedented):
-                match = re.search(r"<<\s*'?([A-Z_][A-Z0-9_]*)'?\s*$", line)
-                if not match or not re.search(r'\bpython[0-9.]*\b', line[:match.start()]):
-                    continue
-                delimiter = match.group(1)
-                body = []
-                for candidate in dedented[offset + 1:]:
-                    if candidate.rstrip() == delimiter:
-                        break
-                    body.append(candidate)
-                bodies[delimiter] = body
-        self.assertTrue(bodies, 'expected at least one heredoc feeding python')
-        return bodies
-
-    def test_inline_python_is_not_indented_after_the_dedent(self):
-        """Leading whitespace on the first statement is an error, however valid the rest."""
-        for delimiter, body in self.python_heredoc_bodies().items():
-            indents = [len(line) - len(line.lstrip()) for line in body if line.strip()]
-            self.assertEqual(
-                0, min(indents),
-                f'the <<{delimiter} body is still indented by {min(indents)} after the '
-                f'dedent, so python rejects it with IndentationError even though the '
-                f'terminator is where bash wants it')
-
-    def test_inline_python_compiles(self):
-        """Nothing else checks it. pyflakes cannot see Python embedded in a WDL string."""
-        for delimiter, body in self.python_heredoc_bodies().items():
-            # Every placeholder is either bare and numeric or quoted, so one substitution
-            # serves both; the point is the block's structure, not the values Cromwell
-            # interpolates.
-            source = re.sub(r'~\{[^}]*\}', '0', '\n'.join(body))
-            try:
-                compile(source, f'<<{delimiter}', 'exec')
-            except SyntaxError as e:
-                self.fail(f'the <<{delimiter} body does not compile: {e.msg} at line '
-                          f'{e.lineno}: {(e.text or "").rstrip()!r}')
 
 
 class TestSampleMapParsing(unittest.TestCase):
@@ -709,6 +645,31 @@ class TestContigCheckpointing(unittest.TestCase):
         return types.SimpleNamespace(
             vds_path=vds_path, mode=mode, bin_size=bin_size, summary_path=self.summary)
 
+    def merge(self, shards, expected):
+        """`concatenate_shards` with its progress output captured.
+
+        Those lines are the point of the change that added them -- the merge used to print
+        nothing for tens of minutes -- but interleaved with unittest's own output they make
+        a real failure harder to read. One test below asserts on them directly.
+        """
+        with contextlib.redirect_stdout(io.StringIO()):
+            return vds.concatenate_shards(shards, self.summary, expected)
+
+    @contextlib.contextmanager
+    def tiny_chunks(self, size=7):
+        """Shrink the copy's chunk so the shards here span many of them.
+
+        Every shard a test writes is a few hundred bytes, orders of magnitude under one
+        real chunk, so without this the boundary-crossing paths -- the newline tally and
+        the trailing-newline guard -- are never reached by the suite at all.
+        """
+        original = vds.MERGE_CHUNK_CHARACTERS
+        vds.MERGE_CHUNK_CHARACTERS = size
+        try:
+            yield
+        finally:
+            vds.MERGE_CHUNK_CHARACTERS = original
+
     def test_marker_records_provenance(self):
         _, marker = vds.shard_paths(self.summary, 'chr1')
         vds.write_marker(marker, 'chr1', 42, self.args())
@@ -783,12 +744,12 @@ class TestContigCheckpointing(unittest.TestCase):
 
     def test_merge_concatenates_all_shards(self):
         shards = [self.write_shard('chr1', 3), self.write_shard('chr2', 2)]
-        total = vds.concatenate_shards(shards, self.summary, ['chr1', 'chr2'])
+        total = self.merge(shards, ['chr1', 'chr2'])
         self.assertEqual(5, total)
 
     def test_merged_file_has_one_header(self):
         shards = [self.write_shard('chr1', 2), self.write_shard('chr2', 2)]
-        vds.concatenate_shards(shards, self.summary, ['chr1', 'chr2'])
+        self.merge(shards, ['chr1', 'chr2'])
         with open(self.summary) as handle:
             lines = [l for l in handle.read().split('\n') if l.strip()]
         self.assertEqual(vds.SUMMARY_HEADER, lines[0])
@@ -799,28 +760,89 @@ class TestContigCheckpointing(unittest.TestCase):
         """The safety net: an incomplete screen must never look complete."""
         shards = [self.write_shard('chr1', 2)]
         with self.assertRaises(RuntimeError) as ctx:
-            vds.concatenate_shards(shards, self.summary, ['chr1', 'chr2'])
+            self.merge(shards, ['chr1', 'chr2'])
         self.assertIn('chr2', str(ctx.exception))
         self.assertIn('incomplete', str(ctx.exception))
 
     def test_error_says_how_to_recover(self):
         shards = [self.write_shard('chr1', 2)]
         with self.assertRaises(RuntimeError) as ctx:
-            vds.concatenate_shards(shards, self.summary, ['chr1', 'chr2'])
+            self.merge(shards, ['chr1', 'chr2'])
         self.assertIn('.done', str(ctx.exception))
 
     def test_shard_with_a_foreign_header_is_rejected(self):
         shard = os.path.join(self.tmp.name, 'summary.tsv.chr9')
         vds.write_lines(shard, 'something\telse', ['chr9\t1'])
         with self.assertRaises(ValueError) as ctx:
-            vds.concatenate_shards([shard], self.summary, ['chr9'])
+            self.merge([shard], ['chr9'])
         self.assertIn('corrupt or from another run', str(ctx.exception))
 
     def test_empty_shard_is_tolerated_when_the_contig_is_not_expected(self):
         """A contig with no data at all yields an empty shard; only expectation matters."""
         shard = os.path.join(self.tmp.name, 'summary.tsv.chrY')
         vds.write_lines(shard, vds.SUMMARY_HEADER, [])
-        self.assertEqual(0, vds.concatenate_shards([shard], self.summary, []))
+        self.assertEqual(0, self.merge([shard], []))
+
+    def test_a_shard_whose_rows_are_for_another_contig_is_reported_missing(self):
+        """The chunked copy reads one data row per shard, and that is the row it trusts.
+
+        Cheaper than tallying every row's contig, and it fails in the safe direction: a
+        shard holding the wrong contig raises here rather than passing quietly.
+        """
+        shard, _ = vds.shard_paths(self.summary, 'chr1')
+        vds.write_lines(shard, vds.SUMMARY_HEADER, ['chr2\t1\t50001\t83\t7500'])
+        with self.assertRaises(RuntimeError) as ctx:
+            self.merge([shard], ['chr1'])
+        self.assertIn('chr1', str(ctx.exception))
+
+    def test_a_shard_without_a_trailing_newline_does_not_glue_rows_together(self):
+        """Both chunk sizes, because a truncated shard can end anywhere in a chunk."""
+        for label, chunks in (('one chunk', contextlib.nullcontext()),
+                              ('many chunks', self.tiny_chunks())):
+            with self.subTest(label):
+                first = os.path.join(self.tmp.name, 'summary.tsv.chr1')
+                with open(first, 'w') as handle:
+                    handle.write(f'{vds.SUMMARY_HEADER}\n'
+                                 'chr1\t1\t50001\t83\t1\n'
+                                 'chr1\t50001\t100001\t83\t2')
+                second = self.write_shard('chr2', 1)
+                with chunks:
+                    total = self.merge([first, second], ['chr1', 'chr2'])
+                self.assertEqual(3, total)
+                with open(self.summary) as handle:
+                    rows = handle.read().splitlines()
+                self.assertEqual([vds.SUMMARY_HEADER], rows[:1])
+                self.assertEqual(4, len(rows))
+                self.assertTrue(rows[3].startswith('chr2\t'), rows[3])
+
+    def test_chunk_boundaries_do_not_change_the_result(self):
+        """A boundary may fall mid-row, so the copy must not interpret what it copies."""
+        shards = [self.write_shard('chr1', 5), self.write_shard('chr2', 4)]
+        with self.tiny_chunks():
+            total = self.merge(shards, ['chr1', 'chr2'])
+        self.assertEqual(9, total)
+        with open(self.summary) as handle:
+            rows = handle.read().splitlines()
+        self.assertEqual(10, len(rows))
+        self.assertEqual(vds.SUMMARY_HEADER, rows[0])
+        self.assertEqual(5, sum(1 for row in rows if row.startswith('chr1\t')))
+        self.assertEqual(4, sum(1 for row in rows if row.startswith('chr2\t')))
+
+    def test_the_merge_reports_progress_as_it_goes(self):
+        """It is the longest non-Hail step, and it used to print nothing while running.
+
+        A step with no Hail UI behind it is the one whose progress can only come from the
+        script, so silence there was backwards: the question it prompted was whether the
+        job had stalled, which no output could answer.
+        """
+        shards = [self.write_shard('chr1', 2), self.write_shard('chr2', 2)]
+        printed = io.StringIO()
+        with contextlib.redirect_stdout(printed):
+            vds.concatenate_shards(shards, self.summary, ['chr1', 'chr2'])
+        output = printed.getvalue()
+        for shard in shards:
+            self.assertIn(os.path.basename(shard), output)
+        self.assertIn('4 rows', output)
 
 
 class TestWriteRetry(unittest.TestCase):

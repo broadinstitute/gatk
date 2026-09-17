@@ -429,6 +429,62 @@ Note that a redacted file and its working counterpart tend to drift apart. Where
 both are needed, keep the redacted one as the file that is edited, and treat any
 real-ID version as a throwaway.
 
+# WDL Conventions
+
+## Heredocs in command blocks
+
+Cromwell dedents a `command <<< >>>` block by the whitespace common to every
+non-blank line in it. So a single line at column zero -- a wrapped string, a
+pasted comment -- drops that common prefix to nothing, nothing is stripped, and
+the indentation the block was written with reaches bash intact.
+
+Two things have to survive that dedent, and a heredoc feeding a
+whitespace-sensitive interpreter needs both:
+
+1. the terminator must land at column zero, or bash reads to end of file;
+2. the body must land at column zero too, or the interpreter is handed input
+   indented by whatever the dedent failed to strip.
+
+Only the first fails loudly, and it fails badly: `unexpected end of file`
+reported at the generated script's last line, nowhere near the cause, and only
+once the task runs in the cloud. `womtool validate` passes throughout, because a
+command block is just a string to it.
+
+The second is quieter, and it is what the obvious repair for the first produces
+-- outdent the terminator so bash is satisfied, leave the body alone. `bash -n`
+then passes, since the terminator really is where bash wants it, and the failure
+becomes `IndentationError: unexpected indent` at `"<stdin>", line 1`, naming
+neither the WDL nor the task.
+
+Two conventions reach column zero and both are fine: indent the terminator with
+the rest of the block and let the dedent strip it, or write it at column zero and
+accept that the block is then never dedented at all. What fails is mixing them.
+The choice is not free for a whitespace-sensitive body, though, because that body
+has to agree with its own terminator -- which is why the second convention forces
+inline Python against the left margin wherever this repo uses it.
+
+Check before handing over a WDL:
+
+```shell
+scripts/variantstore/scripts/check-wdl-heredocs              # the variantstore tree
+scripts/variantstore/scripts/check-wdl-heredocs FILE...      # just these
+scripts/variantstore/scripts/check-wdl-heredocs --strict     # fail on FRAGILE too
+```
+
+It exits non-zero on a broken block, and also compiles any inline Python it
+finds, which nothing else does -- `pyflakes` cannot see Python embedded in a WDL
+string. `test/test_check_wdl_heredocs.py` runs it over every WDL under
+`scripts/variantstore` as part of the Python unit tests, so CI enforces this.
+
+"FRAGILE" means only that a block is never dedented, so it works today but breaks
+the moment a heredoc whose terminator is indented with the block is added next to
+it. Two blocks in the tree are in that state deliberately and need no action.
+
+Like `reflow-md` and `check-us-spelling`, this script is deliberately
+extensionless so that the Dockerfile's `COPY *.py /app/` leaves it out of the
+Variants image and out of the rebuild-and-bump obligation. Do not rename it to
+`check_wdl_heredocs.py`.
+
 # Documentation Conventions
 
 ## Markdown tables must be rectangular

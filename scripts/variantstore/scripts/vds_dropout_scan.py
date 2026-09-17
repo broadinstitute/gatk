@@ -293,11 +293,18 @@ def _require_hail() -> None:
         )
 
 
-def _open_write(path: str) -> IO[str]:
-    """Open a local or GCS path for writing text."""
+def _open_write(path: str, buffer_size: int = 0) -> IO[str]:
+    """Open a local or GCS path for writing text.
+
+    ``buffer_size`` is worth raising for a bulk copy. Under ``hl.hadoop_open`` every fill
+    or flush of the buffer crosses the Python/JVM boundary, so at the 8 KB default the
+    boundary rather than the network sets the cost of moving a few hundred megabytes.
+    """
     if hl is not None and path.startswith('gs://'):
+        if buffer_size:
+            return hl.hadoop_open(path, 'w', buffer_size=buffer_size)
         return hl.hadoop_open(path, 'w')
-    return open(path, 'wt')
+    return open(path, 'wt', buffering=buffer_size) if buffer_size else open(path, 'wt')
 
 
 def _path_exists(path: str) -> bool:
@@ -307,11 +314,13 @@ def _path_exists(path: str) -> bool:
     return os.path.exists(path)
 
 
-def _open_read(path: str) -> IO[str]:
-    """Open a local or GCS path for reading text."""
+def _open_read(path: str, buffer_size: int = 0) -> IO[str]:
+    """Open a local or GCS path for reading text. See `_open_write` on ``buffer_size``."""
     if hl is not None and path.startswith('gs://'):
+        if buffer_size:
+            return hl.hadoop_open(path, 'r', buffer_size=buffer_size)
         return hl.hadoop_open(path, 'r')
-    return open(path, 'rt')
+    return open(path, 'rt', buffering=buffer_size) if buffer_size else open(path, 'rt')
 
 
 WRITE_ATTEMPTS = 3
@@ -743,6 +752,17 @@ def verify_marker(marker_path: str, contig: str, args) -> None:
             '--summary-path.')
 
 
+# The merge is a pure copy of a few hundred megabytes, so it is sized for throughput:
+# characters per `read`, and the buffer underneath that, both well above the 8 KB default.
+MERGE_CHUNK_CHARACTERS = 8 * 1024 * 1024
+MERGE_BUFFER_BYTES = 8 * 1024 * 1024
+
+# How often the copy reports progress. It is the longest non-Hail step in the job and used
+# to print nothing at all between "starting" and "done", which is backwards: a step with no
+# Hail UI behind it is exactly the one whose progress has to come from the script.
+MERGE_PROGRESS_SECONDS = 60
+
+
 def concatenate_shards(shards: Sequence[str], summary_path: str,
                        expected_contigs: Sequence[str]) -> int:
     """Merge per-contig shards into the final summary, verifying coverage.
@@ -750,24 +770,69 @@ def concatenate_shards(shards: Sequence[str], summary_path: str,
     The verification is the point: a resume that skipped a contig would otherwise produce a
     summary that looks complete. Introducing a silent omission by way of the resume logic
     would be a poor way to run a tool built to detect silent omissions.
+
+    Copied in chunks rather than row by row. Every read and write here crosses the
+    Python/JVM boundary under `hl.hadoop_open`, so a per-row loop paid two crossings per
+    row and put a 7.8M-row merge at tens of minutes -- to copy bytes it never looked at.
+    The only per-row work was recording which contigs were present, and a shard holds
+    exactly one contig, so its first data row answers that for the whole shard.
+
+    That makes the coverage check cheap but not weaker in the direction that matters: a
+    hypothetical shard holding rows for a contig other than its first would now be reported
+    missing rather than passing. Erring toward raising is the right side to fail on here.
+
+    The returned count is of newlines, which is the same as rows for any shard `write_lines`
+    produced. A blank line in a hand-edited one would be counted, and `vds_dropout_detect.py`
+    skips blank lines when it reads the summary back.
     """
     seen = set()
     total = 0
-    with _open_write(summary_path) as out:
+    started = time.monotonic()
+    reported = started
+    with _open_write(summary_path, MERGE_BUFFER_BYTES) as out:
         out.write(SUMMARY_HEADER + '\n')
-        for shard in shards:
-            with _open_read(shard) as handle:
+        for index, shard in enumerate(shards, 1):
+            with _open_read(shard, MERGE_BUFFER_BYTES) as handle:
                 first = handle.readline()
                 if first.strip() != SUMMARY_HEADER:
                     raise ValueError(
                         f'{shard}: expected header {SUMMARY_HEADER!r}, found '
                         f'{first.strip()!r}; the shard is corrupt or from another run')
-                for line in handle:
-                    if not line.strip():
-                        continue
-                    seen.add(line.split('\t', 1)[0])
-                    out.write(line if line.endswith('\n') else line + '\n')
+
+                # One row read by hand, because its contig identifies the shard. The rest
+                # is copied without being looked at.
+                row = handle.readline()
+                while row and not row.strip():
+                    row = handle.readline()
+                if not row:
+                    # Header only. Its contig stays unseen, and is reported below if it was
+                    # one of the expected ones.
+                    announce(f'{shard} holds no data rows ({index} of {len(shards)})')
+                    continue
+                seen.add(row.split('\t', 1)[0])
+                out.write(row if row.endswith('\n') else row + '\n')
+                total += 1
+
+                last = '\n'
+                while True:
+                    chunk = handle.read(MERGE_CHUNK_CHARACTERS)
+                    if not chunk:
+                        break
+                    out.write(chunk)
+                    total += chunk.count('\n')
+                    last = chunk[-1]
+                    now = time.monotonic()
+                    if now - reported >= MERGE_PROGRESS_SECONDS:
+                        rate = total / max(now - started, 1e-9)
+                        announce(f'{shard}: {total:,} rows merged so far, {rate:,.0f} '
+                                 f'rows/s ({index} of {len(shards)} shards)')
+                        reported = now
+                if last != '\n':
+                    # Without this a shard whose final row has no newline would glue that
+                    # row onto the first row of the next shard, losing both.
+                    out.write('\n')
                     total += 1
+            announce(f'Merged {shard} ({index} of {len(shards)}): {total:,} rows so far')
 
     missing = [c for c in expected_contigs if c not in seen]
     if missing:
