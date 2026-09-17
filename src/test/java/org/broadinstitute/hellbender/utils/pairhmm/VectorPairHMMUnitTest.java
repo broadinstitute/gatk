@@ -40,7 +40,7 @@ public final class VectorPairHMMUnitTest extends GATKBaseTest {
     public static final double FLOAT_TOLERANCE = 1e-5;
 
     /** Largest allowed difference in log10 likelihood between the Java PairHMM and a double-precision native one. */
-    public static final double DOUBLE_TOLERANCE = 1e-5;
+    public static final double DOUBLE_TOLERANCE = 1e-10;
 
     /** Largest allowed difference from a recorded log10 likelihood, set by the precision they were recorded at. */
     public static final double RECORDED_TOLERANCE = 1e-5;
@@ -109,13 +109,11 @@ public final class VectorPairHMMUnitTest extends GATKBaseTest {
     }
 
     @DataProvider
-    public Object[][] nativeImplementationsAndDatasets() {
+    public Object[][] precisionsAndDatasets() {
         final List<Object[]> cases = new ArrayList<>();
-        for (final VectorLoglessPairHMM.Implementation implementation : VectorLoglessPairHMM.Implementation.values()) {
-            for (final boolean doublePrecision : new boolean[]{false, true}) {
-                for (final Dataset dataset : Dataset.values()) {
-                    cases.add(new Object[]{implementation, doublePrecision, dataset});
-                }
+        for (final boolean doublePrecision : new boolean[]{false, true}) {
+            for (final Dataset dataset : Dataset.values()) {
+                cases.add(new Object[]{doublePrecision, dataset});
             }
         }
         return cases.toArray(new Object[0][]);
@@ -130,12 +128,11 @@ public final class VectorPairHMMUnitTest extends GATKBaseTest {
         }
     }
 
-    @Test(dataProvider = "nativeImplementationsAndDatasets")
-    public void testNativePairHMMMatchesJava(final VectorLoglessPairHMM.Implementation implementation, final boolean doublePrecision,
-                                             final Dataset dataset) throws IOException {
+    @Test(dataProvider = "precisionsAndDatasets")
+    public void testNativePairHMMMatchesJava(final boolean doublePrecision, final Dataset dataset) throws IOException {
         final double tolerance = doublePrecision ? DOUBLE_TOLERANCE : FLOAT_TOLERANCE;
-        final String hmmDescription = implementation + (doublePrecision ? " double" : " float") + " PairHMM on " + dataset;
-        try (final PairHMM nativeHmm = makeNativeHmm(implementation, doublePrecision);
+        final String hmmDescription = "native " + (doublePrecision ? "double" : "float") + " PairHMM on " + dataset;
+        try (final PairHMM nativeHmm = makeNativeHmm(doublePrecision);
              final PairHMM javaHmm = new LoglessPairHMM()) {
             for (final Batch batch : dataset.batches()) {
                 final LikelihoodMatrix<GATKRead, Haplotype> nativeLikelihoods = batch.computeLikelihoods(nativeHmm);
@@ -154,16 +151,16 @@ public final class VectorPairHMMUnitTest extends GATKBaseTest {
     }
 
     /**
-     * Creates the requested native PairHMM, or skips the calling test when it cannot be loaded on this machine.
+     * Creates the native PairHMM, or skips the calling test when it cannot be loaded on this machine.
      */
-    private static PairHMM makeNativeHmm(final VectorLoglessPairHMM.Implementation implementation, final boolean doublePrecision) {
+    private static PairHMM makeNativeHmm(final boolean doublePrecision) {
         final PairHMMNativeArguments args = new PairHMMNativeArguments();
         args.useDoublePrecision = doublePrecision;
         args.maxNumberOfThreads = 1;
         try {
-            return new VectorLoglessPairHMM(implementation, args);
+            return new VectorLoglessPairHMM(args);
         } catch (final UserException.HardwareFeatureException e) {
-            throw new SkipException("Native PairHMM implementation " + implementation + " is not available on this machine");
+            throw new SkipException("The native PairHMM is not available on this machine");
         }
     }
 

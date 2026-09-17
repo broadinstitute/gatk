@@ -38,29 +38,25 @@ public interface SmithWatermanAligner extends Closeable {
 
     enum Implementation {
         /**
-         * use the fastest available Smith-Waterman aligner that runs on your hardware
+         * use the native Smith-Waterman aligner when a native library is available for this platform, and the Java
+         * aligner otherwise
          */
-
         FASTEST_AVAILABLE( () -> {
             try {
-                final SmithWatermanIntelAligner aligner = new SmithWatermanIntelAligner();
-                logger.info("Using AVX accelerated SmithWaterman implementation");
-                return aligner;
+                return new SmithWatermanIntelAligner();
             } catch (UserException.HardwareFeatureException exception) {
-                logger.info("AVX accelerated SmithWaterman implementation is not supported, falling back to the Java implementation");
+                logger.warn("***********************************************************************************************");
+                logger.warn("*** WARNING: no native Smith-Waterman library is available for this platform: " + exception.getMessage());
+                logger.warn("*** Falling back to the slower Java Smith-Waterman aligner!");
+                logger.warn("***********************************************************************************************");
                 return SmithWatermanJavaAligner.getInstance();
             }
         }),
 
         /**
-         * use the AVX enabled Smith-Waterman aligner
+         * use the native Smith-Waterman aligner; fails if no native library is available for this platform
          */
-        AVX_ENABLED( () -> {
-            final SmithWatermanIntelAligner aligner = new SmithWatermanIntelAligner();
-            logger.info("Using AVX accelerated SmithWaterman implementation");
-            return aligner;
-        }
-        ),
+        AVX_ENABLED(SmithWatermanIntelAligner::new),
 
         /**
          * use the pure java implementation of Smith-Waterman, works on all hardware

@@ -30,16 +30,6 @@ public class SmithWatermanIntelAlignerUnitTest extends SmithWatermanAlignerAbstr
             SmithWatermanAlignmentConstants.ALIGNMENT_TO_BEST_HAPLOTYPE_SW_PARAMETERS,
     };
 
-    /**
-     * Every overhang strategy GATK aligns with. IGNORE is left out: nothing in GATK aligns with it, and the native
-     * aligner soft-clips a trailing overhang under IGNORE where the Java aligner reports it as matched bases.
-     */
-    private static final SWOverhangStrategy[] OVERHANG_STRATEGIES = {
-            SWOverhangStrategy.SOFTCLIP,
-            SWOverhangStrategy.INDEL,
-            SWOverhangStrategy.LEADING_INDEL,
-    };
-
     /** Kinds of random sequence pair, each exercising a different part of the alignment and overhang handling. */
     private enum Scenario {
         /** A reference of 30 to 400 bases and an alternate that is a slice of it with a few substitutions and indels. */
@@ -103,7 +93,7 @@ public class SmithWatermanIntelAlignerUnitTest extends SmithWatermanAlignerAbstr
         try {
             return new SmithWatermanIntelAligner();
         } catch (final UserException.HardwareFeatureException e) {
-            throw new SkipException("AVX SmithWaterman is not supported on this system or the library is not available");
+            throw new SkipException("The native Smith-Waterman aligner is not available on this machine");
         }
     }
 
@@ -127,7 +117,7 @@ public class SmithWatermanIntelAlignerUnitTest extends SmithWatermanAlignerAbstr
             for (int i = 0; i < PAIRS_PER_SCENARIO; i++) {
                 final byte[][] pair = scenario.pair(rng);
                 for (final SWParameters parameters : PARAMETER_SETS) {
-                    for (final SWOverhangStrategy strategy : OVERHANG_STRATEGIES) {
+                    for (final SWOverhangStrategy strategy : SWOverhangStrategy.values()) {
                         final SmithWatermanAlignment expected = javaAligner.align(pair[0], pair[1], parameters, strategy);
                         final SmithWatermanAlignment actual = nativeAligner.align(pair[0], pair[1], parameters, strategy);
                         final String description = String.format("%s: reference %s, alternate %s, match %d mismatch %d gap open %d gap extend %d, %s",
