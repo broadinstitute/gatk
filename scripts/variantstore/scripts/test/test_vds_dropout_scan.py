@@ -845,6 +845,29 @@ class TestContigCheckpointing(unittest.TestCase):
         self.assertIn('4 rows', output)
 
 
+class TestHadoopOpenIsNotBufferTuned(unittest.TestCase):
+    """A guard at the source level, because no test here can reach the code it guards.
+
+    `_open_read` and `_open_write` only call `hl.hadoop_open` for a `gs://` path, so every
+    test in this file takes the local `open` branch. Raising `buffer_size` looked like free
+    throughput for the merge and instead made Hail's reader overrun its destination --
+    `ValueError: memoryview assignment: lvalue and rvalue have different structures` on the
+    first read -- which surfaced only on a cluster, after a 24-contig scan had finished.
+    """
+
+    SOURCE = pathlib.Path(__file__).resolve().parents[1] / 'vds_dropout_scan.py'
+
+    def test_no_buffer_size_is_passed_to_hadoop_open(self):
+        for line in self.SOURCE.read_text().splitlines():
+            if 'hadoop_open(' in line:
+                self.assertNotIn('buffer_size', line, line.strip())
+
+    def test_the_reason_is_recorded_where_it_would_be_reintroduced(self):
+        body = self.SOURCE.read_text().split('def _open_read', 1)[1].split('\ndef ', 1)[0]
+        self.assertIn('buffer_size', body)
+        self.assertIn('memoryview', body)
+
+
 class TestWriteRetry(unittest.TestCase):
     """The summary write is the last step of a multi-hour job."""
 

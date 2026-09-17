@@ -293,18 +293,11 @@ def _require_hail() -> None:
         )
 
 
-def _open_write(path: str, buffer_size: int = 0) -> IO[str]:
-    """Open a local or GCS path for writing text.
-
-    ``buffer_size`` is worth raising for a bulk copy. Under ``hl.hadoop_open`` every fill
-    or flush of the buffer crosses the Python/JVM boundary, so at the 8 KB default the
-    boundary rather than the network sets the cost of moving a few hundred megabytes.
-    """
+def _open_write(path: str) -> IO[str]:
+    """Open a local or GCS path for writing text."""
     if hl is not None and path.startswith('gs://'):
-        if buffer_size:
-            return hl.hadoop_open(path, 'w', buffer_size=buffer_size)
         return hl.hadoop_open(path, 'w')
-    return open(path, 'wt', buffering=buffer_size) if buffer_size else open(path, 'wt')
+    return open(path, 'wt')
 
 
 def _path_exists(path: str) -> bool:
@@ -314,13 +307,20 @@ def _path_exists(path: str) -> bool:
     return os.path.exists(path)
 
 
-def _open_read(path: str, buffer_size: int = 0) -> IO[str]:
-    """Open a local or GCS path for reading text. See `_open_write` on ``buffer_size``."""
+def _open_read(path: str) -> IO[str]:
+    """Open a local or GCS path for reading text.
+
+    Do not pass ``buffer_size`` to `hl.hadoop_open` here, however tempting it looks for a
+    bulk copy. Hail's reader asks the JVM for ``buffer_size`` bytes but assigns them into a
+    destination sized by the layer above it, so anything much over the 8 KB default
+    overruns on the first read: `hadoop_fs.py` raises ``ValueError: memoryview assignment:
+    lvalue and rvalue have different structures``. That killed a completed 24-contig Delta
+    scan at the merge, and no local test can catch it -- this branch is only taken for a
+    `gs://` path.
+    """
     if hl is not None and path.startswith('gs://'):
-        if buffer_size:
-            return hl.hadoop_open(path, 'r', buffer_size=buffer_size)
         return hl.hadoop_open(path, 'r')
-    return open(path, 'rt', buffering=buffer_size) if buffer_size else open(path, 'rt')
+    return open(path, 'rt')
 
 
 WRITE_ATTEMPTS = 3
@@ -752,10 +752,10 @@ def verify_marker(marker_path: str, contig: str, args) -> None:
             '--summary-path.')
 
 
-# The merge is a pure copy of a few hundred megabytes, so it is sized for throughput:
-# characters per `read`, and the buffer underneath that, both well above the 8 KB default.
+# Characters per `read` during the merge, which is a pure copy of a few hundred megabytes.
+# This is the only throughput knob available: see `_open_read` on why the buffer underneath
+# it has to stay at Hail's default.
 MERGE_CHUNK_CHARACTERS = 8 * 1024 * 1024
-MERGE_BUFFER_BYTES = 8 * 1024 * 1024
 
 # How often the copy reports progress. It is the longest non-Hail step in the job and used
 # to print nothing at all between "starting" and "done", which is backwards: a step with no
@@ -771,7 +771,7 @@ def concatenate_shards(shards: Sequence[str], summary_path: str,
     summary that looks complete. Introducing a silent omission by way of the resume logic
     would be a poor way to run a tool built to detect silent omissions.
 
-    Copied in chunks rather than row by row. Every read and write here crosses the
+    Copied in chunks rather than row by row. Every 8 KB read and write here crosses the
     Python/JVM boundary under `hl.hadoop_open`, so a per-row loop paid two crossings per
     row and put a 7.8M-row merge at tens of minutes -- to copy bytes it never looked at.
     The only per-row work was recording which contigs were present, and a shard holds
@@ -789,10 +789,10 @@ def concatenate_shards(shards: Sequence[str], summary_path: str,
     total = 0
     started = time.monotonic()
     reported = started
-    with _open_write(summary_path, MERGE_BUFFER_BYTES) as out:
+    with _open_write(summary_path) as out:
         out.write(SUMMARY_HEADER + '\n')
         for index, shard in enumerate(shards, 1):
-            with _open_read(shard, MERGE_BUFFER_BYTES) as handle:
+            with _open_read(shard) as handle:
                 first = handle.readline()
                 if first.strip() != SUMMARY_HEADER:
                     raise ValueError(
