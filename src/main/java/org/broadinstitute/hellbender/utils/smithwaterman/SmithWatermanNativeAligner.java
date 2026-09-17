@@ -12,14 +12,14 @@ import org.broadinstitute.hellbender.exceptions.UserException;
  * on the running CPU. Construction throws {@link UserException.HardwareFeatureException} when no native library is
  * available for this platform.
  */
-public final class SmithWatermanIntelAligner implements SmithWatermanAligner {
+public final class SmithWatermanNativeAligner implements SmithWatermanAligner {
 
-    private static final Logger logger = LogManager.getLogger(SmithWatermanIntelAligner.class);
+    private static final Logger logger = LogManager.getLogger(SmithWatermanNativeAligner.class);
 
     private final FgklSmithWaterman smithWaterman = new FgklSmithWaterman();
     private final SWNativeAlignerWrapper alignerWrapper = new SWNativeAlignerWrapper(smithWaterman);
 
-    public SmithWatermanIntelAligner() throws UserException.HardwareFeatureException {
+    public SmithWatermanNativeAligner() throws UserException.HardwareFeatureException {
         if (!smithWaterman.load(null)) {
             throw new UserException.HardwareFeatureException("The native Smith-Waterman library is not available on this platform.");
         }

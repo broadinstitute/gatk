@@ -18,7 +18,7 @@ import java.util.Random;
  * Runs the shared aligner tests against the native Smith-Waterman aligner, and checks that it produces exactly the
  * alignments the Java aligner does on many random sequence pairs.
  */
-public class SmithWatermanIntelAlignerUnitTest extends SmithWatermanAlignerAbstractUnitTest {
+public class SmithWatermanNativeAlignerUnitTest extends SmithWatermanAlignerAbstractUnitTest {
 
     private static final int PAIRS_PER_SCENARIO = 100;
 
@@ -89,9 +89,9 @@ public class SmithWatermanIntelAlignerUnitTest extends SmithWatermanAlignerAbstr
     }
 
     @Override
-    protected SmithWatermanIntelAligner getAligner() {
+    protected SmithWatermanNativeAligner getAligner() {
         try {
-            return new SmithWatermanIntelAligner();
+            return new SmithWatermanNativeAligner();
         } catch (final UserException.HardwareFeatureException e) {
             throw new SkipException("The native Smith-Waterman aligner is not available on this machine");
         }
