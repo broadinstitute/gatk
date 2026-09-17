@@ -13,10 +13,25 @@ version 1.0
 # leaves nothing worth buying by screening a subset. An earlier design materialized a
 # downsampled copy first; that only made sense while a full-width pass was assumed expensive.
 #
+# What a clean run does not establish. This screens for one shape: data present in the other
+# superpartitions and missing from one of them over a contiguous window. It counts variant_data
+# entries and reference-block coverage, and never looks at filters, scores, globals or allele
+# representation -- so a scan that flags nothing says the data is present at full width, not that
+# it is correct. Score and AC/AN/AF correctness belong to the VDS tieout (vds_validation.validate
+# and the rescoring in merge_and_rescore_vdses.py), which this does not substitute for.
+#
 # Run one action per invocation. Typical sequence for a callset:
 #   1. action = "scan", mode = "variants"    -> summary, candidate rectangles, adjudication SQL
 #   2. action = "scan", mode = "references"  -> the same for reference coverage
 #   3. action = "full-depth"                 -> per-sample detail for whatever step 1 or 2 flagged
+#
+# Step 3 is diagnostic and optional; steps 1 and 2 are what detect a dropout. Where it does earn
+# its keep is after a repair that rebuilt a superpartition's samples: the aggregate cannot see a
+# handful of samples that survive as columns but carry no data, since one sample is a few
+# ten-thousandths of a cell and moves that superpartition's median by the same factor. Such a
+# failure would be genome-wide for the affected sample, so one narrow interval with
+# target_superpartitions set to the rebuilt superpartitions, checking that n_zero is zero,
+# closes that gap in minutes.
 #
 # Contigs are checkpointed, so an interrupted scan resumes rather than restarting, and the first
 # contig to finish reports its own partition count and duration -- which is how a run is sized.
