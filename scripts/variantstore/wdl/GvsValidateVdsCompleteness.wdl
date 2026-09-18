@@ -68,7 +68,13 @@ workflow GvsValidateVdsCompleteness {
         String bq_sample_table = "sample_info"
 
         Int superpartition_size = 4000
-        Int bin_size = 50000
+        # 10 kb rather than the 50 kb the VS-1946 analysis used. Bin size fixes the
+        # detection floor -- clearing the 0.5 ratio gate needs more than half a bin
+        # depleted, so 50 kb only sees a gap wider than ~25 kb -- and it is baked into the
+        # Hail pass, so it cannot be re-chosen offline the way the thresholds can. The
+        # finer bin costs no cluster time, since cost is per-partition and the bin is only
+        # a grouping key; what grows is the summary file and the passes that read it.
+        Int bin_size = 10000
 
         String? contigs
         String? intervals
@@ -111,7 +117,7 @@ workflow GvsValidateVdsCompleteness {
         Int num_local_ssds = 1
         String worker_machine_type = "n1-highmem-8"
         # Also left matching the other GVS workflows. The driver only collects a summary on
-        # the order of 62,000 x 134 numbers, so this is oversized on paper, but a smaller
+        # the order of 25,000 x 134 numbers per contig, so this is oversized on paper, but a smaller
         # master is a variable worth removing while the pipeline is still being brought up.
         String master_machine_type = "n1-highmem-32"
         String? hail_temp_path

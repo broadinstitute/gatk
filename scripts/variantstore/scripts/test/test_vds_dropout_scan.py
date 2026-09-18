@@ -73,20 +73,28 @@ class TestSuperpartitionArithmetic(unittest.TestCase):
 
 class TestBinArithmetic(unittest.TestCase):
 
+    def test_default_bin_size(self):
+        """Pinned because it sets the detection floor and is baked into the Hail pass."""
+        self.assertEqual(10_000, vds.DEFAULT_BIN_SIZE)
+
     def test_bin_start_is_one_based_inclusive(self):
-        self.assertEqual(1, vds.bin_start_for(1))
-        self.assertEqual(1, vds.bin_start_for(50_000))
-        self.assertEqual(50_001, vds.bin_start_for(50_001))
+        self.assertEqual(1, vds.bin_start_for(1, 50_000))
+        self.assertEqual(1, vds.bin_start_for(50_000, 50_000))
+        self.assertEqual(50_001, vds.bin_start_for(50_001, 50_000))
 
     def test_known_dropout_boundaries(self):
         """The real chr4 window's edges, to pin the quantization the report will show."""
-        self.assertEqual(56_550_001, vds.bin_start_for(56_585_368))
-        self.assertEqual(57_000_001, vds.bin_start_for(57_035_833))
+        self.assertEqual(56_550_001, vds.bin_start_for(56_585_368, 50_000))
+        self.assertEqual(57_000_001, vds.bin_start_for(57_035_833, 50_000))
+        self.assertEqual(56_580_001, vds.bin_start_for(56_585_368, 10_000))
+        self.assertEqual(57_030_001, vds.bin_start_for(57_035_833, 10_000))
 
     def test_bin_index_and_start_agree(self):
-        for position in (1, 49_999, 50_000, 50_001, 56_585_368):
-            index = vds.bin_index_for(position)
-            self.assertEqual(vds.bin_start_for(position), index * 50_000 + 1)
+        for bin_size in (10_000, 50_000):
+            for position in (1, 49_999, 50_000, 50_001, 56_585_368):
+                index = vds.bin_index_for(position, bin_size)
+                self.assertEqual(vds.bin_start_for(position, bin_size),
+                                 index * bin_size + 1)
 
 
 class TestWdlGeneratedSampleMap(unittest.TestCase):

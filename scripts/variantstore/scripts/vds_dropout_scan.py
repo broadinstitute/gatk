@@ -117,7 +117,7 @@ except ModuleNotFoundError:  # pragma: no cover - exercised only off-cluster
     hl = None
 
 DEFAULT_SUPERPARTITION_SIZE = 4000
-DEFAULT_BIN_SIZE = 50_000
+DEFAULT_BIN_SIZE = 10_000
 # Below this many partitions the aggregation cannot use the cluster, which on an AoU-scale
 # VDS turns a nominally small interval into hours of single-threaded streaming.
 MIN_HEALTHY_PARTITIONS = 8
@@ -601,8 +601,13 @@ def aggregate_totals(matrix, mode: str,
     Expressed as one nested ``hl.agg.group_by`` inside a single ``aggregate_entries`` so
     the whole thing is a streaming pass with no shuffle: the outer grouping folds bins and
     the inner folds superpartitions, and only the finished matrix -- on the order of
-    62,000 x 134 numbers for a genome-wide 50 kb scan -- returns to the driver.  Each
+    25,000 x 134 numbers for the largest contig at the 10 kb default -- returns to the
+    driver.  Each
     partition's accumulator stays small because a partition spans few bins.
+
+    Size scales with bins, not with the genome: at the 10 kb default the largest contig
+    yields about 25,000 x 134 numbers, and a single-shot genome-wide run about 310,000 x
+    134.  Both are small against the master this runs on.
     """
     _require_hail()
     raw = matrix.aggregate_entries(
