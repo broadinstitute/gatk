@@ -31,8 +31,8 @@ Superpartition TSV (``--superpartitions``)::
     superpartition  n_samples
     83              100
 
-``n_samples`` is how many samples that superpartition contributes. Usually 4000, but the
-final superpartition of a callset holds fewer, and withdrawals thin the others -- so cells
+``n_samples`` is how many samples that superpartition contributes. Usually 4000 minus
+any withdrawals, but the final superpartition of a callset holds fewer. Therefore cells
 are converted to per-sample rates before anything is compared.
 
 Method
