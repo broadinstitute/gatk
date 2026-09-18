@@ -1,0 +1,245 @@
+#!/usr/bin/env python3
+"""Flag WDL command blocks whose heredocs will not survive Cromwell's dedent.
+
+Cromwell strips the whitespace common to every non-blank line of a `command <<< >>>`
+block. So a single line at column zero -- a wrapped string, a pasted comment -- drops that
+common prefix to nothing, nothing is stripped, and the indentation the block was written
+with reaches bash intact.
+
+    check-wdl-heredocs                    # every WDL under scripts/variantstore
+    check-wdl-heredocs FILE...            # just these
+    check-wdl-heredocs DIR                # search recursively
+    check-wdl-heredocs --strict           # fail on FRAGILE as well as BROKEN
+
+Exits non-zero when anything is BROKEN, so it works as a CI or pre-commit check. It is
+also worth running by hand while editing a WDL, which is where this failure is introduced
+and where it is cheapest to find.
+
+## What has to hold
+
+Two separate things must survive the dedent, and a heredoc feeding a whitespace-sensitive
+interpreter needs both:
+
+1. The terminator must land at column zero, or bash reads to end of file.
+2. The body must land at column zero too, or the interpreter is handed input indented by
+   whatever the dedent failed to strip.
+
+Only the first breaks loudly, with `unexpected end of file` reported at the generated
+script's last line -- nowhere near the cause, and only once the task runs in the cloud.
+`womtool validate` passes throughout, because the command block is just a string to it.
+
+The second is quieter and is what the obvious repair for the first produces: outdent the
+terminator so bash is satisfied, leave the body where it was. `bash -n` then passes, since
+the terminator really is where bash wants it, and the failure becomes
+`IndentationError: unexpected indent` at `"<stdin>", line 1`, naming neither the WDL nor
+the task.
+
+## The two conventions, and why the choice is not free
+
+Both of these reach column zero and both are fine:
+
+- indent the terminator with the rest of the block and let the dedent strip it;
+- write it at column zero and accept that the block is then never dedented at all.
+
+What fails is mixing them. But a whitespace-sensitive body has to agree with its own
+terminator, so the second convention forces that body against the left margin -- which is
+why the inline Python in this repo looks the way it does, and why a block written that way
+is reported FRAGILE rather than clean: it works today and breaks the moment a heredoc
+whose terminator is indented with the block is added next to it.
+
+## Why the interpreter list is explicit
+
+Sensitivity is decided by the command the heredoc feeds, not by the terminator's name. The
+delimiters here are `CODE`, `EOF`, `FIN` and `PYTHON_HEREDOC`, which say nothing about the
+contents, and a `cat > x.json`, a SQL statement or an R script does not care what column it
+arrives at. Flagging those would be noise, and a checker that reports correct code gets
+switched off.
+
+Like `reflow-md` and `check-us-spelling`, this script is deliberately extensionless so that
+the Dockerfile's `COPY *.py /app/` leaves it out of the Variants image and out of the
+rebuild-and-bump obligation. Do not rename it to `check_wdl_heredocs.py`.
+"""
+
+import argparse
+import collections
+import os
+import pathlib
+import re
+import sys
+
+Finding = collections.namedtuple('Finding', 'severity line message')
+
+# A heredoc whose delimiter ends the line. `<<-` is excluded by the caller: it strips
+# leading tabs, so indentation there is bash's problem rather than ours.
+HEREDOC = re.compile(r"<<\s*'?([A-Za-z_][A-Za-z0-9_]*)'?\s*$")
+
+# Interpreters that reject leading whitespace on their first statement. Add to this rather
+# than guessing from the delimiter; see the module docstring.
+#
+# Python only, deliberately. `yq` was here at first, on the reasoning that YAML is
+# whitespace sensitive. That is true but not in the way that matters here: YAML fixes the
+# root node's indentation from its first line, so a uniformly shifted mapping, sequence or
+# nested structure parses to the same value as a flush one. Only a `---` document marker or
+# a `%YAML` directive has to be at column zero. Flagging every indented YAML body would
+# therefore report correct input, and no WDL in this tree feeds `yq` a heredoc anyway.
+WHITESPACE_SENSITIVE = re.compile(r'(?:^|[|;&(\s])(python[0-9.]*)\b')
+
+# WDL `~{...}` and legacy `${...}` interpolations. Every one in this repo is either bare and
+# numeric or inside quotes, so substituting a literal keeps the body compilable either way;
+# the point is the block's structure, not the values Cromwell will interpolate.
+PLACEHOLDER = re.compile(r'[~$]\{[^{}]*\}')
+
+
+def command_blocks(text):
+    """Yield (start_line, [(line_number, line), ...]) for each `command <<< ... >>>`."""
+    blocks, current, start = [], None, None
+    for number, line in enumerate(text.splitlines(), 1):
+        if current is None:
+            if re.search(r'command\s*<<<', line):
+                current, start = [], number
+            continue
+        if line.strip() == '>>>':
+            blocks.append((start, current))
+            current = None
+            continue
+        current.append((number, line))
+    if current is not None:
+        # Unterminated. womtool would reject the file, but check what is here rather than
+        # discarding it silently -- a checker that drops input it cannot parse is worse
+        # than one that reports on a partial block.
+        blocks.append((start, current))
+    return blocks
+
+
+def dedent(lines):
+    """Cromwell's transformation: strip the whitespace common to every non-blank line."""
+    common = min(len(line) - len(line.lstrip()) for line in lines if line.strip())
+    return [line[common:] if line.strip() else line for line in lines]
+
+
+def body_of(dedented, offset, delimiter):
+    """The non-blank body lines between a heredoc's opening line and its terminator."""
+    body = []
+    for line in dedented[offset + 1:]:
+        if line.rstrip() == delimiter:
+            break
+        if line.strip():
+            body.append(line)
+    return body
+
+
+def findings(text):
+    """Every problem in `text`, as Findings. A pure function, so it is cheap to test."""
+    found = []
+    for start, block in command_blocks(text):
+        numbers = [number for number, _ in block]
+        lines = [line for _, line in block]
+        if not any(line.strip() for line in lines):
+            continue
+        dedented = dedent(lines)
+        terminators = {line.rstrip() for line in dedented}
+
+        unterminated = []
+        for offset, line in enumerate(dedented):
+            if '<<-' in line:
+                continue
+            match = HEREDOC.search(line)
+            if not match:
+                continue
+            delimiter, number = match.group(1), numbers[offset]
+            if delimiter not in terminators:
+                unterminated.append(delimiter)
+                continue  # Its body is unbounded, so judging that body means nothing.
+            if not WHITESPACE_SENSITIVE.search(line[:match.start()]):
+                continue
+            body = body_of(dedented, offset, delimiter)
+            if not body:
+                continue
+
+            indent = min(len(b) - len(b.lstrip()) for b in body)
+            if indent:
+                found.append(Finding(
+                    'BROKEN', number,
+                    f'the <<{delimiter} body is still indented by {indent} after the '
+                    f'dedent, and it feeds an interpreter that rejects that. The '
+                    f'terminator is fine, so bash runs the script and the interpreter '
+                    f'fails on its own input instead'))
+                continue  # The IndentationError below would just restate this.
+
+            source = PLACEHOLDER.sub('0', '\n'.join(body))
+            try:
+                compile(source, f'<<{delimiter}', 'exec')
+            except SyntaxError as error:
+                found.append(Finding(
+                    'BROKEN', number,
+                    f'the <<{delimiter} body does not compile: {error.msg} at body line '
+                    f'{error.lineno}: {(error.text or "").rstrip()!r}'))
+
+        if unterminated:
+            found.append(Finding(
+                'BROKEN', start,
+                f'heredoc(s) {", ".join(unterminated)} have no terminator at column zero '
+                f'after the dedent, so bash reads to end of file'))
+        else:
+            column_zero = [n for n, line in block if line.strip() and not line[0].isspace()]
+            if column_zero:
+                found.append(Finding(
+                    'FRAGILE', column_zero[0],
+                    f'line at column zero, so this block is never dedented '
+                    f'({len(column_zero)} such line(s) in it). Not broken today; breaks '
+                    f'the moment a heredoc here is written with its terminator indented'))
+    return found
+
+
+def default_root():
+    """The variantstore tree. These are the WDLs this team owns.
+
+    `run_python_unit_tests.sh` bind-mounts that tree for its docker-mode run and exports
+    this variable to say where, because there the working copy is not laid out as it is on
+    disk and the path relative to this script resolves to the container root.
+    """
+    mounted = os.environ.get('GVS_VARIANTSTORE_DIR')
+    return pathlib.Path(mounted) if mounted else pathlib.Path(__file__).resolve().parents[1]
+
+
+def wdl_files(roots):
+    paths = []
+    for root in roots:
+        path = pathlib.Path(root)
+        paths.extend(sorted(path.rglob('*.wdl')) if path.is_dir() else [path])
+    return paths
+
+
+def main(argv):
+    parser = argparse.ArgumentParser(
+        description='Flag WDL command blocks whose heredocs will not survive '
+                    "Cromwell's dedent.")
+    parser.add_argument('paths', nargs='*', help='WDL files or directories to search '
+                                                 '(default: the variantstore tree)')
+    parser.add_argument('--strict', action='store_true',
+                        help='exit non-zero on FRAGILE findings as well as BROKEN')
+    args = parser.parse_args(argv)
+
+    paths = wdl_files(args.paths or [default_root()])
+    counts = collections.Counter()
+    brace_only = 0
+    for path in paths:
+        text = path.read_text()
+        # `command { }` blocks are not parsed -- matching braces is a different job, and no
+        # brace-style block in this repo contains a heredoc. Counted so the gap is visible
+        # rather than implied by silence.
+        if re.search(r'command\s*\{', text) and not re.search(r'command\s*<<<', text):
+            brace_only += 1
+        for finding in findings(text):
+            print(f'{finding.severity}: {path}:{finding.line}: {finding.message}')
+            counts[finding.severity] += 1
+
+    print(f'\n{len(paths)} WDL file(s) checked. '
+          f'{counts["BROKEN"]} broken, {counts["FRAGILE"]} fragile.')
+    if brace_only:
+        print(f'{brace_only} file(s) use only `command {{ }}` blocks and were not checked.')
+    return 1 if counts['BROKEN'] or (args.strict and counts['FRAGILE']) else 0
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1:]))
