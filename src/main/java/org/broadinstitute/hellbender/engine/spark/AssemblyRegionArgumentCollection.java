@@ -136,7 +136,7 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      * where reads start at every base cannot flood an assembly region with tens of thousands of reads. Positions
      * whose depth is already at or below the cap are never touched, so regions of ordinary depth are unaffected.
      */
-    @Argument(fullName = MAX_EFFECTIVE_DEPTH_LONG_NAME, doc = "Randomly discard reads, within windows of read starts, so that positions deeper than this keep about this many reads per sample (never fewer, and up to roughly one read length of extra reads near window ends); positions at or below this depth keep all their reads. Applied after --" + MAX_STARTS_LONG_NAME + ". Set to 0 to disable.", optional = true)
+    @Argument(fullName = MAX_EFFECTIVE_DEPTH_LONG_NAME, doc = "Randomly discard reads, within windows of read starts, so that positions deeper than this keep about this many reads per sample (never fewer, and up to roughly one read length of extra reads near window ends); positions at or below this depth keep all their reads. Applied after --" + MAX_STARTS_LONG_NAME + ". Set to 0 to disable. Not supported by Mutect2.", optional = true)
     public int maxEffectiveDepth = 0;
 
     @Advanced

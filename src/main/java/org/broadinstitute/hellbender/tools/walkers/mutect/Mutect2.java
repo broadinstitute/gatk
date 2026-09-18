@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
@@ -308,8 +309,9 @@ public final class Mutect2 extends AssemblyRegionWalker {
     }
 
     /**
-     * mode adjustments
-     * @return
+     * Applies the mode adjustments, then rejects arguments that Mutect2 inherits but does not honor.
+     *
+     * @return the validation errors, or null if there are none
      */
     @Override
     protected String[] customCommandLineValidation() {
@@ -325,6 +327,10 @@ public final class Mutect2 extends AssemblyRegionWalker {
                     MTAC.flowMode.getNameValuePairs(),
                     M2ArgumentCollection.FLOW_M2_MODE_LONG_NAME
                     );
+        }
+        // createDownsampler() builds only a MutectDownsampler, so the depth cap would otherwise be silently ignored.
+        if (assemblyRegionArgs.maxEffectiveDepth > 0) {
+            return new String[]{"--" + AssemblyRegionArgumentCollection.MAX_EFFECTIVE_DEPTH_LONG_NAME + " is not supported by Mutect2"};
         }
         return null;
     }
