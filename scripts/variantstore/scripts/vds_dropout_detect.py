@@ -67,7 +67,7 @@ zero" would miss the Foxtrot r2 state, where the affected windows were thinned r
 than emptied, and would equally miss an incomplete repair.  Every finding therefore
 carries a ratio and a depletion score, and the report is ranked by severity.
 
-The depletion score is ``(expected - observed) / sqrt(expected)``, the Poisson-flavoured
+The depletion score is ``(expected - observed) / sqrt(expected)``, the Poisson-flavored
 size of the shortfall.  It is a heuristic ranking and evidence floor, not a calibrated
 p-value -- variant counts are overdispersed across samples, so the nominal
 interpretation would be optimistic.  It exists to stop thin, low-count bins from firing
@@ -470,7 +470,7 @@ class Report:
 
 
 def depletion_score(observed: float, expected: float) -> float:
-    """Poisson-flavoured size of a shortfall: ``(expected - observed) / sqrt(expected)``.
+    """Poisson-flavored size of a shortfall: ``(expected - observed) / sqrt(expected)``.
 
     Zero when there is no shortfall.  A heuristic ranking and evidence floor rather than
     a calibrated statistic; see the module docstring.

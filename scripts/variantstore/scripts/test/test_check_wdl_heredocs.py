@@ -160,9 +160,15 @@ class TestBodyInvariant(unittest.TestCase):
         self.assertEqual(1, len(fragile(wdl(self.HALF_FIXED))))
 
     def test_an_indented_body_is_fine_for_an_interpreter_that_does_not_care(self):
-        """A `cat` of JSON, and SQL, arrive as data. Flagging them would be noise."""
+        """A `cat` of JSON, and SQL, arrive as data. Flagging them would be noise.
+
+        `yq` is in that group too, which is not obvious: YAML is whitespace sensitive, but
+        it fixes the root node's indentation from the first line, so a uniformly shifted
+        document parses to the same value. Only `---` and `%YAML` need column zero.
+        """
         for opener, body in (('cat > x.json <<FIN', '{"a": 1}'),
                              ('cat > x.sql <<FIN', 'select 1;'),
+                             ('yq -o=json <<FIN', 'a: 1'),
                              ('R --vanilla <<FIN', 'print(1)')):
             with self.subTest(opener=opener):
                 self.assertEqual([], broken(wdl([

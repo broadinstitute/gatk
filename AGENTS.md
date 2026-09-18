@@ -438,12 +438,16 @@ non-blank line in it. So a single line at column zero -- a wrapped string, a
 pasted comment -- drops that common prefix to nothing, nothing is stripped, and
 the indentation the block was written with reaches bash intact.
 
-Two things have to survive that dedent, and a heredoc feeding a
-whitespace-sensitive interpreter needs both:
+Two things have to survive that dedent:
 
-1. the terminator must land at column zero, or bash reads to end of file;
-2. the body must land at column zero too, or the interpreter is handed input
-   indented by whatever the dedent failed to strip.
+1. the terminator must land at column zero, or bash reads to end of file. This
+   holds for every heredoc, whatever it feeds;
+2. where the heredoc feeds an interpreter that rejects leading whitespace on its
+   input -- in this repo that means inline Python -- the body must land at
+   column zero too, or that interpreter is handed input indented by whatever the
+   dedent failed to strip. A heredoc feeding `cat`, SQL, R or `yq` gets its body
+   as data and does not care what column it arrives at, so only the first rule
+   applies to those.
 
 Only the first fails loudly, and it fails badly: `unexpected end of file`
 reported at the generated script's last line, nowhere near the cause, and only
@@ -452,9 +456,11 @@ command block is just a string to it.
 
 The second is quieter, and it is what the obvious repair for the first produces
 -- outdent the terminator so bash is satisfied, leave the body alone. `bash -n`
-then passes, since the terminator really is where bash wants it, and the failure
-becomes `IndentationError: unexpected indent` at `"<stdin>", line 1`, naming
-neither the WDL nor the task.
+then passes, since the terminator really is where bash wants it, so the script
+runs and the inline Python fails on its own input instead: `IndentationError:
+unexpected indent` at `"<stdin>", line 1`. The interpreter is reading the
+heredoc on stdin and counts from the first line of it, so that report names
+neither the WDL, nor the task, nor the real line.
 
 Two conventions reach column zero and both are fine: indent the terminator with
 the rest of the block and let the dedent strip it, or write it at column zero and

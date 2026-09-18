@@ -75,7 +75,14 @@ HEREDOC = re.compile(r"<<\s*'?([A-Za-z_][A-Za-z0-9_]*)'?\s*$")
 
 # Interpreters that reject leading whitespace on their first statement. Add to this rather
 # than guessing from the delimiter; see the module docstring.
-WHITESPACE_SENSITIVE = re.compile(r'(?:^|[|;&(\s])(python[0-9.]*|yq)\b')
+#
+# Python only, deliberately. `yq` was here at first, on the reasoning that YAML is
+# whitespace sensitive. That is true but not in the way that matters here: YAML fixes the
+# root node's indentation from its first line, so a uniformly shifted mapping, sequence or
+# nested structure parses to the same value as a flush one. Only a `---` document marker or
+# a `%YAML` directive has to be at column zero. Flagging every indented YAML body would
+# therefore report correct input, and no WDL in this tree feeds `yq` a heredoc anyway.
+WHITESPACE_SENSITIVE = re.compile(r'(?:^|[|;&(\s])(python[0-9.]*)\b')
 
 # WDL `~{...}` and legacy `${...}` interpolations. Every one in this repo is either bare and
 # numeric or inside quotes, so substituting a literal keeps the body compilable either way;
