@@ -140,7 +140,7 @@ workflow GvsQuickstartIntegration {
                 submission_id = submission_id,
                 hail_version = effective_hail_version,
                 maximum_alternate_alleles = maximum_alternate_alleles,
-                # The Hail integration test turns on header loading which is currently unsupported with Parquet.
+                # The Hail integration test runs with Write API ingest (use_parquet_ingest = false).
                 use_parquet_ingest = false,
         }
 

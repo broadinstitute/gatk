@@ -49,6 +49,10 @@ workflow GvsBulkIngestGenomes {
         Int? load_data_maxretries_override
         String? billing_project_id
         Boolean load_vet_and_ref_ranges = true
+        # Controls whether VCF headers are loaded during data ingest when validate_vcf_headers is false.
+        # Note: when validate_vcf_headers is true (default), VCF headers are automatically loaded during
+        # the initial validation pass regardless of this setting. Set this to true only when bypassing
+        # validation (validate_vcf_headers=false) while still wanting headers loaded in a single direct pass.
         Boolean load_vcf_headers = false
         Boolean tighter_gcp_quotas = false
         Boolean is_wgs = true
@@ -101,6 +105,11 @@ workflow GvsBulkIngestGenomes {
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
 
+    # WDL 1.0 idiom for an undefined optional string
+    if (false) {
+        String? none_string = ""
+    }
+
     if (defined(bulk_ingest_fofn) && (defined(sample_id_column_name) || defined(vcf_files_column_name) || defined(vcf_index_files_column_name) || defined(sample_set_name))) {
         call Utils.TerminateWorkflow as MustNotSpecifyDataTableParamsWhenBulkIngestFofnSpecified {
             input:
@@ -109,7 +118,11 @@ workflow GvsBulkIngestGenomes {
         }
     }
 
-    if (!validate_vcf_headers && !load_vcf_headers && !load_vet_and_ref_ranges) {
+    # Controls-only ingest skips pre-ingest header validation because control samples are reference materials
+    # (e.g. NA12878) not subject to DRAGEN versioning or ReblockGVCF requirements.
+    Boolean effective_validate_vcf_headers = validate_vcf_headers && !samples_are_controls
+
+    if (!effective_validate_vcf_headers && !load_vcf_headers && !load_vet_and_ref_ranges) {
         call Utils.TerminateWorkflow as MustLoadAtLeastOneThing {
             input:
                 message = "GvsBulkIngestGenomes called with validate_vcf_headers, load_vcf_headers, and load_vet_and_ref_ranges all set to false",
@@ -145,17 +158,23 @@ workflow GvsBulkIngestGenomes {
             dataset_name = dataset_name,
             project_id = project_id,
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
-            load_vcf_headers = (load_vcf_headers || validate_vcf_headers),
+            load_vcf_headers = (load_vcf_headers || effective_validate_vcf_headers),
             load_vet_and_ref_ranges = load_vet_and_ref_ranges,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             use_compressed_references = use_compressed_references,
             samples_are_controls = samples_are_controls,
     }
 
+    # Separate scratch Parquet directories for headers and data passes to avoid prefix collisions.
+    # The data pass unconditionally uses /data so that recursive listing never picks up residual
+    # files from a prior header pass, even if validate_vcf_headers is false.
+    String? headers_parquet_output_gcs_dir = if (defined(parquet_output_gcs_dir) && effective_validate_vcf_headers) then select_first([parquet_output_gcs_dir]) + "/headers" else none_string
+    String? data_parquet_output_gcs_dir = if defined(parquet_output_gcs_dir) then select_first([parquet_output_gcs_dir]) + "/data" else none_string
+
     # VS-1966 / VS-1995: If validate_vcf_headers is true, run an initial headers-only ingest pass,
     # validate the ingested headers, and generate a report. If validation fails, the workflow halts
     # fast before any expensive vet/ref data ingest.
-    if (validate_vcf_headers) {
+    if (effective_validate_vcf_headers) {
         call ImportGenomes.GvsImportGenomes as ImportHeaders {
             input:
                 go = AssignIds.done,
@@ -184,7 +203,7 @@ workflow GvsBulkIngestGenomes {
                 load_vcf_headers = true,
                 is_rate_limited_beta_customer = tighter_gcp_quotas,
                 use_parquet_ingest = use_parquet_ingest,
-                parquet_output_gcs_dir = parquet_output_gcs_dir,
+                parquet_output_gcs_dir = headers_parquet_output_gcs_dir,
                 is_wgs = is_wgs,
         }
 
@@ -193,6 +212,7 @@ workflow GvsBulkIngestGenomes {
                 go = ImportHeaders.done,
                 dataset_name = dataset_name,
                 project_id = project_id,
+                sample_names_file = SplitBulkImportFofn.sample_name_fofn,
                 expected_dragen_version = expected_dragen_version,
                 require_reblocking = require_reblocking,
                 fail_on_validation_errors = fail_on_validation_errors,
@@ -202,47 +222,15 @@ workflow GvsBulkIngestGenomes {
         }
     }
 
-    # If validate_vcf_headers is true and load_vet_and_ref_ranges is true, proceed to data ingest
-    # gated on ValidateHeaders.done.
-    if (validate_vcf_headers && load_vet_and_ref_ranges) {
+    # Data ingest pass:
+    # - If validate_vcf_headers is true, gated on ValidateHeaders.done to load vet/ref ranges. If
+    #   load_vet_and_ref_ranges is false, this is intentionally skipped (headers-only pass).
+    # - If validate_vcf_headers is false, runs directly gated on AssignIds.done (direct import).
+    Boolean should_run_data_import = if (effective_validate_vcf_headers) then load_vet_and_ref_ranges else (load_vet_and_ref_ranges || load_vcf_headers)
+    if (should_run_data_import) {
         call ImportGenomes.GvsImportGenomes as ImportGenomesData {
             input:
-                go = select_first([ValidateHeaders.done]),
-                git_branch_or_tag = git_branch_or_tag,
-                git_hash = effective_git_hash,
-                dataset_name = dataset_name,
-                project_id = project_id,
-                external_sample_names = SplitBulkImportFofn.sample_name_fofn,
-                num_samples = SplitBulkImportFofn.sample_num,
-                input_vcfs = SplitBulkImportFofn.vcf_file_name_fofn,
-                input_vcf_indexes = SplitBulkImportFofn.vcf_index_file_name_fofn,
-                reference_name = reference_name,
-                interval_list = interval_list,
-                load_data_scatter_width = load_data_scatter_width,
-                load_data_maxretries_override = load_data_maxretries_override,
-                load_data_preemptible_override = load_data_preemptible_override,
-                basic_docker = effective_basic_docker,
-                cloud_sdk_docker = effective_cloud_sdk_docker,
-                variants_docker = effective_variants_docker,
-                gatk_docker = effective_gatk_docker,
-                load_data_gatk_override = gatk_override,
-                drop_state = drop_state,
-                billing_project_id = billing_project_id,
-                use_compressed_references = use_compressed_references,
-                load_vet_and_ref_ranges = true,
-                load_vcf_headers = false,
-                is_rate_limited_beta_customer = tighter_gcp_quotas,
-                use_parquet_ingest = use_parquet_ingest,
-                parquet_output_gcs_dir = parquet_output_gcs_dir,
-                is_wgs = is_wgs,
-        }
-    }
-
-    # If validate_vcf_headers is false, run ImportGenomes directly without pre-ingest validation.
-    if (!validate_vcf_headers) {
-        call ImportGenomes.GvsImportGenomes as ImportGenomesDirect {
-            input:
-                go = AssignIds.done,
+                go = select_first([ValidateHeaders.done, AssignIds.done]),
                 git_branch_or_tag = git_branch_or_tag,
                 git_hash = effective_git_hash,
                 dataset_name = dataset_name,
@@ -265,10 +253,10 @@ workflow GvsBulkIngestGenomes {
                 billing_project_id = billing_project_id,
                 use_compressed_references = use_compressed_references,
                 load_vet_and_ref_ranges = load_vet_and_ref_ranges,
-                load_vcf_headers = load_vcf_headers,
+                load_vcf_headers = if (!effective_validate_vcf_headers) then load_vcf_headers else false,
                 is_rate_limited_beta_customer = tighter_gcp_quotas,
                 use_parquet_ingest = use_parquet_ingest,
-                parquet_output_gcs_dir = parquet_output_gcs_dir,
+                parquet_output_gcs_dir = data_parquet_output_gcs_dir,
                 is_wgs = is_wgs,
         }
     }
@@ -276,11 +264,7 @@ workflow GvsBulkIngestGenomes {
     output {
         Boolean done = true
         String recorded_git_hash = effective_git_hash
-        Boolean used_tighter_gcp_quotas = select_first([
-            ImportGenomesData.used_tighter_gcp_quotas,
-            ImportGenomesDirect.used_tighter_gcp_quotas,
-            ImportHeaders.used_tighter_gcp_quotas
-        ])
+        Boolean used_tighter_gcp_quotas = tighter_gcp_quotas
         # Optional because the ValidateHeaders call is conditional (validate_vcf_headers): Cromwell
         # surfaces an un-run conditional call's outputs as None, so consumers must treat these as
         # optional (defined()/select_first). This is the same pattern GvsValidateVDS uses.
