@@ -379,11 +379,45 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
          * site is complete and can be finalized and freed.
          */
         int pendingMembers = 0;
+        /**
+         * Member pass-1 indices sorted ascending, with {@link #memberRanks} holding each member's position in
+         * the cluster's item list. Single-pass collapse picks a sample's representative genotype with
+         * {@code Stream.max}, which keeps the FIRST maximal element in cluster item order, and that order is
+         * not traversal order once clusters have merged. The fold therefore breaks comparator ties by this
+         * rank rather than by arrival order. Null for passthrough sites (single member).
+         */
+        private int[] sortedMemberIndices;
+        private int[] memberRanks;
 
         PlannedSite(final SVCallRecord siteRecord, final int siteSeq, final boolean passthrough) {
             this.siteRecord = siteRecord;
             this.siteSeq = siteSeq;
             this.passthrough = passthrough;
+        }
+
+        /** Records the cluster's member pass-1 indices in cluster item order. */
+        void setMemberOrder(final int[] membersInClusterOrder) {
+            final Integer[] order = new Integer[membersInClusterOrder.length];
+            for (int i = 0; i < order.length; i++) {
+                order[i] = i;
+            }
+            Arrays.sort(order, Comparator.comparingInt(i -> membersInClusterOrder[i]));
+            sortedMemberIndices = new int[order.length];
+            memberRanks = new int[order.length];
+            for (int k = 0; k < order.length; k++) {
+                sortedMemberIndices[k] = membersInClusterOrder[order[k]];
+                memberRanks[k] = order[k];
+            }
+        }
+
+        /** Position of the given member (pass-1 index) in the cluster's item list; 0 for passthrough sites. */
+        int rankOf(final int pass1Index) {
+            if (sortedMemberIndices == null) {
+                return 0;
+            }
+            final int k = Arrays.binarySearch(sortedMemberIndices, pass1Index);
+            Utils.validate(k >= 0, () -> "Record " + pass1Index + " is not a member of site " + siteSeq);
+            return memberRanks[k];
         }
     }
 
@@ -410,10 +444,12 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
         private final int copyNumberQuality;  // getAttributeAsInt(CNQ, 0)
         private final int copyNumberDistance; // |ECN - CN(default 0)|
         private final boolean isDel;          // CN(default ECN) < ECN
+        /** Source member's position in its cluster's item list; tie-breaker matching single-pass order. */
+        final int memberRank;
 
         private FoldedGenotype(final byte[] payload, final int nonRefCalledCount, final int calledCount,
                                final int quality, final int copyNumberQuality,
-                               final int copyNumberDistance, final boolean isDel) {
+                               final int copyNumberDistance, final boolean isDel, final int memberRank) {
             this.payload = payload;
             this.nonRefCalledCount = nonRefCalledCount;
             this.calledCount = calledCount;
@@ -421,9 +457,14 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
             this.copyNumberQuality = copyNumberQuality;
             this.copyNumberDistance = copyNumberDistance;
             this.isDel = isDel;
+            this.memberRank = memberRank;
         }
 
         static FoldedGenotype of(final Genotype g) {
+            return of(g, 0);
+        }
+
+        static FoldedGenotype of(final Genotype g, final int memberRank) {
             int nonRefCalled = 0;
             int called = 0;
             for (final Allele a : g.getAlleles()) {
@@ -440,7 +481,7 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
             final int cnForDistance = VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.COPY_NUMBER_FORMAT, 0);
             final int cnForDel = VariantContextGetters.getAttributeAsInt(g, GATKSVVCFConstants.COPY_NUMBER_FORMAT, ecn);
             return new FoldedGenotype(encode(g), nonRefCalled, called, quality, cnq,
-                    Math.abs(ecn - cnForDistance), cnForDel < ecn);
+                    Math.abs(ecn - cnForDistance), cnForDel < ecn, memberRank);
         }
 
         Genotype decode() {
@@ -908,8 +949,10 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
         final PlannedSite site = new PlannedSite(siteRecord, siteSeq, false);
         plannedSites.add(site);
         int members = 0;
+        final int[] membersInClusterOrder = new int[cluster.getItems().size()];
         for (final SVCallRecord item : cluster.getItems()) {
             final int p1Idx = ((IndexedSVCallRecord) item).getPass1Index();
+            membersInClusterOrder[members] = p1Idx;
             {
                 // Register this site with the record's routing slot.
                 final int[] existing = routing.get(p1Idx);
@@ -925,6 +968,7 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
             }
         }
         site.pendingMembers = members;
+        site.setMemberOrder(membersInClusterOrder);
         return siteRecord;
     }
 
@@ -1010,15 +1054,22 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
                     // Use the IDENTICAL per-record transform as apply() so that sitesOnly
                     // (zero genotypes) and fastMode (carrier-only) are both honoured in pass 2.
                     final SVCallRecord clusterRec = toClusterRecord(vc);
+                    final int memberRank = site.rankOf(p2Idx);
                     for (final Genotype g : clusterRec.getGenotypes()) {
                         final String sampleName = g.getSampleName();
-                        final FoldedGenotype incoming = FoldedGenotype.of(g);
+                        final FoldedGenotype incoming = FoldedGenotype.of(g, memberRank);
                         final FoldedGenotype current = site.bestGenotypes.get(sampleName);
-                        // Mirror getRepresentativeGenotype(Arrays.asList(current, g)): Stream.max keeps the
-                        // first maximal element, so the incoming genotype replaces the incumbent only when it
-                        // strictly wins the comparator chain (ties keep the incumbent).
-                        if (current == null || FoldedGenotype.compare(incoming, current) > 0) {
+                        // Mirror getRepresentativeGenotype over the cluster's genotypes in cluster item order:
+                        // Stream.max keeps the FIRST maximal element, so among comparator ties the member
+                        // earliest in the cluster's item list wins. Members arrive here in traversal order,
+                        // which differs from item order after cluster merges, so ties are settled by rank.
+                        if (current == null) {
                             site.bestGenotypes.put(sampleName, incoming);
+                        } else {
+                            final int c = FoldedGenotype.compare(incoming, current);
+                            if (c > 0 || (c == 0 && incoming.memberRank < current.memberRank)) {
+                                site.bestGenotypes.put(sampleName, incoming);
+                            }
                         }
                     }
                     // Finalize the instant this site's last member is folded, spilling the whole
