@@ -977,9 +977,14 @@ tasks.register('gatkValidateScriptsWdl') {
 
     doLast {
         // Run the womtool validator on all WDL files in the 'scripts' directory
-        final File wdlFolder = new File(buildDir, "scripts")
+        final File wdlFolder = new File(rootDir, "scripts")
         def wdlFiles = fileTree(dir: wdlFolder).filter {
             f -> f.getAbsolutePath().endsWith(".wdl")
+        }
+        if (wdlFiles.isEmpty()) {
+            // fileTree() on a missing or empty directory is silently empty, which would let this task pass
+            // without validating anything
+            throw new GradleException("No WDL files found under $wdlFolder; nothing was validated")
         }
         final womtoolLocation = System.getenv('WOMTOOL_JAR')
         wdlFiles.any() { wdlFile ->
