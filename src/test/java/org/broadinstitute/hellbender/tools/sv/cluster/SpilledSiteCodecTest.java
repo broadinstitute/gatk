@@ -45,8 +45,7 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
         final SVClusterWalker.SpilledSiteCodec codec = new SVClusterWalker.SpilledSiteCodec(DICT);
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         codec.setOutputStream(baos);
-        codec.encode(new SVClusterWalker.SpilledSite(siteSeq,
-                SVClusterWalker.SpilledSiteCodec.encodeRecord(record)));
+        codec.encode(spilledSite(siteSeq, record));
 
         final SVClusterWalker.SpilledSiteCodec decodeCodec = new SVClusterWalker.SpilledSiteCodec(DICT);
         decodeCodec.setInputStream(new ByteArrayInputStream(baos.toByteArray()));
@@ -54,8 +53,17 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
         if (back == null) {
             return null;
         }
+        // Output sort keys must survive the spill framing.
+        Assert.assertEquals(back.contigIndex, DICT.getSequenceIndex(record.getContigA()), "contigIndex mismatch");
+        Assert.assertEquals(back.start, record.getPositionA(), "start mismatch");
         return new DecodedSite(back.siteSeq,
                 SVClusterWalker.SpilledSiteCodec.decodeRecord(back.payload, DICT));
+    }
+
+    /** Builds a {@link SVClusterWalker.SpilledSite} for a record the way {@code spillCompletedSite} does. */
+    private static SVClusterWalker.SpilledSite spilledSite(final int siteSeq, final SVCallRecord record) {
+        return new SVClusterWalker.SpilledSite(siteSeq, DICT.getSequenceIndex(record.getContigA()),
+                record.getPositionA(), SVClusterWalker.SpilledSiteCodec.encodeRecord(record));
     }
 
     // -------------------------------------------------------------------------
@@ -383,8 +391,7 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
         final SVClusterWalker.SpilledSiteCodec encoder = new SVClusterWalker.SpilledSiteCodec(DICT);
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         encoder.setOutputStream(baos);
-        encoder.encode(new SVClusterWalker.SpilledSite(0,
-                SVClusterWalker.SpilledSiteCodec.encodeRecord(record)));
+        encoder.encode(spilledSite(0, record));
 
         final SVClusterWalker.SpilledSiteCodec decoder = new SVClusterWalker.SpilledSiteCodec(DICT);
         decoder.setInputStream(new ByteArrayInputStream(baos.toByteArray()));
@@ -426,10 +433,8 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
         final SVClusterWalker.SpilledSiteCodec encCodec = new SVClusterWalker.SpilledSiteCodec(DICT);
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         encCodec.setOutputStream(baos);
-        encCodec.encode(new SVClusterWalker.SpilledSite(10,
-                SVClusterWalker.SpilledSiteCodec.encodeRecord(rec1)));
-        encCodec.encode(new SVClusterWalker.SpilledSite(20,
-                SVClusterWalker.SpilledSiteCodec.encodeRecord(rec2)));
+        encCodec.encode(spilledSite(10, rec1));
+        encCodec.encode(spilledSite(20, rec2));
 
         final SVClusterWalker.SpilledSiteCodec decCodec = new SVClusterWalker.SpilledSiteCodec(DICT);
         decCodec.setInputStream(new ByteArrayInputStream(baos.toByteArray()));
@@ -437,6 +442,8 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
         final SVClusterWalker.SpilledSite back1 = decCodec.decode();
         Assert.assertNotNull(back1);
         Assert.assertEquals(back1.siteSeq, 10);
+        Assert.assertEquals(back1.contigIndex, DICT.getSequenceIndex("chr1"));
+        Assert.assertEquals(back1.start, 100);
         final SVCallRecord back1Rec = SVClusterWalker.SpilledSiteCodec.decodeRecord(back1.payload, DICT);
         Assert.assertEquals(back1Rec.getId(), "rec1");
         Assert.assertEquals(back1Rec.getGenotypes().get(0).getGQ(), 10);
@@ -453,5 +460,56 @@ public class SpilledSiteCodecTest extends GATKBaseTest {
 
         // Third decode should be null (EOF)
         Assert.assertNull(decCodec.decode(), "Third decode should be null at EOF");
+    }
+
+    // -------------------------------------------------------------------------
+    // Output ordering: the completed-site buffer must reproduce the single-pass output order, i.e.
+    // contig (dictionary index), then start, then pass-1 emission order (siteSeq) as a stable tiebreak.
+    // -------------------------------------------------------------------------
+    @Test
+    public void testOutputOrderSortsByContigThenStartThenSiteSeq() {
+        final byte[] payload = new byte[0];
+        final int chr1 = DICT.getSequenceIndex("chr1");
+        final int chr2 = DICT.getSequenceIndex("chr2");
+        final SVClusterWalker.SpilledSite chr2Early = new SVClusterWalker.SpilledSite(0, chr2, 10, payload);
+        final SVClusterWalker.SpilledSite chr1LateFirstEmitted = new SVClusterWalker.SpilledSite(1, chr1, 500, payload);
+        final SVClusterWalker.SpilledSite chr1LateSecondEmitted = new SVClusterWalker.SpilledSite(2, chr1, 500, payload);
+        final SVClusterWalker.SpilledSite chr1Early = new SVClusterWalker.SpilledSite(3, chr1, 100, payload);
+
+        final List<SVClusterWalker.SpilledSite> sites = new ArrayList<>(Arrays.asList(
+                chr2Early, chr1LateSecondEmitted, chr1Early, chr1LateFirstEmitted));
+        sites.sort(SVClusterWalker.SpilledSite.OUTPUT_ORDER);
+
+        Assert.assertEquals(sites, Arrays.asList(chr1Early, chr1LateFirstEmitted, chr1LateSecondEmitted, chr2Early));
+    }
+
+    // -------------------------------------------------------------------------
+    // encodeRecord(record, id): the payload carries the assigned output ID, not the record's own ID,
+    // and everything else round-trips unchanged.
+    // -------------------------------------------------------------------------
+    @Test
+    public void testEncodeRecordWithIdOverride() {
+        final Genotype g = new GenotypeBuilder("s1",
+                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL))
+                .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make();
+        final SVCallRecord record = new SVCallRecord(
+                "original_id", "chr1", 100, Boolean.TRUE, "chr1", 1100, Boolean.FALSE,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, Collections.emptyList(),
+                1001, Collections.emptyList(), Collections.singletonList(GATKSVVCFConstants.DEPTH_ALGORITHM),
+                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                Collections.singletonList(g),
+                Collections.emptyMap(), Collections.emptySet(), null, DICT);
+
+        final SVCallRecord back = SVClusterWalker.SpilledSiteCodec.decodeRecord(
+                SVClusterWalker.SpilledSiteCodec.encodeRecord(record, "prefix_0000002a"), DICT);
+
+        Assert.assertEquals(back.getId(), "prefix_0000002a");
+        Assert.assertEquals(back.getContigA(), record.getContigA());
+        Assert.assertEquals(back.getPositionA(), record.getPositionA());
+        Assert.assertEquals(back.getPositionB(), record.getPositionB());
+        Assert.assertEquals(back.getType(), record.getType());
+        Assert.assertEquals(back.getGenotypes().size(), 1);
+        Assert.assertEquals(back.getGenotypes().get(0).getSampleName(), "s1");
+        Assert.assertEquals(back.getGenotypes().get(0).getAlleles(), g.getAlleles());
     }
 }

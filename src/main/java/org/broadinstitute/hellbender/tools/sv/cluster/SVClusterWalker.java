@@ -71,15 +71,6 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
     public static final String LOW_MEM_LONG_NAME = "low-mem";
 
     /**
-     * Genotype-object budget bounding the in-RAM window of genotype-heavy sort buffers in low-mem mode.
-     * A record carries one genotype per sample, so at very large sample counts a flat
-     * {@code --max-records-in-ram} window can exhaust the heap; bound by genotype VOLUME instead.
-     */
-    static final long LOW_MEM_GENOTYPE_BUFFER_BUDGET = 12_000_000L;
-    /** Floor on the in-RAM record count so the number of spill files stays manageable. */
-    static final int LOW_MEM_SORT_BUFFER_FLOOR = 50;
-
-    /**
      * The enum Cluster algorithm.
      */
     public enum CLUSTER_ALGORITHM {
@@ -261,10 +252,14 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
     private int pass1RecordIdx = 0;
 
     /**
-     * Disk-backed, siteSeq-ordered buffer of completed sites' finalized records during pass 2. Created in
-     * {@link #runLowMemFinalize} and drained (then cleaned up) there. Holds at most
+     * Disk-backed buffer of completed sites' finalized (sparse, carrier-only) records during pass 2, ordered
+     * by final VCF output position ({@link SpilledSite#OUTPUT_ORDER}). Created in {@link #runLowMemFinalize}
+     * and drained straight into the VCF writer (then cleaned up) there. Holds at most
      * {@code --max-records-in-ram} sites in memory and spills the rest to {@code tmpDir}, so the
      * completed-site memory is bounded regardless of head-of-line ordering.
+     *
+     * <p>Because this buffer is already in output order, low-mem mode never touches the dense
+     * {@link #sortingBuffer}: each site is expanded to all samples exactly once, at write time.</p>
      */
     private SortingCollection<SpilledSite> completedSiteBuffer;
 
@@ -683,24 +678,22 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
         header = createHeader();
         writer.writeHeader(header);
         currentContig = null;
-        final int sortBufferMaxInRam = lowMem ? genotypeHeavyMaxRecordsInRam() : maxRecordsInRam;
-        if (lowMem) {
-            logger.info(String.format(
-                    "Low-mem output sort buffer: %d records in RAM (%d samples, --max-records-in-ram %d)",
-                    sortBufferMaxInRam, samples.size(), maxRecordsInRam));
-        }
-        sortingBuffer = SortingCollection.newInstance(
+        // Low-mem mode writes finalized sites directly from the output-ordered completed-site buffer (see
+        // runLowMemFinalize) and never buffers dense all-sample records, so it needs no output sort buffer.
+        sortingBuffer = lowMem ? null : SortingCollection.newInstance(
                 VariantContext.class,
                 new VCFRecordCodec(header, true),
                 header.getVCFRecordComparator(),
-                sortBufferMaxInRam,
+                maxRecordsInRam,
                 tmpDir.toPath());
     }
 
     @Override
     public Object onTraversalSuccess() {
-        for (final VariantContext variant : sortingBuffer) {
-            writer.add(variant);
+        if (sortingBuffer != null) {
+            for (final VariantContext variant : sortingBuffer) {
+                writer.add(variant);
+            }
         }
         return super.onTraversalSuccess();
     }
@@ -945,9 +938,11 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
     /**
      * Pass 2 + finalization for low-memory mode. Re-reads all input VCFs in the same coordinate-merged
      * order as pass 1 (via {@link MultiVariantDataSource}), folding each record's genotypes into the
-     * accumulator of the site(s) it belongs to. Sites are written in pass-1 write order (so output IDs
-     * match the single-pass baseline) via a write cursor that flushes and nulls each PlannedSite entry
-     * as soon as it and all earlier sites are complete.
+     * accumulator of the site(s) it belongs to. Each site is finalized the moment its last member is
+     * folded, stamped with its output ID (derived from pass-1 emission order, so IDs match the
+     * single-pass baseline), and spilled sparse to {@link #completedSiteBuffer}. The buffer is ordered by
+     * final output position, so the drain expands each site to all samples once and hands it straight
+     * to the VCF writer; no dense all-sample record is ever sorted, spilled, or re-encoded.
      *
      * <p>Memory-bounding behaviour: strippedRecordToPass1Index is cleared before pass 2 begins, freeing
      * all O(N) stripped records. The routing table is also freed (nulled) at that point. During pass 2
@@ -974,7 +969,7 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
         completedSiteBuffer = SortingCollection.newInstance(
                 SpilledSite.class,
                 new SpilledSiteCodec(dictionary),
-                Comparator.comparingInt(s -> s.siteSeq),
+                SpilledSite.OUTPUT_ORDER,
                 maxRecordsInRam,
                 tmpDir.toPath());
         try (final MultiVariantDataSource ds = new MultiVariantDataSource(getDrivingVariantsFeatureInputs(), 0)) {
@@ -1037,15 +1032,18 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
                 plannedSites.set(i, null);
             }
         }
-        // Drain the completed-site buffer in siteSeq order (== single-pass write order, so output IDs
-        // and same-coordinate tie-break ordering match the baseline) and write each finalized record.
-        // The buffer holds only --max-records-in-ram sites in RAM; the rest are on disk.
+        // Drain the completed-site buffer in final output order (contig, start, then pass-1 emission order,
+        // which reproduces the single-pass stable sort exactly) and write each finalized record. Sites
+        // already carry their output IDs, so each is expanded to all samples once, here, and handed
+        // straight to the writer. The buffer holds only --max-records-in-ram sparse sites in RAM; the rest
+        // are on disk, and the merge peeks one sparse site per spill file rather than one dense record.
         completedSiteBuffer.doneAdding();
         for (final SpilledSite spilled : completedSiteBuffer) {
-            // The spilled record is the finalized site (site fields + genotypes), reconstructed by the
-            // codec; write it directly. No plannedSites lookup is needed, so site records were freed at
-            // completion time rather than held to O(M).
-            write(SpilledSiteCodec.decodeRecord(spilled.payload, dictionary));
+            final SVCallRecord site = SpilledSiteCodec.decodeRecord(spilled.payload, dictionary);
+            writer.add(buildVariantContext(site, site.getId()));
+        }
+        if (variantPrefix != null) {
+            numVariantsBuilt += plannedSites.size();
         }
         completedSiteBuffer.cleanup();
         completedSiteBuffer = null;
@@ -1054,40 +1052,22 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
     }
 
     /**
-     * In-RAM record count for genotype-heavy sort buffers in low-mem mode. Each output record carries
-     * one genotype per sample, so a flat {@code --max-records-in-ram} window scales with sample count
-     * and can exhaust the heap at large cohorts; bound the window by genotype VOLUME instead. The
-     * external-sort OUTPUT is invariant to the spill count, so this stays byte-identical; at normal /
-     * test sample counts the budget exceeds {@code --max-records-in-ram} and the count is unchanged.
-     */
-    private int genotypeHeavyMaxRecordsInRam() {
-        return genotypeHeavyMaxRecordsInRam(maxRecordsInRam, samples == null ? 0 : samples.size());
-    }
-
-    /**
-     * Pure arithmetic for {@link #genotypeHeavyMaxRecordsInRam()}, separated for unit testing. With no
-     * samples, returns {@code maxRecordsInRam} unchanged; otherwise bounds the in-RAM record count so the
-     * genotype VOLUME (records &times; samples) stays within {@link #LOW_MEM_GENOTYPE_BUFFER_BUDGET}, never
-     * below {@link #LOW_MEM_SORT_BUFFER_FLOOR} and never above {@code maxRecordsInRam}.
-     */
-    static int genotypeHeavyMaxRecordsInRam(final int maxRecordsInRam, final int numSamples) {
-        if (numSamples <= 0) {
-            return maxRecordsInRam;
-        }
-        final long budgeted = LOW_MEM_GENOTYPE_BUFFER_BUDGET / numSamples;
-        return (int) Math.min(maxRecordsInRam, Math.max(LOW_MEM_SORT_BUFFER_FLOOR, budgeted));
-    }
-
-    /**
-     * Finalizes a completed planned site and appends the whole finalized record (site fields + genotypes)
-     * to the bounded, siteSeq-ordered {@link #completedSiteBuffer} (which spills to disk past
-     * {@code --max-records-in-ram}). The caller then nulls the {@link #plannedSites} entry, so neither the
-     * accumulator nor the site record is retained in RAM after completion (the drain reconstructs the
-     * record from the buffer).
+     * Finalizes a completed planned site, assigns its output variant ID, and appends the whole finalized
+     * record (site fields + sparse genotypes) to the bounded, output-ordered {@link #completedSiteBuffer}
+     * (which spills to disk past {@code --max-records-in-ram}). The caller then nulls the
+     * {@link #plannedSites} entry, so neither the accumulator nor the site record is retained in RAM after
+     * completion (the drain reconstructs the record from the buffer).
+     *
+     * <p>Output IDs are assigned from {@code siteSeq} (pass-1 emission order). Single-pass mode assigns
+     * them from a counter incremented once per {@link #write} call, and it writes each emitted cluster
+     * exactly once in emission order, so the two numberings coincide.</p>
      */
     private void spillCompletedSite(final PlannedSite site) {
+        final SVCallRecord finalized = finalizePlannedSite(site);
+        final String outputId = variantPrefix == null ? finalized.getId() : formatOutputVariantId(site.siteSeq);
         completedSiteBuffer.add(new SpilledSite(site.siteSeq,
-                SpilledSiteCodec.encodeRecord(finalizePlannedSite(site))));
+                dictionary.getSequenceIndex(finalized.getContigA()), finalized.getPositionA(),
+                SpilledSiteCodec.encodeRecord(finalized, outputId)));
         lowMemCompletedSites++;
     }
 
@@ -1190,16 +1170,31 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
     }
 
     protected void write(final SVCallRecord call) {
-        sortingBuffer.add(buildVariantContext(call));
+        Utils.validate(sortingBuffer != null, "write() is not used in low-mem mode; sites are written by runLowMemFinalize");
+        sortingBuffer.add(buildVariantContext(call, nextOutputVariantId(call)));
     }
 
-    protected VariantContext buildVariantContext(final SVCallRecord call) {
+    /**
+     * Output ID for the next record written in single-pass mode: the record's own ID, or, when
+     * {@code --variant-prefix} is set, the prefix plus a zero-padded hex counter in write order.
+     */
+    private String nextOutputVariantId(final SVCallRecord call) {
+        return variantPrefix == null ? call.getId() : formatOutputVariantId(numVariantsBuilt++);
+    }
+
+    /** Formats a {@code --variant-prefix} output ID for the given write-order index. */
+    private String formatOutputVariantId(final int index) {
+        return String.format("%s%08x", variantPrefix, index);
+    }
+
+    /**
+     * Expands a (possibly sparse) record to all samples, filling default genotypes for absent samples, and
+     * builds the output {@link VariantContext} under the given output ID.
+     */
+    protected VariantContext buildVariantContext(final SVCallRecord call, final String newId) {
         // Add genotypes for missing samples
         final GenotypesContext filledGenotypes = SVCallRecordUtils.populateGenotypesForMissingSamplesWithAlleles(
                 call, samples, !defaultNoCall, ploidyTable, header);
-
-        // Assign new variant ID
-        final String newId = variantPrefix == null ? call.getId() : String.format("%s%08x", variantPrefix, numVariantsBuilt++);
 
         // Build new variant
         final SVCallRecord finalCall = new SVCallRecord(newId, call.getContigA(), call.getPositionA(), call.getStrandA(),
@@ -1214,15 +1209,32 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
     }
 
     /**
-     * A completed pass-2 site (finalized: site fields + genotypes), tagged with its siteSeq for ordered
-     * draining. Package-private (not private) so {@code SpilledSiteCodec} round-trips can be unit-tested.
+     * A completed pass-2 site (finalized: output ID, site fields, sparse genotypes), tagged with its output
+     * sort keys. Package-private (not private) so {@code SpilledSiteCodec} round-trips can be unit-tested.
      */
     static final class SpilledSite {
+        /**
+         * Final VCF output order: contig (sequence dictionary index), then start, then pass-1 emission order
+         * ({@link #siteSeq}). Single-pass mode sorts written records by contig and start only, with a stable
+         * sort over write order (in-RAM {@code Arrays.sort} is stable and the spill-file merge breaks ties by
+         * file sequence), and write order equals emission order, so this reproduces its output order exactly.
+         */
+        static final Comparator<SpilledSite> OUTPUT_ORDER = Comparator.<SpilledSite>comparingInt(s -> s.contigIndex)
+                .thenComparingInt(s -> s.start)
+                .thenComparingInt(s -> s.siteSeq);
+
+        /** Pass-1 emission order; also the source of the {@code --variant-prefix} output ID. */
         final int siteSeq;
+        /** Sequence dictionary index of the record's first contig. */
+        final int contigIndex;
+        /** Record start (position A). */
+        final int start;
         final byte[] payload;
 
-        SpilledSite(final int siteSeq, final byte[] payload) {
+        SpilledSite(final int siteSeq, final int contigIndex, final int start, final byte[] payload) {
             this.siteSeq = siteSeq;
+            this.contigIndex = contigIndex;
+            this.start = start;
             this.payload = payload;
         }
     }
@@ -1263,8 +1275,10 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
         @Override
         public void encode(final SpilledSite site) {
             try {
-                // siteSeq + length-prefixed payload framing on the shared spill stream.
+                // Sort keys + length-prefixed payload framing on the shared spill stream.
                 out.writeInt(site.siteSeq);
+                out.writeInt(site.contigIndex);
+                out.writeInt(site.start);
                 out.writeInt(site.payload.length);
                 out.write(site.payload);
                 out.flush();
@@ -1279,10 +1293,15 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
          * graphs (each record carries up to one genotype per sample).
          */
         static byte[] encodeRecord(final SVCallRecord r) {
+            return encodeRecord(r, r.getId());
+        }
+
+        /** As {@link #encodeRecord(SVCallRecord)}, but stores {@code id} in place of the record's own ID. */
+        static byte[] encodeRecord(final SVCallRecord r, final String id) {
             try {
                 final ByteArrayOutputStream bos = new ByteArrayOutputStream();
                 final DataOutputStream os = new DataOutputStream(bos);
-                os.writeUTF(r.getId());
+                os.writeUTF(id);
                 os.writeUTF(r.getContigA());
                 os.writeInt(r.getPositionA());
                 writeNullableBoolean(os, r.getStrandA());
@@ -1343,10 +1362,12 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
                 throw new UncheckedIOException("Failed to decode spilled site", e);
             }
             try {
+                final int contigIndex = in.readInt();
+                final int start = in.readInt();
                 final int len = in.readInt();
                 final byte[] payload = new byte[len];
                 in.readFully(payload);
-                return new SpilledSite(siteSeq, payload);
+                return new SpilledSite(siteSeq, contigIndex, start, payload);
             } catch (final IOException e) {
                 throw new UncheckedIOException("Failed to decode spilled site", e);
             }

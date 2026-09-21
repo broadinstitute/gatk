@@ -47,8 +47,8 @@ public class SpilledSiteCodecComplexTest extends GATKBaseTest {
         final SVClusterWalker.SpilledSiteCodec codec = new SVClusterWalker.SpilledSiteCodec(DICT);
         final ByteArrayOutputStream baos = new ByteArrayOutputStream();
         codec.setOutputStream(baos);
-        codec.encode(new SVClusterWalker.SpilledSite(siteSeq,
-                SVClusterWalker.SpilledSiteCodec.encodeRecord(record)));
+        codec.encode(new SVClusterWalker.SpilledSite(siteSeq, DICT.getSequenceIndex(record.getContigA()),
+                record.getPositionA(), SVClusterWalker.SpilledSiteCodec.encodeRecord(record)));
 
         final SVClusterWalker.SpilledSiteCodec decodeCodec = new SVClusterWalker.SpilledSiteCodec(DICT);
         decodeCodec.setInputStream(new ByteArrayInputStream(baos.toByteArray()));
@@ -56,6 +56,8 @@ public class SpilledSiteCodecComplexTest extends GATKBaseTest {
         if (back == null) {
             return null;
         }
+        Assert.assertEquals(back.contigIndex, DICT.getSequenceIndex(record.getContigA()), "contigIndex mismatch");
+        Assert.assertEquals(back.start, record.getPositionA(), "start mismatch");
         return new DecodedSite(back.siteSeq,
                 SVClusterWalker.SpilledSiteCodec.decodeRecord(back.payload, DICT));
     }
