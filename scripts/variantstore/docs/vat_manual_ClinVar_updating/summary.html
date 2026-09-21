@@ -1,0 +1,190 @@
+<title>ClinVar 2025-07 Rebuild</title>
+<style>
+  :root{
+    --bg:#fbfbfa; --panel:#fff; --ink:#14181d; --ink-2:#414a55; --ink-3:#6b7684;
+    --rule:#e2e5e9; --rule-2:#eef0f3; --accent:#0f6e6a; --accent-soft:#e6f2f1;
+    --warn:#8a5a00; --warn-soft:#fdf4e3; --ok:#1c6b3c; --ok-soft:#e7f4ec;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --bg:#14171a; --panel:#1b1f23; --ink:#e9edf1; --ink-2:#b9c2cc; --ink-3:#8b96a3;
+      --rule:#2c3238; --rule-2:#23282d; --accent:#4bbdb4; --accent-soft:#16302f;
+      --warn:#e0b25c; --warn-soft:#2e2718; --ok:#6fcf97; --ok-soft:#162c1f;
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg:#14171a; --panel:#1b1f23; --ink:#e9edf1; --ink-2:#b9c2cc; --ink-3:#8b96a3;
+    --rule:#2c3238; --rule-2:#23282d; --accent:#4bbdb4; --accent-soft:#16302f;
+    --warn:#e0b25c; --warn-soft:#2e2718; --ok:#6fcf97; --ok-soft:#162c1f;
+  }
+  *{box-sizing:border-box}
+  body{background:var(--bg); color:var(--ink);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    padding-block:32px; padding-left:20px; padding-right:20px;
+    -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:860px;margin:0 auto}
+  header{border-bottom:2px solid var(--ink);padding-bottom:14px;margin-bottom:8px}
+  h1{font-size:25px;line-height:1.15;margin:0 0 6px;letter-spacing:-.02em}
+  .sub{color:var(--ink-2);font-size:14px;margin:0}
+  .meta{display:flex;flex-wrap:wrap;gap:8px 18px;margin-top:12px;font-size:12.5px;color:var(--ink-3)}
+  .badge{display:inline-block;background:var(--ok-soft);color:var(--ok);border:1px solid color-mix(in srgb,var(--ok) 30%,transparent);
+    border-radius:99px;padding:2px 10px;font-size:12px;font-weight:600}
+  h2{font-size:19px;margin:34px 0 4px;letter-spacing:-.01em;padding-bottom:6px;border-bottom:1px solid var(--rule)}
+  h2 .n{color:var(--accent);font-variant-numeric:tabular-nums;margin-right:8px}
+  h3{font-size:14px;margin:20px 0 6px;color:var(--ink);text-transform:uppercase;letter-spacing:.06em}
+  p{margin:8px 0}
+  ol,ul{margin:8px 0;padding-left:20px}
+  li{margin:3px 0}
+  code{font-family:var(--mono);font-size:.88em;background:var(--rule-2);padding:1px 4px;border-radius:3px;
+    overflow-wrap:anywhere}
+  .tbl-scroll{overflow-x:auto;margin:10px 0}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th,td{text-align:left;vertical-align:top;padding:6px 10px 6px 0;border-bottom:1px solid var(--rule-2)}
+  th{font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3);
+    border-bottom:1px solid var(--rule);font-weight:600;white-space:nowrap}
+  td:first-child,th:first-child{padding-left:0}
+  .num{font-variant-numeric:tabular-nums;white-space:nowrap}
+  .note{background:var(--panel);border:1px solid var(--rule);border-left:3px solid var(--accent);
+    border-radius:0 5px 5px 0;padding:10px 14px;margin:14px 0}
+  .note.warn{border-left-color:var(--warn);background:var(--warn-soft)}
+  .note p{margin:4px 0}
+  .note strong{color:var(--ink)}
+  .lede{color:var(--ink-2);font-size:14.5px}
+  .cmd{font-family:var(--mono);font-size:12.5px;background:var(--panel);border:1px solid var(--rule);
+    border-radius:5px;padding:10px 12px;overflow-x:auto;white-space:pre;margin:10px 0;color:var(--ink-2)}
+  .k{color:var(--accent);font-weight:600}
+  footer{margin-top:34px;padding-top:12px;border-top:1px solid var(--rule);font-size:12.5px;color:var(--ink-3)}
+  @media print{
+    body{background:#fff;padding:0;font-size:10.5pt}
+    .wrap{max-width:none}
+    .page2{break-before:page}
+    h2{break-after:avoid} table{break-inside:auto} tr{break-inside:avoid}
+    .note{break-inside:avoid}
+  }
+  @media (max-width:560px){ h1{font-size:21px} body{font-size:14.5px} }
+</style>
+
+<div class="wrap">
+
+<header>
+  <h1>ClinVar 2025-07 Rebuild for the Nirvana VAT Pipeline</h1>
+  <p class="sub">How the updated ClinVar annotation files were produced, and the evidence that the resulting VAT differs from the previous one only because the underlying ClinVar data changed.</p>
+  <div class="meta">
+    <span><strong>Tickets</strong> VS-1988 → VS-1994</span>
+    <span><strong>Output</strong> ClinVar_2025-07.nsa</span>
+    <span class="badge">No unexplained differences found</span>
+  </div>
+</header>
+
+<h2><span class="n">1</span>Building the annotation files</h2>
+
+<p class="lede">Nirvana's shipped reference bundle carries ClinVar from <strong>October 2023</strong>. We needed the July 2025 release, which meant rebuilding the ClinVar <code>.nsa</code> ourselves.</p>
+
+<h3>The blocker</h3>
+<p>Nirvana's ClinVar parsers hard-code allow-lists for clinical significance and review status and <em>throw</em> on anything unrecognised. NCBI's germline/somatic classification split now emits placeholder text — <code>no classifications from unflagged records</code> — in both fields, for variants whose submissions have all been flagged. The run aborted about 15 seconds in. Nirvana's ClinVar code has had no commits since June 2022, so this is an unfixed upstream bug rather than a configuration error on our side.</p>
+
+<h3>Patches to Nirvana v3.18.1</h3>
+<p>Rebuilt from the Illumina/Nirvana tag <code>v3.18.1</code> — confirmed to be the exact version inside our <code>variantstore:nirvana_2022_10_19</code> image and on the reference disk, so there is no schema-version drift. Nothing else in the source was touched.</p>
+<div class="tbl-scroll">
+<table>
+  <thead><tr><th>#</th><th>File</th><th>Change</th></tr></thead>
+  <tbody>
+    <tr><td class="num">1</td><td><code>ClinVarCommon.cs</code></td><td>Added <code>uncertain risk allele</code> to <code>ValidPathogenicity</code> — the third tier of the same ClinGen risk-allele set as the two already listed, omitted originally.</td></tr>
+    <tr><td class="num">2</td><td><code>ClinVarVariationReader.cs</code></td><td>New <code>ResolveReviewStatus()</code> does a safe dictionary lookup falling back to <code>no_assertion</code>, replacing a raw indexer that threw <code>KeyNotFoundException</code>.</td></tr>
+    <tr><td class="num">3</td><td><code>ClinVarCommon.cs</code></td><td><code>GetSignificances()</code> filters tokens against <code>ValidPathogenicity</code>, warning and skipping rather than throwing. One function, both the RCV and VCV paths.</td></tr>
+    <tr><td class="num">4</td><td><code>NsaWriter.cs</code></td><td>Progress logging only — added while diagnosing an apparent hang. No functional change.</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Inputs</h3>
+<div class="tbl-scroll">
+<table>
+  <thead><tr><th>File</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>ClinVarFullRelease_2025-07.xml.gz</code></td><td>NCBI FTP, RCV release (~5.0 GB)</td></tr>
+    <tr><td><code>ClinVarVariationRelease_2025-07.xml.gz</code></td><td>NCBI FTP, VCV release (~4.8 GB)</td></tr>
+    <tr><td><code>…FullRelease_2025-07.xml.gz.version</code></td><td>Hand-written sidecar (<code>NAME=ClinVar</code>, <code>VERSION=2025-07</code>, <code>DATE=2025-07-15</code>). Drives the output filenames; the date is a placeholder.</td></tr>
+    <tr><td><code>Homo_sapiens.GRCh38.Nirvana.dat</code></td><td>Reference sequence, from the existing bundle</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>Build and run environment</h3>
+<p>Patched source published with <code>dotnet publish SAUtils/SAUtils.csproj -c Release</code> inside <code>mcr.microsoft.com/dotnet/sdk:6.0</code>, forced to <code>--platform linux/amd64</code> because the repo's <code>libBlockCompression.so</code> is x86_64-only.</p>
+<p>The conversion itself ran on a <strong>GCP VM</strong> — project <code>gvs-internal</code>, zone <code>us-central1-a</code>, <strong><code>e2-standard-8</code></strong>, Ubuntu 22.04, 50 GB SSD, .NET 6 <em>runtime</em> only, no Docker. Native x86_64 turned out to be essential: under QEMU emulation on an Apple Silicon laptop the write phase made zero measurable progress in an hour, whereas natively every chromosome completed in about 12.5 minutes.</p>
+<div class="cmd"><span class="k">dotnet</span> SAUtils.dll clinvar \
+  --ref Homo_sapiens.GRCh38.Nirvana.dat \
+  --rcv ClinVarFullRelease_2025-07.xml.gz \
+  --vcv ClinVarVariationRelease_2025-07.xml.gz \
+  --out clinvar_db_output</div>
+<p><strong>Total run time 49 min 37 s; peak memory 9.4 GB.</strong> Parse/merge stats: <span class="num">4,667,952</span> RCVs, <span class="num">3,511,919</span> VCVs, 0 unknown VCVs. Output: <code>ClinVar_2025-07.nsa</code> (<span class="num">114,567,339</span> bytes) plus <code>.nsa.idx</code> and <code>.nsa.schema</code>. No <code>.nsi</code> is produced — SAUtils has no ClinVar interval writer, and the VAT loader reads per-allele <code>.nsa</code> data only, so this does not matter here.</p>
+
+<h3>WDL changes that made testing possible</h3>
+<p>Nirvana merges every <code>.nsa</code> from every <code>--sd</code> directory into one list and rejects two readers sharing a JSON key. ClinVar's key is the hardcoded constant <code>clinvar</code>, so simply adding a second directory collides and aborts. The production reference disk is read-only, so the old file cannot be removed there. Changes to <code>GvsCreateVATfromVDS.wdl</code>:</p>
+<ol>
+  <li>New workflow input <code>Boolean use_manual_clinvar_update = true</code>, marked TEMPORARY.</li>
+  <li>At the <code>AnnotateVCF</code> call site, <code>use_reference_disk = use_reference_disk &amp;&amp; !use_manual_clinvar_update</code> — enabling the manual update <em>forces</em> the downloader path, whose scratch directory is writable, making the duplicate-key crash unreachable by construction rather than relying on the operator to set two flags consistently.</li>
+  <li>New task inputs pointing at the three uploaded files in GCS.</li>
+  <li>In the download branch, remove <code>ClinVar_*.nsa*</code>, hard-link the new three in, log before/after listings, and hard-fail unless exactly one ClinVar <code>.nsa</code> remains — so a botched swap surfaces immediately rather than 40 minutes later inside Nirvana.</li>
+</ol>
+<p>Validated with <code>womtool</code>. Reverting to production behaviour is a single flag: <code>use_manual_clinvar_update = false</code>.</p>
+
+<h2 class="page2"><span class="n">2</span>Validation</h2>
+
+<p class="lede">The new VAT (<code>0c32721</code>, VS-1994) was compared against the previous VAT (<code>4e0cc60</code>, VS-1988) across every ClinVar column.</p>
+
+<div class="note warn">
+  <p><strong>The baseline is not a correctness reference.</strong> It was built with the Nirvana-bundled ClinVar, whose records stop at <strong>2023-10-28</strong>; the new build runs to <strong>2025-06-29</strong>. The two runs differ by roughly 20 months of ClinVar revisions <em>as well as</em> by the patches, so divergence is expected. The task was to show that every difference traces to the data, not to our changes.</p>
+</div>
+
+<h3>Checks and what each establishes</h3>
+<div class="tbl-scroll">
+<table>
+  <thead><tr><th>Check</th><th>Result</th><th>Establishes</th></tr></thead>
+  <tbody>
+    <tr><td>Loader diff between the two commits</td><td>Byte-identical</td><td>No star or classification change can originate in the loader</td></tr>
+    <tr><td>Patch #2 reachability</td><td>Loader accepts <code>RCV*</code> ids only; patch #2 is VCV-side</td><td>Patch #2 cannot affect any VAT column — crash-prevention only</td></tr>
+    <tr><td>Star distribution</td><td>−702 one-star variants, +1023 two-star</td><td>Framed the question: was anything lost?</td></tr>
+    <tr><td>Origin of new 2-star variants</td><td>1024 newly 2-star; <strong>all 1024</strong> were 1-star before; none from no-ClinVar</td><td>Re-grading of existing calls, not invented annotations</td></tr>
+    <tr><td>Origin at record level</td><td>1588 = 1131 same accession re-graded + 456 unchanged + 1 new; <strong>0</strong> demotions from 3/4-star</td><td>The same records were re-graded; new records are not appearing</td></tr>
+    <tr><td>Accession versions on re-grades</td><td><strong>0</strong> at an unchanged version; all 1131 version-bumped</td><td>No record parsed differently — every change had an upstream revision</td></tr>
+    <tr><td>Accession versions, all 3649 shared</td><td>1607 same, 2042 bumped, <strong>all forward</strong>, 0 backward</td><td>The data is strictly fresher; no staleness regression</td></tr>
+    <tr><td>One-star decomposition</td><td>1762 kept, 827 promoted away, <strong>0 / 0 / 0</strong> across all loss buckets, 125 gained — reconciles to −702 exactly</td><td>No variant lost its ClinVar annotation</td></tr>
+    <tr><td><strong>Same-version control group</strong></td><td>1607 records read from byte-identical input: <strong>0</strong> star differences, <strong>0</strong> classification differences, none lost, none gained</td><td>The direct patched-vs-unpatched test: identical input produces identical output</td></tr>
+    <tr><td>Record-level losses</td><td>17 records across 16 variants, all 1-star</td><td>Located the only losses anywhere in the comparison</td></tr>
+    <tr><td>Those 17 resolved against the source XML</td><td>15 retired by ClinVar; 2 re-represented as a microsatellite; <strong>0 defects</strong></td><td>Every loss is explained by source data</td></tr>
+    <tr><td>Pathogenic sweep, whole table</td><td>Exactly <strong>1</strong> variant</td><td>Only one high-stakes change exists, and it is understood</td></tr>
+    <tr><td>Vocabulary audit of the full release</td><td>Only non-classifications are filtered; 0.041% of review statuses hit the fallback</td><td>The patches discard nothing clinically meaningful</td></tr>
+    <tr><td>Deployed binary</td><td><code>uncertain risk allele</code> present in <code>SAUtils.dll</code></td><td>Patch #1 shipped, and is load-bearing — 623 occurrences in the release</td></tr>
+  </tbody>
+</table>
+</div>
+
+<h3>The two anomalies, both resolved against source data</h3>
+<p><strong><code>20-2403658-G-A</code> (TGM6) lost a 2-star rating.</strong> The 2025-07 XML lists three RCVs for it, all 1-star and all Benign — so the new table is correct and the old one was stale. The live ClinVar record confirms the same three accessions and shows the variant has never been classified pathogenic.</p>
+<p><strong><code>X-147912049-CGCG-C</code> lost its Pathogenic call.</strong> Its two pathogenic records describe <code>NM_002024.6(FMR1):c.-128GGC[55_200]</code> — the FMR1 CGG premutation, a repeat-count range with no VCF-representable allele. The 2023 bundle had attached that assertion to an adjacent 3 bp deletion. Declining to carry it across is a <em>correction</em>, and it is the single pathogenic change in the entire table.</p>
+
+<h3>Why this adds up to confidence</h3>
+<p>The checks were chosen so that each closes a route by which an unexplained change could hide, and together they cover all of them:</p>
+<ul>
+  <li><strong>Gains</strong> are explained — every promotion carried an upstream record revision, and none occurred at an unchanged accession version.</li>
+  <li><strong>Losses</strong> are explained — 17 records in total, each individually traced to ClinVar retiring the accession or re-representing the allele.</li>
+  <li><strong>Silent changes</strong> are excluded — on 1607 records where both runs read byte-identical input, output was identical in every field.</li>
+  <li><strong>Our code</strong> is excluded — the loader is unchanged, patch #2 is unreachable from the VAT, and a vocabulary audit of the entire release shows the remaining filters discard only values that are not clinical classifications (<code>not provided</code>, <code>flagged submission</code>, and NCBI's placeholder).</li>
+  <li><strong>The arithmetic closes.</strong> Independent queries reconcile exactly — the one-star decomposition returns −702 against the observed −702, and every record in the 2-star population is accounted for with no remainder.</li>
+</ul>
+<p>Taken together: <strong>every difference between the two VAT tables is attributable to 20 months of legitimate ClinVar revision, and the patches introduced no annotation change beyond discarding values that were never clinical classifications.</strong></p>
+
+<div class="note">
+  <p><strong>Known residuals.</strong> One edge case: a record whose <em>Explanation</em> field reads <code>Pathogenic, low penetrance</code> is dropped entirely, because that code path splits on <code>/</code> and <code>;</code> but not <code>,</code>. This affects exactly 1 record in 10.18 million and is a pre-existing inconsistency in Nirvana's own <code>GetSignificances</code>, not something the patches introduced.</p>
+  <p>Three optional cross-checks were not run (variant-universe overlap, decomposition of the 125 newly 1-star variants, per-column fill rates). Each re-verifies figures already reconciled by other means.</p>
+  <p>At production scale, expect proportionally more <code>not provided</code> and <code>flagged submission</code> records to be excluded — near 0.55% and 0.041% of records respectively. That is correct behaviour, not a regression.</p>
+</div>
+
+<footer>
+  Full detail in <code>PROGRESS.md</code> (build) and <code>validation.md</code> (validation, including every query used).
+</footer>
+
+</div>
