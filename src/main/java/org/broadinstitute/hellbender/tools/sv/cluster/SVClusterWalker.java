@@ -264,6 +264,13 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
     private SortingCollection<SpilledSite> completedSiteBuffer;
 
     /**
+     * Low-mem only: renders each drained site's all-sample genotype columns by splicing carrier columns into a
+     * cached per-contig default template, instead of building and encoding one {@link Genotype} per sample.
+     * Null in single-pass and sites-only modes. See {@link TemplatedGenotypeColumnEncoder}.
+     */
+    private TemplatedGenotypeColumnEncoder lowMemColumnEncoder;
+
+    /**
      * Stripped pass-1 record that carries its own pass-1 sequential index. This replaces the old
      * {@code strippedRecordToPass1Index} {@link IdentityHashMap}, which pinned every stripped record
      * (and its retained genotypes) for the entire traversal. By stamping the index on the record
@@ -677,6 +684,8 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
         writer = createVCFWriter(outputFile);
         header = createHeader();
         writer.writeHeader(header);
+        lowMemColumnEncoder = (lowMem && !samples.isEmpty())
+                ? new TemplatedGenotypeColumnEncoder(header, ploidyTable, lenientVCFProcessing) : null;
         currentContig = null;
         // Low-mem mode writes finalized sites directly from the output-ordered completed-site buffer (see
         // runLowMemFinalize) and never buffers dense all-sample records, so it needs no output sort buffer.
@@ -1040,7 +1049,7 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
         completedSiteBuffer.doneAdding();
         for (final SpilledSite spilled : completedSiteBuffer) {
             final SVCallRecord site = SpilledSiteCodec.decodeRecord(spilled.payload, dictionary);
-            writer.add(buildVariantContext(site, site.getId()));
+            writer.add(lowMemOutputVariant(site));
         }
         if (variantPrefix != null) {
             numVariantsBuilt += plannedSites.size();
@@ -1069,6 +1078,21 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
                 dictionary.getSequenceIndex(finalized.getContigA()), finalized.getPositionA(),
                 SpilledSiteCodec.encodeRecord(finalized, outputId)));
         lowMemCompletedSites++;
+    }
+
+    /**
+     * Builds the output record for a drained low-mem site. With samples present, fills default genotypes only for
+     * one representative per ploidy class and lets {@link TemplatedGenotypeColumnEncoder} render the remaining
+     * columns from a cached template; the written bytes are identical to a full fill and encode.
+     */
+    private VariantContext lowMemOutputVariant(final SVCallRecord site) {
+        if (lowMemColumnEncoder == null) {
+            return buildVariantContext(site, site.getId(), samples);
+        }
+        final Set<String> representatives = lowMemColumnEncoder.representativeSamples(
+                site.getContigA(), site.getGenotypes().getSampleNames());
+        final VariantContext sparse = buildVariantContext(site, site.getId(), representatives);
+        return lowMemColumnEncoder.expand(sparse, representatives);
     }
 
     /**
@@ -1192,9 +1216,17 @@ public abstract class SVClusterWalker extends MultiVariantWalker {
      * builds the output {@link VariantContext} under the given output ID.
      */
     protected VariantContext buildVariantContext(final SVCallRecord call, final String newId) {
+        return buildVariantContext(call, newId, samples);
+    }
+
+    /**
+     * As {@link #buildVariantContext(SVCallRecord, String)}, but fills default genotypes only for the given samples
+     * (those already carrying a genotype are left untouched).
+     */
+    protected VariantContext buildVariantContext(final SVCallRecord call, final String newId, final Set<String> fillSamples) {
         // Add genotypes for missing samples
         final GenotypesContext filledGenotypes = SVCallRecordUtils.populateGenotypesForMissingSamplesWithAlleles(
-                call, samples, !defaultNoCall, ploidyTable, header);
+                call, fillSamples, !defaultNoCall, ploidyTable, header);
 
         // Build new variant
         final SVCallRecord finalCall = new SVCallRecord(newId, call.getContigA(), call.getPositionA(), call.getStrandA(),

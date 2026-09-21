@@ -853,6 +853,10 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(lowMemRecords.size(), baselineRecords.size(),
                 label + ": --low-mem produced a different number of records than baseline");
 
+        // Strongest check: the data lines of the two files are byte-identical (same order, same text).
+        Assert.assertEquals(readDataLines(outputLowMem), readDataLines(outputBaseline),
+                label + ": --low-mem output text differs from baseline");
+
         for (int i = 0; i < baselineRecords.size(); i++) {
             final VariantContext base = baselineRecords.get(i);
             final VariantContext lowMem = lowMemRecords.get(i);
@@ -1094,4 +1098,15 @@ public class SVClusterIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+
+    /** Non-header lines of a plain-text VCF, in file order. */
+    private static List<String> readDataLines(final File vcf) {
+        try {
+            return java.nio.file.Files.readAllLines(vcf.toPath()).stream()
+                    .filter(line -> !line.startsWith("#"))
+                    .collect(java.util.stream.Collectors.toList());
+        } catch (final java.io.IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
 }
