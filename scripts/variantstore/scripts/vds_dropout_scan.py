@@ -36,10 +36,12 @@ Metrics
     has a missing ``LGT`` but a present entry, so definedness is tested on ``LA``.
 
 ``--mode references``
-    Sums reference-block coverage, ``END - position + 1``.  Each block is attributed
-    entirely to the bin holding its start locus; with 50 kb bins and a 1000 bp maximum
-    block length the edge error is under 2%, and it is a uniform bias that cancels in
-    the superpartition-versus-peers comparison the detector performs.
+    Sums reference-block coverage.  Hail spells the block length two ways -- ``LEN``
+    directly, or ``END`` as the inclusive last position -- and ``read_vds`` supplies both,
+    so either serves; ``reference_length_field`` says which one this uses and why.  Each block is attributed entirely to the bin holding its
+    start locus; with 10 kb bins and a 1000 bp maximum block length the edge error is
+    under 10%, and it is a uniform bias that cancels in the superpartition-versus-peers
+    comparison the detector performs.
 
     Reference dropouts leave blocks *absent* rather than GQ 0.  AoU ingests with
     ``drop_state = "ZERO"`` so GQ0 blocks never reach BigQuery, and nothing in VDS
@@ -105,11 +107,12 @@ import argparse
 import contextlib
 import datetime
 import os
+import re
 import sys
 import threading
 import time
 from collections import defaultdict
-from typing import IO, Iterable, Mapping, Sequence
+from typing import IO, Iterable, Mapping, NamedTuple, Sequence
 
 try:
     import hail as hl
@@ -455,7 +458,8 @@ def superpartition_column_table(path: str,
         sp=hl.int32((table.sample_id + superpartition_size - 1) // superpartition_size))
 
 
-def annotated_matrix(vds, mode: str, mapping, bin_size: int):
+def annotated_matrix(vds, mode: str, mapping, bin_size: int,
+                     injections: Sequence[Injection] = ()):
     """Return the mode-appropriate matrix annotated with superpartition and bin.
 
     Columns absent from the mapping are dropped rather than carried with a missing
@@ -474,10 +478,129 @@ def annotated_matrix(vds, mode: str, mapping, bin_size: int):
     with step('Summarizing columns by superpartition'):
         n_unmatched, counts = superpartition_column_summary(matrix)
     matrix = matrix.filter_cols(hl.is_defined(matrix._sp))
+    # After the column filter, so `_sp` is defined on every remaining column, and before
+    # binning, so an injection is invisible to everything downstream -- which is the point.
+    matrix = apply_injections(matrix, injections)
     matrix = matrix.annotate_rows(
         _bin=(matrix.locus.position - 1) // bin_size,
     )
     return matrix, n_unmatched, counts
+
+
+class Injection(NamedTuple):
+    """A synthetic dropout to remove before summarizing.  Diagnostic use only.
+
+    This exists to close the one link the rest of the validation cannot reach.  The
+    detector's response to a dropout is measured by ``perturb_r2_summary.py``, which
+    perturbs a summary; the fidelity of the Hail pass that produces that summary is
+    established for references mode by an exact covered-base tie-out against BigQuery.
+    Neither watches a hole in a VDS become a depleted count, and r2 offers no reference
+    dropout to watch, its two being variant-only.
+
+    Be precise about what an injection does and does not demonstrate.  Entries are filtered
+    *after* the VDS is read, so this exercises the aggregation and everything downstream of
+    it on real production data -- but it cannot show that ``read_vds`` would not materialize
+    blocks that a truncated Avro never wrote.  That residual is closed separately, and
+    empirically: the tie-out window is only 98.41% covered, so it contains real holes, and
+    the VDS reproduces them rather than filling them.  Closing it *here* would mean writing
+    a holed VDS and reading it back, which costs far more than it settles.
+    """
+
+    contig: str
+    start: int
+    end: int
+    superpartition: int
+
+    def __str__(self) -> str:
+        return f'{self.contig}:{self.start}-{self.end}:{self.superpartition}'
+
+
+# contig:start-end:superpartition.  Separators are digits-only on either side of the dash
+# so a contig name containing one cannot be misread, and underscores and commas are allowed
+# in positions because a 10-digit coordinate typed by hand is otherwise easy to get wrong.
+INJECTION_SPEC = re.compile(
+    r'^(?P<contig>\w+):(?P<start>[\d_,]+)-(?P<end>[\d_,]+):(?P<superpartition>\d+)$')
+
+
+def parse_injection(spec: str) -> Injection:
+    """Parse one ``contig:start-end:superpartition`` injection spec."""
+    match = INJECTION_SPEC.match(spec.strip())
+    if not match:
+        raise ValueError(
+            f'--inject-dropout {spec!r} is not contig:start-end:superpartition, '
+            'e.g. chr20:1000000-1100000:83')
+    start = int(match['start'].replace(',', '').replace('_', ''))
+    end = int(match['end'].replace(',', '').replace('_', ''))
+    if start > end:
+        raise ValueError(f'--inject-dropout {spec!r}: start {start:,} is past end {end:,}')
+    return Injection(match['contig'], start, end, int(match['superpartition']))
+
+
+def parse_injection_list(values: Iterable[str] | None) -> tuple[Injection, ...]:
+    """Parse repeated ``--inject-dropout`` values.
+
+    Not comma-separated, unlike ``--contigs`` and the other list-valued options: a position
+    may be written with comma digit separators, so a comma does not reliably delimit specs.
+    Repeat the flag instead. The WDL exposes a single string and so carries one window.
+    """
+    if not values:
+        return ()
+    return tuple(parse_injection(value) for value in values)
+
+
+def apply_injections(matrix, injections: Sequence[Injection]):
+    """Filter out entries for a superpartition over a window, simulating a lost shard.
+
+    Filters on ``locus.position``, the block's *start*, for both modes.  That is the same
+    rule the metric uses -- a reference block's whole length is attributed to the bin its
+    start falls in, with no clipping -- and the same rule a real shard loss follows, since
+    the Avro export orders by location and a truncation cuts between whole rows.  Filtering
+    on overlap instead would remove a block starting before the window, which no truncation
+    does.
+
+    ``filter_entries`` rather than ``filter_rows``: a dropout takes one superpartition's
+    samples and leaves the rest of the callset intact at those loci, so the rows survive.
+    Hail excludes filtered entries from ``hl.agg``, which is what makes them stand in for
+    entries that were never written.
+    """
+    if not injections:
+        # The overwhelmingly common path, and kept ahead of the Hail check so it stays
+        # exercisable off-cluster.
+        return matrix
+    _require_hail()
+    for injection in injections:
+        inside = (
+            (matrix.locus.contig == injection.contig)
+            & (matrix.locus.position >= injection.start)
+            & (matrix.locus.position <= injection.end)
+            & (matrix._sp == injection.superpartition)
+        )
+        matrix = matrix.filter_entries(~inside)
+    return matrix
+
+
+def reference_length_field(entry_fields) -> str:
+    """Which spelling of reference-block length a VDS uses: ``'LEN'`` or ``'END'``.
+
+    Forward compatibility rather than a live concern.  ``read_vds`` in 0.2.134 calls
+    ``_add_len`` and then ``_add_end``, so both fields are present in memory whatever the VDS
+    holds on disk, and either would work today.  ``LEN`` is preferred because that is the
+    direction Hail is moving -- ``VariantDataset.write`` already stores ``LEN`` and drops
+    ``END``, for VCF 4.5 alignment and better compression, and ``read_vds`` carries a
+    ``_drop_end`` flag -- so a future version may stop synthesizing ``END``.
+
+    Takes anything iterable over field names -- ``matrix.entry.dtype`` in production -- so
+    the choice is testable without Hail, which the surrounding expression building is not.
+    """
+    fields = set(entry_fields)
+    if 'LEN' in fields:
+        return 'LEN'
+    if 'END' in fields:
+        return 'END'
+    raise ValueError(
+        'reference_data entries carry neither LEN nor END, so reference-block length '
+        f'cannot be computed; found {sorted(fields)}'
+    )
 
 
 def _metric_expression(matrix, mode: str):
@@ -488,9 +611,11 @@ def _metric_expression(matrix, mode: str):
         # call with call_GQ = 0 is imported with a missing LGT but a present entry, and
         # it corresponds to a real vet row, so it must be counted.
         return hl.agg.count_where(hl.is_defined(matrix.LA))
-    return hl.agg.sum(
-        hl.if_else(hl.is_defined(matrix.END), matrix.END - matrix.locus.position + 1, 0)
-    )
+    if reference_length_field(matrix.entry.dtype) == 'LEN':
+        length = matrix.LEN
+    else:
+        length = matrix.END - matrix.locus.position + 1
+    return hl.agg.sum(hl.if_else(hl.is_defined(length), length, 0))
 
 
 def executor_summary() -> str:
@@ -656,7 +781,12 @@ def _screening_matrix(args, vds):
     source = args.sample_map_path
     with step(f'Reading sample mapping from {source}'):
         mapping = superpartition_column_table(source, args.superpartition_size)
-    matrix, n_unmatched, counts = annotated_matrix(vds, args.mode, mapping, args.bin_size)
+    matrix, n_unmatched, counts = annotated_matrix(
+        vds, args.mode, mapping, args.bin_size, args.injections)
+
+    for injection in args.injections:
+        announce(f'*** INJECTED DROPOUT {injection} -- diagnostic run, output is NOT a '
+                 'valid scan of this VDS ***')
 
     if n_unmatched:
         raise ValueError(
@@ -705,13 +835,29 @@ def shard_paths(summary_path: str, contig: str) -> tuple[str, str]:
 # re-run with the same output_prefix but a different --vds-path or --bin-size would silently
 # reuse the previous run's shards and emit a summary describing the wrong VDS -- a silent
 # wrong answer, which is the single outcome this tool cannot afford to produce.
-MARKER_HEADER = 'contig\trows\tvds_path\tmode\tbin_size'
+LEGACY_MARKER_HEADER = 'contig\trows\tvds_path\tmode\tbin_size'
+# `injections` is last so a legacy marker is a prefix of a current one, and so the check
+# below can tell "written before injections existed" from "written by a clean run".
+MARKER_HEADER = LEGACY_MARKER_HEADER + '\tinjections'
+
+
+def injection_provenance(injections: Sequence[Injection]) -> str:
+    """How a run's injections are recorded in a shard marker.
+
+    A shard produced with an injected dropout must never be picked up by a later clean
+    resume: it holds a hole that no VDS has, and the summary built from it would look
+    complete while describing data that never existed. Recording the spec makes that
+    collision an abort rather than a silent wrong answer, which is the same reason
+    `vds_path`, `mode` and `bin_size` are recorded.
+    """
+    return ','.join(str(injection) for injection in injections) if injections else '-'
 
 
 def write_marker(marker_path: str, contig: str, n_rows: int, args) -> None:
     """Record the shard's provenance alongside its row count."""
     write_lines(marker_path, MARKER_HEADER,
-                [f'{contig}\t{n_rows}\t{args.vds_path}\t{args.mode}\t{args.bin_size}'])
+                [f'{contig}\t{n_rows}\t{args.vds_path}\t{args.mode}\t{args.bin_size}\t'
+                 f'{injection_provenance(args.injections)}'])
 
 
 def verify_marker(marker_path: str, contig: str, args) -> None:
@@ -724,12 +870,16 @@ def verify_marker(marker_path: str, contig: str, args) -> None:
     Markers written before provenance was recorded are accepted with a warning rather than
     discarded, so an in-flight scan's checkpoints stay usable across the upgrade. That is a
     deliberate trade, and the warning says what it costs.
+
+    A marker carrying the previous header is checked on the four fields it does have, and
+    read as having no injected dropout -- which is true by construction, since it was
+    written before injection existed.
     """
     with _open_read(marker_path) as handle:
         header = handle.readline().rstrip('\n')
         row = handle.readline().rstrip('\n')
 
-    if header != MARKER_HEADER:
+    if header not in (MARKER_HEADER, LEGACY_MARKER_HEADER):
         announce(
             f'WARNING: {marker_path} predates provenance recording, so it cannot be '
             f'checked against --vds-path or --bin-size. Accepting it and skipping {contig}. '
@@ -742,7 +892,12 @@ def verify_marker(marker_path: str, contig: str, args) -> None:
         raise RuntimeError(f'{marker_path}: malformed marker row {row!r}; delete it and '
                            f're-run {contig}.')
     _, _, vds_path, mode, bin_size = fields[:5]
+    # Absent from a legacy marker, which by definition was written without injections.
+    injections = fields[5] if len(fields) > 5 else '-'
     mismatches = []
+    if injections != injection_provenance(args.injections):
+        mismatches.append(
+            f'injections {injections!r} != {injection_provenance(args.injections)!r}')
     if vds_path != args.vds_path:
         mismatches.append(f'vds_path {vds_path!r} != {args.vds_path!r}')
     if mode != args.mode:
@@ -1039,6 +1194,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--target-superpartitions', default=None,
                         help='Comma-separated superpartitions to restrict full-depth to.')
 
+    parser.add_argument('--inject-dropout', action='append', default=None,
+                        metavar='CONTIG:START-END:SUPERPARTITION',
+                        help='DIAGNOSTIC ONLY. Remove one superpartition\'s entries over a '
+                             'window before summarizing, so that a known dropout can be '
+                             'watched through the scan and the detector end to end. '
+                             'Repeatable. A run using this does not describe the VDS it '
+                             'reads, and its shards are marked so a later clean run '
+                             'refuses them.')
+
     parser.add_argument('--temp-path', default=None, help='Hail temporary directory.')
     return parser
 
@@ -1056,6 +1220,10 @@ def validate_args(args, parser: argparse.ArgumentParser) -> None:
             parser.error(f"--{name.replace('_', '-')} is required for --action {args.action}")
     if args.bin_size < 1:
         parser.error('--bin-size must be at least 1')
+    try:
+        args.injections = parse_injection_list(args.inject_dropout)
+    except ValueError as exc:
+        parser.error(str(exc))
 
 
 def main(argv: Sequence[str] | None = None) -> int:

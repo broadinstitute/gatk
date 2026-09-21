@@ -80,6 +80,8 @@ workflow GvsValidateVdsCompleteness {
         String? intervals
         String? target_superpartitions
 
+        String? inject_dropout
+
         # Detection thresholds. Cheap to revisit: the detector runs against the small summary
         # table, so re-judging an existing scan costs nothing.
         Float? ratio_threshold
@@ -159,6 +161,9 @@ workflow GvsValidateVdsCompleteness {
         }
         intervals: {
             help: "Comma-separated Hail locus intervals. Overrides contigs. Required for full-depth."
+        }
+        inject_dropout: {
+            help: "DIAGNOSTIC ONLY, as contig:start-end:superpartition, e.g. chr20:1000000-1100000:83. Removes that superpartition's data over that window before summarizing, so a known dropout can be watched through the scan and the detector end to end. One window per run. A run using this does not describe the VDS it reads, and its shards are marked so a later clean run refuses to resume from them."
         }
         bq_project_id: {
             help: "BigQuery project used only to generate adjudication SQL. No queries are run by this workflow."
@@ -331,6 +336,7 @@ workflow GvsValidateVdsCompleteness {
             contigs = contigs,
             intervals = intervals,
             target_superpartitions = target_superpartitions,
+            inject_dropout = inject_dropout,
             ratio_threshold = ratio_threshold,
             score_threshold = score_threshold,
             min_expected = min_expected,
@@ -481,6 +487,8 @@ task ScanVdsForDropouts {
         String? intervals
         String? target_superpartitions
 
+        String? inject_dropout
+
         Float? ratio_threshold
         Float? score_threshold
         Float? min_expected
@@ -620,6 +628,7 @@ task ScanVdsForDropouts {
             ("contigs", "~{default='' contigs}"),
             ("intervals", "~{default='' intervals}"),
             ("target-superpartitions", "~{default='' target_superpartitions}"),
+            ("inject-dropout", "~{default='' inject_dropout}"),
         ]:
             if value:
                 arguments[key] = value
@@ -646,6 +655,25 @@ task ScanVdsForDropouts {
                 exit 1
             fi
         done
+
+        # Same rebuild trap as above, but for the scan script and only when it is being asked
+        # for something an older image cannot do. Unguarded, a stale image turns an injected
+        # run into an argparse dump, and -- worse -- an operator who missed that could read the
+        # resulting absence of a flagged rectangle as the injection failing to be detected.
+        if [[ -n "~{default='' inject_dropout}" ]]
+        then
+            if ! python3 ~{vds_dropout_scan_script} --help 2>&1 | grep -q -- "--inject-dropout"
+            then
+                echo "ERROR: vds_dropout_scan.py in this variants_docker image does not support" >&2
+                echo "  --inject-dropout, which this workflow was asked to pass." >&2
+                echo "Rebuild the Variants image and point GetToolVersions at the new tag:" >&2
+                echo "  1. scripts/variantstore/scripts/build_docker.sh" >&2
+                echo "  2. set variants_docker in GvsUtils.wdl GetToolVersions to the printed tag" >&2
+                exit 1
+            fi
+            echo "*** INJECTED DROPOUT ~{default='' inject_dropout} -- this run is a diagnostic" >&2
+            echo "*** and its outputs do NOT describe ~{vds_path} ***" >&2
+        fi
 
         # Upload the log however this task exits, not just when it succeeds. It used to be
         # copied at the very end, which made the one artifact worth having after an

@@ -71,6 +71,29 @@ class TestSuperpartitionArithmetic(unittest.TestCase):
                 vds.superpartition_for(bad)
 
 
+class TestReferenceLengthField(unittest.TestCase):
+    """Reference-block length is spelled LEN or END, and read_vds supplies both today.
+
+    So this is insurance against a Hail version that stops synthesizing one, not a fix for a
+    VDS we cannot read. The Hail expression building around the choice cannot be exercised
+    off-cluster; the choice itself can, which is why it is a separate function.
+    """
+
+    def test_len_schema(self):
+        self.assertEqual('LEN', vds.reference_length_field(['GQ', 'GT', 'LEN']))
+
+    def test_end_schema(self):
+        self.assertEqual('END', vds.reference_length_field(['END', 'GQ', 'GT']))
+
+    def test_len_wins_when_both_present(self):
+        self.assertEqual('LEN', vds.reference_length_field(['END', 'GQ', 'LEN']))
+
+    def test_neither_is_an_error(self):
+        with self.assertRaises(ValueError) as caught:
+            vds.reference_length_field(['GQ', 'GT'])
+        self.assertIn('neither LEN nor END', str(caught.exception))
+
+
 class TestBinArithmetic(unittest.TestCase):
 
     def test_default_bin_size(self):
@@ -649,9 +672,11 @@ class TestContigCheckpointing(unittest.TestCase):
             vds.write_lines(marker, 'contig\trows', [f'{contig}\t{rows}'])
         return shard
 
-    def args(self, vds_path='gs://bucket/r2.vds', mode='variants', bin_size=50_000):
+    def args(self, vds_path='gs://bucket/r2.vds', mode='variants', bin_size=50_000,
+             injections=()):
         return types.SimpleNamespace(
-            vds_path=vds_path, mode=mode, bin_size=bin_size, summary_path=self.summary)
+            vds_path=vds_path, mode=mode, bin_size=bin_size, summary_path=self.summary,
+            injections=injections)
 
     def merge(self, shards, expected):
         """`concatenate_shards` with its progress output captured.
@@ -742,6 +767,47 @@ class TestContigCheckpointing(unittest.TestCase):
         self.assertEqual('/x/summary.tsv.chr4', shard)
         self.assertEqual('/x/summary.tsv.chr4.done', marker)
         self.assertNotEqual(shard, marker)
+
+    def test_injected_shard_is_refused_by_a_clean_resume(self):
+        """The hazard this guards: an injected shard holds a hole no VDS has.
+
+        A clean run resuming over it would merge that hole into its summary, flag it, and
+        report a dropout in a VDS that does not have one -- the exact silent wrong answer
+        the other provenance fields exist to prevent.
+        """
+        _, marker = vds.shard_paths(self.summary, 'chr1')
+        injected = (vds.Injection('chr20', 1_000_000, 1_100_000, 83),)
+        vds.write_marker(marker, 'chr1', 42, self.args(injections=injected))
+        with self.assertRaises(RuntimeError) as caught:
+            vds.verify_marker(marker, 'chr1', self.args())
+        self.assertIn('injections', str(caught.exception))
+
+    def test_clean_shard_is_refused_by_an_injected_resume(self):
+        """Symmetric, and the one that would otherwise understate an injection's effect."""
+        _, marker = vds.shard_paths(self.summary, 'chr1')
+        vds.write_marker(marker, 'chr1', 42, self.args())
+        injected = (vds.Injection('chr20', 1_000_000, 1_100_000, 83),)
+        with self.assertRaises(RuntimeError):
+            vds.verify_marker(marker, 'chr1', self.args(injections=injected))
+
+    def test_matching_injection_verifies(self):
+        _, marker = vds.shard_paths(self.summary, 'chr1')
+        injected = (vds.Injection('chr20', 1_000_000, 1_100_000, 83),)
+        vds.write_marker(marker, 'chr1', 42, self.args(injections=injected))
+        vds.verify_marker(marker, 'chr1', self.args(injections=injected))  # must not raise
+
+    def test_legacy_marker_is_checked_on_the_fields_it_has(self):
+        """A five-field marker predates injection, so it is read as uninjected.
+
+        It is still checked on vds_path, mode and bin_size rather than waved through: those
+        fields are present, and the lenient path exists for markers that lack them.
+        """
+        _, marker = vds.shard_paths(self.summary, 'chr1')
+        vds.write_lines(marker, vds.LEGACY_MARKER_HEADER,
+                        ['chr1\t42\tgs://bucket/r2.vds\tvariants\t50000'])
+        vds.verify_marker(marker, 'chr1', self.args())  # must not raise
+        with self.assertRaises(RuntimeError):
+            vds.verify_marker(marker, 'chr1', self.args(vds_path='gs://bucket/r3.vds'))
 
     def test_marker_governs_resume_not_shard_existence(self):
         """A shard truncated mid-write must not be mistaken for a finished one."""
@@ -1061,3 +1127,80 @@ class TestHailGuard(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class TestInjectionParsing(unittest.TestCase):
+    """`--inject-dropout` is the only way to watch a hole become a depleted count.
+
+    r2's two dropouts are variant-only, so nothing in the real data exercises references
+    mode end to end. The spec is parsed rather than trusted because a silently misread
+    window would produce a run that looks like a clean scan and proves nothing.
+    """
+
+    def test_parses_a_plain_spec(self):
+        self.assertEqual(
+            vds.Injection('chr20', 1000000, 1100000, 83),
+            vds.parse_injection('chr20:1000000-1100000:83'))
+
+    def test_accepts_grouped_digits(self):
+        """A ten-digit coordinate typed by hand is the likeliest thing to get wrong."""
+        self.assertEqual(
+            vds.parse_injection('chr20:1000000-1100000:83'),
+            vds.parse_injection('chr20:1_000_000-1,100,000:83'))
+
+    def test_round_trips_through_str(self):
+        """`__str__` is what lands in the marker, so it has to be re-parseable."""
+        injection = vds.Injection('chr19', 40_000_001, 40_650_000, 64)
+        self.assertEqual(injection, vds.parse_injection(str(injection)))
+
+    def test_rejects_a_malformed_spec(self):
+        for spec in ('chr20:1000000-1100000', 'chr20-1000000:83', '', 'chr20:a-b:83'):
+            with self.subTest(spec=spec), self.assertRaises(ValueError):
+                vds.parse_injection(spec)
+
+    def test_rejects_an_inverted_window(self):
+        with self.assertRaises(ValueError) as caught:
+            vds.parse_injection('chr20:1100000-1000000:83')
+        self.assertIn('past end', str(caught.exception))
+
+    def test_no_flag_means_no_injection(self):
+        self.assertEqual((), vds.parse_injection_list(None))
+        self.assertEqual((), vds.parse_injection_list([]))
+
+    def test_uninjected_matrix_is_untouched(self):
+        """The no-op path must not reach Hail, so a clean scan is unaffected off-cluster."""
+        sentinel = object()
+        self.assertIs(sentinel, vds.apply_injections(sentinel, ()))
+
+    def test_provenance_of_no_injection_is_not_empty(self):
+        """An empty field would be ambiguous with a truncated marker row."""
+        self.assertEqual('-', vds.injection_provenance(()))
+
+    def test_bad_spec_is_a_parser_error_not_a_traceback(self):
+        parser = vds.build_parser()
+        args = parser.parse_args([
+            '--action', 'scan', '--vds-path', 'gs://b/x.vds',
+            '--sample-map-path', 'gs://b/map.tsv', '--summary-path', 'gs://b/s.tsv',
+            '--superpartitions-path', 'gs://b/sp.tsv',
+            '--inject-dropout', 'nonsense'])
+        with self.assertRaises(SystemExit), contextlib.redirect_stderr(io.StringIO()):
+            vds.validate_args(args, parser)
+
+    def test_validate_args_populates_injections(self):
+        parser = vds.build_parser()
+        args = parser.parse_args([
+            '--action', 'scan', '--vds-path', 'gs://b/x.vds',
+            '--sample-map-path', 'gs://b/map.tsv', '--summary-path', 'gs://b/s.tsv',
+            '--superpartitions-path', 'gs://b/sp.tsv',
+            '--inject-dropout', 'chr20:1000000-1100000:83'])
+        vds.validate_args(args, parser)
+        self.assertEqual((vds.Injection('chr20', 1000000, 1100000, 83),), args.injections)
+
+    def test_a_clean_run_has_an_empty_injection_tuple(self):
+        parser = vds.build_parser()
+        args = parser.parse_args([
+            '--action', 'scan', '--vds-path', 'gs://b/x.vds',
+            '--sample-map-path', 'gs://b/map.tsv', '--summary-path', 'gs://b/s.tsv',
+            '--superpartitions-path', 'gs://b/sp.tsv'])
+        vds.validate_args(args, parser)
+        self.assertEqual((), args.injections)
