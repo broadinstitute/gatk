@@ -675,6 +675,22 @@ task ScanVdsForDropouts {
             echo "*** and its outputs do NOT describe ~{vds_path} ***" >&2
         fi
 
+        # A warning rather than a failure, because a stale image here produces a correct
+        # summary slowly rather than a wrong one. It is still worth saying up front: the old
+        # merge copied through Hail's text handles at ~180 kB/s, and on the 2026-09-22
+        # references run those two hours were what carried the job past its cluster TTL and
+        # discarded ten hours of finished aggregation. There is no flag to grep for, since the
+        # fix changed no interface, so this looks for the function that does the byte copy.
+        if ! grep -q '_binary_openers' ~{vds_dropout_scan_script}
+        then
+            echo "WARNING: vds_dropout_scan.py in this variants_docker image predates the" >&2
+            echo "  byte-copy merge, so the merge will run through hl.hadoop_open at roughly" >&2
+            echo "  180 kB/s -- about 1.8 h at the 10 kb default, added to the scan." >&2
+            echo "  Raise cluster_max_age_minutes to cover it, or rebuild the image:" >&2
+            echo "  1. scripts/variantstore/scripts/build_docker.sh" >&2
+            echo "  2. set variants_docker in GvsUtils.wdl GetToolVersions to the printed tag" >&2
+        fi
+
         # Upload the log however this task exits, not just when it succeeds. It used to be
         # copied at the very end, which made the one artifact worth having after an
         # hours-long failure the one artifact that a failure guaranteed you would not get:

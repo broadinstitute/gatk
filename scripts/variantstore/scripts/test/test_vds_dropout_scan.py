@@ -18,11 +18,13 @@ import io
 import os
 import pathlib
 import re
+import sys
 import tempfile
 import threading
 import time
 import types
 import unittest
+import unittest.mock
 
 import vds_dropout_scan as vds
 
@@ -695,13 +697,18 @@ class TestContigCheckpointing(unittest.TestCase):
         Every shard a test writes is a few hundred bytes, orders of magnitude under one
         real chunk, so without this the boundary-crossing paths -- the newline tally and
         the trailing-newline guard -- are never reached by the suite at all.
+
+        Both constants, because the merge has two implementations: the byte copy and the
+        Hail-handle fallback behind it. Shrinking only the one the default path reads would
+        leave the other's boundary handling untested while the suite still passed.
         """
-        original = vds.MERGE_CHUNK_CHARACTERS
+        originals = (vds.MERGE_CHUNK_BYTES, vds.MERGE_CHUNK_CHARACTERS)
+        vds.MERGE_CHUNK_BYTES = size
         vds.MERGE_CHUNK_CHARACTERS = size
         try:
             yield
         finally:
-            vds.MERGE_CHUNK_CHARACTERS = original
+            vds.MERGE_CHUNK_BYTES, vds.MERGE_CHUNK_CHARACTERS = originals
 
     def test_marker_records_provenance(self):
         _, marker = vds.shard_paths(self.summary, 'chr1')
@@ -917,6 +924,118 @@ class TestContigCheckpointing(unittest.TestCase):
         for shard in shards:
             self.assertIn(os.path.basename(shard), output)
         self.assertIn('4 rows', output)
+
+
+class TestMergeAvoidsHail(unittest.TestCase):
+    """The merge copies bytes directly rather than through `hl.hadoop_open`.
+
+    Reading the summary back through Hail's text handles ran at roughly 180 kB/s, because
+    every read and write crosses the Python/JVM boundary 8 KB at a time and the buffer
+    cannot be enlarged -- see `TestHadoopOpenIsNotBufferTuned`. Copying 1.3 GB that way
+    took just under two hours, which is what pushed the Foxtrot references scan past its
+    cluster TTL and discarded ten hours of completed work. So the fast path has to stay
+    the default, and the fallback has to stay correct for when it is not available.
+    """
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.summary = os.path.join(self.tmp.name, 'summary.tsv')
+
+    def write_shard(self, contig, rows):
+        shard, _ = vds.shard_paths(self.summary, contig)
+        vds.write_lines(shard, vds.SUMMARY_HEADER, [
+            f'{contig}\t{i * 50000 + 1}\t{i * 50000 + 50001}\t83\t7500'
+            for i in range(rows)])
+        return shard
+
+    def test_local_paths_never_reach_google_cloud_storage(self):
+        """A local run must not import the package, let alone construct a client.
+
+        `storage.Client()` goes looking for credentials, so building one for a merge of
+        two files in a temp directory would make the suite fail on any machine without
+        application default credentials -- and would make it talk to GCP on machines with
+        them.
+        """
+        shard = self.write_shard('chr1', 2)
+        with unittest.mock.patch.dict(sys.modules, {'google.cloud': None}):
+            openers = vds._binary_openers([self.summary, shard])
+        self.assertIsNotNone(openers, 'a local merge must not need the GCS client')
+        read, write = openers
+        with read(shard) as handle:
+            self.assertIsInstance(handle.read(1), bytes)
+        target = os.path.join(self.tmp.name, 'out')
+        with write(target) as handle:
+            handle.write(b'x')
+        self.assertEqual(1, os.path.getsize(target))
+
+    def test_a_gcs_path_anywhere_requires_the_gcs_client(self):
+        """One remote path is enough to need it: shards and summary need not agree on
+        scheme, and a merge that read remote shards into a local summary would still be
+        moving bulk bytes over the network. The converse -- that the client is actually
+        used when it imports -- cannot be asserted here, since constructing one goes
+        looking for credentials."""
+        with unittest.mock.patch.dict(sys.modules, {'google.cloud': None}):
+            self.assertIsNone(vds._binary_openers(['gs://bucket/summary.tsv']))
+            self.assertIsNone(vds._binary_openers([self.summary, 'gs://bucket/s.chr1']))
+
+    def test_bucket_and_object_are_split(self):
+        self.assertEqual(('b', 'a/summary.tsv'), vds._gcs_bucket_and_name(
+            'gs://b/a/summary.tsv'))
+
+    def test_a_bucket_without_an_object_is_an_error(self):
+        """Rather than composing a request for an object named the empty string."""
+        for path in ('gs://bucket', 'gs://bucket/', 'gs:///object'):
+            with self.assertRaises(ValueError):
+                vds._gcs_bucket_and_name(path)
+
+    def test_the_fallback_produces_the_same_bytes(self):
+        """It is reached only on a cluster missing the package, so equivalence is asserted
+        here or nowhere. A merge that silently differed between the two would make the
+        summary depend on which packages the cluster happened to have."""
+        shards = [self.write_shard('chr1', 5), self.write_shard('chr2', 4)]
+        with contextlib.redirect_stdout(io.StringIO()):
+            fast = vds.concatenate_shards(shards, self.summary, ['chr1', 'chr2'])
+        with open(self.summary, 'rb') as handle:
+            fast_bytes = handle.read()
+
+        with contextlib.redirect_stdout(io.StringIO()):
+            slow = vds._concatenate_shards_via_hail(shards, self.summary, ['chr1', 'chr2'])
+        with open(self.summary, 'rb') as handle:
+            slow_bytes = handle.read()
+
+        self.assertEqual(9, fast)
+        self.assertEqual(fast, slow)
+        self.assertEqual(fast_bytes, slow_bytes)
+
+    def test_the_fallback_still_enforces_coverage(self):
+        shards = [self.write_shard('chr1', 3)]
+        with self.assertRaises(RuntimeError) as caught:
+            with contextlib.redirect_stdout(io.StringIO()):
+                vds._concatenate_shards_via_hail(shards, self.summary, ['chr1', 'chr2'])
+        self.assertIn('chr2', str(caught.exception))
+
+    def test_a_missing_package_warns_rather_than_failing(self):
+        """The merge is the last step of a job that has already run for hours, so losing
+        it to an ImportError would discard all of that. Degrade loudly instead."""
+        shards = [self.write_shard('chr1', 3)]
+        printed = io.StringIO()
+        with unittest.mock.patch.object(vds, '_binary_openers', return_value=None):
+            with contextlib.redirect_stdout(printed):
+                total = vds.concatenate_shards(shards, self.summary, ['chr1'])
+        self.assertEqual(3, total)
+        self.assertIn('google-cloud-storage', printed.getvalue())
+
+    def test_a_corrupt_header_is_reported_as_text(self):
+        """The byte path must not surface a `b'...'` repr in an operator-facing message."""
+        shard, _ = vds.shard_paths(self.summary, 'chr1')
+        vds.write_lines(shard, 'contig\tsomething\telse', ['chr1\t1\t2'])
+        with self.assertRaises(ValueError) as caught:
+            with contextlib.redirect_stdout(io.StringIO()):
+                vds.concatenate_shards([shard], self.summary, ['chr1'])
+        message = str(caught.exception)
+        self.assertIn('contig\\tsomething\\telse', message)
+        self.assertNotIn("b'", message)
 
 
 class TestHadoopOpenIsNotBufferTuned(unittest.TestCase):

@@ -60,6 +60,13 @@ JOB_CLIENT_CRASH_MARKERS = (
 JOB_REATTACH_ATTEMPTS = 5
 JOB_REATTACH_DELAY_SECONDS = 30
 
+# pip packages installed on every node at cluster creation. python-snappy is for Hail's
+# compressed reads. google-cloud-storage is so that a script moving bulk bytes can do so
+# directly: `hl.hadoop_open` reads 8 KB per JVM round trip and that buffer cannot be
+# enlarged, which put a 1.3 GB copy at nearly two hours. See `_binary_openers` in
+# vds_dropout_scan.py.
+CLUSTER_PIP_PACKAGES = "python-snappy,google-cloud-storage"
+
 # Tearing down a wide autoscaling cluster takes a while, and gcloud's default operation
 # timeout is short enough that a large cluster can outlast it even when the delete succeeds.
 CLUSTER_DELETE_TIMEOUT = '45m'
@@ -364,7 +371,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
              --worker-boot-disk-type=pd-ssd
              --subnet=projects/{workspace_project}/regions/{region}/subnetworks/subnetwork
              --properties=dataproc:dataproc.monitoring.stackdriver.enable=true,dataproc:dataproc.logging.stackdriver.enable=true,core:fs.gs.outputstream.sync.min.interval=5
-             --packages=python-snappy
+             --packages={CLUSTER_PIP_PACKAGES}
              {cluster_name}
              
             """)

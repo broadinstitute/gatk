@@ -912,15 +912,80 @@ def verify_marker(marker_path: str, contig: str, args) -> None:
             '--summary-path.')
 
 
-# Characters per `read` during the merge, which is a pure copy of a few hundred megabytes.
-# This is the only throughput knob available: see `_open_read` on why the buffer underneath
-# it has to stay at Hail's default.
+# Bytes per `read` during the merge, which is a pure copy of a few hundred megabytes. Large
+# because the merge moves undecoded bytes now; see `_binary_openers` for why it no longer
+# goes through Hail.
+MERGE_CHUNK_BYTES = 32 * 1024 * 1024
+
+# Only the fallback below still reads through Hail's text handles, and it is still capped by
+# the 8 KB buffer `_open_read` describes, so a large value here buys it nothing.
 MERGE_CHUNK_CHARACTERS = 8 * 1024 * 1024
 
 # How often the copy reports progress. It is the longest non-Hail step in the job and used
 # to print nothing at all between "starting" and "done", which is backwards: a step with no
 # Hail UI behind it is exactly the one whose progress has to come from the script.
 MERGE_PROGRESS_SECONDS = 60
+
+
+def _gcs_bucket_and_name(path: str) -> tuple[str, str]:
+    """Split a ``gs://bucket/object`` path into its two parts."""
+    bucket, _, name = path[len('gs://'):].partition('/')
+    if not bucket or not name:
+        raise ValueError(f'{path!r} is not a gs://bucket/object path')
+    return bucket, name
+
+
+def _binary_openers(paths: Sequence[str]):
+    """Binary open functions for these paths, or ``None`` if GCS is needed and unavailable.
+
+    The merge is the only place in this script that moves bulk bytes, and it must not do so
+    through `hl.hadoop_open`. That handle is capped at an 8 KB JVM read -- see `_open_read`
+    for why the cap cannot be lifted -- which put the Foxtrot references merge at ~180 kB/s,
+    just under two hours to copy 1.3 GB. That merge, not the ten-hour Hail scan ahead of it,
+    is what ran the job past its cluster TTL and discarded the result.
+
+    Local paths use the builtins, and are answered without touching GCS at all, so a run
+    over local files neither imports `google.cloud.storage` nor constructs a client that
+    would go looking for credentials. Unit tests therefore exercise this same merge code.
+
+    `google.cloud.storage` is imported lazily rather than at module scope so that its
+    absence degrades to the slow path instead of failing a job that has already done all
+    the expensive work. `run_in_hail_cluster.py` asks `hailctl dataproc start` to install it.
+    """
+    if not any(path.startswith('gs://') for path in paths):
+        return (lambda path: open(path, 'rb')), (lambda path: open(path, 'wb'))
+
+    try:
+        from google.cloud import storage
+    except ImportError:
+        return None
+
+    client = storage.Client()
+
+    def open_read(path: str) -> IO[bytes]:
+        if not path.startswith('gs://'):
+            return open(path, 'rb')
+        bucket, name = _gcs_bucket_and_name(path)
+        return client.bucket(bucket).blob(name).open('rb')
+
+    def open_write(path: str) -> IO[bytes]:
+        if not path.startswith('gs://'):
+            return open(path, 'wb')
+        bucket, name = _gcs_bucket_and_name(path)
+        return client.bucket(bucket).blob(name).open('wb')
+
+    return open_read, open_write
+
+
+def _verify_shard_coverage(seen: set[str], expected_contigs: Sequence[str],
+                           summary_path: str) -> None:
+    """Raise unless every requested contig contributed rows to the merged summary."""
+    missing = [c for c in expected_contigs if c not in seen]
+    if missing:
+        raise RuntimeError(
+            f'The merged summary has no rows for {missing}. Every requested contig must be '
+            'represented or the screen is incomplete while appearing clean. Delete the '
+            f'stale .done markers matching {summary_path}.* and re-run those contigs.')
 
 
 def concatenate_shards(shards: Sequence[str], summary_path: str,
@@ -931,11 +996,9 @@ def concatenate_shards(shards: Sequence[str], summary_path: str,
     summary that looks complete. Introducing a silent omission by way of the resume logic
     would be a poor way to run a tool built to detect silent omissions.
 
-    Copied in chunks rather than row by row. Every 8 KB read and write here crosses the
-    Python/JVM boundary under `hl.hadoop_open`, so a per-row loop paid two crossings per
-    row and put a 7.8M-row merge at tens of minutes -- to copy bytes it never looked at.
-    The only per-row work was recording which contigs were present, and a shard holds
-    exactly one contig, so its first data row answers that for the whole shard.
+    Copied as raw bytes in large chunks. The only per-row work is recording which contigs
+    are present, and a shard holds exactly one contig, so its first data row answers that
+    for the whole shard; everything after it is moved without being decoded or examined.
 
     That makes the coverage check cheap but not weaker in the direction that matters: a
     hypothetical shard holding rows for a contig other than its first would now be reported
@@ -945,7 +1008,80 @@ def concatenate_shards(shards: Sequence[str], summary_path: str,
     produced. A blank line in a hand-edited one would be counted, and `vds_dropout_detect.py`
     skips blank lines when it reads the summary back.
     """
-    seen = set()
+    openers = _binary_openers([summary_path, *shards])
+    if openers is None:
+        announce(
+            'WARNING: google-cloud-storage is not importable on this cluster, so the merge '
+            "falls back to Hail's text handles. That path ran at ~180 kB/s on the Foxtrot "
+            'references summary -- hours rather than minutes. Install google-cloud-storage '
+            'to avoid it.')
+        return _concatenate_shards_via_hail(shards, summary_path, expected_contigs)
+    open_read, open_write = openers
+
+    header = SUMMARY_HEADER.encode()
+    seen: set[str] = set()
+    total = 0
+    started = time.monotonic()
+    reported = started
+    with open_write(summary_path) as out:
+        out.write(header + b'\n')
+        for index, shard in enumerate(shards, 1):
+            with open_read(shard) as handle:
+                first = handle.readline()
+                if first.strip() != header:
+                    found = first.strip().decode('utf-8', 'replace')
+                    raise ValueError(
+                        f'{shard}: expected header {SUMMARY_HEADER!r}, found {found!r}; '
+                        f'the shard is corrupt or from another run')
+
+                # One row read by hand, because its contig identifies the shard. The rest
+                # is copied without being looked at.
+                row = handle.readline()
+                while row and not row.strip():
+                    row = handle.readline()
+                if not row:
+                    # Header only. Its contig stays unseen, and is reported below if it was
+                    # one of the expected ones.
+                    announce(f'{shard} holds no data rows ({index} of {len(shards)})')
+                    continue
+                seen.add(row.split(b'\t', 1)[0].decode('utf-8', 'replace'))
+                out.write(row if row.endswith(b'\n') else row + b'\n')
+                total += 1
+
+                last = b'\n'
+                while True:
+                    chunk = handle.read(MERGE_CHUNK_BYTES)
+                    if not chunk:
+                        break
+                    out.write(chunk)
+                    total += chunk.count(b'\n')
+                    last = chunk[-1:]
+                    now = time.monotonic()
+                    if now - reported >= MERGE_PROGRESS_SECONDS:
+                        rate = total / max(now - started, 1e-9)
+                        announce(f'{shard}: {total:,} rows merged so far, {rate:,.0f} '
+                                 f'rows/s ({index} of {len(shards)} shards)')
+                        reported = now
+                if last != b'\n':
+                    # Without this a shard whose final row has no newline would glue that
+                    # row onto the first row of the next shard, losing both.
+                    out.write(b'\n')
+                    total += 1
+            announce(f'Merged {shard} ({index} of {len(shards)}): {total:,} rows so far')
+
+    _verify_shard_coverage(seen, expected_contigs, summary_path)
+    return total
+
+
+def _concatenate_shards_via_hail(shards: Sequence[str], summary_path: str,
+                                 expected_contigs: Sequence[str]) -> int:
+    """The pre-`google-cloud-storage` merge, kept as a fallback.
+
+    Identical in behavior to `concatenate_shards` and roughly two orders of magnitude
+    slower, because every read and write crosses the Python/JVM boundary 8 KB at a time
+    under `hl.hadoop_open`. Reached only when `google.cloud.storage` cannot be imported.
+    """
+    seen: set[str] = set()
     total = 0
     started = time.monotonic()
     reported = started
@@ -959,14 +1095,10 @@ def concatenate_shards(shards: Sequence[str], summary_path: str,
                         f'{shard}: expected header {SUMMARY_HEADER!r}, found '
                         f'{first.strip()!r}; the shard is corrupt or from another run')
 
-                # One row read by hand, because its contig identifies the shard. The rest
-                # is copied without being looked at.
                 row = handle.readline()
                 while row and not row.strip():
                     row = handle.readline()
                 if not row:
-                    # Header only. Its contig stays unseen, and is reported below if it was
-                    # one of the expected ones.
                     announce(f'{shard} holds no data rows ({index} of {len(shards)})')
                     continue
                 seen.add(row.split('\t', 1)[0])
@@ -988,18 +1120,11 @@ def concatenate_shards(shards: Sequence[str], summary_path: str,
                                  f'rows/s ({index} of {len(shards)} shards)')
                         reported = now
                 if last != '\n':
-                    # Without this a shard whose final row has no newline would glue that
-                    # row onto the first row of the next shard, losing both.
                     out.write('\n')
                     total += 1
             announce(f'Merged {shard} ({index} of {len(shards)}): {total:,} rows so far')
 
-    missing = [c for c in expected_contigs if c not in seen]
-    if missing:
-        raise RuntimeError(
-            f'The merged summary has no rows for {missing}. Every requested contig must be '
-            'represented or the screen is incomplete while appearing clean. Delete the '
-            f'stale .done markers matching {summary_path}.* and re-run those contigs.')
+    _verify_shard_coverage(seen, expected_contigs, summary_path)
     return total
 
 
