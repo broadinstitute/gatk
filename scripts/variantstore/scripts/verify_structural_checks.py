@@ -37,9 +37,10 @@ Scope notes (VS-1989):
     completeness), or duplicated (caught by the duplication screen). The one residual truncation source
     is a Parquet file generated upstream with too few rows -- and there the footer count and the
     BigQuery count agree, so footer-vs-BigQuery would pass it too. That case is instead surfaced
-    cheaply by ``assess_truncation_screen``, a below-median heuristic (the low-side mirror of the
-    duplication screen); catching it exactly would need a gVCF-level variant count, which is out of
-    scope. Do not re-attempt the footer comparison without re-reading this note.
+    cheaply by ``assess_truncation_screen``, a below-median heuristic on its own threshold (equal to
+    the duplication screen's by default, but only the duplication side has been calibrated); catching
+    it exactly would need a gVCF-level variant count, which is out of scope. Do not re-attempt the
+    footer comparison without re-reading this note.
   * ``ref_ranges`` has no cheap per-sample duplication signal -- its row count tracks GQ-band
     transitions, not genome length, and legitimate samples reach many times the median -- so only
     whole-sample presence is verified for it and the gap is recorded rather than papered over. The
@@ -103,6 +104,20 @@ DEFAULT_CO_PRODUCED_FAMILIES = ["vet", "ref_ranges", "sample_chromosome_ploidy"]
 # Foxtrot calibration found vet tight enough that 1.2x is safe against false positives; 1.6x is a
 # conservative default that still catches a doubled sample (~2.0x).
 DEFAULT_VET_DUPLICATION_THRESHOLD = 1.6
+
+# Default ratio-to-median at or below whose reciprocal a vet sample is flagged as possibly truncated:
+# the floor is baseline / threshold, so 1.6 here means 0.625x. Deliberately a separate knob from the
+# duplication threshold even though the two currently share a value, because the evidence behind them
+# is not the same. The Foxtrot calibration measured the high side only (2 samples of 540,545 at 1.6x);
+# nothing has been measured below the median, and a variant-count distribution has no reason to be
+# symmetric in ratio space -- the upper tail is bounded by biology while the lower tail absorbs
+# low-coverage samples, smaller callable fractions, and more aggressive GQ dropping. Mirroring 1.6 is
+# therefore a provisional default, not a derived one, and it must be tunable without moving the high
+# side. Set to 0 to disable the truncation screen entirely (see run_structural_checks). VS-1989.
+DEFAULT_VET_TRUNCATION_THRESHOLD = 1.6
+
+# Sentinel value of the truncation threshold meaning "do not run the truncation screen at all".
+TRUNCATION_SCREEN_DISABLED = 0
 
 PLOIDY_BACKFILL_CAVEAT = (
     "Ploidy duplication is only detectable here where a sample's ploidy rows were written at ingest. "
@@ -468,8 +483,10 @@ def assess_duplication_screen(partition_rows, family, expected_samples,
                               superpartitioned_table_prefixes, threshold):
     """
     Flag samples in ``family`` whose ``total_rows`` is at least ``threshold`` times the callset
-    median -- a heuristic screen for duplication. Returns the flagged samples; the caller decides
-    whether a flag blocks Parquet deletion (the default) or is waived (``allow_flagged_vet_loads``).
+    median -- a heuristic screen for duplication. Returns the flagged samples in ``flagged_samples``;
+    the caller decides whether those samples' Parquet is quarantined from deletion (the default) or
+    deleted with everything else (``allow_flagged_vet_loads``). A flag is scoped to the samples named
+    here and never to the run.
 
     Only meaningful for families with a tight per-sample distribution (``vet``); callers must not
     apply it to ``ref_ranges``.
@@ -485,7 +502,8 @@ def assess_duplication_screen(partition_rows, family, expected_samples,
 
     if not rows_by_sample:
         return {"family": family, "threshold": threshold, "median": None, "baseline": None,
-                "samples_screened": 0, "outliers": [], "singleton_flagged": False}
+                "samples_screened": 0, "outliers": [], "singleton_flagged": False,
+                "flagged_samples": []}
 
     median = statistics.median(rows_by_sample.values())
     # In a two-sample load, median averages the two values, diluting a 2x duplicate to 1.333x
@@ -510,6 +528,11 @@ def assess_duplication_screen(partition_rows, family, expected_samples,
         "samples_screened": len(rows_by_sample),
         "outliers": outliers,
         "singleton_flagged": singleton_flagged,
+        # The samples this screen objects to, and so the samples whose Parquet is quarantined rather
+        # than deleted. A singleton load has no peers to compare against, so the screen cannot clear
+        # the one sample it saw and names it instead of an outlier set.
+        "flagged_samples": (sorted(rows_by_sample) if singleton_flagged
+                            else sorted(o["sample_id"] for o in outliers)),
     }
 
 
@@ -517,11 +540,19 @@ def assess_truncation_screen(partition_rows, family, expected_samples,
                              superpartitioned_table_prefixes, threshold):
     """
     Flag samples in ``family`` whose ``total_rows`` is at most ``median / threshold`` -- the low-side
-    mirror of ``assess_duplication_screen`` and a heuristic screen for a grossly truncated partition.
-    The same ``threshold`` governs both sides: a sample reads as a possible duplicate above
-    `threshold * median`` and as a possible truncation below ``median / threshold``. Returns the
-    flagged samples; the caller decides whether a flag blocks Parquet deletion (the default) or is
-    waived (``allow_flagged_vet_loads``).
+    counterpart of ``assess_duplication_screen`` and a heuristic screen for a grossly truncated
+    partition. Returns the flagged samples in ``flagged_samples``; the caller decides whether those
+    samples' Parquet is quarantined from deletion (the default) or deleted with everything else
+    (``allow_flagged_vet_loads``). A flag is scoped to the samples named here and never to the run.
+
+    ``threshold`` is this screen's own, passed separately from the duplication screen's even though
+    the two share a default value. They are not equally evidenced: the Foxtrot calibration measured
+    the high side only, so mirroring 1.6 into a 0.625x floor is an assumption of symmetry rather than
+    a measurement, and a variant-count distribution has no reason to be symmetric in ratio space --
+    the upper tail is bounded by biology while the lower tail absorbs low-coverage samples, smaller
+    callable fractions, and more aggressive GQ dropping. Keeping the knobs separate is what lets the
+    low side be recalibrated, or turned off with ``TRUNCATION_SCREEN_DISABLED``, without disturbing
+    the calibrated high side. See VS-1989.
 
     This is the only cheap detector for the one truncation source the rest of the row-count gate
     misses: a Parquet file generated upstream with far fewer rows than its peers. Truncation cannot
@@ -540,6 +571,13 @@ def assess_truncation_screen(partition_rows, family, expected_samples,
     Zero-row partitions are excluded here -- that is the completeness check's empty-partition case --
     so this screen judges only partitions that are present and non-empty.
     """
+    # Disabled is reported rather than silently skipped: a caller reading details["truncation_screen"]
+    # must be able to tell "nothing fell below the floor" apart from "nothing was looked at".
+    if threshold == TRUNCATION_SCREEN_DISABLED:
+        return {"family": family, "threshold": threshold, "disabled": True, "median": None,
+                "baseline": None, "samples_screened": 0, "outliers": [], "singleton_flagged": False,
+                "flagged_samples": []}
+
     expected = set(expected_samples)
     rows_by_sample = {
         sample_id: total_rows
@@ -551,7 +589,8 @@ def assess_truncation_screen(partition_rows, family, expected_samples,
 
     if not rows_by_sample:
         return {"family": family, "threshold": threshold, "median": None, "baseline": None,
-                "samples_screened": 0, "outliers": [], "singleton_flagged": False}
+                "samples_screened": 0, "outliers": [], "singleton_flagged": False,
+                "flagged_samples": []}
 
     median = statistics.median(rows_by_sample.values())
     # In a two-sample load, median averages the two values, diluting a 0.5x truncation to 0.667x
@@ -576,12 +615,18 @@ def assess_truncation_screen(partition_rows, family, expected_samples,
         "samples_screened": len(rows_by_sample),
         "outliers": outliers,
         "singleton_flagged": singleton_flagged,
+        # The samples this screen objects to, and so the samples whose Parquet is quarantined rather
+        # than deleted. A singleton load has no peers to compare against, so the screen cannot clear
+        # the one sample it saw and names it instead of an outlier set.
+        "flagged_samples": (sorted(rows_by_sample) if singleton_flagged
+                            else sorted(o["sample_id"] for o in outliers)),
     }
 
 
 def run_structural_checks(project_id, dataset_name, expected_by_family,
                           superpartitioned_table_prefixes=None, regular_table_prefixes=None,
                           vet_duplication_threshold=DEFAULT_VET_DUPLICATION_THRESHOLD,
+                          vet_truncation_threshold=DEFAULT_VET_TRUNCATION_THRESHOLD,
                           allow_flagged_vet_loads=False,
                           expected_ploidy_rows_per_sample=None,
                           duplication_screen_families=None,
@@ -613,26 +658,45 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
     ``cardinality_ok``, ``cross_family_ok``, ``duplication_flagged``, ``truncation_flagged``) plus a
     nested ``details`` block for humans and logs. ``completeness_ok``, ``cardinality_ok`` and
     ``cross_family_ok`` are the exact signals that gate ``all_loaded`` (and so the fail-loud abort).
+    ``vet_duplication_threshold`` and ``vet_truncation_threshold`` are separate knobs with the same
+    default: the Foxtrot calibration measured only the high side, so the low-side floor
+    (``baseline / vet_truncation_threshold``) is a provisional mirror that must be movable on its own.
+    Pass ``TRUNCATION_SCREEN_DISABLED`` for the latter to switch the truncation screen off while
+    leaving the calibrated duplication screen running.
+
     The duplication and truncation screens never
-    affect ``all_loaded``; they gate only the separate ``safe_to_delete_parquet`` predicate, and there
-    only when ``allow_flagged_vet_loads`` is false (its default). ``allow_flagged_vet_loads`` itself is
-    carried through unchanged, purely so the log summary can say whether a flag will block deletion.
+    affect ``all_loaded``, and they no longer gate deletion for the run either: they contribute
+    ``flagged_samples``, the union of the samples they object to, whose Parquet the caller quarantines
+    out of the bulk delete's reach so it survives for inspection. The rest of the callset is deleted
+    normally. ``duplication_flagged`` and ``truncation_flagged`` remain as per-screen summaries for
+    logs and workflow outputs. When ``allow_flagged_vet_loads`` is true the screens are waived and
+    ``flagged_samples`` is not acted on, so flagged Parquet is deleted with everything else;
+    ``allow_flagged_vet_loads`` is carried through unchanged so the log summary can say so.
     """
-    # Reject a nonsensical ratio before any BigQuery read. 0 divides by zero in the truncation screen
-    # (median / threshold); any value <= 1 makes ordinary samples satisfy an outlier condition on both
-    # sides (>= threshold * median above, <= median / threshold below), so the screens would flag half
-    # the callset. Fail fast with an actionable message rather than crash mid-verification or silently
-    # flag everything.
-    try:
-        threshold_ok = math.isfinite(vet_duplication_threshold) and vet_duplication_threshold > 1
-    except TypeError:
-        threshold_ok = False
-    if not threshold_ok:
-        raise ValueError(
-            f"vet_duplication_threshold must be a finite number > 1 (got {vet_duplication_threshold!r}); "
-            "a ratio <= 1 flags ordinary samples on both screens and 0 divides by zero in the "
-            "truncation screen."
-        )
+    # Reject a nonsensical ratio before any BigQuery read. A value <= 1 makes ordinary samples satisfy
+    # the outlier condition (>= threshold * median for duplication, <= median / threshold for
+    # truncation), so the screen would flag half the callset; 0 additionally divides by zero in the
+    # truncation screen. Fail fast with an actionable message rather than crash mid-verification or
+    # silently flag everything.
+    def _validate_threshold(name, value, disable_sentinel=None):
+        try:
+            ok = math.isfinite(value) and value > 1
+        except TypeError:
+            ok = False
+        if not ok and not (disable_sentinel is not None and value == disable_sentinel):
+            disable_hint = (f", or exactly {disable_sentinel} to disable the screen"
+                            if disable_sentinel is not None else "")
+            raise ValueError(
+                f"{name} must be a finite number > 1{disable_hint} (got {value!r}); a ratio <= 1 "
+                "flags ordinary samples, and 0 divides by zero in the truncation screen."
+            )
+
+    _validate_threshold("vet_duplication_threshold", vet_duplication_threshold)
+    # The truncation threshold alone accepts a disable sentinel: it is the uncalibrated one, so an
+    # operator who finds it flagging ordinary samples needs a way to switch it off that does not also
+    # switch off the calibrated duplication screen. VS-1989.
+    _validate_threshold("vet_truncation_threshold", vet_truncation_threshold,
+                        disable_sentinel=TRUNCATION_SCREEN_DISABLED)
 
     if superpartitioned_table_prefixes is None:
         superpartitioned_table_prefixes = ["vet", "ref_ranges"]
@@ -700,8 +764,9 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
         cardinality_ok = cardinality_ok and result["ok"]
 
     # Duplication and truncation screens on the usable superpartitioned families only (vet): same
-    # families, same threshold, opposite sides of the median. ref_ranges is recorded as intentionally
-    # unchecked. The truncation screen is the low-side mirror -- it catches a grossly under-rowed
+    # families, opposite sides of the median, and a threshold each -- equal by default but separately
+    # settable, because only the high side has been calibrated. ref_ranges is recorded as
+    # intentionally unchecked. The truncation screen is the low-side mirror -- it catches a grossly under-rowed
     # partition, the one truncation source a row-count gate can produce cheaply (see
     # assess_truncation_screen for why an exact load-vs-source comparison would add nothing here).
     duplication = {}
@@ -714,7 +779,7 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
             )
             truncation[family] = assess_truncation_screen(
                 partition_rows, family, expected_by_family.get(family, set()),
-                superpartitioned_table_prefixes, vet_duplication_threshold,
+                superpartitioned_table_prefixes, vet_truncation_threshold,
             )
     unscreened = {
         "checked": False,
@@ -728,8 +793,27 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
         "families": sorted(f for f in superpartitioned_table_prefixes if f not in duplication),
     }
 
-    duplication_flagged = any(d["outliers"] or d.get("singleton_flagged", False) for d in duplication.values())
-    truncation_flagged = any(t["outliers"] or t.get("singleton_flagged", False) for t in truncation.values())
+    # The screens are heuristic, so a flag names the samples to hold back for inspection rather than
+    # condemning the run: the caller quarantines these samples' Parquet and deletes the rest. The
+    # union is over every screen because a sample flagged by either side is equally unexplained.
+    flagged_samples = sorted(
+        {sid
+         for screen in (duplication, truncation)
+         for result in screen.values()
+         for sid in result["flagged_samples"]}
+    )
+    # The duplication union on its own, reported alongside the overall one because the two screens are
+    # not equally trustworthy: the duplication threshold was calibrated against Foxtrot (2 flagged of
+    # 540,545) while the truncation threshold has only been measured on its high side. Callers that act
+    # on a flag more forcefully than by quarantining -- GvsImportGenomes aborts the run -- key on this
+    # subset so an uncalibrated heuristic is not what fails a completed ingest.
+    duplication_flagged_samples = sorted(
+        {sid
+         for result in duplication.values()
+         for sid in result["flagged_samples"]}
+    )
+    duplication_flagged = any(d["flagged_samples"] for d in duplication.values())
+    truncation_flagged = any(t["flagged_samples"] for t in truncation.values())
 
     return {
         "completeness_ok": completeness["ok"],
@@ -737,6 +821,8 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
         "cross_family_ok": cross_family["ok"],
         "duplication_flagged": duplication_flagged,
         "truncation_flagged": truncation_flagged,
+        "flagged_samples": flagged_samples,
+        "duplication_flagged_samples": duplication_flagged_samples,
         "allow_flagged_vet_loads": allow_flagged_vet_loads,
         "details": {
             "family_completeness": completeness,

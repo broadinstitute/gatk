@@ -26,7 +26,9 @@ workflow GvsQuickstartVcfIntegration {
         # integration run can exercise them (e.g. set parquet_allow_flagged_vet_loads = true to waive the
         # screens and let deletion proceed despite a flag).
         Float parquet_vet_duplication_threshold = 1.6
+        Float parquet_vet_truncation_threshold = 1.6
         Boolean parquet_allow_flagged_vet_loads = false
+        Boolean parquet_fail_on_quarantine = true
         Int? parquet_expected_ploidy_rows_per_sample
         String drop_state = "FORTY"
         Boolean bgzip_output_vcfs = false
@@ -143,7 +145,9 @@ workflow GvsQuickstartVcfIntegration {
             use_parquet_ingest = use_parquet_ingest,
             parquet_output_gcs_dir = parquet_output_gcs_dir,
             parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+            parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
             parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+            parquet_fail_on_quarantine = parquet_fail_on_quarantine,
             parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
     }
 
@@ -160,6 +164,24 @@ workflow GvsQuickstartVcfIntegration {
                 fail_on_validation_errors = true,
                 git_branch_or_tag = git_branch_or_tag,
                 variants_docker = effective_variants_docker,
+                basic_docker = effective_basic_docker,
+        }
+    }
+
+    # VS-1989: the quickstart samples are ordinary, so the vet duplication and truncation screens must
+    # flag none of them. A duplication flag already aborts inside GvsImportGenomes (parquet_fail_on_quarantine
+    # defaults to true), so what this adds is coverage of a truncation-only flag -- which quarantines but
+    # deliberately does not abort, the truncation threshold being uncalibrated -- and of a run that turned
+    # that abort off. A screen that starts flagging normal samples is otherwise a silently green regression.
+    if (use_parquet_ingest && select_first([JointVariantCalling.parquet_quarantined_samples, 0]) > 0) {
+        call Utils.TerminateWorkflow as VetScreensFlaggedQuickstartSamples {
+            input:
+                message = "The VS-1989 vet screens quarantined the Parquet of " +
+                          select_first([JointVariantCalling.parquet_quarantined_samples, 0]) +
+                          " quickstart sample(s), of which " +
+                          select_first([JointVariantCalling.parquet_quarantined_duplication_samples, 0]) +
+                          " came from the duplication screen. The quickstart callset is ordinary and should " +
+                          "flag nothing, so treat this as a screen regression rather than as bad input data.",
                 basic_docker = effective_basic_docker,
         }
     }

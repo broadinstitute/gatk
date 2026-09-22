@@ -3,9 +3,9 @@ Unit tests for verify_all_loaded.py, focused on the VS-1989 composition change a
 the deletion gate: the exact structural checks (family completeness, ploidy cardinality) block
 all_loaded -- the factual "is the load complete?" signal fail-loud aborts on -- even when the
 shared-predicate presence check is fully satisfied; while the heuristic vet duplication/truncation
-screens never touch all_loaded and instead gate the separate safe_to_delete_parquet predicate, blocking
-deletion by default and waived only under allow_flagged_vet_loads. The results JSON must carry both
-predicates plus the structural booleans and the pre-existing keys the WDL already reads.
+screens never touch all_loaded and never block deletion for the run, instead naming the samples whose
+Parquet is quarantined out of the bulk delete's reach. The results JSON must carry both predicates, the
+quarantine work list, the structural booleans, and the pre-existing keys the WDL already reads.
 
 The BigQuery-touching helpers (get_already_loaded_tables_and_sample_ids, run_structural_checks) are
 patched; the real GCS-path parser runs against realistic fixture paths.
@@ -40,12 +40,23 @@ ALL_PAIRS = {
 
 
 def _structural(completeness_ok=True, cardinality_ok=True, cross_family_ok=True,
-                duplication_flagged=False, truncation_flagged=False, allow_flagged_vet_loads=False):
+                duplication_flagged=False, truncation_flagged=False, allow_flagged_vet_loads=False,
+                flagged_samples=None, duplication_flagged_samples=None):
     """A run_structural_checks return value with the keys verify_all_loaded consumes."""
+    if flagged_samples is None:
+        # In a real result the booleans and the sample list come from the same screens, so keep the
+        # fixture self-consistent: a raised flag always names at least one sample.
+        flagged_samples = [1] if (duplication_flagged or truncation_flagged) else []
+    if duplication_flagged_samples is None:
+        # Likewise: the duplication subset is every flagged sample when duplication is the screen that
+        # raised the flag, and empty when only truncation did. Pass it explicitly to mix the two.
+        duplication_flagged_samples = list(flagged_samples) if duplication_flagged else []
     return {
         "completeness_ok": completeness_ok,
         "cardinality_ok": cardinality_ok,
         "cross_family_ok": cross_family_ok,
+        "flagged_samples": list(flagged_samples),
+        "duplication_flagged_samples": list(duplication_flagged_samples),
         "duplication_flagged": duplication_flagged,
         "truncation_flagged": truncation_flagged,
         "allow_flagged_vet_loads": allow_flagged_vet_loads,
@@ -69,7 +80,7 @@ class VerifyAllLoadedTestBase(unittest.TestCase):
         self.out_dir = os.path.join(self.tmp, "out")
 
     def _run(self, loaded_pairs, structural, allow_flagged_vet_loads=False,
-             expected_ploidy_rows_per_sample=None):
+             expected_ploidy_rows_per_sample=None, **kwargs):
         with patch("verify_all_loaded.get_already_loaded_tables_and_sample_ids",
                    return_value=loaded_pairs), \
              patch("verify_all_loaded.run_structural_checks",
@@ -82,11 +93,17 @@ class VerifyAllLoadedTestBase(unittest.TestCase):
                 output_dir=self.out_dir,
                 allow_flagged_vet_loads=allow_flagged_vet_loads,
                 expected_ploidy_rows_per_sample=expected_ploidy_rows_per_sample,
+                **kwargs,
             )
 
     def _written_json(self):
         with open(os.path.join(self.out_dir, "verification_results.json")) as f:
             return json.load(f)
+
+    def _quarantine_list(self):
+        """The quarantine work list as written to disk -- what the WDL move step actually reads."""
+        with open(os.path.join(self.out_dir, "quarantine_files.txt")) as f:
+            return [line.strip() for line in f if line.strip()]
 
 
 class TestHappyPath(VerifyAllLoadedTestBase):
@@ -158,19 +175,41 @@ class TestExactChecksGateAllLoaded(VerifyAllLoadedTestBase):
         self.assertEqual(r["missing_files"], 0)
 
 
-class TestVetScreensGateDeletionNotAllLoaded(VerifyAllLoadedTestBase):
-    """A vet-screen flag is orthogonal to load completeness: all_loaded stays True (so the task
-    succeeds), but the flag blocks Parquet deletion by default and is waived only under
-    allow_flagged_vet_loads."""
+class TestVetScreensQuarantineRatherThanBlockDeletion(VerifyAllLoadedTestBase):
+    """A vet-screen flag is orthogonal to load completeness and scoped to the samples it names:
+    all_loaded stays True (so the task succeeds), the bulk delete stays authorized, and the flagged
+    samples' Parquet is listed for quarantine instead. allow_flagged_vet_loads waives the screens, so
+    nothing is quarantined and the flagged Parquet is deleted with the rest."""
 
-    def test_duplication_flag_blocks_deletion_but_not_all_loaded(self):
-        r = self._run(set(ALL_PAIRS), _structural(duplication_flagged=True))
+    def test_duplication_flag_quarantines_without_blocking_deletion(self):
+        r = self._run(set(ALL_PAIRS), _structural(duplication_flagged=True, flagged_samples=[1]))
         self.assertTrue(r["all_loaded"])
         self.assertTrue(r["structural_checks_ok"])
         self.assertTrue(r["vet_duplication_flagged"])
-        self.assertFalse(r["safe_to_delete_parquet"])
+        # The delete proceeds for the rest of the callset -- the whole point of quarantining.
+        self.assertTrue(r["safe_to_delete_parquet"])
+        self.assertEqual(r["quarantine_samples"], [1])
+        self.assertEqual(r["quarantine_sample_count"], 1)
+        # The count GvsImportGenomes' abort condition reads.
+        self.assertEqual(r["quarantine_duplication_sample_count"], 1)
+        self.assertFalse(r["quarantine_waived"])
 
-    def test_duplication_flag_waived_allows_deletion(self):
+    def test_quarantine_covers_the_flagged_sample_across_every_family(self):
+        # A flag says this sample's ingest is unexplained, so all of its Parquet is held back, not just
+        # the flagging family's -- a sample is only re-ingestable from a complete set of its files.
+        r = self._run(set(ALL_PAIRS), _structural(duplication_flagged=True, flagged_samples=[1]))
+        self.assertEqual(r["quarantine_files"], 3)
+        self.assertEqual(sorted(self._quarantine_list()), sorted([
+            "gs://b/vet/vet_001_1_input_vcf_0_S1.vcf.gz.parquet",
+            "gs://b/ref_ranges/ref_ranges_001_1_input_vcf_0_S1.vcf.gz.parquet",
+            "gs://b/sample_chromosome_ploidy/sample_chromosome_ploidy_1_S1.parquet",
+        ]))
+
+    def test_unflagged_samples_are_not_quarantined(self):
+        r = self._run(set(ALL_PAIRS), _structural(duplication_flagged=True, flagged_samples=[1]))
+        self.assertNotIn("S2", "".join(self._quarantine_list()))
+
+    def test_duplication_flag_waived_quarantines_nothing(self):
         r = self._run(
             set(ALL_PAIRS),
             _structural(duplication_flagged=True, allow_flagged_vet_loads=True),
@@ -179,15 +218,20 @@ class TestVetScreensGateDeletionNotAllLoaded(VerifyAllLoadedTestBase):
         self.assertTrue(r["all_loaded"])
         self.assertTrue(r["vet_duplication_flagged"])
         self.assertTrue(r["safe_to_delete_parquet"])
+        self.assertTrue(r["quarantine_waived"])
+        self.assertEqual(r["quarantine_files"], 0)
+        self.assertEqual(self._quarantine_list(), [])
 
-    def test_truncation_flag_blocks_deletion_but_not_all_loaded(self):
-        r = self._run(set(ALL_PAIRS), _structural(truncation_flagged=True))
+    def test_truncation_flag_quarantines_without_blocking_deletion(self):
+        r = self._run(set(ALL_PAIRS), _structural(truncation_flagged=True, flagged_samples=[2]))
         self.assertTrue(r["all_loaded"])
         self.assertTrue(r["structural_checks_ok"])
         self.assertTrue(r["vet_truncation_flagged"])
-        self.assertFalse(r["safe_to_delete_parquet"])
+        self.assertTrue(r["safe_to_delete_parquet"])
+        self.assertEqual(r["quarantine_samples"], [2])
+        self.assertEqual(r["quarantine_files"], 3)
 
-    def test_truncation_flag_waived_allows_deletion(self):
+    def test_truncation_flag_waived_quarantines_nothing(self):
         r = self._run(
             set(ALL_PAIRS),
             _structural(truncation_flagged=True, allow_flagged_vet_loads=True),
@@ -196,6 +240,30 @@ class TestVetScreensGateDeletionNotAllLoaded(VerifyAllLoadedTestBase):
         self.assertTrue(r["all_loaded"])
         self.assertTrue(r["vet_truncation_flagged"])
         self.assertTrue(r["safe_to_delete_parquet"])
+        self.assertEqual(r["quarantine_files"], 0)
+
+    def test_both_screens_flagging_different_samples_quarantines_both(self):
+        r = self._run(set(ALL_PAIRS), _structural(
+            duplication_flagged=True, truncation_flagged=True, flagged_samples=[1, 2]))
+        self.assertTrue(r["safe_to_delete_parquet"])
+        self.assertEqual(r["quarantine_samples"], [1, 2])
+        self.assertEqual(r["quarantine_files"], 6)
+
+    def test_clean_run_writes_an_empty_quarantine_list(self):
+        # The list is always written so the WDL move step can be unconditional.
+        r = self._run(set(ALL_PAIRS), _structural())
+        self.assertEqual(r["quarantine_files"], 0)
+        self.assertEqual(r["quarantine_samples"], [])
+        self.assertEqual(self._quarantine_list(), [])
+        self.assertTrue(os.path.exists(os.path.join(self.out_dir, "quarantine_files.txt")))
+
+    def test_unquarantinable_flagged_sample_blocks_deletion(self):
+        # A flagged sample_id with no GCS file behind it: the quarantine would protect nothing, so the
+        # bulk delete must not run, or it destroys exactly the Parquet the screens asked to keep.
+        r = self._run(set(ALL_PAIRS), _structural(duplication_flagged=True, flagged_samples=[999]))
+        self.assertTrue(r["all_loaded"])
+        self.assertFalse(r["safe_to_delete_parquet"])
+        self.assertEqual(r["quarantine_uncovered_samples"], [999])
 
 
 class TestStructuralDetailCapped(VerifyAllLoadedTestBase):
@@ -274,31 +342,169 @@ class TestComputeAllLoaded(unittest.TestCase):
         self.assertFalse(verify_all_loaded.compute_all_loaded(set(), [], False))
 
 
-class TestComputeSafeToDeleteParquet(unittest.TestCase):
-    """The deletion gate proper: all_loaded AND no unwaived vet-screen flag."""
+def _quarantine(waived=False, samples=(), paths=(), uncovered_samples=(), duplication_samples=None):
+    """A compute_quarantine return value.
 
-    def _safe(self, all_loaded, structural, allow):
-        return verify_all_loaded.compute_safe_to_delete_parquet(all_loaded, structural, allow)
+    duplication_samples defaults to all of samples, matching the common fixture where the duplication
+    screen is the one that flagged them; pass it explicitly for a truncation-only flag.
+    """
+    return {"waived": waived, "samples": list(samples), "paths": list(paths),
+            "uncovered_samples": list(uncovered_samples),
+            "duplication_samples": list(samples if duplication_samples is None else duplication_samples)}
+
+
+class TestComputeQuarantine(unittest.TestCase):
+    """Resolving flagged sample_ids to the Parquet paths held back from the bulk delete."""
+
+    PAIRS_TO_FILES = {
+        ("vet_001", 1): ["gs://b/vet/vet_001_1_a.parquet"],
+        ("ref_ranges_001", 1): ["gs://b/ref_ranges/ref_ranges_001_1_a.parquet"],
+        ("sample_chromosome_ploidy", 1): ["gs://b/sample_chromosome_ploidy/p_1.parquet"],
+        ("vet_001", 2): ["gs://b/vet/vet_001_2_a.parquet"],
+        ("ref_ranges_001", 2): ["gs://b/ref_ranges/ref_ranges_001_2_a.parquet"],
+        ("sample_chromosome_ploidy", 2): ["gs://b/sample_chromosome_ploidy/p_2.parquet"],
+    }
+
+    def _q(self, structural, allow=False):
+        return verify_all_loaded.compute_quarantine(structural, self.PAIRS_TO_FILES, allow)
+
+    def test_no_flags_quarantines_nothing(self):
+        q = self._q(_structural())
+        self.assertEqual(q, _quarantine())
+
+    def test_flagged_sample_pulls_all_its_families(self):
+        q = self._q(_structural(duplication_flagged=True, flagged_samples=[1]))
+        self.assertEqual(q["samples"], [1])
+        self.assertEqual(q["paths"], sorted([
+            "gs://b/vet/vet_001_1_a.parquet",
+            "gs://b/ref_ranges/ref_ranges_001_1_a.parquet",
+            "gs://b/sample_chromosome_ploidy/p_1.parquet",
+        ]))
+        self.assertEqual(q["uncovered_samples"], [])
+
+    def test_paths_are_sorted_and_deduplicated_by_pair(self):
+        q = self._q(_structural(duplication_flagged=True, flagged_samples=[1, 2]))
+        self.assertEqual(q["paths"], sorted(q["paths"]))
+        self.assertEqual(len(q["paths"]), 6)
+
+    def test_multiple_files_per_pair_all_quarantined(self):
+        # A sample ingested from several input VCFs has several Parquet files per table.
+        pairs = {("vet_001", 1): ["gs://b/vet/a.parquet", "gs://b/vet/b.parquet"]}
+        q = verify_all_loaded.compute_quarantine(
+            _structural(duplication_flagged=True, flagged_samples=[1]), pairs, False)
+        self.assertEqual(q["paths"], ["gs://b/vet/a.parquet", "gs://b/vet/b.parquet"])
+
+    def test_waiver_short_circuits_before_resolving_paths(self):
+        q = self._q(_structural(duplication_flagged=True, flagged_samples=[1]), allow=True)
+        self.assertEqual(q, _quarantine(waived=True))
+
+    def test_flagged_sample_with_no_files_is_reported_uncovered(self):
+        q = self._q(_structural(duplication_flagged=True, flagged_samples=[1, 999]))
+        self.assertEqual(q["samples"], [1, 999])
+        self.assertEqual(q["uncovered_samples"], [999])
+        self.assertEqual(len(q["paths"]), 3)
+
+    def test_missing_flagged_samples_key_is_tolerated(self):
+        # Defensive: a structural result predating the key must not crash the verifier.
+        q = verify_all_loaded.compute_quarantine({}, self.PAIRS_TO_FILES, False)
+        self.assertEqual(q, _quarantine())
+
+
+class TestQuarantineDuplicationCountInResults(VerifyAllLoadedTestBase):
+    """The results JSON key the WDL abort condition reads, end to end through verify_all_loaded."""
+
+    def test_truncation_only_run_quarantines_but_reports_no_duplication(self):
+        r = self._run(set(ALL_PAIRS), _structural(truncation_flagged=True, flagged_samples=[1]))
+        self.assertTrue(r["all_loaded"])
+        self.assertEqual(r["quarantine_sample_count"], 1)
+        self.assertEqual(r["quarantine_duplication_sample_count"], 0)
+        self.assertEqual(len(self._quarantine_list()), 3)
+
+    def test_clean_run_reports_zero(self):
+        r = self._run(set(ALL_PAIRS), _structural())
+        self.assertEqual(r["quarantine_duplication_sample_count"], 0)
+
+    def test_waived_run_reports_zero(self):
+        r = self._run(set(ALL_PAIRS), _structural(duplication_flagged=True, flagged_samples=[1]),
+                      allow_flagged_vet_loads=True)
+        self.assertEqual(r["quarantine_duplication_sample_count"], 0)
+
+
+class TestQuarantineDuplicationAttribution(unittest.TestCase):
+    """Only duplication flags abort the run (GvsImportGenomes' parquet_fail_on_quarantine), so the
+    duplication subset of the quarantined samples has to be reported separately and accurately -- the
+    truncation threshold is not calibrated, and must not be able to fail a completed ingest."""
+
+    PAIRS_TO_FILES = {
+        ("vet_001", 1): ["gs://b/vet/vet_001_1_a.parquet"],
+        ("vet_001", 2): ["gs://b/vet/vet_001_2_a.parquet"],
+    }
+
+    def _q(self, structural, allow=False):
+        return verify_all_loaded.compute_quarantine(structural, self.PAIRS_TO_FILES, allow)
+
+    def test_clean_run_attributes_nothing(self):
+        self.assertEqual(self._q(_structural())["duplication_samples"], [])
+
+    def test_duplication_flag_is_attributed(self):
+        q = self._q(_structural(duplication_flagged=True, flagged_samples=[1]))
+        self.assertEqual(q["samples"], [1])
+        self.assertEqual(q["duplication_samples"], [1])
+
+    def test_truncation_only_flag_is_quarantined_but_not_attributed(self):
+        # The sample is still held back from the delete; it just does not abort the run.
+        q = self._q(_structural(truncation_flagged=True, flagged_samples=[1]))
+        self.assertEqual(q["samples"], [1])
+        self.assertEqual(q["duplication_samples"], [])
+
+    def test_mixed_screens_attribute_only_the_duplication_sample(self):
+        q = self._q(_structural(duplication_flagged=True, truncation_flagged=True,
+                                flagged_samples=[1, 2], duplication_flagged_samples=[2]))
+        self.assertEqual(q["samples"], [1, 2])
+        self.assertEqual(q["duplication_samples"], [2])
+
+    def test_waiver_attributes_nothing(self):
+        q = self._q(_structural(duplication_flagged=True, flagged_samples=[1]), allow=True)
+        self.assertEqual(q["duplication_samples"], [])
+
+    def test_attribution_cannot_name_an_unflagged_sample(self):
+        # Defensive: a duplication subset that somehow exceeds the union is clamped to the union, so the
+        # abort can never fire for a sample whose Parquet was not actually quarantined.
+        q = self._q(_structural(duplication_flagged=True, flagged_samples=[1],
+                                duplication_flagged_samples=[1, 2]))
+        self.assertEqual(q["duplication_samples"], [1])
+
+    def test_missing_key_attributes_nothing(self):
+        self.assertEqual(
+            verify_all_loaded.compute_quarantine({}, self.PAIRS_TO_FILES, False)["duplication_samples"],
+            [],
+        )
+
+
+class TestComputeSafeToDeleteParquet(unittest.TestCase):
+    """The bulk deletion gate: all_loaded, and every flagged sample quarantinable."""
+
+    def _safe(self, all_loaded, quarantine):
+        return verify_all_loaded.compute_safe_to_delete_parquet(all_loaded, quarantine)
 
     def test_requires_all_loaded(self):
-        # Even with no flags and the screens waived, an incomplete load is never safe to delete.
-        self.assertFalse(self._safe(False, _structural(), False))
-        self.assertFalse(self._safe(False, _structural(), True))
+        # An incomplete load is never safe to delete, whatever the quarantine says.
+        self.assertFalse(self._safe(False, _quarantine()))
+        self.assertFalse(self._safe(False, _quarantine(waived=True)))
 
     def test_clean_load_is_safe(self):
-        self.assertTrue(self._safe(True, _structural(), False))
+        self.assertTrue(self._safe(True, _quarantine()))
 
-    def test_duplication_flag_blocks_by_default(self):
-        self.assertFalse(self._safe(True, _structural(duplication_flagged=True), False))
+    def test_flagged_but_quarantinable_load_is_still_safe_to_delete(self):
+        # The change of policy: a screen flag no longer blocks the run's delete, because the flagged
+        # samples' Parquet is moved out of its reach first.
+        self.assertTrue(self._safe(True, _quarantine(samples=[1], paths=["gs://b/vet/a.parquet"])))
 
-    def test_truncation_flag_blocks_by_default(self):
-        self.assertFalse(self._safe(True, _structural(truncation_flagged=True), False))
+    def test_waived_flags_are_safe_to_delete(self):
+        self.assertTrue(self._safe(True, _quarantine(waived=True)))
 
-    def test_flags_waived_when_allowed(self):
-        self.assertTrue(self._safe(True, _structural(duplication_flagged=True), True))
-        self.assertTrue(self._safe(True, _structural(truncation_flagged=True), True))
-        self.assertTrue(self._safe(
-            True, _structural(duplication_flagged=True, truncation_flagged=True), True))
+    def test_unquarantinable_flagged_sample_blocks(self):
+        self.assertFalse(self._safe(True, _quarantine(samples=[999], uncovered_samples=[999])))
 
 
 class TestSharedPredicateStillGates(VerifyAllLoadedTestBase):
@@ -395,9 +601,91 @@ class TestLogStructuralSummary(unittest.TestCase):
             verify_all_loaded._log_structural_summary(structural)
 
         logs = "\n".join(cm.output)
-        self.assertIn("1 sample(s) >= 1.6x baseline (100) (blocks Parquet deletion)", logs)
-        self.assertIn("1 sample(s) <= baseline/1.6 (200) (blocks Parquet deletion)", logs)
+        self.assertIn("1 sample(s) >= 1.6x baseline (100) (quarantining their Parquet)", logs)
+        self.assertIn("1 sample(s) <= baseline/1.6 (200) (quarantining their Parquet)", logs)
         self.assertIn("modal count 24 rows/sample, no duplications detected", logs)
+
+    def test_disabled_truncation_screen_is_logged_as_disabled_not_clean(self):
+        # A switched-off screen must not read like a screen that looked and found nothing -- that is
+        # the whole hazard of giving the uncalibrated screen an off switch.
+        structural = {
+            "allow_flagged_vet_loads": False,
+            "details": {
+                "family_completeness": {"ok": True, "per_family": {}},
+                "cross_family_consistency": {"ok": True, "union_size": 2, "per_family": {}},
+                "cardinality": {},
+                "duplication_screen": {},
+                "truncation_screen": {
+                    "vet": {
+                        "threshold": 0,
+                        "disabled": True,
+                        "median": None,
+                        "baseline": None,
+                        "samples_screened": 0,
+                        "outliers": [],
+                        "singleton_flagged": False,
+                    }
+                },
+                "duplication_unscreened": {"families": [], "reason": ""},
+            },
+        }
+        with self.assertLogs("verify_all_loaded", level="INFO") as cm:
+            verify_all_loaded._log_structural_summary(structural)
+
+        logs = "\n".join(cm.output)
+        self.assertIn("screen disabled", logs)
+        self.assertIn("no low-side check was performed", logs)
+        self.assertNotIn("no samples <=", logs)
+
+
+class TestTruncationThresholdPlumbing(VerifyAllLoadedTestBase):
+    """VS-1989: the truncation ratio reaches run_structural_checks as its own argument.
+
+    The two defaults are equal, so a regression that dropped the parameter and reused the
+    duplication ratio would pass every behavioural test. These assert the wiring directly.
+    """
+
+    def test_defaults_are_forwarded_separately(self):
+        self._run(set(ALL_PAIRS), _structural())
+        kwargs = self.mock_struct.call_args.kwargs
+        self.assertEqual(kwargs["vet_duplication_threshold"],
+                         verify_all_loaded.DEFAULT_VET_DUPLICATION_THRESHOLD)
+        self.assertEqual(kwargs["vet_truncation_threshold"],
+                         verify_all_loaded.DEFAULT_VET_TRUNCATION_THRESHOLD)
+
+    def test_thresholds_move_independently(self):
+        self._run(set(ALL_PAIRS), _structural(),
+                  vet_duplication_threshold=2.0, vet_truncation_threshold=1.25)
+        kwargs = self.mock_struct.call_args.kwargs
+        self.assertEqual(kwargs["vet_duplication_threshold"], 2.0)
+        self.assertEqual(kwargs["vet_truncation_threshold"], 1.25)
+
+    def test_disable_sentinel_is_forwarded(self):
+        self._run(set(ALL_PAIRS), _structural(),
+                  vet_truncation_threshold=verify_all_loaded.TRUNCATION_SCREEN_DISABLED)
+        self.assertEqual(self.mock_struct.call_args.kwargs["vet_truncation_threshold"],
+                         verify_all_loaded.TRUNCATION_SCREEN_DISABLED)
+
+    def _main_kwargs(self, extra_argv):
+        """Drive main() through the real argument parser and report what it passed downstream."""
+        argv = ["verify_all_loaded.py", "--project-id", "p", "--dataset-name", "d",
+                "--gcs-files-list", self.gcs_list, "--output-dir", self.out_dir] + extra_argv
+        stub = {"all_loaded": True, "safe_to_delete_parquet": True, "quarantine_files": 0}
+        with patch.object(sys, "argv", argv), \
+             patch("verify_all_loaded.verify_all_loaded", return_value=stub) as mock_verify:
+            verify_all_loaded.main()
+        return mock_verify.call_args.kwargs
+
+    def test_cli_default_is_the_shared_value(self):
+        self.assertEqual(self._main_kwargs([])["vet_truncation_threshold"],
+                         verify_all_loaded.DEFAULT_VET_TRUNCATION_THRESHOLD)
+
+    def test_cli_accepts_the_disable_sentinel(self):
+        kwargs = self._main_kwargs(["--vet-truncation-threshold", "0"])
+        self.assertEqual(kwargs["vet_truncation_threshold"], 0)
+        # ...without disabling the calibrated screen alongside it.
+        self.assertEqual(kwargs["vet_duplication_threshold"],
+                         verify_all_loaded.DEFAULT_VET_DUPLICATION_THRESHOLD)
 
 
 if __name__ == "__main__":

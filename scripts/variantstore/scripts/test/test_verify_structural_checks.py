@@ -27,6 +27,8 @@ from verify_structural_checks import (
     assess_duplication_screen,
     assess_truncation_screen,
     run_structural_checks,
+    DEFAULT_VET_TRUNCATION_THRESHOLD,
+    TRUNCATION_SCREEN_DISABLED,
 )
 
 
@@ -457,6 +459,56 @@ class TestAssessDuplicationScreen(unittest.TestCase):
         self.assertAlmostEqual(r["outliers"][0]["ratio"], 2.0)
 
 
+class TestScreensNameFlaggedSamples(unittest.TestCase):
+    """Each screen reports the samples it objects to in flagged_samples, and run_structural_checks
+    unions them. That list is what the workflow quarantines, so it must be exactly the flagged samples
+    -- too few and flagged Parquet is deleted, too many and clean Parquet is needlessly retained."""
+
+    PREFIXES = ["vet", "ref_ranges"]
+
+    def test_duplication_outliers_are_named(self):
+        part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 220)]
+        r = assess_duplication_screen(part, "vet", set(range(1, 10)), self.PREFIXES, 1.6)
+        self.assertEqual(r["flagged_samples"], [9])
+
+    def test_truncation_outliers_are_named(self):
+        part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 1)]
+        r = assess_truncation_screen(part, "vet", set(range(1, 10)), self.PREFIXES, 1.6)
+        self.assertEqual(r["flagged_samples"], [9])
+
+    def test_clean_screen_names_nothing(self):
+        part = [("vet_001", i, 100) for i in range(1, 6)]
+        self.assertEqual(
+            assess_duplication_screen(part, "vet", set(range(1, 6)), self.PREFIXES, 1.6)["flagged_samples"], [])
+        self.assertEqual(
+            assess_truncation_screen(part, "vet", set(range(1, 6)), self.PREFIXES, 1.6)["flagged_samples"], [])
+
+    def test_singleton_names_the_one_sample_it_could_not_clear(self):
+        # A singleton load has no peers, so the screen cannot clear its one sample and names it -- there
+        # are no outliers to report, but the sample is still what gets quarantined.
+        part = [("vet_001", 7, 100)]
+        for screen in (assess_duplication_screen, assess_truncation_screen):
+            r = screen(part, "vet", {7}, self.PREFIXES, 1.6)
+            self.assertTrue(r["singleton_flagged"])
+            self.assertEqual(r["outliers"], [])
+            self.assertEqual(r["flagged_samples"], [7])
+
+    def test_unscreened_family_names_nothing(self):
+        part = [("vet_001", i, 100) for i in range(1, 6)]
+        r = assess_duplication_screen(part, "ref_ranges", set(range(1, 6)), self.PREFIXES, 1.6)
+        self.assertEqual(r["flagged_samples"], [])
+
+    def test_multiple_outliers_are_sorted_by_sample_id(self):
+        # outliers themselves are ordered by ratio; flagged_samples is a set to quarantine, so it is
+        # ordered by sample_id for stable diffing of the work list.
+        part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 300), ("vet_001", 3, 100)]
+        part = [(t, sid, n) for (t, sid, n) in part if not (sid == 3 and n == 100)]
+        part += [("vet_001", 3, 250)]
+        r = assess_duplication_screen(part, "vet", set(range(1, 10)), self.PREFIXES, 1.6)
+        self.assertEqual([o["sample_id"] for o in r["outliers"]], [9, 3])
+        self.assertEqual(r["flagged_samples"], [3, 9])
+
+
 class TestAssessTruncationScreen(unittest.TestCase):
     """Low-side mirror of the duplication screen: flags a grossly under-rowed vet partition."""
 
@@ -554,6 +606,46 @@ class TestRunStructuralChecks(unittest.TestCase):
         self.assertIn("ref_ranges", r["details"]["duplication_unscreened"]["families"])
         self.assertNotIn("vet", r["details"]["duplication_unscreened"]["families"])
         self.assertIn("backfill_caveat", r["details"]["cardinality"]["sample_chromosome_ploidy"])
+
+    def test_flagged_samples_is_the_union_across_screens(self):
+        # Sample 3 duplicated (300 vs a median of 100), sample 4 truncated (1 vs 100). Each screen sees
+        # one of them; the quarantine list must be both.
+        part = ([("vet_001", i, 100) for i in range(1, 3)]
+                + [("vet_001", 3, 300), ("vet_001", 4, 1)]
+                + [("ref_ranges_001", i, 50) for i in range(1, 5)])
+        self._patch(part, {i: 24 for i in range(1, 5)})
+        exp = {"vet": set(range(1, 5)), "ref_ranges": set(range(1, 5)),
+               "sample_chromosome_ploidy": set(range(1, 5))}
+        r = run_structural_checks("proj", "ds", exp)
+        self.assertTrue(r["duplication_flagged"])
+        self.assertTrue(r["truncation_flagged"])
+        self.assertEqual(r["flagged_samples"], [3, 4])
+        # The duplication subset is what GvsImportGenomes aborts on, so the truncated sample must not
+        # appear in it -- the truncation threshold is uncalibrated and must not fail a completed ingest.
+        self.assertEqual(r["duplication_flagged_samples"], [3])
+        # The screens are heuristics, so they leave the exact checks -- and all_loaded -- untouched.
+        self.assertTrue(r["completeness_ok"])
+        self.assertTrue(r["cross_family_ok"])
+
+    def test_clean_run_flags_no_samples(self):
+        part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
+        self._patch(part, {1: 24, 2: 24})
+        exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
+        r = run_structural_checks("proj", "ds", exp)
+        self.assertEqual(r["flagged_samples"], [])
+        self.assertEqual(r["duplication_flagged_samples"], [])
+
+    def test_waived_screens_still_report_flagged_samples(self):
+        # allow_flagged_vet_loads is a policy decision made downstream in compute_quarantine, so the
+        # screens keep reporting what they saw and the log can say what is being waived.
+        part = [("vet_001", i, 100) for i in range(1, 3)] + [("vet_001", 3, 300)]
+        part += [("ref_ranges_001", i, 50) for i in range(1, 4)]
+        self._patch(part, {i: 24 for i in range(1, 4)})
+        exp = {"vet": {1, 2, 3}, "ref_ranges": {1, 2, 3}, "sample_chromosome_ploidy": {1, 2, 3}}
+        r = run_structural_checks("proj", "ds", exp, allow_flagged_vet_loads=True)
+        self.assertEqual(r["flagged_samples"], [3])
+        self.assertEqual(r["duplication_flagged_samples"], [3])
+        self.assertTrue(r["allow_flagged_vet_loads"])
 
     def test_cross_family_gap_fails(self):
         # sample 2's ref_ranges file was never produced, so GCS lists it only for vet/ploidy. Every
@@ -833,6 +925,144 @@ class TestThresholdValidation(unittest.TestCase):
     def test_nan_rejected(self):
         with self.assertRaisesRegex(ValueError, "vet_duplication_threshold"):
             self._call(float("nan"))
+
+
+class TestTruncationThresholdIsIndependent(unittest.TestCase):
+    """VS-1989: the truncation floor is its own knob, not a mirror of the duplication ratio.
+
+    Only the high side was calibrated against Foxtrot, so the low side has to be retunable -- and
+    switchable off -- without disturbing the calibrated duplication screen. These tests pin that
+    independence, since the two defaults being equal makes a regression to a shared threshold
+    invisible in every other test in this file.
+    """
+
+    PREFIXES = ["vet", "ref_ranges"]
+
+    def _patch(self, partition_rows, ploidy_counts):
+        p1 = patch("verify_structural_checks.get_partition_row_counts", return_value=partition_rows)
+        p2 = patch("verify_structural_checks.get_ploidy_row_counts", return_value=ploidy_counts)
+        p1.start()
+        p2.start()
+        self.addCleanup(p1.stop)
+        self.addCleanup(p2.stop)
+
+    def _truncated_callset(self):
+        # Sample 9 at 1 row against peers of 100 is 0.01x: flagged at any sane floor, missed by none.
+        part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 1)]
+        part += [("ref_ranges_001", i, 50) for i in range(1, 10)]
+        self._patch(part, {i: 24 for i in range(1, 10)})
+        return {"vet": set(range(1, 10)), "ref_ranges": set(range(1, 10)),
+                "sample_chromosome_ploidy": set(range(1, 10))}
+
+    def test_default_matches_the_duplication_default(self):
+        # The knobs are separate but their defaults agree today, so behaviour is unchanged by the split.
+        self.assertEqual(DEFAULT_VET_TRUNCATION_THRESHOLD, 1.6)
+
+    def test_disabled_screen_does_not_flag_a_truncated_sample(self):
+        exp = self._truncated_callset()
+        r = run_structural_checks("proj", "ds", exp,
+                                  vet_truncation_threshold=TRUNCATION_SCREEN_DISABLED)
+        self.assertFalse(r["truncation_flagged"])
+        self.assertEqual(r["flagged_samples"], [])
+        # Reported as switched off rather than silently absent, so a green result is not mistaken for
+        # a screen that looked and found nothing.
+        self.assertTrue(r["details"]["truncation_screen"]["vet"]["disabled"])
+        self.assertEqual(r["details"]["truncation_screen"]["vet"]["samples_screened"], 0)
+
+    def test_disabling_truncation_leaves_the_duplication_screen_running(self):
+        # The point of the split: the uncalibrated screen can be turned off on its own.
+        part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 300)]
+        part += [("ref_ranges_001", i, 50) for i in range(1, 10)]
+        self._patch(part, {i: 24 for i in range(1, 10)})
+        exp = {"vet": set(range(1, 10)), "ref_ranges": set(range(1, 10)),
+               "sample_chromosome_ploidy": set(range(1, 10))}
+
+        r = run_structural_checks("proj", "ds", exp,
+                                  vet_truncation_threshold=TRUNCATION_SCREEN_DISABLED)
+        self.assertTrue(r["duplication_flagged"])
+        self.assertFalse(r["truncation_flagged"])
+        self.assertEqual(r["duplication_flagged_samples"], [9])
+
+    def test_truncation_threshold_moves_the_floor_on_its_own(self):
+        # Sample 9 at 70 against a median of 100 is 0.7x: above the default 0.625 floor, below the
+        # 1/1.25 = 0.8 floor a looser truncation threshold sets. The duplication screen is untouched.
+        part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 70)]
+        part += [("ref_ranges_001", i, 50) for i in range(1, 10)]
+        self._patch(part, {i: 24 for i in range(1, 10)})
+        exp = {"vet": set(range(1, 10)), "ref_ranges": set(range(1, 10)),
+               "sample_chromosome_ploidy": set(range(1, 10))}
+
+        self.assertFalse(run_structural_checks("proj", "ds", exp)["truncation_flagged"])
+
+        r = run_structural_checks("proj", "ds", exp, vet_truncation_threshold=1.25)
+        self.assertTrue(r["truncation_flagged"])
+        self.assertFalse(r["duplication_flagged"])
+        self.assertEqual(r["flagged_samples"], [9])
+        self.assertEqual(r["duplication_flagged_samples"], [])
+
+    def test_duplication_threshold_no_longer_moves_the_truncation_floor(self):
+        # Before the split, raising the duplication ratio to 2.0 also dropped the floor to 0.5x and
+        # would have cleared this 0.7x sample. It must not any more.
+        part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 70)]
+        part += [("ref_ranges_001", i, 50) for i in range(1, 10)]
+        self._patch(part, {i: 24 for i in range(1, 10)})
+        exp = {"vet": set(range(1, 10)), "ref_ranges": set(range(1, 10)),
+               "sample_chromosome_ploidy": set(range(1, 10))}
+
+        r = run_structural_checks("proj", "ds", exp, vet_duplication_threshold=2.0,
+                                  vet_truncation_threshold=1.25)
+        self.assertTrue(r["truncation_flagged"])
+        self.assertEqual(r["details"]["truncation_screen"]["vet"]["threshold"], 1.25)
+        self.assertEqual(r["details"]["duplication_screen"]["vet"]["threshold"], 2.0)
+
+    def test_screen_helper_reports_disabled_without_reading_partitions(self):
+        part = [("vet_001", 1, 100), ("vet_001", 2, 1)]
+        r = assess_truncation_screen(part, "vet", {1, 2}, self.PREFIXES, TRUNCATION_SCREEN_DISABLED)
+        self.assertTrue(r["disabled"])
+        self.assertEqual(r["flagged_samples"], [])
+        self.assertIsNone(r["baseline"])
+
+
+class TestTruncationThresholdValidation(unittest.TestCase):
+    """The truncation ratio gets the same guard as the duplication one, plus a disable sentinel."""
+
+    def _call(self, threshold):
+        run_structural_checks("proj", "ds", {"vet": {1}}, vet_truncation_threshold=threshold)
+
+    def test_one_rejected(self):
+        with self.assertRaisesRegex(ValueError, "vet_truncation_threshold"):
+            self._call(1)
+
+    def test_below_one_rejected(self):
+        with self.assertRaisesRegex(ValueError, "vet_truncation_threshold"):
+            self._call(0.5)
+
+    def test_negative_rejected(self):
+        with self.assertRaisesRegex(ValueError, "vet_truncation_threshold"):
+            self._call(-1)
+
+    def test_nan_rejected(self):
+        with self.assertRaisesRegex(ValueError, "vet_truncation_threshold"):
+            self._call(float("nan"))
+
+    def test_infinite_rejected(self):
+        with self.assertRaisesRegex(ValueError, "vet_truncation_threshold"):
+            self._call(float("inf"))
+
+    def test_zero_accepted_as_the_disable_sentinel(self):
+        # Unlike the duplication threshold, 0 is meaningful here: it switches the screen off. It must
+        # therefore get past validation, which is where the two guards deliberately differ.
+        with patch("verify_structural_checks.get_partition_row_counts", return_value=[]), \
+             patch("verify_structural_checks.get_ploidy_row_counts", return_value={}):
+            r = run_structural_checks("proj", "ds", {"vet": {1}},
+                                      vet_truncation_threshold=TRUNCATION_SCREEN_DISABLED)
+        self.assertFalse(r["truncation_flagged"])
+
+    def test_disable_sentinel_is_not_accepted_for_the_duplication_threshold(self):
+        # The calibrated screen has no off switch; only the uncalibrated one does.
+        with self.assertRaisesRegex(ValueError, "vet_duplication_threshold"):
+            run_structural_checks("proj", "ds", {"vet": {1}},
+                                  vet_duplication_threshold=TRUNCATION_SCREEN_DISABLED)
 
 
 if __name__ == "__main__":

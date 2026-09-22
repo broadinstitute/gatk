@@ -69,10 +69,13 @@ workflow GvsBulkIngestGenomes {
         # `parquet_output_gcs_dir` must be defined if `use_parquet_ingest` is true.
         String? parquet_output_gcs_dir
         # Independent post-load structural checks (VS-1989), forwarded to GvsImportGenomes; see that
-        # workflow. Defaults keep the vet screens blocking deletion on a flag and ploidy mode-inferred,
-        # so leaving them unset changes nothing.
+        # workflow. Defaults keep the vet screens quarantining a flagged sample's Parquet, aborting the
+        # run when the duplication screen is what flagged it, and ploidy mode-inferred, so leaving them
+        # unset changes nothing.
         Float parquet_vet_duplication_threshold = 1.6
+        Float parquet_vet_truncation_threshold = 1.6
         Boolean parquet_allow_flagged_vet_loads = false
+        Boolean parquet_fail_on_quarantine = true
         Int? parquet_expected_ploidy_rows_per_sample
 
         Boolean use_compressed_references = false
@@ -86,7 +89,9 @@ workflow GvsBulkIngestGenomes {
         sample_set_name: "The recommended way to load samples; Sample sets must be created by the user. If no sample_set_name is specified, all samples will be loaded into GVS"
         bulk_ingest_fofn: "An explicitly specified FOFN of VCFs to be ingested. If specified, the workflow will not generate a FOFN from the data table. This can be useful for avoiding the scale limitations of Terra data tables. The format is tab delimited with no header: sample_name<tab>gvcf_file_path<tab>gvcf_index_file_path. If this value is specified, none of the data table parameters should be specified."
         parquet_vet_duplication_threshold: "VS-1989 post-load verification, forwarded to GvsImportGenomes: ratio-to-callset-median at or above which a vet sample's row count is flagged as a possible duplicate, and (mirrored) at or below median/ratio as a possible truncation. Must be > 1; default 1.6."
-        parquet_allow_flagged_vet_loads: "VS-1989 post-load verification, forwarded to GvsImportGenomes: when false (default), a vet duplication- or truncation-screen flag blocks deletion of the source Parquet (the load still succeeds and its Parquet is retained); when true the screens are waived and deletion proceeds despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless."
+        parquet_vet_truncation_threshold: "VS-1989 post-load verification, forwarded to GvsImportGenomes: ratio whose reciprocal sets the low-side floor -- a vet sample at or below median/ratio is flagged as possibly truncated. Must be > 1, or 0 to disable the truncation screen; default 1.6 (i.e. 0.625x). Separate from parquet_vet_duplication_threshold because only the high side has been calibrated."
+        parquet_allow_flagged_vet_loads: "VS-1989 post-load verification, forwarded to GvsImportGenomes: when false (default), the Parquet of any sample a vet duplication- or truncation-screen flag names is moved to a quarantine prefix instead of deleted (the load itself still succeeds, and the unflagged samples' Parquet is deleted as normal); when true the screens are waived and everything is deleted despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless."
+        parquet_fail_on_quarantine: "VS-1989 post-load verification, forwarded to GvsImportGenomes: when true (default), a run that quarantined the Parquet of a duplication-flagged sample aborts after the quarantine completes, so the run is not silently green. Set false to leave the quarantine advisory (reported only through the parquet_quarantined_* outputs and the quarantine directory's README). Truncation-only flags never abort, because that threshold is not yet calibrated."
         parquet_expected_ploidy_rows_per_sample: "VS-1989 post-load verification, forwarded to GvsImportGenomes: exact per-sample sample_chromosome_ploidy row count to validate against (e.g. 24 for WGS) instead of the inferred callset mode; leave unset to infer from the data (correct for exome/BGE/chrM)."
     }
 
@@ -188,7 +193,9 @@ workflow GvsBulkIngestGenomes {
             use_parquet_ingest = use_parquet_ingest,
             parquet_output_gcs_dir = parquet_output_gcs_dir,
             parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+            parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
             parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+            parquet_fail_on_quarantine = parquet_fail_on_quarantine,
             parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
             is_wgs = is_wgs,
     }
@@ -219,6 +226,16 @@ workflow GvsBulkIngestGenomes {
         # optional (defined()/select_first). This is the same pattern GvsValidateVDS uses.
         Boolean? vcf_headers_validation_passed = ValidateHeaders.validation_passed
         File? vcf_headers_validation_report = ValidateHeaders.validation_report
+        # Parquet quarantine observability (VS-1989). A run whose screens flagged a sample sets that
+        # sample's Parquet aside instead of deleting it with the rest. A duplication flag also aborts
+        # the ingest by default (parquet_fail_on_quarantine in GvsImportGenomes), so the run a reader
+        # sees these on is a truncation-only flag or a run with that abort turned off -- either way a
+        # non-zero parquet_quarantined_samples on a green run means review it.
+        # Optional for the same reason as the header outputs above: the Parquet path is conditional.
+        Int? parquet_quarantined_samples = ImportGenomes.parquet_quarantined_samples
+        Int? parquet_quarantined_duplication_samples = ImportGenomes.parquet_quarantined_duplication_samples
+        Int? parquet_quarantined_files = ImportGenomes.parquet_quarantined_files
+        File? parquet_quarantine_files_list = ImportGenomes.parquet_quarantine_files_list
     }
 }
 

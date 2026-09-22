@@ -15,10 +15,13 @@ Two layers of verification run here, and only together do they gate deletion of 
    the loader predicate never consults -- so they can catch partial loads and duplication. Family
    completeness and ploidy cardinality are exact checks: they gate all_loaded, the factual "is the
    load complete?" signal that fail-loud aborts on. The vet duplication and truncation screens are
-   heuristics -- they never affect all_loaded, and instead gate the separate safe_to_delete_parquet
-   predicate, which is what authorizes deleting the source Parquet. A screen flag blocks that deletion
-   by default and is waived only with --allow-flagged-vet-loads, so a flagged-but-complete load
-   succeeds and simply retains its Parquet rather than failing the import.
+   heuristics -- they never affect all_loaded, and they do not block deletion for the run either.
+   They name individual samples, and this script resolves those samples to the Parquet paths that the
+   workflow moves into a quarantine prefix the bulk delete and the bucket lifecycle rule both leave
+   alone (quarantine_files.txt; see compute_quarantine). The rest of the callset's Parquet is deleted
+   normally, so a flagged-but-complete load succeeds, keeps the evidence for the samples in question,
+   and costs O(flagged) rather than retaining the whole callset. --allow-flagged-vet-loads waives the
+   screens entirely, deleting flagged Parquet along with the rest.
 
 Neither layer requires or consults a parquet_load_status tracking table.
 """
@@ -38,6 +41,8 @@ from verify_structural_checks import (
     family_for_table,
     run_structural_checks,
     DEFAULT_VET_DUPLICATION_THRESHOLD,
+    DEFAULT_VET_TRUNCATION_THRESHOLD,
+    TRUNCATION_SCREEN_DISABLED,
 )
 
 log = logging.getLogger(__name__)
@@ -126,30 +131,35 @@ def _log_structural_summary(structural):
             if structural["allow_flagged_vet_loads"]:
                 log.warning(f"{level} {family}: singleton load has no cohort consensus; duplication screening is disabled (warning only; --allow-flagged-vet-loads set)")
             else:
-                log.error(f"{level} {family}: singleton load has no cohort consensus; duplication screening is disabled (blocks Parquet deletion)")
+                log.warning(f"{level} {family}: singleton load has no cohort consensus; duplication screening is disabled (quarantining this sample's Parquet)")
         elif not outliers:
             log.info(f"{level} {family}: no samples >= {screen['threshold']}x {base_desc} ({baseline})")
         elif structural["allow_flagged_vet_loads"]:
             log.warning(f"{level} {family}: {len(outliers)} sample(s) >= {screen['threshold']}x {base_desc} ({baseline}) (warning only; --allow-flagged-vet-loads set)")
         else:
-            log.error(f"{level} {family}: {len(outliers)} sample(s) >= {screen['threshold']}x {base_desc} ({baseline}) (blocks Parquet deletion)")
+            log.warning(f"{level} {family}: {len(outliers)} sample(s) >= {screen['threshold']}x {base_desc} ({baseline}) (quarantining their Parquet)")
 
     for family, screen in sorted(details.get("truncation_screen", {}).items()):
         outliers = screen["outliers"]
         level = "  [truncation]"
         baseline = screen.get("baseline", screen.get("median"))
         base_desc = "baseline" if screen.get("samples_screened") == 2 else "median"
-        if screen.get("singleton_flagged"):
+        if screen.get("disabled"):
+            # Distinct from "no outliers": say so rather than let a switched-off screen read as a
+            # clean one, since the threshold is the uncalibrated one operators are most likely to
+            # turn off and most likely to forget is off.
+            log.warning(f"{level} {family}: screen disabled (--vet-truncation-threshold {TRUNCATION_SCREEN_DISABLED}); no low-side check was performed")
+        elif screen.get("singleton_flagged"):
             if structural["allow_flagged_vet_loads"]:
                 log.warning(f"{level} {family}: singleton load has no cohort consensus; truncation screening is disabled (warning only; --allow-flagged-vet-loads set)")
             else:
-                log.error(f"{level} {family}: singleton load has no cohort consensus; truncation screening is disabled (blocks Parquet deletion)")
+                log.warning(f"{level} {family}: singleton load has no cohort consensus; truncation screening is disabled (quarantining this sample's Parquet)")
         elif not outliers:
             log.info(f"{level} {family}: no samples <= {base_desc}/{screen['threshold']} ({baseline})")
         elif structural["allow_flagged_vet_loads"]:
             log.warning(f"{level} {family}: {len(outliers)} sample(s) <= {base_desc}/{screen['threshold']} ({baseline}) (warning only; --allow-flagged-vet-loads set)")
         else:
-            log.error(f"{level} {family}: {len(outliers)} sample(s) <= {base_desc}/{screen['threshold']} ({baseline}) (blocks Parquet deletion)")
+            log.warning(f"{level} {family}: {len(outliers)} sample(s) <= {base_desc}/{screen['threshold']} ({baseline}) (quarantining their Parquet)")
 
     unscreened = details["duplication_unscreened"]
     if unscreened["families"]:
@@ -182,10 +192,11 @@ def compute_all_loaded(missing_pairs, unmatched_files, structural_checks_ok):
     file was left unmatched, and the exact structural checks pass (see compute_structural_checks_ok).
 
     all_loaded is deliberately NOT the deletion gate: the heuristic vet screens are excluded here so a
-    flagged-but-complete load still reads as loaded and its task succeeds (retaining its Parquet)
-    rather than aborting the import. Whether it is safe to delete the source Parquet is the separate
-    compute_safe_to_delete_parquet predicate, which layers the screen policy on top of this. Kept a
-    pure function of its inputs so both predicates stay trivially testable in isolation.
+    flagged-but-complete load still reads as loaded and its task succeeds rather than aborting the
+    import; the flagged samples' Parquet is then quarantined rather than deleted (see
+    compute_quarantine). Whether the bulk delete may proceed is the separate
+    compute_safe_to_delete_parquet predicate. Kept a pure function of its inputs so both predicates
+    stay trivially testable in isolation.
     """
     return (
         len(missing_pairs) == 0
@@ -194,24 +205,95 @@ def compute_all_loaded(missing_pairs, unmatched_files, structural_checks_ok):
     )
 
 
-def compute_safe_to_delete_parquet(all_loaded, structural, allow_flagged_vet_loads):
+def compute_quarantine(structural, gcs_pairs_to_files, allow_flagged_vet_loads):
     """
-    The deletion gate -- the single predicate DeleteParquetFiles is downstream of. Returns True only
-    when the load is factually complete (all_loaded) AND no heuristic vet screen objects, unless the
-    operator has explicitly waived the screens with allow_flagged_vet_loads.
+    Resolve the heuristic screens' flagged samples to the GCS Parquet paths to hold back from the bulk
+    delete, so those samples can be inspected and re-ingested after the callset's Parquet is gone.
 
-    Gating the irreversible delete on a screen flag by default is the safe direction: a screen false
-    positive here only over-retains Parquet (cheap and reversible), whereas trusting a flagged load and
-    deleting its source is not. Waiving the screens is therefore an opt-out (--allow-flagged-vet-loads),
-    so the default never deletes anything a screen objected to. Kept a pure function so the
-    deletion-authorizing logic is unit-tested in isolation -- a regression here authorizes an
-    irreversible delete.
+    Quarantining per sample is what keeps a heuristic out of a run-wide decision. The screens flag
+    individual samples, but a single flag used to withhold deletion for the entire callset: on Foxtrot
+    the calibration run flagged 2 vet samples out of 540,545, which under that rule would have retained
+    every sample's Parquet. Worse, it would only have retained it until the bucket's own 14-day
+    lifecycle rule deleted it anyway (ConfigureParquetLifecycle in GvsImportGenomes.wdl), silently and
+    in a green run. Moving the flagged samples' files to a prefix the lifecycle rule does not match is
+    what actually preserves them, and costs O(flagged) rather than O(callset).
+
+    A flagged sample is quarantined across ALL families, not just the family that flagged it. The flag
+    says this sample's ingest is unexplained, and a sample is only re-ingestable from a complete set of
+    its Parquet -- keeping its vet files while deleting its ref_ranges and ploidy files would leave
+    nothing usable behind.
+
+    Returns a dict with:
+      * ``waived``: the screens were waived, so nothing is quarantined and flagged Parquet is deleted
+        with the rest of the callset.
+      * ``samples``: the flagged sample_ids being quarantined.
+      * ``paths``: their GCS Parquet paths, the quarantine step's work list.
+      * ``uncovered_samples``: flagged samples for which no GCS path could be resolved. Should be
+        empty -- the expected sets are themselves derived from the GCS listing -- but a non-empty value
+        means the quarantine would protect nothing for those samples, so it fails the deletion gate
+        rather than letting the bulk delete destroy Parquet the screens asked to keep.
+      * ``duplication_samples``: the subset of ``samples`` the duplication screen objected to. Reported
+        separately because the two screens are not equally trustworthy: the duplication threshold was
+        calibrated against Foxtrot (2 flagged of 540,545) while the truncation threshold has only been
+        measured on its high side, so only duplication is a sound trigger for aborting a run. The
+        aborting policy itself lives in GvsImportGenomes.wdl; this function only reports the
+        attribution.
+    """
+    if allow_flagged_vet_loads:
+        return {
+            "waived": True,
+            "samples": [],
+            "paths": [],
+            "uncovered_samples": [],
+            "duplication_samples": [],
+        }
+
+    flagged = set(structural.get("flagged_samples") or [])
+    paths = sorted(
+        path
+        for (_table_name, sample_id), file_paths in gcs_pairs_to_files.items()
+        if sample_id in flagged
+        for path in file_paths
+    )
+    covered = {
+        sample_id
+        for (_table_name, sample_id), file_paths in gcs_pairs_to_files.items()
+        if sample_id in flagged and file_paths
+    }
+    # Intersected with `flagged` so this can never name a sample outside `samples`; the two are derived
+    # from the same screens, so the intersection is a no-op in practice and a guard in principle.
+    duplication_samples = sorted(
+        set(structural.get("duplication_flagged_samples") or []) & flagged
+    )
+    return {
+        "waived": False,
+        "samples": sorted(flagged),
+        "paths": paths,
+        "uncovered_samples": sorted(flagged - covered),
+        "duplication_samples": duplication_samples,
+    }
+
+
+def compute_safe_to_delete_parquet(all_loaded, quarantine):
+    """
+    The bulk deletion gate -- the predicate DeleteParquetFiles is downstream of. Returns True when the
+    load is factually complete (all_loaded) and every sample the screens flagged has Parquet that the
+    quarantine step can actually move aside.
+
+    A screen flag deliberately does NOT block this. Blocking it run-wide was the original design and it
+    is the wrong trade: it converts a per-sample heuristic into a callset-wide decision, and because the
+    bucket lifecycle rule deletes the Parquet on its own after 14 days, the retention it bought was
+    illusory. Flagged samples are instead quarantined out of the delete's reach (see compute_quarantine)
+    and the rest of the callset is deleted as normal.
+
+    What does block it is a flagged sample with no resolvable Parquet path, because then the quarantine
+    step has nothing to move and the bulk delete would destroy exactly the files the screens asked to
+    keep. Kept a pure function so the deletion-authorizing logic is unit-tested in isolation -- a
+    regression here authorizes an irreversible delete.
     """
     if not all_loaded:
         return False
-    if allow_flagged_vet_loads:
-        return True
-    return not (structural["duplication_flagged"] or structural["truncation_flagged"])
+    return not quarantine["uncovered_samples"]
 
 
 def describe_incomplete_reasons(results):
@@ -221,8 +303,8 @@ def describe_incomplete_reasons(results):
     Kept a pure function of the results dict so the operator-facing diagnosis is unit-tested: this line
     is what an operator reads when a run has aborted. Only the exact checks can make all_loaded false
     (missing/unmatched files, family completeness, ploidy cardinality, cross-family consistency); the
-    vet duplication and truncation screens never fail all_loaded -- they gate safe_to_delete_parquet
-    instead -- so they are deliberately absent here.
+    vet duplication and truncation screens never fail all_loaded -- they quarantine the samples
+    they flag instead -- so they are deliberately absent here.
     """
     reasons = []
     missing_count = results.get("missing_files", 0) or 0
@@ -243,6 +325,7 @@ def describe_incomplete_reasons(results):
 def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
                       superpartitioned_table_prefixes=None, regular_table_prefixes=None,
                       vet_duplication_threshold=DEFAULT_VET_DUPLICATION_THRESHOLD,
+                      vet_truncation_threshold=DEFAULT_VET_TRUNCATION_THRESHOLD,
                       allow_flagged_vet_loads=False,
                       expected_ploidy_rows_per_sample=None):
     """
@@ -258,6 +341,10 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
         superpartitioned_table_prefixes: Prefixes for superpartitioned tables (default: ["vet", "ref_ranges"])
         regular_table_prefixes: Prefixes for regular tables (default: ["sample_chromosome_ploidy"])
         vet_duplication_threshold: Ratio-to-median above which a vet sample is flagged (default 1.6)
+        vet_truncation_threshold: Ratio whose reciprocal sets the low-side floor, below which a vet
+            sample is flagged as possibly truncated (default 1.6, i.e. 0.625x). Separate from the
+            duplication threshold because only the high side has been calibrated; pass 0 to disable
+            the truncation screen and leave the duplication screen running (VS-1989).
         allow_flagged_vet_loads: If False (default), a vet duplication- or truncation-screen flag
             blocks deletion of the source Parquet (the load still succeeds -- all_loaded stays factual
             -- and the Parquet is retained). If True, the screens are waived and deletion may proceed
@@ -370,21 +457,22 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
         superpartitioned_table_prefixes=superpartitioned_table_prefixes,
         regular_table_prefixes=regular_table_prefixes,
         vet_duplication_threshold=vet_duplication_threshold,
+        vet_truncation_threshold=vet_truncation_threshold,
         allow_flagged_vet_loads=allow_flagged_vet_loads,
         expected_ploidy_rows_per_sample=expected_ploidy_rows_per_sample,
     )
     _log_structural_summary(structural)
 
-    # Two separate predicates, both pure helpers so the logic is unit-tested in isolation:
+    # Three pure helpers, so each piece of the logic is unit-tested in isolation:
     #  * all_loaded -- factual "is the load complete?", from the exact checks only; fail-loud aborts on
     #    it, so a heuristic screen flag must NOT enter here or a complete load would wrongly abort.
-    #  * safe_to_delete_parquet -- the deletion gate, which layers the vet screen policy on top of
-    #    all_loaded: a flag blocks deletion unless allow_flagged_vet_loads waives the screens.
+    #  * quarantine -- the per-sample Parquet the heuristic screens want held back from the delete.
+    #  * safe_to_delete_parquet -- the bulk deletion gate: all_loaded, plus the assurance that the
+    #    quarantine step has a path to move for every flagged sample.
     structural_checks_ok = compute_structural_checks_ok(structural)
     all_loaded = compute_all_loaded(missing_pairs, unmatched_files, structural_checks_ok)
-    safe_to_delete_parquet = compute_safe_to_delete_parquet(
-        all_loaded, structural, allow_flagged_vet_loads
-    )
+    quarantine = compute_quarantine(structural, gcs_pairs_to_files, allow_flagged_vet_loads)
+    safe_to_delete_parquet = compute_safe_to_delete_parquet(all_loaded, quarantine)
 
     # Write list of missing file paths if there are any
     missing_files_list_path = None
@@ -405,10 +493,31 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
         if len(missing_pairs) > 20:
             log.error(f"  ... and {len(missing_pairs) - 20} more")
 
+    # Written unconditionally, empty included, so the quarantine step in the WDL is an unconditional
+    # no-op on a clean run rather than a task gated on an optional output. Derived from the uncapped
+    # structural detail, NOT from the capped copy in results_dict: a truncated work list would leave
+    # flagged Parquet behind for the bulk delete to destroy.
+    quarantine_files_list_path = f"{output_dir}/quarantine_files.txt"
+    with open(quarantine_files_list_path, 'w') as f:
+        for path in quarantine["paths"]:
+            f.write(f"{path}\n")
+    if quarantine["paths"]:
+        log.warning(
+            f"Quarantining {len(quarantine['paths'])} Parquet file(s) for "
+            f"{len(quarantine['samples'])} flagged sample(s); the rest of the callset's Parquet is "
+            f"eligible for deletion. List: {quarantine_files_list_path}"
+        )
+    if quarantine["uncovered_samples"]:
+        log.error(
+            f"{len(quarantine['uncovered_samples'])} flagged sample(s) have no resolvable Parquet path "
+            f"and so cannot be quarantined; blocking deletion: {quarantine['uncovered_samples'][:20]}"
+        )
+
     results_dict = {
         "all_loaded": all_loaded,
-        # The deletion gate DeleteParquetFiles is downstream of: all_loaded AND no unwaived vet-screen
-        # flag. Distinct from all_loaded so a flagged-but-complete load succeeds yet retains Parquet.
+        # The bulk deletion gate DeleteParquetFiles is downstream of: all_loaded, plus every flagged
+        # sample being quarantinable. Distinct from all_loaded so an unquarantinable flag still holds
+        # the delete back.
         "safe_to_delete_parquet": safe_to_delete_parquet,
         "total_files": total_files,
         "loaded_files": loaded_files_count,
@@ -422,6 +531,18 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
         "cross_family_consistency_ok": structural["cross_family_ok"],
         "vet_duplication_flagged": structural["duplication_flagged"],
         "vet_truncation_flagged": structural["truncation_flagged"],
+        # Quarantine outcome. quarantine_files_list is the complete work list; quarantine_samples is
+        # capped for readability, so use the file, not this key, to drive the move.
+        "quarantine_files_list": quarantine_files_list_path,
+        "quarantine_files": len(quarantine["paths"]),
+        "quarantine_samples": quarantine["samples"][:STRUCTURAL_DETAIL_LIST_CAP],
+        "quarantine_sample_count": len(quarantine["samples"]),
+        # Duplication-attributed subset of the above. GvsImportGenomes.wdl aborts a green-but-quarantined
+        # run off this count rather than off quarantine_sample_count, because only the duplication
+        # threshold is calibrated (see compute_quarantine).
+        "quarantine_duplication_sample_count": len(quarantine["duplication_samples"]),
+        "quarantine_waived": quarantine["waived"],
+        "quarantine_uncovered_samples": quarantine["uncovered_samples"][:STRUCTURAL_DETAIL_LIST_CAP],
         # Full per-check detail for humans and logs, with per-sample lists bounded so a large-callset
         # failure cannot bloat this file (which the WDL re-parses on every read_json call).
         "structural_checks": _cap_structural_detail_lists(structural["details"]),
@@ -473,6 +594,18 @@ def main():
         )
     )
     parser.add_argument(
+        "--vet-truncation-threshold",
+        type=float,
+        default=DEFAULT_VET_TRUNCATION_THRESHOLD,
+        help=(
+            "Ratio whose reciprocal sets the floor below which a vet sample is flagged as possibly "
+            "truncated -- the default flags at or below 1/1.6 = 0.625x the baseline. Separate from "
+            "--vet-duplication-threshold because only the high side has been calibrated against "
+            f"Foxtrot; pass {TRUNCATION_SCREEN_DISABLED} to disable the truncation screen without "
+            f"disabling the duplication screen (default: {DEFAULT_VET_TRUNCATION_THRESHOLD})"
+        )
+    )
+    parser.add_argument(
         "--allow-flagged-vet-loads",
         action="store_true",
         help=(
@@ -501,12 +634,37 @@ def main():
         superpartitioned_table_prefixes=args.superpartitioned_table_prefixes,
         regular_table_prefixes=args.regular_table_prefixes,
         vet_duplication_threshold=args.vet_duplication_threshold,
+        vet_truncation_threshold=args.vet_truncation_threshold,
         allow_flagged_vet_loads=args.allow_flagged_vet_loads,
         expected_ploidy_rows_per_sample=args.expected_ploidy_rows_per_sample,
     )
 
     if results["all_loaded"]:
         log.info("✓ SUCCESS: All files have been loaded!")
+        if results.get("quarantine_files"):
+            log.warning(
+                f"  {results['quarantine_files']} file(s) for "
+                f"{results.get('quarantine_sample_count', 0)} flagged sample(s) will be quarantined "
+                f"instead of deleted: {results['quarantine_files_list']}"
+            )
+            # Say which screen, because the two differ in consequence: GvsImportGenomes aborts the run
+            # on a duplication flag (parquet_fail_on_quarantine) but not on a truncation-only one.
+            duplication_count = results.get("quarantine_duplication_sample_count", 0)
+            if duplication_count:
+                log.warning(
+                    f"  {duplication_count} of those came from the duplication screen, which aborts the "
+                    "workflow unless parquet_fail_on_quarantine is false."
+                )
+            else:
+                log.warning(
+                    "  All of those came from the truncation screen, which quarantines but does not "
+                    "abort: that threshold is not yet calibrated."
+                )
+        if not results["safe_to_delete_parquet"]:
+            log.error(
+                "  Parquet deletion is blocked: flagged sample(s) have no resolvable Parquet path to "
+                f"quarantine: {results.get('quarantine_uncovered_samples')}"
+            )
     else:
         reasons = describe_incomplete_reasons(results)
         if reasons:
