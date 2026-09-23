@@ -609,9 +609,9 @@ def main():
         "--allow-flagged-vet-loads",
         action="store_true",
         help=(
-            "Permit deleting the source Parquet even when the vet duplication or truncation screen "
-            "flags a sample. By default a screen flag blocks deletion (the load still succeeds and its "
-            "Parquet is retained); pass this to waive the screens and allow deletion anyway."
+            "Delete the flagged samples' source Parquet instead of quarantining it. By default, files "
+            "for flagged samples are quarantined while unflagged Parquet remains eligible for deletion; "
+            "pass this to waive both screens and delete the flagged files too."
         )
     )
     parser.add_argument(
