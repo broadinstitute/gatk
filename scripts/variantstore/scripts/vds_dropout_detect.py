@@ -62,6 +62,12 @@ Step 3 has a blind spot worth being explicit about: a superpartition depleted ac
 back near 1.  That case is caught separately by comparing each superpartition's global
 scale against its peers, reported as a distinct finding type.
 
+Because step 2 compares a superpartition against its peers, the screen needs enough of
+them to have a peer group at all.  A single-superpartition VDS -- which means any callset
+of 4,000 samples or fewer -- cannot be screened this way, and is refused rather than
+reported clean.  See ``MIN_SUPERPARTITIONS`` for the arithmetic and for the width at
+which partial dropouts become reliably visible.
+
 Severity is graded rather than boolean.  A threshold tuned to "residual is essentially
 zero" would miss the Foxtrot r2 state, where the affected windows were thinned rather
 than emptied, and would equally miss an incomplete repair.  Every finding therefore
@@ -134,6 +140,37 @@ DEFAULT_MIN_COVERAGE_FRACTION = 0.05
 # so real genome-wide variation between them can reach 20-30%. This is therefore the
 # threshold most likely to need tuning against real data; it is deliberately loose.
 DEFAULT_SUPERPARTITION_SCALE_THRESHOLD = 0.7
+
+# How many superpartitions the screen needs before its answer means anything.
+#
+# The bin baseline is a quantile taken across superpartitions, so this is a comparative
+# screen and a superpartition is judged only against its peers. With one superpartition
+# the baseline is that superpartition's own rate, every residual is exactly 1.0, and no
+# cell can be flagged whatever the VDS contains. That is not an insensitive screen but a
+# vacuous one, and it would report a clean result -- the single outcome this tool must
+# not produce -- so it is refused rather than run.
+#
+# Two is thin for a different reason. The dropped superpartition is then one of the two
+# values the quantile interpolates between, so it pulls its own baseline down: a cell
+# retaining fraction f of its data scores f / (0.75 + 0.25f), which clears a 0.5 ratio
+# threshold only below f ~ 0.43. Worse, a dropout hitting both superpartitions at once
+# leaves a baseline of zero and reports clean -- and correlated loss across
+# superpartitions is exactly the shape a failed Avro export produces.
+#
+# From three upward the interpolation index 0.75 * (n - 1) sits above the lowest value,
+# so a single dropout no longer touches its own baseline at all. What remains below the
+# recommended width is the variance of estimating a quantile from a small sample, which
+# costs sensitivity to partial dropouts rather than to total ones. Against simulated
+# summaries carrying realistic superpartition scale spread, a total loss is found at any
+# width from two up, while a 50%-depleted window is found in roughly two thirds of runs
+# at three superpartitions, most runs at six, and essentially all runs at twelve. Partial
+# sensitivity is the case that matters in practice: the Foxtrot r2 windows were thinned
+# rather than emptied, as an incomplete repair would also be.
+#
+# In sample terms, via floorDiv(sample_id - 1, 4000) + 1, three superpartitions means
+# more than 8,000 samples and six means more than 20,000.
+MIN_SUPERPARTITIONS = 2
+RECOMMENDED_SUPERPARTITIONS = 6
 
 # Adjudication queries are generated for the worst candidates only. A genome-wide scan
 # examines millions of cells, and if thresholds turn out loose the report could name
@@ -714,7 +751,20 @@ def analyze(
         baseline_quantile: float = DEFAULT_BASELINE_QUANTILE,
         min_coverage_fraction: float | None = None,
 ) -> Report:
-    """Run the full detection pipeline over a parsed summary."""
+    """Run the full detection pipeline over a parsed summary.
+
+    Raises if the summary is too narrow to support a comparative screen at all; see
+    MIN_SUPERPARTITIONS.
+    """
+    if len(summary.superpartitions) < MIN_SUPERPARTITIONS:
+        raise ValueError(
+            f'{len(summary.superpartitions)} superpartition(s) in the summary, but this '
+            f'screen compares each superpartition against its peers and needs at least '
+            f'{MIN_SUPERPARTITIONS}. With one, the bin baseline is that superpartition\'s '
+            f'own rate, every residual is 1.0, and no dropout can ever be flagged -- so a '
+            f'clean result here would mean nothing. See MIN_SUPERPARTITIONS for the widths '
+            f'at which the screen is actually informative.')
+
     bin_baselines = bin_baseline_rates(summary, baseline_quantile)
     scales = superpartition_scales(summary, bin_baselines)
     cells, considered, skipped, sparse = flag_cells(
@@ -960,6 +1010,17 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     n_samples = load_superpartitions(args.superpartitions)
     summary = load_summary(args.summary, n_samples)
+
+    # Above the floor but below the recommended width the screen runs and is sound for a
+    # total dropout, so this warns rather than aborts -- but a clean result carries less
+    # than it looks like it does, and the reader has to be told which.
+    if len(summary.superpartitions) < RECOMMENDED_SUPERPARTITIONS:
+        print(f'WARNING: only {len(summary.superpartitions)} superpartitions to compare. '
+              f'A total dropout is still detected, but sensitivity to a partially depleted '
+              f'window is reduced, and below {RECOMMENDED_SUPERPARTITIONS} a clean result '
+              f'should not be read as ruling one out. See MIN_SUPERPARTITIONS.',
+              file=sys.stderr)
+
     report = analyze(
         summary,
         ratio_threshold=args.ratio_threshold,

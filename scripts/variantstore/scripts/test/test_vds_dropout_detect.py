@@ -919,5 +919,77 @@ class TestReportOutput(unittest.TestCase):
         self.assertIn('10.00% present', text)
 
 
+class TestSuperpartitionWidth(unittest.TestCase):
+    """The screen is comparative, so it needs peers to compare against.
+
+    The hazard is specific: at widths where it cannot work it does not fail, it returns no
+    findings -- indistinguishable from a real clean result to anyone reading the report.
+    """
+
+    def test_single_superpartition_is_refused(self):
+        """With one superpartition every residual is 1.0, so nothing can ever be flagged."""
+        summary = build_summary(n_superpartitions=1)
+        for i in range(10, 19):
+            set_cell(summary, i, 1, 0.0)
+        with self.assertRaises(ValueError) as caught:
+            vdd.analyze(summary)
+        self.assertIn('superpartition', str(caught.exception))
+
+    def test_the_refusal_says_why_a_clean_result_would_be_meaningless(self):
+        with self.assertRaises(ValueError) as caught:
+            vdd.analyze(build_summary(n_superpartitions=1))
+        self.assertIn('mean nothing', str(caught.exception))
+
+    def test_a_single_superpartition_would_otherwise_report_clean(self):
+        """What the refusal prevents: the emptied cells produce no finding on their own.
+
+        Run the pipeline stages directly, bypassing the guard, to show that the wholly
+        empty window really does come back unflagged rather than merely unranked.
+        """
+        summary = build_summary(n_superpartitions=1)
+        for i in range(10, 19):
+            set_cell(summary, i, 1, 0.0)
+        baselines = vdd.bin_baseline_rates(summary, vdd.DEFAULT_BASELINE_QUANTILE)
+        scales = vdd.superpartition_scales(summary, baselines)
+        cells, _, _, _ = vdd.flag_cells(summary, baselines, scales)
+        self.assertEqual([], cells)
+
+    def test_two_superpartitions_still_find_a_total_dropout(self):
+        """The floor is two, not three: a total loss is detectable as soon as a peer exists."""
+        summary = build_summary(n_superpartitions=2)
+        for i in range(10, 19):
+            set_cell(summary, i, 2, 0.0)
+        report = vdd.analyze(summary)
+        self.assertEqual([2], [r.superpartition for r in report.rectangles])
+
+    def test_two_superpartitions_miss_a_partly_depleted_window(self):
+        """Why two is the floor and not the recommendation.
+
+        The dropped superpartition is one of the two values the quantile interpolates
+        between, so it deflates its own baseline. A cell retaining 45% of its data scores
+        0.45 / (0.75 + 0.25 * 0.45) = 0.52, above the ratio threshold, and no finding is
+        produced. The cutoff moves from "retains less than 50%" to "retains less than 43%".
+        """
+        summary = build_summary(n_superpartitions=2)
+        for i in range(10, 19):
+            set_cell(summary, i, 2, CELL * 0.45)
+        self.assertEqual([], vdd.analyze(summary).rectangles)
+
+    def test_a_wider_summary_finds_the_same_partly_depleted_window(self):
+        """The same depletion at full width, to show the miss above is about width alone.
+
+        Here the dropped superpartition is one of 134, so it cannot move the quantile and
+        the cell is judged on its true ratio of 0.45.
+        """
+        summary = build_summary()
+        for i in range(10, 19):
+            set_cell(summary, i, 83, CELL * 0.45)
+        report = vdd.analyze(summary)
+        self.assertEqual([83], [r.superpartition for r in report.rectangles])
+
+    def test_narrow_summaries_warn(self):
+        self.assertLess(vdd.MIN_SUPERPARTITIONS, vdd.RECOMMENDED_SUPERPARTITIONS)
+
+
 if __name__ == '__main__':
     unittest.main()

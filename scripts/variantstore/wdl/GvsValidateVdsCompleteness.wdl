@@ -12,6 +12,16 @@ version 1.0
 # about an hour and a reference scan in a couple of hours at full autoscaling width, which
 # leaves nothing worth buying by screening a subset.
 #
+# Which VDSes this applies to. The screen judges each superpartition against its peers, so it
+# needs enough of them to have peers at all. Superpartitions hold 4,000 samples each
+# (floorDiv(sample_id - 1, 4000) + 1), which puts the useful floor at more than 8,000 samples
+# and the recommended width at more than 20,000. Below that, sensitivity to a partially
+# depleted window falls off, and a single-superpartition VDS -- any callset of 4,000 samples
+# or fewer, which today means everything except AoU -- cannot be screened this way at all:
+# the baseline would be the superpartition's own rate, so nothing could ever be flagged.
+# vds_dropout_detect.py refuses that case rather than reporting it clean. See
+# MIN_SUPERPARTITIONS there for the arithmetic.
+#
 # What a clean run does not establish. This screens for one shape: data present in the other
 # superpartitions and missing from one of them over a contiguous window. It counts variant_data
 # entries and reference-block coverage, and never looks at filters, scores, globals or allele
@@ -145,7 +155,7 @@ workflow GvsValidateVdsCompleteness {
             help: "Either scan or full-depth. See the header comment for the usual sequence."
         }
         vds_path: {
-            help: "VDS to read."
+            help: "VDS to read. Must span more than one GVS superpartition -- see the header comment on which VDSes this screen applies to."
         }
         output_prefix: {
             help: "GCS prefix under which outputs are written (sample map, summary, report, adjudication SQL, logs)."
