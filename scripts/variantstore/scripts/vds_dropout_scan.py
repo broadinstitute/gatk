@@ -63,21 +63,19 @@ Both terms are cheap to obtain without a trial run.  Partition geometry is metad
 
 Per-partition time comes from the scan itself: contigs are checkpointed, so the first one
 to finish reports its own partition count and duration, and that work counts toward the
-result rather than being discarded.  An earlier ``probe`` action existed to estimate this in
-advance; it was removed because it could not be both cheap and representative -- a narrow
-interval measures near-serial throughput, and one wide enough to exercise the cluster is
-already a substantial fraction of the real run.
+result rather than being discarded.  There is deliberately no separate timing probe, because
+a measurement of this cannot be both cheap and representative -- a narrow interval measures
+near-serial throughput, and one wide enough to exercise the cluster is already a substantial
+fraction of the real run.
 
 Every sample is screened
 ------------------------
-There is no sampling, of samples or of loci.  An earlier design screened a stratified
-subset of ~100 samples per superpartition, on the premise that a full-width pass was
-expensive enough to need amortizing over a downsampled copy.  Measurement retired that
-premise: with the reader pruning to native partitions, a genome-wide variant scan of a
+There is no sampling, of samples or of loci, because a full-width pass is cheap enough not to
+need it: with the reader pruning to native partitions, a genome-wide variant scan of a
 535K-sample VDS runs in about an hour and a reference scan in a couple of hours.  Screening
-everything is therefore simpler, strictly more sensitive -- a sampled screen cannot see a
-handful of individually lost samples -- and needs none of the machinery that made sampling
-safe to compare across VDSes.
+everything is simpler than screening a stratified subset, strictly more sensitive -- a sampled
+screen cannot see a handful of individually lost samples -- and needs none of the machinery
+that makes a sampled screen safe to compare across VDSes.
 
 Sample map
 ----------
@@ -626,10 +624,10 @@ def executor_summary() -> str:
     and autoscales for the rest can spend a long time far below peak width, and an estimate
     assuming full width is then silently wrong by that ratio.
 
-    Each figure is obtained independently. An earlier version built both inside one `try`
-    and iterated `getExecutorMemoryStatus().keySet()`, which py4j surfaces as a Java object
-    rather than a Python iterable; the resulting TypeError discarded the task-slot count as
-    well, which had been working. Diagnostics should degrade one field at a time.
+    Each figure is obtained independently, in its own `try`, so that diagnostics degrade one
+    field at a time. Taking them together is easy to get wrong: py4j surfaces
+    `getExecutorMemoryStatus().keySet()` as a Java object rather than a Python iterable, and
+    a TypeError from iterating it would discard the task-slot count along with it.
     """
     _require_hail()
     try:
@@ -661,8 +659,8 @@ def width_heartbeat(label: str, interval_seconds: int = WIDTH_HEARTBEAT_SECONDS)
     whatever the previous unit of work left behind and is systematically low; one taken at
     the end misses a slow ramp entirely. Cost is per-partition time divided by concurrent
     tasks, so the term being divided by is a profile, not a number -- and reading a
-    pre-ramp snapshot as though it were characteristic is exactly how this project
-    produced two wrong cost estimates.
+    pre-ramp snapshot as though it were characteristic is an easy way to produce a cost
+    estimate that is wrong by a large factor.
 
     A daemon thread, and every sample is wrapped, so nothing here can fail or delay the run
     it is describing.
@@ -835,10 +833,7 @@ def shard_paths(summary_path: str, contig: str) -> tuple[str, str]:
 # re-run with the same output_prefix but a different --vds-path or --bin-size would silently
 # reuse the previous run's shards and emit a summary describing the wrong VDS -- a silent
 # wrong answer, which is the single outcome this tool cannot afford to produce.
-LEGACY_MARKER_HEADER = 'contig\trows\tvds_path\tmode\tbin_size'
-# `injections` is last so a legacy marker is a prefix of a current one, and so the check
-# below can tell "written before injections existed" from "written by a clean run".
-MARKER_HEADER = LEGACY_MARKER_HEADER + '\tinjections'
+MARKER_HEADER = 'contig\trows\tvds_path\tmode\tbin_size\tinjections'
 
 
 def injection_provenance(injections: Sequence[Injection]) -> str:
@@ -865,35 +860,23 @@ def verify_marker(marker_path: str, contig: str, args) -> None:
 
     A mismatch aborts rather than warning: reusing another VDS's shard produces a summary
     that looks complete and describes the wrong data, and no downstream step could detect
-    it.
-
-    Markers written before provenance was recorded are accepted with a warning rather than
-    discarded, so an in-flight scan's checkpoints stay usable across the upgrade. That is a
-    deliberate trade, and the warning says what it costs.
-
-    A marker carrying the previous header is checked on the four fields it does have, and
-    read as having no injected dropout -- which is true by construction, since it was
-    written before injection existed.
+    it. An unrecognized header is treated the same way, since a marker this cannot read is
+    a marker whose provenance it cannot check.
     """
     with _open_read(marker_path) as handle:
         header = handle.readline().rstrip('\n')
         row = handle.readline().rstrip('\n')
 
-    if header not in (MARKER_HEADER, LEGACY_MARKER_HEADER):
-        announce(
-            f'WARNING: {marker_path} predates provenance recording, so it cannot be '
-            f'checked against --vds-path or --bin-size. Accepting it and skipping {contig}. '
-            'If this output_prefix was previously used for a different VDS or bin size, '
-            f'delete {marker_path} and the matching shard before relying on the result.')
-        return
+    if header != MARKER_HEADER:
+        raise RuntimeError(f'{marker_path}: unrecognized marker header {header!r}, so its '
+                           f'provenance cannot be checked. Delete it and the matching '
+                           f'shard, or choose a different --summary-path.')
 
     fields = row.split('\t')
-    if len(fields) < 5:
+    if len(fields) < 6:
         raise RuntimeError(f'{marker_path}: malformed marker row {row!r}; delete it and '
                            f're-run {contig}.')
-    _, _, vds_path, mode, bin_size = fields[:5]
-    # Absent from a legacy marker, which by definition was written without injections.
-    injections = fields[5] if len(fields) > 5 else '-'
+    _, _, vds_path, mode, bin_size, injections = fields[:6]
     mismatches = []
     if injections != injection_provenance(args.injections):
         mismatches.append(
@@ -913,17 +896,16 @@ def verify_marker(marker_path: str, contig: str, args) -> None:
 
 
 # Bytes per `read` during the merge, which is a pure copy of a few hundred megabytes. Large
-# because the merge moves undecoded bytes now; see `_binary_openers` for why it no longer
-# goes through Hail.
+# because the merge moves undecoded bytes; see `_binary_openers` for why it does not go
+# through Hail.
 MERGE_CHUNK_BYTES = 32 * 1024 * 1024
 
 # Only the fallback below still reads through Hail's text handles, and it is still capped by
 # the 8 KB buffer `_open_read` describes, so a large value here buys it nothing.
 MERGE_CHUNK_CHARACTERS = 8 * 1024 * 1024
 
-# How often the copy reports progress. It is the longest non-Hail step in the job and used
-# to print nothing at all between "starting" and "done", which is backwards: a step with no
-# Hail UI behind it is exactly the one whose progress has to come from the script.
+# How often the copy reports progress. It is the longest non-Hail step in the job, and a step
+# with no Hail UI behind it is exactly the one whose progress has to come from the script.
 MERGE_PROGRESS_SECONDS = 60
 
 

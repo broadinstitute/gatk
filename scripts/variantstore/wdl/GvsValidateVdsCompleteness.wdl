@@ -10,8 +10,7 @@ version 1.0
 # Every sample is screened. There is no sampling, of samples or of loci: measured on Foxtrot
 # r2 (535,662 samples, 119,189 variant_data partitions), a genome-wide variant scan runs in
 # about an hour and a reference scan in a couple of hours at full autoscaling width, which
-# leaves nothing worth buying by screening a subset. An earlier design materialized a
-# downsampled copy first; that only made sense while a full-width pass was assumed expensive.
+# leaves nothing worth buying by screening a subset.
 #
 # What a clean run does not establish. This screens for one shape: data present in the other
 # superpartitions and missing from one of them over a contiguous window. It counts variant_data
@@ -100,11 +99,12 @@ workflow GvsValidateVdsCompleteness {
         String? reference_schema
 
         Boolean use_tiny_dataproc_cluster = false
-        # Two rather than four. Primary workers must all be provisioned before the cluster
-        # is usable, and Dataproc's floor is 2 datanodes, so asking for 4 doubles the
-        # up-front capacity ask for no benefit -- a us-central1-b create failed having
-        # provisioned only 1 of 4. Secondary workers are added by the autoscaling policy
-        # afterwards and are preemptible, so peak parallelism is unaffected.
+        # Two rather than the 4 GvsValidateVDS.wdl uses. Primary workers must all be
+        # provisioned before the cluster is usable, and Dataproc's floor is 2 datanodes, so
+        # asking for 4 doubles the up-front capacity ask for no benefit -- a us-central1-b
+        # create failed having provisioned only 1 of 4. Secondary workers are added by the
+        # autoscaling policy afterwards and are preemptible, so peak parallelism is
+        # unaffected.
         Int num_primary_workers = 2
         Int max_secondary_workers = 300
         String cluster_prefix = "vds-completeness"
@@ -567,16 +567,11 @@ task ScanVdsForDropouts {
         fi
 
         # Both output files must exist because Cromwell resolves task outputs regardless of
-        # which branch ran. Each states what it is and why it is empty. An earlier version
-        # copied the report's placeholder into the SQL file, which shipped an
-        # adjudicate_<mode>.sql whose contents talked about reports -- a plausibly named
-        # output with irrelevant text in it, which is worse than no file at all.
-        # These are defaults, overwritten by the detect step below when action is scan. The
-        # wording has to hold in both cases, because the scan case is the only one in which
-        # anyone reads them: seeing a placeholder after a scan means the task died before
-        # detect ran. An earlier version interpolated the action into "action '~{action}' does
-        # not produce one; only scan does", which for action=scan is a sentence that
-        # contradicts itself and sent the reader looking for a detect bug that was not there.
+        # which branch ran, so each states what it is and why it is empty. These are
+        # defaults, overwritten by the detect step below when action is scan. Each file's
+        # text has to name that file rather than the other, and has to read correctly for
+        # both actions -- the scan case is the only one in which anyone actually reads
+        # these, where a placeholder means the task died before detect ran.
         #
         # Appended rather than written as one multi-line string: Cromwell dedents a command
         # block by its common leading whitespace, so a continuation line starting at column
@@ -638,66 +633,18 @@ task ScanVdsForDropouts {
 
         cat script-arguments.json
 
-        # GetHailScripts copies /app/*.py out of the Variants image, so the helper running here
-        # is whatever was baked into the current variants_docker tag, not what is in the repo.
-        # Check for the flags this workflow relies on before invoking it: without this the
-        # failure is an argparse usage dump listing the old arguments, which says nothing about
-        # the actual cause.
-        for required_flag in --zones --num-local-ssds
-        do
-            if ! python3 ~{run_in_hail_cluster_script} --help 2>&1 | grep -q -- "${required_flag}"
-            then
-                echo "ERROR: run_in_hail_cluster.py in this variants_docker image does not support" >&2
-                echo "  ${required_flag}, which this workflow passes." >&2
-                echo "Rebuild the Variants image and point GetToolVersions at the new tag:" >&2
-                echo "  1. scripts/variantstore/scripts/build_docker.sh" >&2
-                echo "  2. set variants_docker in GvsUtils.wdl GetToolVersions to the printed tag" >&2
-                exit 1
-            fi
-        done
-
-        # Same rebuild trap as above, but for the scan script and only when it is being asked
-        # for something an older image cannot do. Unguarded, a stale image turns an injected
-        # run into an argparse dump, and -- worse -- an operator who missed that could read the
-        # resulting absence of a flagged rectangle as the injection failing to be detected.
         if [[ -n "~{default='' inject_dropout}" ]]
         then
-            if ! python3 ~{vds_dropout_scan_script} --help 2>&1 | grep -q -- "--inject-dropout"
-            then
-                echo "ERROR: vds_dropout_scan.py in this variants_docker image does not support" >&2
-                echo "  --inject-dropout, which this workflow was asked to pass." >&2
-                echo "Rebuild the Variants image and point GetToolVersions at the new tag:" >&2
-                echo "  1. scripts/variantstore/scripts/build_docker.sh" >&2
-                echo "  2. set variants_docker in GvsUtils.wdl GetToolVersions to the printed tag" >&2
-                exit 1
-            fi
             echo "*** INJECTED DROPOUT ~{default='' inject_dropout} -- this run is a diagnostic" >&2
             echo "*** and its outputs do NOT describe ~{vds_path} ***" >&2
         fi
 
-        # A warning rather than a failure, because a stale image here produces a correct
-        # summary slowly rather than a wrong one. It is still worth saying up front: the old
-        # merge copied through Hail's text handles at ~180 kB/s, and on the 2026-09-22
-        # references run those two hours were what carried the job past its cluster TTL and
-        # discarded ten hours of finished aggregation. There is no flag to grep for, since the
-        # fix changed no interface, so this looks for the function that does the byte copy.
-        if ! grep -q '_binary_openers' ~{vds_dropout_scan_script}
-        then
-            echo "WARNING: vds_dropout_scan.py in this variants_docker image predates the" >&2
-            echo "  byte-copy merge, so the merge will run through hl.hadoop_open at roughly" >&2
-            echo "  180 kB/s -- about 1.8 h at the 10 kb default, added to the scan." >&2
-            echo "  Raise cluster_max_age_minutes to cover it, or rebuild the image:" >&2
-            echo "  1. scripts/variantstore/scripts/build_docker.sh" >&2
-            echo "  2. set variants_docker in GvsUtils.wdl GetToolVersions to the printed tag" >&2
-        fi
-
-        # Upload the log however this task exits, not just when it succeeds. It used to be
-        # copied at the very end, which made the one artifact worth having after an
-        # hours-long failure the one artifact that a failure guaranteed you would not get:
-        # errexit aborts at the first failing step, and every step that can fail comes
-        # before the upload. The run that prompted this died on a `gsutil cp` and left its
-        # log in Cromwell's stdout only. `|| true` so a failed upload cannot overwrite the
-        # exit code that explains the failure.
+        # Upload the log however this task exits, not just when it succeeds. Copying it at
+        # the end of the script instead would make the one artifact worth having after an
+        # hours-long failure the one artifact a failure guarantees you do not get: errexit
+        # aborts at the first failing step, and every step that can fail comes before the
+        # upload, leaving the log in Cromwell's stdout only. `|| true` so a failed upload
+        # cannot overwrite the exit code that explains the failure.
         trap 'if [[ -f scan.log ]]
               then
                   gsutil cp scan.log "~{output_prefix}/scan_~{action}_~{mode}.log" || true
@@ -735,8 +682,7 @@ task ScanVdsForDropouts {
             # already checkpointed complete does not rewrite the superpartition table --
             # vds_dropout_scan.py leaves the original in place, on the grounds that it is
             # still correct -- so this path is reachable with a perfectly healthy scan log,
-            # and the bare `gsutil cp` failure that used to result named neither the file nor
-            # the reason.
+            # where a bare `gsutil cp` failure would name neither the file nor the reason.
             missing=()
             for required_object in "~{summary_path}" "~{superpartitions_path}"
             do
@@ -752,11 +698,6 @@ task ScanVdsForDropouts {
                 echo "complete: it leaves the superpartition table from the original run in" >&2
                 echo "place rather than rewriting it, so if that run never wrote one -- or" >&2
                 echo "wrote it under a different output_prefix -- nothing here will." >&2
-                echo "" >&2
-                echo "A '//' anywhere in the names above means the workflow predates the" >&2
-                echo "output_prefix sanitizing: Hail writes through a path that collapses it" >&2
-                echo "and gsutil reads through one that does not, so the object is present" >&2
-                echo "under the single-slash name. Trim the trailing slash and re-run." >&2
                 echo "" >&2
                 echo "No need to re-scan. Judging is pure Python and needs no cluster:" >&2
                 echo "  python3 vds_dropout_detect.py --summary <summary.tsv> \\" >&2
@@ -818,9 +759,8 @@ task ScanVdsForDropouts {
             python3 ~{vds_dropout_detect_script} "${detect_args[@]}" | tee -a scan.log
 
             gsutil cp ./report.tsv "~{output_prefix}/report_~{mode}.tsv"
-            # Unconditional: the file always exists and always says something true about
-            # itself. The former `-f` guard could never be false, since the placeholder
-            # above guarantees the path.
+            # Unconditional: the placeholder written above guarantees the path exists, and
+            # whichever version of the file is there says something true about itself.
             gsutil cp ./adjudicate.sql "~{output_prefix}/adjudicate_~{mode}.sql"
             # In references mode the coverage floor drops bins too sparsely covered to
             # judge, and a clean report is only as strong as the list of places the screen

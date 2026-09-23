@@ -180,10 +180,10 @@ class TestWdlGeneratedSampleMap(unittest.TestCase):
 class TestPlaceholderOutputs(unittest.TestCase):
     """Both task outputs must exist and describe themselves accurately.
 
-    Cromwell resolves task outputs regardless of which branch ran, so both files are
-    created up front. An earlier version copied the report's placeholder into the SQL file,
-    which shipped an adjudicate_<mode>.sql whose text talked about reports -- a plausibly
-    named output containing something irrelevant, which reads as a real result.
+    Cromwell resolves task outputs regardless of which branch ran, so both files are created
+    up front. Each has to describe itself rather than its sibling: an adjudicate_<mode>.sql
+    whose text talks about reports is a plausibly named output containing something
+    irrelevant, which reads as a real result.
     """
 
     WDL = variantstore_dir() / 'wdl' / 'GvsValidateVdsCompleteness.wdl'
@@ -191,10 +191,10 @@ class TestPlaceholderOutputs(unittest.TestCase):
     def test_scan_log_is_uploaded_however_the_task_exits(self):
         """The log has to survive the failures it is there to explain.
 
-        It used to be copied on the last line, after every step that can fail, so under
-        errexit a failing task uploaded nothing and the log from an hours-long run lived
-        only in Cromwell's stdout. That is exactly backwards: a successful run barely needs
-        its log.
+        Copied on the last line instead, after every step that can fail, it would be
+        uploaded only by runs that succeed -- and under errexit a failing task would leave
+        the log from an hours-long run in Cromwell's stdout alone. That is exactly
+        backwards: a successful run barely needs its log.
         """
         body = self.scan_task()
         end = "fi' EXIT"
@@ -207,7 +207,7 @@ class TestPlaceholderOutputs(unittest.TestCase):
         self.assertIn('[[ -f scan.log ]]', trap)
 
     def test_scan_log_is_not_also_copied_at_the_end(self):
-        """A second copy would be dead code that re-implies the old ordering."""
+        """A second copy would be dead code implying the upload depends on reaching the end."""
         body = self.scan_task()
         after_trap = body[body.index("fi' EXIT"):]
         self.assertNotIn('gsutil cp scan.log', after_trap)
@@ -216,10 +216,10 @@ class TestPlaceholderOutputs(unittest.TestCase):
         """The scan case is the only one in which a placeholder is ever read.
 
         The placeholders are written up front and overwritten by detect, so a placeholder
-        surviving a scan means the task died in between. An earlier version interpolated the
-        action into a sentence ending "only scan does", which for action=scan read "action
-        'scan' does not produce one; only scan does" -- self-contradictory exactly when
-        someone was trying to work out why their run failed.
+        surviving a scan means the task died in between. Interpolating the action into a
+        sentence ending "only scan does" reads, for action=scan, as "action 'scan' does not
+        produce one; only scan does" -- self-contradictory exactly when someone is trying to
+        work out why their run failed.
         """
         text = self.wdl()
         self.assertNotIn("does not produce one; only scan does", text)
@@ -530,10 +530,10 @@ class TestClusterRunnerCompatibility(unittest.TestCase):
 class TestExecutorSummary(unittest.TestCase):
     """Cluster width is logged for the cost model, so it must degrade one field at a time.
 
-    The first version built both figures inside one try block and iterated
-    getExecutorMemoryStatus().keySet(), which py4j exposes as a Java object rather than a
-    Python iterable. The TypeError discarded the task-slot count too, which had been
-    working -- so a diagnostic meant to explain a slow run instead reported nothing.
+    Building both figures inside one try block invites the opposite: py4j exposes
+    getExecutorMemoryStatus().keySet() as a Java object rather than a Python iterable, so
+    iterating it raises TypeError and takes the working task-slot count down with it -- a
+    diagnostic meant to explain a slow run then reports nothing at all.
     """
 
     class _MemStatus:
@@ -598,9 +598,9 @@ class TestWidthHeartbeat(unittest.TestCase):
     """Cluster width is a profile, not a number, so it is sampled rather than snapshotted.
 
     A reading taken before an aggregation starts is taken before autoscaling has seen the
-    work and is systematically low; one at the end misses a slow ramp. Reading a pre-ramp
-    snapshot as characteristic is how this project produced two wrong cost estimates, so
-    the log records the shape instead.
+    work and is systematically low; one at the end misses a slow ramp. Reading either as
+    characteristic is an easy way to get a cost estimate wrong by a large factor, so the log
+    records the shape instead.
     """
 
     def setUp(self):
@@ -683,9 +683,9 @@ class TestContigCheckpointing(unittest.TestCase):
     def merge(self, shards, expected):
         """`concatenate_shards` with its progress output captured.
 
-        Those lines are the point of the change that added them -- the merge used to print
-        nothing for tens of minutes -- but interleaved with unittest's own output they make
-        a real failure harder to read. One test below asserts on them directly.
+        Those lines matter -- the merge is otherwise silent for tens of minutes -- but
+        interleaved with unittest's own output they make a real failure harder to read. One
+        test below asserts on them directly.
         """
         with contextlib.redirect_stdout(io.StringIO()):
             return vds.concatenate_shards(shards, self.summary, expected)
@@ -753,14 +753,14 @@ class TestContigCheckpointing(unittest.TestCase):
             vds.verify_marker(marker, 'chr1', self.args(vds_path='b'))
         self.assertIn('Delete', str(ctx.exception))
 
-    def test_legacy_marker_is_accepted_with_a_warning(self):
-        """Deliberate: an in-flight scan's checkpoints stay usable across the upgrade."""
+    def test_unrecognized_header_aborts(self):
+        """A marker whose provenance cannot be read is not evidence that a shard is good."""
         _, marker = vds.shard_paths(self.summary, 'chr1')
         vds.write_lines(marker, 'contig\trows', ['chr1\t42'])
-        with contextlib.redirect_stdout(io.StringIO()) as out:
+        with self.assertRaises(RuntimeError) as ctx:
             vds.verify_marker(marker, 'chr1', self.args())
-        self.assertIn('predates provenance recording', out.getvalue())
-        self.assertIn('delete', out.getvalue().lower())
+        self.assertIn('unrecognized marker header', str(ctx.exception))
+        self.assertIn('Delete', str(ctx.exception))
 
     def test_malformed_marker_aborts(self):
         _, marker = vds.shard_paths(self.summary, 'chr1')
@@ -802,19 +802,6 @@ class TestContigCheckpointing(unittest.TestCase):
         injected = (vds.Injection('chr20', 1_000_000, 1_100_000, 83),)
         vds.write_marker(marker, 'chr1', 42, self.args(injections=injected))
         vds.verify_marker(marker, 'chr1', self.args(injections=injected))  # must not raise
-
-    def test_legacy_marker_is_checked_on_the_fields_it_has(self):
-        """A five-field marker predates injection, so it is read as uninjected.
-
-        It is still checked on vds_path, mode and bin_size rather than waved through: those
-        fields are present, and the lenient path exists for markers that lack them.
-        """
-        _, marker = vds.shard_paths(self.summary, 'chr1')
-        vds.write_lines(marker, vds.LEGACY_MARKER_HEADER,
-                        ['chr1\t42\tgs://bucket/r2.vds\tvariants\t50000'])
-        vds.verify_marker(marker, 'chr1', self.args())  # must not raise
-        with self.assertRaises(RuntimeError):
-            vds.verify_marker(marker, 'chr1', self.args(vds_path='gs://bucket/r3.vds'))
 
     def test_marker_governs_resume_not_shard_existence(self):
         """A shard truncated mid-write must not be mistaken for a finished one."""
@@ -910,11 +897,11 @@ class TestContigCheckpointing(unittest.TestCase):
         self.assertEqual(4, sum(1 for row in rows if row.startswith('chr2\t')))
 
     def test_the_merge_reports_progress_as_it_goes(self):
-        """It is the longest non-Hail step, and it used to print nothing while running.
+        """It is the longest non-Hail step, so silence there is the most expensive kind.
 
         A step with no Hail UI behind it is the one whose progress can only come from the
-        script, so silence there was backwards: the question it prompted was whether the
-        job had stalled, which no output could answer.
+        script, and the question silence prompts -- whether the job has stalled -- is one no
+        output could answer.
         """
         shards = [self.write_shard('chr1', 2), self.write_shard('chr2', 2)]
         printed = io.StringIO()
