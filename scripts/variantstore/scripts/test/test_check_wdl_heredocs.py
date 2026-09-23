@@ -189,7 +189,7 @@ class TestBodyInvariant(unittest.TestCase):
 
 
 class TestInlinePythonCompiles(unittest.TestCase):
-    """Nothing else checks it: pyflakes cannot see Python embedded in a WDL string."""
+    """Nothing else checks it: no linter reaches Python embedded in a WDL string."""
 
     def test_a_syntax_error_is_reported(self):
         found = broken(wdl([

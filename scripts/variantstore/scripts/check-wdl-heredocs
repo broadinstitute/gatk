@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
-"""Flag WDL command blocks whose heredocs will not survive Cromwell's dedent.
+"""Check the heredocs in WDL command blocks: that they survive Cromwell's dedent, and that
+any Python they carry still parses.
+
+Those are two jobs, and the second is not implied by the name. They are here together
+because they fail identically -- in the cloud, minutes into a task, reported against a line
+number that names neither the WDL nor the task -- and because finding an inline Python body
+in order to check what column it starts at is most of the work of parsing it. See "Why the
+Python is compiled" below.
 
 Cromwell strips the whitespace common to every non-blank line of a `command <<< >>>`
 block. So a single line at column zero -- a wrapped string, a pasted comment -- drops that
@@ -54,6 +61,28 @@ delimiters here are `CODE`, `EOF`, `FIN` and `PYTHON_HEREDOC`, which say nothing
 contents, and a `cat > x.json`, a SQL statement or an R script does not care what column it
 arrives at. Flagging those would be noise, and a checker that reports correct code gets
 switched off.
+
+## Why the Python is compiled
+
+Deciding the indent rule already requires knowing which heredocs feed a Python interpreter
+and where each body starts and ends. Once a body is in hand and known to reach column zero,
+compiling it costs a few lines and covers every other way it can fail to parse: an
+unclosed paren, a missing colon, tabs against spaces, a block indented wrongly relative to
+its neighbors rather than uniformly.
+
+Nothing else in the toolchain looks at that code. CI runs the Python unit tests and no
+linter at all, and a linter run by hand would not reach this body either, because to any
+tool that reads the file it is a string inside a `.wdl`. `womtool validate` treats the whole
+command block as exactly that, and `bash -n` checks the shell around the heredoc rather than
+its contents. Absent this, a typo in an embedded script is found by running it on a Dataproc
+cluster.
+
+The check is structural, not semantic. WDL and bash interpolations are replaced with a
+literal before compiling, because `~{...}` is not Python, so a bare unquoted interpolation
+-- `path = ~{vds_path}` -- becomes `path = 0`, compiles clean, and still breaks at runtime.
+Every interpolation in the tree today is either quoted or numeric, where substituting a
+literal is faithful. Treat a pass as evidence that the block is Python-shaped, not that
+Cromwell will produce something that runs.
 
 Like `reflow-md` and `check-us-spelling`, this script is deliberately extensionless so that
 the Dockerfile's `COPY *.py /app/` leaves it out of the Variants image and out of the
@@ -212,8 +241,8 @@ def wdl_files(roots):
 
 def main(argv):
     parser = argparse.ArgumentParser(
-        description='Flag WDL command blocks whose heredocs will not survive '
-                    "Cromwell's dedent.")
+        description="Check that WDL heredocs survive Cromwell's dedent, and that any "
+                    'Python they carry still parses.')
     parser.add_argument('paths', nargs='*', help='WDL files or directories to search '
                                                  '(default: the variantstore tree)')
     parser.add_argument('--strict', action='store_true',

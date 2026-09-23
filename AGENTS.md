@@ -433,7 +433,7 @@ real-ID version as a throwaway.
 
 ## Heredocs in command blocks
 
-Cromwell dedents a `command <<< >>>` block by the whitespace common to every
+Cromwell dedents a `command <<< >>>` block by the leading whitespace common to every
 non-blank line in it. So a single line at column zero -- a wrapped string, a
 pasted comment -- drops that common prefix to nothing, nothing is stripped, and
 the indentation the block was written with reaches bash intact.
@@ -449,12 +449,12 @@ Two things have to survive that dedent:
    as data and does not care what column it arrives at, so only the first rule
    applies to those.
 
-Only the first fails loudly, and it fails badly: `unexpected end of file`
+The first case fails loudly at task execution: `unexpected end of file`
 reported at the generated script's last line, nowhere near the cause, and only
 once the task runs in the cloud. `womtool validate` passes throughout, because a
 command block is just a string to it.
 
-The second is quieter, and it is what the obvious repair for the first produces
+The second case is quieter, and it is what the obvious repair for the first produces
 -- outdent the terminator so bash is satisfied, leave the body alone. `bash -n`
 then passes, since the terminator really is where bash wants it, so the script
 runs and the inline Python fails on its own input instead: `IndentationError:
@@ -477,9 +477,16 @@ scripts/variantstore/scripts/check-wdl-heredocs FILE...      # just these
 scripts/variantstore/scripts/check-wdl-heredocs --strict     # fail on FRAGILE too
 ```
 
-It exits non-zero on a broken block, and also compiles any inline Python it
-finds, which nothing else does -- `pyflakes` cannot see Python embedded in a WDL
-string. `test/test_check_wdl_heredocs.py` runs it over every WDL under
+The script does two things, and the second is not implied by its name. It flags
+heredocs that will not survive the dedent, and it compiles the body of any
+heredoc feeding a Python interpreter. Nothing else in the toolchain parses that
+code: CI runs the Python unit tests and no linter, and a linter would not reach
+this body in any case, since it is a string inside a `.wdl`. `womtool validate`
+treats the command block as exactly that. So a missing colon in an embedded
+script is otherwise found by running it on a cluster. WDL interpolations are stubbed out before
+compiling, which makes the check structural -- it will not catch a `~{...}` that
+interpolates to something Python cannot parse. It exits non-zero on a broken
+block. `test/test_check_wdl_heredocs.py` runs it over every WDL under
 `scripts/variantstore` as part of the Python unit tests, so CI enforces this.
 
 "FRAGILE" means only that a block is never dedented, so it works today but breaks
@@ -518,7 +525,7 @@ actual change.
 
 ## US English spelling
 
-This codebase is US English. British forms slip into comments easily and are invisible in
+This codebase is US English. British forms slip in easily and are invisible in
 review, since nothing is functionally wrong. Check before handing over prose:
 
 ```shell
