@@ -380,7 +380,9 @@ workflow GvsImportGenomes {
         cloud_sdk_docker = effective_cloud_sdk_docker,
     }
 
-    if (delete_parquet_files_after_loading && VerifyParquetLoading.safe_to_delete_parquet) {
+    if (delete_parquet_files_after_loading &&
+        VerifyParquetLoading.safe_to_delete_parquet &&
+        VerifyParquetLoading.quarantined_files < VerifyParquetLoading.total_files) {
       call DeleteParquetFiles {
         input:
           output_gcs_dir = defined_parquet_output_dir,
