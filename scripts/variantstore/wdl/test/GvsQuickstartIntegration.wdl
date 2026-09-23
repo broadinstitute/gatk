@@ -271,7 +271,7 @@ workflow GvsQuickstartIntegration {
                 # -- a distinct sample set whose headers are checked nowhere else. Consistency-only
                 # (no expected_dragen_version): the shared top-level value targets the WGS/BGE cohorts
                 # and the exome cohort may differ.
-                validate_vcf_headers = true,
+                load_vcf_headers = true,
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
                 cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
