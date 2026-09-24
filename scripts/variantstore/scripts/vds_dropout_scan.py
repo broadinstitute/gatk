@@ -70,12 +70,15 @@ fraction of the real run.
 
 Every sample is screened
 ------------------------
-There is no sampling, of samples or of loci, because a full-width pass is cheap enough not to
-need it: with the reader pruning to native partitions, a genome-wide variant scan of a
-535K-sample VDS runs in about an hour and a reference scan in a couple of hours.  Screening
-everything is simpler than screening a stratified subset, strictly more sensitive -- a sampled
-screen cannot see a handful of individually lost samples -- and needs none of the machinery
-that makes a sampled screen safe to compare across VDSes.
+There is no sampling, of samples or of loci.  A full-width pass is not cheap: measured on
+Foxtrot r2, the Hail aggregation over a 535K-sample VDS took 5 h 01 m for variants and about
+10 hours for references, with the shard merge and the tasks either side of it adding under
+half an hour on top of that.  But it is an
+overnight job at any sampling rate, so a subset would not change how the tool is run, and the
+first question it exists to settle is exhaustive by nature.  Screening everything is also
+simpler than screening a stratified subset, strictly more sensitive -- a sampled screen cannot
+see a handful of individually lost samples -- and needs none of the machinery that makes a
+sampled screen safe to compare across VDSes.
 
 Sample map
 ----------

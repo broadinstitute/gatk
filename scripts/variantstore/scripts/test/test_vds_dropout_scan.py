@@ -1106,10 +1106,11 @@ class TestOutputFormatting(unittest.TestCase):
 class TestIntervalReadSemantics(unittest.TestCase):
     """read_vds(intervals=...) repartitions; it does not filter.
 
-    Also the reason locus sampling was dropped entirely: with the reader pruning to native
-    partitions, a genome-wide variant scan is under an hour and a reference scan a couple
-    of hours, so there is nothing worth buying by reading only part of the genome -- and
-    the first question this tool exists to answer is exhaustive by nature.
+    Also the reason locus sampling was dropped entirely: a genome-wide scan is an overnight
+    job at any sampling rate -- 5 h 01 m of Hail aggregation for variants and about 10 hours
+    for references on Foxtrot r2, the merge and the surrounding tasks adding well under an
+    hour -- so reading only part of the genome does not change how the tool is run,
+    and the first question it exists to answer is exhaustive by nature.
 
     N intervals yield exactly N partitions. A single 10 Mb interval therefore collapsed
     ~380 native partitions of a 119,189-partition VDS into one, and one task streamed all

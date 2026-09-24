@@ -21,6 +21,7 @@
   - [GvsCalculatePrecisionAndSensitivity](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCalculatePrecisionAndSensitivity) workflow
   - [GvsCallsetCost](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCallsetCost) workflow
   - [GvsCreateVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVDS) workflow
+  - [GvsValidateVdsCompleteness](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsValidateVdsCompleteness) workflow
   - [GvsCreateVATfromVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVATfromVDS) workflow
   - [GvsValidateVat](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsValidateVat) workflow
   - [GvsCreateParticipantMappingTable](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsCreateParticipantMappingTable) workflow
@@ -143,6 +144,7 @@ GROUP BY
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
    - Once a VDS has been created the Variants team will also generate callset statistics using `GvsCallsetStatistics` as described below. The Variants team then forwards both the path to the VDS and the output callset statistics TSV to Lee to quality check the VDS.
    - If you are debugging a Hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](HAIL_DEBUGGING.md).
+   - Consider running `GvsValidateVdsCompleteness` (described below) against this partial VDS before going on to the merge, but only if the callset adds enough samples for the screen to mean anything -- see that workflow's entry for how to check, and note that a small increment cannot be screened at all. The mandatory run is the one against the merged VDS.
 1. `GvsMergeAndRescoreVDSes.wdl` workflow
    - This step takes as input both the full Echo VDS from the previous AoU callset and the partial Foxtrot VDS generated in the step above, as well as Avro files from the step before that.
    - The `input_echo_vds_path` is the final VDS for Echo; see the private Variants Slack channel for this location.
@@ -152,6 +154,23 @@ GROUP BY
      This file contains all withdrawn sample IDs per Lee's email "Release v9 array and srWGS sample list (aka Foxtrot release)" of July 30 2025 with a `v4_Jul292025_2122_21_tz0000` manifest, *plus* sample id `1624705` as specified in VS-1641.
      If remaking this file for whatever reason, it should be formatted as a single column containing the sample ids to remove from the final output VDS, with a header of `research_id`.
    - `output_merged_and_rescored_foxtrot_vds_path` represents the output path for the final Foxtrot VDS. VDSes should be written under the AoU delivery bucket `gs://prod-drc-broad/`. Ask Lee for the exact path to use for the VDS in the `#dsp-variants` slack channel.
+1. `GvsValidateVdsCompleteness` workflow
+   - A sanity check on the VDS. It screens for "rectangle" dropouts: a contiguous genomic window in which one GVS superpartition has little or no data while every other superpartition has the usual amount. That is the shape a lost or truncated Avro export shard produces, and it is how the two known Foxtrot dropouts were characterized. Those reached a delivered VDS without being noticed, which is the reason this step exists; run it on every AoU callset.
+   - **The run against the final merged VDS from `GvsMergeAndRescoreVDSes` is required.** That VDS spans the whole cohort -- 136 superpartitions for Foxtrot -- so it is always wide enough to screen, it is what ships, and it is the only artifact the merge and rescore have actually written.
+   - An earlier run against the partial VDS from `GvsCreateVDS` is optional, and is worth doing only when the callset adds enough samples for the screen to work. How many that is depends on the callset and must not be assumed: count the superpartitions the increment spans before deciding, using the same sample filter given for the `sample_info` view above.
+     ```bigquery
+     SELECT COUNT(DISTINCT DIV(sample_id - 1, 4000) + 1) AS superpartitions
+     FROM `aou-genomics-curation-prod.foxtrot.sample_info`
+     WHERE sample_id > 414838
+     ```
+     Six or more and the earlier run earns its keep, since it finds an Avro export dropout before the cost of the merge is paid. Below that it does not: at two superpartitions a dropout affecting both reports clean, and at one the detector refuses to run rather than return a meaningless pass. Narrow increments are the expected case, not a corner case -- a rebuild based on an existing merged VDS may add only a couple of superpartitions, and the Golf increment may be similarly small.
+   - Skipping the earlier run costs no coverage. In the merged VDS the newly added samples occupy their own superpartitions and are judged against the whole cohort's peers, which is a stricter test than judging them against the handful of peers the partial VDS contains. What is lost by skipping it is only the chance to have found the problem before paying for the merge.
+   - One action per invocation. Run `action = "scan"` with `mode = "variants"`, then again with `mode = "references"`. Each emits a summary, any candidate rectangles, and the BigQuery SQL needed to adjudicate them. `action = "full-depth"` is diagnostic and is only needed for whatever the scans flag.
+   - Supply `bq_project_id` and `bq_dataset_name` and the sample map is generated for you.
+   - The adjudication SQL is deliberately *not* executed by the workflow. Running it against the callset dataset is a separate, deliberate step, and it is what turns a candidate into proof: if BigQuery holds the rows and the VDS does not, the data was lost on the way out rather than never ingested.
+   - **Only meaningful at AoU scale.** The screen judges each superpartition against its peers, so it needs enough of them to have peers at all. Superpartitions hold 4,000 samples, putting the useful floor above 8,000 samples and the recommended width above 20,000. A single-superpartition VDS cannot be screened this way at all -- the baseline would be that superpartition's own rate, so nothing could ever be flagged -- and the detector refuses that case rather than reporting it clean. This is why the step appears here and not in the GVS integration tests, whose VDS has one superpartition.
+   - Runtimes observed on Foxtrot r2 (535,662 samples, 119,189 variant_data partitions) at full autoscaling width: budget about 5.5 hours for a genome-wide variants run and about 10.5 for a references run, end to end. Nearly all of that is the Hail aggregation, measured from cluster provisioning at 5 hours 1 minute for variants and about 10 hours for references; the shard merge adds about 8 minutes at the 10 kb default, and the quick tasks either side of it — tool versions, script staging, sample map, detect — about twenty. Plan an overnight run. `cluster_max_age_minutes` is optional and defaults to unset, and nothing needs it: the workflow deletes its own cluster on success or failure, and tells you how to delete it by hand if that fails. It is a backstop against a cluster orphaned by an aborted submission, so if you set one, set it at "nobody meant to leave this running" rather than at how long you think the run will take -- a 12 hour TTL on 2026-09-22 killed a healthy references run 92% of the way through its merge and discarded ten hours of completed aggregation.
+   - A scan that flags nothing says the data is present at full width, not that it is correct. Scores and AC/AN/AF correctness belong to the VDS tieout and rescoring, which this does not replace.
 1. `GvsCallsetStatistics` workflow
     - You will need to run `GvsPrepareRangesCallset` workflow for callset statistics first, if it has not been run already
        - This workflow transforms the data in the vet tables into a schema optimized for callset stats creation and for calculating sensitivity and precision.
@@ -175,6 +194,7 @@ GROUP BY
 The Variants team currently has the following VDS internal sign-off protocol:
 
 1. Generate a VDS for the candidate callset into the "delivery" bucket.
+1. Run `GvsValidateVdsCompleteness.wdl` over that VDS in both `variants` and `references` mode and confirm no dropout rectangles are flagged. If any are, adjudicate them against BigQuery using the SQL the workflow emits before going any further. See the workflow's entry in the main pipeline above.
 1. Open up the VDS in a [beefy](vds/cluster/AoU%20VDS%20Cluster%20Configuration.md) notebook and confirm the "shape" looks right.
 1. Run `GvsPrepareRangesCallset.wdl` to generate a prepare table of VET data.
 1. Run `GvsCallsetStatistics.wdl` to generate callset statistics for the candidate callset using the prepare VET table created in the preceding step.

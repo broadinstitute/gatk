@@ -7,10 +7,14 @@ version 1.0
 # means each numbered output file holds a contiguous location range for exactly one
 # superpartition.
 #
-# Every sample is screened. There is no sampling, of samples or of loci: measured on Foxtrot
-# r2 (535,662 samples, 119,189 variant_data partitions), a genome-wide variant scan runs in
-# about an hour and a reference scan in a couple of hours at full autoscaling width, which
-# leaves nothing worth buying by screening a subset.
+# Every sample is screened. There is no sampling, of samples or of loci. Measured on Foxtrot
+# r2 (535,662 samples, 119,189 variant_data partitions) at full autoscaling width, the Hail
+# aggregation took 5 h 01 m for variants and about 10 hours for references. The shard merge adds
+# about 8 minutes at the 10 kb default and the tasks either side of it about twenty, so budget
+# roughly 5.5 h and 10.5 h end to end. That is an overnight job whether or not a subset is screened, so
+# sampling would not change how this is run -- while costing the exhaustive answer it exists to
+# give. Size a run from those figures, not from the ~1 h and ~2 h this project first projected
+# off a single-contig probe; those were low by roughly 5-6x.
 #
 # Which VDSes this applies to. The screen judges each superpartition against its peers, so it
 # needs enough of them to have peers at all. Superpartitions hold 4,000 samples each
