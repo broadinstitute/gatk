@@ -519,6 +519,16 @@ workflow emits the VS-1215 "small report" as its `validation_report` output and,
 `fail_on_validation_errors = true` (default), fails the workflow before any data-ingest compute is
 spent.
 
+**Batch scoping (VS-1995):** `GvsBulkIngestGenomes` passes the ingest's sample-name FOFN through to
+the workflow's `sample_names_file` input, so every check above covers the samples being ingested
+rather than the whole dataset — an incremental ingest is not failed by a problem left behind in an
+earlier batch. The names are staged in a short-lived BigQuery table in the dataset under validation
+and semi-joined into each of the four queries; an inline `IN` list would exceed BigQuery's 1 MB
+query-text limit at AoU batch sizes. Scoping adds one fatal check of its own: every requested name
+must resolve to a non-control, non-withdrawn `sample_info` row, so a sample that never got an id
+fails rather than silently shrinking the cohort under test. Omitting `sample_names_file` — the
+default for a standalone run — validates the whole dataset as before.
+
 **Cost & runtime (AC3):** the validation is four BigQuery scans over the small header tables
 (`vcf_header_lines` is one row per distinct header line, `sample_vcf_header` one row per
 sample×chunk) plus a single small VM task — on the order of pennies and a few minutes even at AoU

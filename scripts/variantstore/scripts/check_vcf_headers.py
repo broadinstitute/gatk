@@ -40,12 +40,27 @@ Checks (all fatal unless noted):
   * Shared-blob distribution (informational): how many distinct ``is_expected_unique = FALSE``
     blobs there are and how many samples carry each (> 1 indicates distinct delivery batches).
 
+By default every check covers the whole dataset: all non-control, non-withdrawn samples in
+``sample_info``. ``--sample_names_file`` restricts them instead to the named samples -- the current
+ingest batch, as ``GvsBulkIngestGenomes`` passes it -- so an incremental ingest is judged on its own
+samples rather than being failed by a pre-existing problem in an earlier batch. The names are staged
+in a short-lived BigQuery table and semi-joined into each query, which keeps the restriction working
+for AoU-sized batches; an inline ``IN`` list of a few hundred thousand names would blow BigQuery's
+1 MB query-text limit. Restricting also adds a fatal check of its own: every requested name must
+actually be an eligible sample in ``sample_info``, so a name that ingest never assigned an id fails
+rather than silently shrinking the cohort under test.
+
 Whether a failing result aborts the pipeline is decided by the caller
 (``GvsValidateVcfHeaders.wdl`` ``fail_on_validation_errors``, default true); this script always
 computes an overall pass/fail and writes a human-readable report.
 """
 import argparse
+import contextlib
+import datetime
+import os
 import re
+import tempfile
+import uuid
 from collections import namedtuple
 
 # add labels for DSP Cloud Cost Control Labeling and Reporting
@@ -71,7 +86,41 @@ VersionRange = namedtuple('VersionRange', ['low', 'low_inclusive', 'high', 'high
 
 # --- SQL builders (pure functions, no BigQuery client needed -- unit-testable) ---------------------
 
-def per_sample_summary_sql(project_id, dataset_name):
+def _sample_name_restriction(sample_names_table, column, indent=14):
+    """SQL fragment restricting ``column`` (a sample_name expression) to the staged batch.
+
+    Returns '' when ``sample_names_table`` is None, so the unrestricted whole-dataset query is
+    byte-for-byte what it was before this option existed. A semi-join is used rather than an inline
+    ``IN`` list because the batch can hold hundreds of thousands of names; see
+    ``stage_sample_names_table``. ``indent`` only lines the fragment up with the WHERE clause it is
+    appended to.
+    """
+    if sample_names_table is None:
+        return ""
+    _validate_bq_table_path(sample_names_table)
+    return f"\n{' ' * indent}AND {column} IN (SELECT sample_name FROM `{sample_names_table}`)"
+
+
+def _sample_id_restriction(project_id, dataset_name, sample_names_table, column):
+    """As ``_sample_name_restriction``, but for queries that have only a sample_id to filter on.
+
+    ``sample_vcf_header`` carries no sample_name, so the batch's names are resolved through
+    ``sample_info``. The is_control / withdrawn filter is applied here too, matching the cohort the
+    name-keyed queries use.
+    """
+    if sample_names_table is None:
+        return ""
+    _validate_bq_table_path(sample_names_table)
+    return f"""
+          AND {column} IN (
+              SELECT si.sample_id
+              FROM `{project_id}.{dataset_name}.sample_info` si
+              WHERE si.is_control = FALSE AND si.withdrawn IS NULL
+                AND si.sample_name IN (SELECT sample_name FROM `{sample_names_table}`)
+          )"""
+
+
+def per_sample_summary_sql(project_id, dataset_name, sample_names_table=None):
     """One-pass per-sample rollup over the expected (non-control, non-withdrawn) cohort.
 
     Returns a single summary row: the expected sample count, how many have header data, and the
@@ -80,12 +129,15 @@ def per_sample_summary_sql(project_id, dataset_name):
     surface as ``chunk_count = 0``. Each example array is capped at ``EXAMPLE_LIMIT + 1`` -- one more
     than we display -- so the report can tell "exactly N offenders" from "more than N" (see
     ``_examples``).
+
+    When ``sample_names_table`` is given the cohort is narrowed to the samples named in it (the
+    current ingest batch); otherwise it is the whole dataset.
     """
     return f"""
         WITH expected AS (
             SELECT sample_id, sample_name
             FROM `{project_id}.{dataset_name}.sample_info`
-            WHERE is_control = FALSE AND withdrawn IS NULL
+            WHERE is_control = FALSE AND withdrawn IS NULL{_sample_name_restriction(sample_names_table, 'sample_name')}
         ),
         per_sample AS (
             SELECT
@@ -114,7 +166,7 @@ def per_sample_summary_sql(project_id, dataset_name):
     """
 
 
-def dragen_version_breakdown_sql(project_id, dataset_name):
+def dragen_version_breakdown_sql(project_id, dataset_name, sample_names_table=None):
     """Per full-SW-version sample counts, restricted to ``ID=dragen`` command lines.
 
     Mirrors the manual AoU query (``AOU_DELIVERABLES.md``) but joins ``sample_info`` to restrict to
@@ -130,34 +182,40 @@ def dragen_version_breakdown_sql(project_id, dataset_name):
         JOIN `{project_id}.{dataset_name}.sample_info` si ON si.sample_id = svh.sample_id
         WHERE vhl.is_expected_unique = TRUE
           AND CONTAINS_SUBSTR(vhl.vcf_header_lines, 'DRAGENCommandLine=<ID=dragen,')
-          AND si.is_control = FALSE AND si.withdrawn IS NULL
+          AND si.is_control = FALSE AND si.withdrawn IS NULL{_sample_name_restriction(sample_names_table, 'si.sample_name', indent=10)}
         GROUP BY sw_version
         ORDER BY n_samples DESC
     """
 
 
-def orphan_hash_sql(project_id, dataset_name):
+def orphan_hash_sql(project_id, dataset_name, sample_names_table=None):
     """Referential integrity: associations in ``sample_vcf_header`` whose hash has no
-    ``vcf_header_lines`` row. Should always be zero for a correct load."""
+    ``vcf_header_lines`` row. Should always be zero for a correct load.
+
+    Restricted to the batch when ``sample_names_table`` is given: an orphan left behind by an
+    earlier batch is not this ingest's to fail on."""
     return f"""
         SELECT
             COUNT(*) AS orphan_associations,
             COUNT(DISTINCT svh.sample_id) AS affected_samples
         FROM `{project_id}.{dataset_name}.sample_vcf_header` svh
         LEFT JOIN `{project_id}.{dataset_name}.vcf_header_lines` vhl USING (vcf_header_lines_hash)
-        WHERE vhl.vcf_header_lines_hash IS NULL
+        WHERE vhl.vcf_header_lines_hash IS NULL{_sample_id_restriction(project_id, dataset_name, sample_names_table, 'svh.sample_id')}
     """
 
 
-def shared_blob_distribution_sql(project_id, dataset_name):
-    """Distinct shared (``is_expected_unique = FALSE``) blobs and how many samples carry each."""
+def shared_blob_distribution_sql(project_id, dataset_name, sample_names_table=None):
+    """Distinct shared (``is_expected_unique = FALSE``) blobs and how many samples carry each.
+
+    Restricted to the batch when ``sample_names_table`` is given, so the blob count reports the
+    delivery batches within *this* ingest rather than across the dataset's whole history."""
     return f"""
         SELECT
             svh.vcf_header_lines_hash AS blob_hash,
             COUNT(DISTINCT svh.sample_id) AS n_samples
         FROM `{project_id}.{dataset_name}.sample_vcf_header` svh
         JOIN `{project_id}.{dataset_name}.vcf_header_lines` vhl USING (vcf_header_lines_hash)
-        WHERE vhl.is_expected_unique = FALSE
+        WHERE vhl.is_expected_unique = FALSE{_sample_id_restriction(project_id, dataset_name, sample_names_table, 'svh.sample_id')}
         GROUP BY blob_hash
         ORDER BY n_samples DESC
     """
@@ -292,8 +350,14 @@ def _examples(names):
     return f"    e.g. {shown}{suffix}"
 
 
-def evaluate_integrity(summary):
-    """Integrity checks derived from the per-sample summary row. Returns a list of CheckResult."""
+def evaluate_integrity(summary, requested_samples=None):
+    """Integrity checks derived from the per-sample summary row. Returns a list of CheckResult.
+
+    ``requested_samples``, when the run was restricted to a sample names file, is how many distinct
+    names that file held. The cohort the queries found is compared against it so a name that never
+    became an eligible ``sample_info`` row fails the run instead of quietly shrinking the cohort
+    every other check is measured over.
+    """
     expected = summary.get('expected_samples') or 0
     with_headers = summary.get('samples_with_headers') or 0
     missing_headers = summary.get('samples_missing_headers') or 0
@@ -302,13 +366,29 @@ def evaluate_integrity(summary):
     results = []
 
     # There must be samples to validate at all.
+    scope = "in sample_info" if requested_samples is None else "matching the requested sample names"
     results.append(CheckResult(
         name='samples_present',
         passed=expected > 0,
         fatal=True,
-        lines=[f"Non-control, non-withdrawn samples in sample_info: {expected}"] +
+        lines=[f"Non-control, non-withdrawn samples {scope}: {expected}"] +
               ([] if expected > 0 else ["    No samples to validate -- did the header ingest run against the right dataset?"]),
     ))
+
+    # When restricted to a sample names file, every requested name must be an eligible sample.
+    if requested_samples is not None:
+        unmatched = requested_samples - expected
+        lines = [f"Requested sample names: {requested_samples}",
+                 f"Matched as non-control, non-withdrawn samples in sample_info: {expected}"]
+        if unmatched > 0:
+            lines.append(f"    {unmatched} requested name(s) did not match an eligible sample -- "
+                         "not assigned a sample id, or marked control / withdrawn.")
+        results.append(CheckResult(
+            name='requested_samples_present',
+            passed=unmatched <= 0,
+            fatal=True,
+            lines=lines,
+        ))
 
     # Every expected sample must have header data.
     lines = [f"Samples with header data: {with_headers} / {expected}",
@@ -532,13 +612,15 @@ def evaluate_shared_blob_distribution(blob_rows):
 
 
 def evaluate(summary, dragen_rows, orphan, blob_rows, expected_dragen_version=None,
-             require_reblocking=True):
+             require_reblocking=True, requested_samples=None):
     """Run every check and return ``(overall_passed, [CheckResult, ...])``.
 
     ``overall_passed`` is true iff every *fatal* check passed; informational checks never affect it.
+    ``requested_samples`` is the size of the requested batch when the run was restricted to a sample
+    names file, and None otherwise; see ``evaluate_integrity``.
     """
     checks = []
-    checks.extend(evaluate_integrity(summary))
+    checks.extend(evaluate_integrity(summary, requested_samples))
     checks.append(evaluate_reblocking(summary, require_reblocking))
     checks.append(evaluate_dragen_version(dragen_rows, expected_dragen_version,
                                           summary.get('expected_samples')))
@@ -549,12 +631,16 @@ def evaluate(summary, dragen_rows, orphan, blob_rows, expected_dragen_version=No
     return overall_passed, checks
 
 
-def compose_report(project_id, dataset_name, expected_dragen_version, overall_passed, checks):
+def compose_report(project_id, dataset_name, expected_dragen_version, overall_passed, checks,
+                   requested_samples=None):
     """Render the human-readable report."""
+    scope = ("whole dataset (all non-control, non-withdrawn samples)" if requested_samples is None
+             else f"{requested_samples} requested sample name(s)")
     header = [
         "GVS VCF Header Validation Report",
         "==========================================",
         f"Dataset: {project_id}.{dataset_name}",
+        f"Scope: {scope}",
         f"Expected DRAGEN version: {expected_dragen_version or '(not specified -- consistency only)'}",
         f"OVERALL: {'PASS' if overall_passed else 'FAIL'}",
         "",
@@ -581,6 +667,10 @@ def compose_report(project_id, dataset_name, expected_dragen_version, overall_pa
 # underscores.
 _PROJECT_ID_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]*$')
 _DATASET_NAME_RE = re.compile(r'^[A-Za-z0-9_]+$')
+# The staged sample-names table is interpolated into the SQL builders as a whole `project.dataset.table`
+# path, so it gets its own allowlist rather than being decomposed. We generate this name ourselves, so
+# this is a backstop against a future caller passing one in.
+_TABLE_PATH_RE = re.compile(r'^[A-Za-z0-9][A-Za-z0-9._-]*\.[A-Za-z0-9_]+\.[A-Za-z0-9_]+$')
 
 
 def _validate_bq_identifiers(project_id, dataset_name):
@@ -593,6 +683,82 @@ def _validate_bq_identifiers(project_id, dataset_name):
             f"invalid dataset_name '{dataset_name}': must match {_DATASET_NAME_RE.pattern}")
 
 
+def _validate_bq_table_path(table_path):
+    """Raise ``ValueError`` if a fully-qualified ``project.dataset.table`` path is unsafe to embed."""
+    if not _TABLE_PATH_RE.match(table_path or ''):
+        raise ValueError(
+            f"invalid table path '{table_path}': must match {_TABLE_PATH_RE.pattern}")
+
+
+def read_sample_names(path):
+    """Read a one-name-per-line sample names file into a de-duplicated list, order preserved.
+
+    Blank lines and surrounding whitespace are ignored so a trailing newline -- which every FOFN
+    written by ``GvsBulkIngestGenomes`` has -- does not become an empty sample name. A file with no
+    names at all raises ``ValueError``: silently validating nothing would let a broken FOFN pass as
+    a clean cohort, which is the opposite of what this fail-fast check is for.
+    """
+    with open(path) as names_file:
+        names = [line.strip() for line in names_file]
+    seen = set()
+    deduped = []
+    for name in names:
+        if name and name not in seen:
+            seen.add(name)
+            deduped.append(name)
+    if not deduped:
+        raise ValueError(f"sample names file '{path}' contains no sample names")
+    return deduped
+
+
+@contextlib.contextmanager
+def stage_sample_names_table(client, project_id, dataset_name, sample_names):
+    """Stage ``sample_names`` in a short-lived BigQuery table and yield its full path.
+
+    Yields ``None`` when ``sample_names`` is None, so callers can wrap the unrestricted case in the
+    same ``with`` block. The table is created in the dataset under validation (which the ingest that
+    just ran already has write access to), loaded from a temporary local CSV, and dropped on the way
+    out. A 12-hour expiration is also set at creation time so a process killed mid-run -- a Cromwell
+    preemption, say -- cannot leave the table behind permanently.
+    """
+    if sample_names is None:
+        yield None
+        return
+
+    from google.cloud import bigquery
+    table_id = f"{project_id}.{dataset_name}.header_validation_sample_names_{uuid.uuid4().hex[:12]}"
+    _validate_bq_table_path(table_id)
+    table = bigquery.Table(table_id, schema=[
+        bigquery.SchemaField('sample_name', 'STRING', mode='REQUIRED'),
+    ])
+    table.expires = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=12)
+    client.create_table(table)
+    try:
+        # A load job rather than INSERT DML: the batch can be hundreds of thousands of names, which
+        # is far past what is sane to send as statement text.
+        with tempfile.TemporaryDirectory() as staging_dir:
+            staging_path = os.path.join(staging_dir, 'sample_names.csv')
+            with open(staging_path, 'w') as staging_file:
+                for name in sample_names:
+                    staging_file.write(f"{name}\n")
+            job_config = bigquery.LoadJobConfig(
+                source_format=bigquery.SourceFormat.CSV,
+                schema=table.schema,
+                write_disposition=bigquery.WriteDisposition.WRITE_TRUNCATE,
+            )
+            # Passing the size lets the client use a single multipart upload for anything under its
+            # 5 MB threshold instead of a resumable handshake -- one fewer round trip for a typical
+            # batch, and the resumable path is what a BigQuery emulator tends not to implement.
+            staging_size = os.path.getsize(staging_path)
+            with open(staging_path, 'rb') as staging_file:
+                client.load_table_from_file(staging_file, table_id, size=staging_size,
+                                            job_config=job_config).result()
+        print(f"Staged {len(sample_names)} sample names in {table_id}")
+        yield table_id
+    finally:
+        client.delete_table(table_id, not_found_ok=True)
+
+
 def _make_client(project_id):
     from google.cloud import bigquery
     from google.cloud.bigquery.job import QueryJobConfig
@@ -601,30 +767,53 @@ def _make_client(project_id):
     return bigquery.Client(project=project_id, default_query_job_config=default_config)
 
 
+def run_queries(client, project_id, dataset_name, sample_names_table=None):
+    """Run the four check queries, returning ``(summary, dragen_rows, orphan, blob_rows)``.
+
+    Split out from ``run_checks`` so the queries can be exercised against an already-staged names
+    table. ``stage_sample_names_table`` needs a BigQuery load job, which the emulator the unit tests
+    run against does not implement; the integration test builds the table with plain SQL and calls
+    this directly, so the restricted SQL itself is still covered.
+    """
+    import utils
+    summary = list(utils.execute_with_retry(
+        client, "per sample header summary",
+        per_sample_summary_sql(project_id, dataset_name, sample_names_table))['results'])[0]
+    dragen_rows = list(utils.execute_with_retry(
+        client, "dragen version breakdown",
+        dragen_version_breakdown_sql(project_id, dataset_name, sample_names_table))['results'])
+    orphan = list(utils.execute_with_retry(
+        client, "orphan header hashes",
+        orphan_hash_sql(project_id, dataset_name, sample_names_table))['results'])[0]
+    blob_rows = list(utils.execute_with_retry(
+        client, "shared blob distribution",
+        shared_blob_distribution_sql(project_id, dataset_name, sample_names_table))['results'])
+    return summary, dragen_rows, orphan, blob_rows
+
+
 def run_checks(project_id, dataset_name, expected_dragen_version=None, require_reblocking=True,
-               client=None):
+               client=None, sample_names=None):
     """Execute all queries and evaluate them. Returns ``(overall_passed, [CheckResult, ...])``.
 
     ``project_id`` and ``dataset_name`` are interpolated directly into the SQL, so they are first
     validated with ``_validate_bq_identifiers`` (project ids: letters/digits and ``. _ -``; dataset
     names: letters/digits/``_`` only). A value outside that allowlist raises ``ValueError`` before
     any query runs. Example: ``run_checks('broad-dsde-methods', 'aou_wgs_ingest', '3.7.8')``.
+
+    ``sample_names``, when given, is a list of sample names (see ``read_sample_names``) restricting
+    every check to those samples; it is staged in a temporary table for the duration of the run.
     """
-    import utils
     _validate_bq_identifiers(project_id, dataset_name)
     if client is None:
         client = _make_client(project_id)
 
-    summary = list(utils.execute_with_retry(
-        client, "per sample header summary", per_sample_summary_sql(project_id, dataset_name))['results'])[0]
-    dragen_rows = list(utils.execute_with_retry(
-        client, "dragen version breakdown", dragen_version_breakdown_sql(project_id, dataset_name))['results'])
-    orphan = list(utils.execute_with_retry(
-        client, "orphan header hashes", orphan_hash_sql(project_id, dataset_name))['results'])[0]
-    blob_rows = list(utils.execute_with_retry(
-        client, "shared blob distribution", shared_blob_distribution_sql(project_id, dataset_name))['results'])
+    with stage_sample_names_table(client, project_id, dataset_name, sample_names) as names_table:
+        summary, dragen_rows, orphan, blob_rows = run_queries(
+            client, project_id, dataset_name, names_table)
 
-    return evaluate(summary, dragen_rows, orphan, blob_rows, expected_dragen_version, require_reblocking)
+    return evaluate(summary, dragen_rows, orphan, blob_rows, expected_dragen_version,
+                    require_reblocking,
+                    requested_samples=None if sample_names is None else len(sample_names))
 
 
 def write_output_files(overall_passed, report_text, pass_file_output, report_file_output):
@@ -641,6 +830,10 @@ if __name__ == '__main__':
                         help='Google project for the GVS dataset')
     parser.add_argument('--dataset_name', type=str, required=True,
                         help='BigQuery dataset name holding the header tables')
+    parser.add_argument('--sample_names_file', type=str, required=False, default=None,
+                        help='Optional file of sample names, one per line, restricting validation to '
+                             'those samples (e.g. the current ingest batch). Omit to validate every '
+                             'non-control, non-withdrawn sample in the dataset.')
     parser.add_argument('--expected_dragen_version', type=str, required=False, default=None,
                         help="Expected DRAGEN version. A single triplet (e.g. '3.7.8') requires every "
                              "sample to match it exactly; a range requires every sample's triplet to "
@@ -660,9 +853,13 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    sample_names = read_sample_names(args.sample_names_file) if args.sample_names_file else None
+
     overall_passed, checks = run_checks(args.project_id, args.dataset_name, args.expected_dragen_version,
-                                        require_reblocking=not args.allow_non_reblocked)
+                                        require_reblocking=not args.allow_non_reblocked,
+                                        sample_names=sample_names)
     report = compose_report(args.project_id, args.dataset_name, args.expected_dragen_version,
-                            overall_passed, checks)
+                            overall_passed, checks,
+                            requested_samples=None if sample_names is None else len(sample_names))
     write_output_files(overall_passed, report, args.pass_file_output, args.report_file_output)
     print(report)

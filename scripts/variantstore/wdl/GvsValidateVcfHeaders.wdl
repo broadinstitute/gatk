@@ -115,6 +115,9 @@ task ValidateVcfHeaders {
         # metacharacters -- e.g. unquoted '(3.7-3.8)' is a bash syntax error. Cromwell does not quote
         # interpolated values, so the quotes must be inside the placeholder. The whole placeholder
         # still drops to an empty string when this optional input is undefined.
+        # With --sample_names_file the script stages the names in a short-lived table in the dataset
+        # under validation (dropped on the way out, and expiring after 12 hours if this task dies
+        # first), so it needs the same BigQuery write access the ingest it follows already has.
         python3 /app/check_vcf_headers.py \
             --project_id ~{project_id} \
             --dataset_name ~{dataset_name} \
