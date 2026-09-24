@@ -352,6 +352,16 @@ workflows:
              - merge_master_2026_09_24
          tags:
              - /.*/
+   - name: GvsQuickstartIntegrationVatOnly
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsQuickstartIntegration.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - merge_master_2026_09_24
+       tags:
+         - /.*/
    - name: GvsIngestTieout
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/test/GvsIngestTieout.wdl
