@@ -409,24 +409,32 @@ class TestCommandBlockIndentation(unittest.TestCase):
 
 
 class TestSampleMapParsing(unittest.TestCase):
+    """Sample names here are deliberately unlike real ones.
+
+    An AoU sample_name is the participant research ID, so a realistic-looking fixture is
+    indistinguishable from a leaked one to anyone reading this file -- and this repo is
+    public. The sample_ids are kept realistic because they are GVS-internal and carry
+    meaning: 328001 is the first sample of superpartition 83.
+    """
+
 
     def test_parses_tab_separated(self):
-        text = 'sample_name\tsample_id\n5545879\t328001\n5648802\t328002\n'
-        self.assertEqual({'5545879': 328001, '5648802': 328002},
+        text = 'sample_name\tsample_id\nSAMPLE_A\t328001\nSAMPLE_B\t328002\n'
+        self.assertEqual({'SAMPLE_A': 328001, 'SAMPLE_B': 328002},
                          vds.parse_sample_map(io.StringIO(text)))
 
     def test_parses_comma_separated(self):
         """bq query --format=csv output, if the caller forgets the tr."""
-        text = 'sample_name,sample_id\n5545879,328001\n'
-        self.assertEqual({'5545879': 328001}, vds.parse_sample_map(io.StringIO(text)))
+        text = 'sample_name,sample_id\nSAMPLE_A,328001\n'
+        self.assertEqual({'SAMPLE_A': 328001}, vds.parse_sample_map(io.StringIO(text)))
 
     def test_blank_lines_are_skipped(self):
-        text = 'sample_name\tsample_id\n5545879\t328001\n\n5648802\t328002\n'
+        text = 'sample_name\tsample_id\nSAMPLE_A\t328001\n\nSAMPLE_B\t328002\n'
         self.assertEqual(2, len(vds.parse_sample_map(io.StringIO(text))))
 
     def test_missing_header_raises(self):
         with self.assertRaises(ValueError):
-            vds.parse_sample_map(io.StringIO('5545879\t328001\n'))
+            vds.parse_sample_map(io.StringIO('SAMPLE_A\t328001\n'))
 
     def test_empty_input_raises(self):
         with self.assertRaises(ValueError):

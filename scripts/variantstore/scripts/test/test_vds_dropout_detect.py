@@ -628,33 +628,79 @@ class TestScaleFindingOutput(unittest.TestCase):
 
 
 class TestScaleAdjudicationSql(unittest.TestCase):
+    """The query that settles a scale finding, and the two things it must not get wrong.
+
+    It has no window to prune on, so it must not scan the tables at all; and its figure is
+    rows per sample, so its denominator must be the sample universe the scan used.
+    """
 
     def make_finding(self, **overrides):
-        defaults = dict(superpartition=83, n_samples=4000, relative_scale=0.02,
-                        peer_superpartition=4, peer_n_samples=4000)
+        defaults = dict(superpartition=83, n_samples=1162, relative_scale=0.02,
+                        peer_superpartition=110, peer_n_samples=4000)
         defaults.update(overrides)
         return vdd.SuperpartitionScale(**defaults)
 
+    def sql(self, **kwargs):
+        params = dict(project_id='p', dataset_name='d', mode='variants')
+        params.update(kwargs)
+        return vdd.scale_adjudication_sql(self.make_finding(), **params)
+
+    @staticmethod
+    def body(sql: str) -> str:
+        return '\n'.join(l for l in sql.split('\n') if not l.strip().startswith('--'))
+
     def test_counts_the_finding_and_its_peer(self):
-        sql = vdd.scale_adjudication_sql(
-            self.make_finding(), project_id='p', dataset_name='d', mode='variants')
-        self.assertIn('`p.d.vet_083`', sql)
-        self.assertIn('`p.d.vet_004`', sql)
+        sql = self.sql()
+        self.assertIn("'vet_083'", sql)
+        self.assertIn("'vet_110'", sql)
         self.assertIn('UNION ALL', sql)
 
-    def test_has_no_predicate_so_it_reads_table_metadata(self):
-        """The cost argument in the docstring only holds if nothing filters the count."""
-        sql = vdd.scale_adjudication_sql(
-            self.make_finding(), project_id='p', dataset_name='d', mode='variants')
-        body = '\n'.join(l for l in sql.split('\n') if not l.startswith('--'))
-        self.assertNotIn('WHERE', body)
-        self.assertNotIn('location', body)
+    def test_reads_partition_metadata_rather_than_the_tables(self):
+        """The cost claim rests on this: no FROM against vet_%, so nothing is scanned."""
+        body = self.body(self.sql())
+        self.assertIn('INFORMATION_SCHEMA.PARTITIONS', body)
+        self.assertNotIn('`p.d.vet_083`', body)
+        self.assertNotIn('`p.d.vet_110`', body)
+        self.assertNotIn('COUNT(*) AS bq_rows', body)
+
+    def test_restricts_to_the_sample_universe(self):
+        """A partial-VDS scan uses a view, and n_samples is counted against that view."""
+        body = self.body(self.sql(sample_table='sample_info_new_to_foxtrot'))
+        self.assertIn('`p.d.sample_info_new_to_foxtrot`', body)
+        self.assertNotIn('`p.d.sample_info`', body)
+
+    def test_defaults_to_sample_info(self):
+        self.assertIn('`p.d.sample_info`', self.body(self.sql()))
+
+    def test_excludes_withdrawals_and_controls(self):
+        body = self.body(self.sql())
+        self.assertIn('withdrawn IS NULL', body)
+        self.assertIn('is_control = false', body)
+
+    def test_sample_id_range_matches_the_table_the_superpartition_was_built_as(self):
+        """GvsCreateTables.wdl ranges vet_083 over [(83-1)*4000+1, 83*4000]."""
+        body = self.body(self.sql())
+        self.assertIn('BETWEEN 328001 AND 332000', body)
+        self.assertIn('BETWEEN 436001 AND 440000', body)
+
+    def test_a_different_superpartition_size_moves_the_range(self):
+        body = self.body(self.sql(superpartition_size=1000))
+        self.assertIn('BETWEEN 82001 AND 83000', body)
+        self.assertNotIn('BETWEEN 328001 AND 332000', body)
+
+    def test_safe_cast_keeps_the_pseudo_partitions_out(self):
+        """__UNPARTITIONED__ is not an integer; a bare CAST would fail the whole query."""
+        self.assertIn('SAFE_CAST(partition_id AS INT64)', self.body(self.sql()))
+
+    def test_vds_sample_counts_are_carried_through_for_comparison(self):
+        body = self.body(self.sql())
+        self.assertIn('1162 AS vds_samples', body)
+        self.assertIn('4000 AS vds_samples', body)
 
     def test_references_mode_targets_ref_ranges(self):
-        sql = vdd.scale_adjudication_sql(
-            self.make_finding(), project_id='p', dataset_name='d', mode='references')
-        self.assertIn('`p.d.ref_ranges_083`', sql)
-        self.assertIn('`p.d.ref_ranges_004`', sql)
+        sql = self.sql(mode='references')
+        self.assertIn("'ref_ranges_083'", sql)
+        self.assertIn("'ref_ranges_110'", sql)
         self.assertNotIn('vet_', sql)
 
 
@@ -959,7 +1005,8 @@ class TestScaleFindingsReachTheOutputs(unittest.TestCase):
             _, sql, _ = self.scale_findings_run(tmp, 0.20)
         self.assertNotIn('No candidate dropouts to adjudicate', sql)
         self.assertIn('NOT clean', sql)
-        self.assertIn('`p.d.vet_083`', sql)
+        self.assertIn("'vet_083'", sql)
+        self.assertIn('INFORMATION_SCHEMA.PARTITIONS', sql)
 
     def test_scale_findings_file_names_the_superpartition(self):
         with tempfile.TemporaryDirectory() as tmp:

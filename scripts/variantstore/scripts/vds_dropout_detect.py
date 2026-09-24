@@ -172,6 +172,14 @@ DEFAULT_SUPERPARTITION_SCALE_THRESHOLD = 0.7
 MIN_SUPERPARTITIONS = 2
 RECOMMENDED_SUPERPARTITIONS = 6
 
+# Samples per superpartition, i.e. the BigQuery partition limit the tables are built to.
+# Needed only to turn a superpartition number back into the sample_id range its table
+# covers, which is what restricts the scale adjudication query to a sample universe; the
+# detection logic never needs it, since the summary names superpartitions directly. The
+# producing side is GvsCreateTables.wdl:104-107, which ranges vet_NNN / ref_ranges_NNN over
+# [(NNN-1)*size+1, NNN*size] with a step of 1.
+DEFAULT_SUPERPARTITION_SIZE = 4000
+
 # Adjudication queries are generated for the worst candidates only. A genome-wide scan
 # examines millions of cells, and if thresholds turn out loose the report could name
 # thousands of rectangles -- more queries than anyone will run, burying the real findings.
@@ -819,40 +827,94 @@ def scale_adjudication_sql(
         project_id: str,
         dataset_name: str,
         mode: str = 'variants',
+        sample_table: str = 'sample_info',
+        superpartition_size: int = DEFAULT_SUPERPARTITION_SIZE,
 ) -> str:
     """Generate the BigQuery query that settles whether a depleted superpartition is real.
 
     A scale finding has no window to bound a query with, which is why it needs a different
-    query from a rectangle rather than none at all.  Total row count serves instead, read
+    query from a rectangle rather than none at all.  Rows per sample serves instead, read
     against a superpartition of typical volume so the number means something: the screen
     already established that the VDS holds far less for this superpartition than for its
     peers, and what remains to be settled is which side of the export the shortfall is on.
 
-    ``COUNT(*)`` with no predicate is answered from table metadata, so this scans no data
-    and costs nothing however large the tables are -- unlike the per-rectangle queries,
-    which are cheap only because the window prunes on the clustering field.  It therefore
-    cannot filter withdrawals or controls, which the windowed queries do; at the scale a
-    scale finding fires on, that is noise against the effect being measured.
+    The row counts come from ``INFORMATION_SCHEMA.PARTITIONS`` rather than ``COUNT(*)``.
+    ``vet_%`` and ``ref_ranges_%`` are range partitioned on ``sample_id`` with a step of 1
+    (``GvsCreateTables.wdl``), so BigQuery already holds a per-sample row count as table
+    metadata and the data tables are never read: a dry run on Foxtrot reports 15 MB against
+    a ``vet_%`` table of twenty billion rows, and all 15 MB of it is ``sample_info``.
+
+    That is what makes the sample restriction affordable, and the restriction is not
+    optional -- ``finding.n_samples`` counts only the samples the VDS holds.  On a
+    partial-VDS scan the boundary superpartition's table also holds every pre-existing
+    sample, and dividing its whole-table row count by the VDS's sample count would inflate
+    rows per sample several-fold for that one superpartition and no other.  A bare
+    ``COUNT(*)`` is answered from metadata too, but it cannot be restricted at all.
     """
     table = superpartition_table(finding.superpartition, mode)
     peer_table = superpartition_table(finding.peer_superpartition, mode)
+    qualified = f'{project_id}.{dataset_name}'
+
+    def side(ordinal: int, superpartition: int, table_name: str, n_samples: int) -> str:
+        low = (superpartition - 1) * superpartition_size + 1
+        high = superpartition * superpartition_size
+        return (
+            f"  SELECT\n"
+            f"    {ordinal} AS ord,\n"
+            f"    '{table_name}' AS table_name,\n"
+            f"    {superpartition} AS superpartition,\n"
+            f"    {n_samples} AS vds_samples,\n"
+            f"    (SELECT COUNT(*) FROM universe WHERE sample_id BETWEEN {low} AND {high})\n"
+            f"      AS bq_samples,\n"
+            f"    (SELECT IFNULL(SUM(c.total_rows), 0) FROM counts c JOIN universe u\n"
+            f"       USING (sample_id) WHERE c.table_name = '{table_name}') AS bq_rows\n"
+        )
+
     return (
         f"-- Globally depleted superpartition {finding.superpartition}: relative scale "
         f"{finding.relative_scale:.4f} over {finding.n_samples:,} samples.\n"
-        f"-- No window bounds this finding, so it is adjudicated by total row count against\n"
+        f"-- No window bounds this finding, so it is adjudicated by rows per sample against\n"
         f"-- superpartition {finding.peer_superpartition} ({finding.peer_n_samples:,} "
         f"samples), whose volume is typical.\n"
-        f"-- COUNT(*) without a predicate is answered from table metadata, so this scans\n"
-        f"-- nothing and costs nothing. Compare the two rows per sample.\n"
-        f"-- A count in line with the peer means BigQuery holds data the VDS does not, so\n"
-        f"-- the loss is in the Avro export or the VDS build. A count as depleted as the\n"
-        f"-- VDS means the data never reached BigQuery, and the problem is further back.\n"
-        f"SELECT '{table}' AS table_name, {finding.n_samples} AS vds_samples, "
-        f"COUNT(*) AS bq_rows\n"
-        f"FROM `{project_id}.{dataset_name}.{table}`\n"
-        f"UNION ALL\n"
-        f"SELECT '{peer_table}', {finding.peer_n_samples}, COUNT(*)\n"
-        f"FROM `{project_id}.{dataset_name}.{peer_table}`;\n"
+        f"-- Counts come from INFORMATION_SCHEMA.PARTITIONS, which is table metadata: these\n"
+        f"-- tables are range partitioned on sample_id with a step of 1, so {table} and\n"
+        f"-- {peer_table} are not scanned at all. Only {sample_table} is, to restrict the\n"
+        f"-- counts to the sample universe the scan used -- 15 MB of it on Foxtrot, against\n"
+        f"-- data tables holding twenty billion rows apiece. Rows in the streaming buffer\n"
+        f"-- are not yet partitioned and go uncounted on both sides, which matters only if\n"
+        f"-- ingest has just finished.\n"
+        f"-- Rows per sample in line with the peer means BigQuery holds data the VDS does\n"
+        f"-- not, so the loss is in the Avro export or the VDS build. A figure as depleted\n"
+        f"-- as the VDS means the data never reached BigQuery, and the problem is further\n"
+        f"-- back. vds_samples below the bq_samples beside it means whole samples are\n"
+        f"-- missing from the VDS rather than thinned within it.\n"
+        f"WITH universe AS (\n"
+        f"  SELECT sample_id\n"
+        f"  FROM `{qualified}.{sample_table}`\n"
+        f"  WHERE withdrawn IS NULL\n"
+        f"    AND is_control = false\n"
+        f"),\n"
+        f"counts AS (\n"
+        f"  -- SAFE_CAST, not CAST: the __NULL__ and __UNPARTITIONED__ pseudo-partitions\n"
+        f"  -- are not integers, and yielding NULL drops them at the join below.\n"
+        f"  SELECT table_name, SAFE_CAST(partition_id AS INT64) AS sample_id, total_rows\n"
+        f"  FROM `{qualified}.INFORMATION_SCHEMA.PARTITIONS`\n"
+        f"  WHERE table_name IN ('{table}', '{peer_table}')\n"
+        f"),\n"
+        f"sides AS (\n"
+        f"{side(0, finding.superpartition, table, finding.n_samples)}"
+        f"  UNION ALL\n"
+        f"{side(1, finding.peer_superpartition, peer_table, finding.peer_n_samples)}"
+        f")\n"
+        f"SELECT\n"
+        f"  table_name,\n"
+        f"  superpartition,\n"
+        f"  vds_samples,\n"
+        f"  bq_samples,\n"
+        f"  bq_rows,\n"
+        f"  ROUND(SAFE_DIVIDE(bq_rows, bq_samples), 1) AS bq_rows_per_sample\n"
+        f"FROM sides\n"
+        f"ORDER BY ord;\n"
     )
 
 
@@ -1062,6 +1124,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                         help='BigQuery dataset for generated adjudication SQL.')
     parser.add_argument('--sample-table', default='sample_info',
                         help='Sample table or view used by adjudication SQL. Default: sample_info.')
+    parser.add_argument('--superpartition-size', type=int,
+                        default=DEFAULT_SUPERPARTITION_SIZE,
+                        help='Samples per superpartition, used by the scale adjudication SQL '
+                             'to derive each table\'s sample_id range. Must match the value '
+                             f'the tables were created with. Default: {DEFAULT_SUPERPARTITION_SIZE}.')
     parser.add_argument('--reference-schema', choices=REFERENCE_SCHEMAS,
                         default=DEFAULT_REFERENCE_SCHEMA,
                         help='Which ref_ranges schema the dataset uses. AoU callsets use '
@@ -1188,6 +1255,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                     project_id=args.project_id,
                     dataset_name=args.dataset_name,
                     mode=args.mode,
+                    sample_table=args.sample_table,
+                    superpartition_size=args.superpartition_size,
                 ))
                 handle.write('\n')
         print(f"Adjudication SQL written to: {args.sql_path}")

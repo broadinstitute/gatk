@@ -770,6 +770,11 @@ task ScanVdsForDropouts {
                 # against a VDS holding only some of them, and the surplus rows look like
                 # the dropout the query was meant to test for.
                 detect_args+=(--sample-table ~{bq_sample_table})
+                # Turns a superpartition number back into the sample_id range its table
+                # covers, which is how the scale adjudication query restricts itself to
+                # that same sample table. Passed from the workflow input rather than left
+                # at the detector's default so the two cannot disagree.
+                detect_args+=(--superpartition-size ~{superpartition_size})
                 detect_args+=(--reference-schema ~{reference_schema})
             else
                 # Adjudication is half the method: the screen produces candidates and
