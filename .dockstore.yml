@@ -349,6 +349,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - merge_master_2026_09_24
          tags:
              - /.*/
    - name: GvsIngestTieout
