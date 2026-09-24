@@ -491,6 +491,14 @@ def assess_duplication_screen(partition_rows, family, expected_samples,
     Only meaningful for families with a tight per-sample distribution (``vet``); callers must not
     apply it to ``ref_ranges``.
     """
+    # The baseline population is this run's expected samples, NOT every sample in the dataset, so a
+    # sample loaded by an earlier run contributes no cohort consensus here. That is a property of the
+    # batch rather than of the callset, and it is why a small incremental top-up degenerates: N=1 has
+    # no cohort at all and flags unconditionally below, and N=2 takes its baseline from one of the two
+    # values it saw. ``partition_rows`` is already unscoped (see get_partition_row_counts), so drawing
+    # the baseline from the whole callset would cost no additional BigQuery read -- it is left scoped
+    # pending a decision on mixed-assay datasets. VS-2027; operator workarounds are in
+    # scripts/variantstore/parquet_loading/README.md.
     expected = set(expected_samples)
     rows_by_sample = {
         sample_id: total_rows
@@ -578,6 +586,8 @@ def assess_truncation_screen(partition_rows, family, expected_samples,
                 "baseline": None, "samples_screened": 0, "outliers": [], "singleton_flagged": False,
                 "flagged_samples": []}
 
+    # Run-scoped baseline population, with the same small-batch consequence as the duplication screen
+    # above; see the comment there and VS-2027.
     expected = set(expected_samples)
     rows_by_sample = {
         sample_id: total_rows
