@@ -571,6 +571,107 @@ class TestSuperpartitionScale(unittest.TestCase):
         self.assertEqual([], vdd.analyze(summary).superpartition_scales)
 
 
+class TestScaleFindingOutput(unittest.TestCase):
+    """The second finding type, and the outputs that let anyone act on it.
+
+    A superpartition depleted across the whole genome produces no rectangle -- step 3 of
+    the pipeline divides each cell by that superpartition's own median, which the
+    depletion has dragged down with it -- so everything below is the only trace such a
+    VDS leaves.
+    """
+
+    def depleted(self, factor: float = 0.20, superpartition: int = 83) -> vdd.Report:
+        summary = build_summary(n_bins=30)
+        scale_superpartition(summary, superpartition, factor)
+        return vdd.analyze(summary)
+
+    def test_a_genome_wide_depletion_produces_no_rectangle(self):
+        """The premise of the whole class, asserted rather than assumed."""
+        report = self.depleted()
+        self.assertEqual([], report.rectangles)
+        self.assertEqual(1, len(report.superpartition_scales))
+        self.assertFalse(report.clean)
+
+    def test_peer_is_a_real_superpartition_carrying_typical_volume(self):
+        finding = self.depleted().superpartition_scales[0]
+        self.assertNotEqual(finding.superpartition, finding.peer_superpartition)
+        self.assertIn(finding.peer_superpartition, range(1, N_SUPERPARTITIONS + 1))
+        self.assertEqual(N_SAMPLES, finding.peer_n_samples)
+
+    def test_peer_is_not_itself_one_of_the_depleted(self):
+        """Adjudicating against another depleted superpartition would prove nothing."""
+        summary = build_summary(n_bins=30)
+        scale_superpartition(summary, 83, 0.20)
+        scale_superpartition(summary, 64, 0.10)
+        report = vdd.analyze(summary)
+        flagged = {f.superpartition for f in report.superpartition_scales}
+        self.assertEqual({64, 83}, flagged)
+        for finding in report.superpartition_scales:
+            self.assertNotIn(finding.peer_superpartition, flagged)
+
+    def test_scale_findings_tsv_has_a_row_per_finding_worst_first(self):
+        summary = build_summary(n_bins=30)
+        scale_superpartition(summary, 83, 0.20)
+        scale_superpartition(summary, 64, 0.10)
+        lines = vdd.format_scale_findings(vdd.analyze(summary)).strip().split('\n')
+        self.assertEqual(list(vdd.SCALE_FINDINGS_COLUMNS), lines[0].split('\t'))
+        self.assertEqual(3, len(lines))
+        self.assertEqual('64', lines[1].split('\t')[0])
+        self.assertEqual('83', lines[2].split('\t')[0])
+        self.assertEqual(str(N_SAMPLES), lines[1].split('\t')[1])
+        self.assertAlmostEqual(0.10, float(lines[1].split('\t')[2]), places=2)
+
+    def test_clean_run_still_writes_a_header(self):
+        """An empty file is evidence the check ran; a missing one is not."""
+        text = vdd.format_scale_findings(vdd.analyze(build_summary(n_bins=30)))
+        self.assertEqual(['\t'.join(vdd.SCALE_FINDINGS_COLUMNS)], text.strip().split('\n'))
+
+
+class TestScaleAdjudicationSql(unittest.TestCase):
+
+    def make_finding(self, **overrides):
+        defaults = dict(superpartition=83, n_samples=4000, relative_scale=0.02,
+                        peer_superpartition=4, peer_n_samples=4000)
+        defaults.update(overrides)
+        return vdd.SuperpartitionScale(**defaults)
+
+    def test_counts_the_finding_and_its_peer(self):
+        sql = vdd.scale_adjudication_sql(
+            self.make_finding(), project_id='p', dataset_name='d', mode='variants')
+        self.assertIn('`p.d.vet_083`', sql)
+        self.assertIn('`p.d.vet_004`', sql)
+        self.assertIn('UNION ALL', sql)
+
+    def test_has_no_predicate_so_it_reads_table_metadata(self):
+        """The cost argument in the docstring only holds if nothing filters the count."""
+        sql = vdd.scale_adjudication_sql(
+            self.make_finding(), project_id='p', dataset_name='d', mode='variants')
+        body = '\n'.join(l for l in sql.split('\n') if not l.startswith('--'))
+        self.assertNotIn('WHERE', body)
+        self.assertNotIn('location', body)
+
+    def test_references_mode_targets_ref_ranges(self):
+        sql = vdd.scale_adjudication_sql(
+            self.make_finding(), project_id='p', dataset_name='d', mode='references')
+        self.assertIn('`p.d.ref_ranges_083`', sql)
+        self.assertIn('`p.d.ref_ranges_004`', sql)
+        self.assertNotIn('vet_', sql)
+
+
+class TestSuperpartitionTable(unittest.TestCase):
+
+    def test_zero_pads_to_three_digits(self):
+        self.assertEqual('vet_004', vdd.superpartition_table(4, 'variants'))
+        self.assertEqual('ref_ranges_083', vdd.superpartition_table(83, 'references'))
+
+    def test_three_digit_superpartitions_are_unpadded(self):
+        self.assertEqual('vet_136', vdd.superpartition_table(136, 'variants'))
+
+    def test_unknown_mode_raises(self):
+        with self.assertRaises(ValueError):
+            vdd.superpartition_table(4, 'entries')
+
+
 class TestLocationEncoding(unittest.TestCase):
 
     def test_encodes_autosomes(self):
@@ -661,6 +762,27 @@ class TestAdjudicationSql(unittest.TestCase):
         )
         self.assertIn('6,750', sql)
         self.assertIn('67,500', sql)
+
+    def test_defaults_to_sample_info(self):
+        sql = vdd.adjudication_sql(
+            self.make_rectangle(), project_id='p', dataset_name='d', mode='variants',
+        )
+        self.assertIn('`p.d.sample_info`', sql)
+
+    def test_restricted_sample_universe_reaches_the_join(self):
+        """A partial VDS is screened against a view, and the query must use the same one.
+
+        Both sides of the adjudication have to cover the same samples: the VDS side counts
+        only the samples in the map, so a query joining the full sample_info counts rows for
+        samples the VDS was never asked about, and those surplus rows read as the dropout
+        the query exists to test for.
+        """
+        sql = vdd.adjudication_sql(
+            self.make_rectangle(), project_id='p', dataset_name='d', mode='variants',
+            sample_table='sample_info_new_to_foxtrot',
+        )
+        self.assertIn('`p.d.sample_info_new_to_foxtrot`', sql)
+        self.assertNotIn('`p.d.sample_info`', sql)
 
     def test_end_is_exclusive(self):
         """bin_end is exclusive, so the query's upper bound is one position lower."""
@@ -805,6 +927,64 @@ class TestSqlQueryCap(unittest.TestCase):
         report = vdd.analyze(summary)
         scores = [r.score for r in report.rectangles]
         self.assertEqual(scores, sorted(scores, reverse=True))
+
+
+class TestScaleFindingsReachTheOutputs(unittest.TestCase):
+    """Through main(), because the failure this guards against was one of plumbing.
+
+    The detection itself always worked. What did not was that a run whose only finding
+    was a depleted superpartition wrote a header-only report, an adjudication file that
+    opened by announcing there was nothing to adjudicate, and exit status 0.
+    """
+
+    def scale_findings_run(self, tmp: str, factor: float) -> tuple[int, str, str]:
+        summary = build_summary(n_bins=30)
+        if factor != 1.0:
+            scale_superpartition(summary, 83, factor)
+        sql_path = os.path.join(tmp, 'adjudicate.sql')
+        scale_path = os.path.join(tmp, 'scale.tsv')
+        status = vdd.main(_argv_for(
+            summary, tmp, mode='variants',
+            report_path=os.path.join(tmp, 'report.tsv'),
+            extra=['--sql-path', sql_path, '--project-id', 'p', '--dataset-name', 'd',
+                   '--scale-findings-path', scale_path]))
+        with open(sql_path) as handle:
+            sql = handle.read()
+        with open(scale_path) as handle:
+            scale = handle.read()
+        return status, sql, scale
+
+    def test_sql_file_does_not_claim_there_is_nothing_to_adjudicate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _, sql, _ = self.scale_findings_run(tmp, 0.20)
+        self.assertNotIn('No candidate dropouts to adjudicate', sql)
+        self.assertIn('NOT clean', sql)
+        self.assertIn('`p.d.vet_083`', sql)
+
+    def test_scale_findings_file_names_the_superpartition(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _, _, scale = self.scale_findings_run(tmp, 0.20)
+        rows = scale.strip().split('\n')
+        self.assertEqual(2, len(rows))
+        self.assertEqual('83', rows[1].split('\t')[0])
+
+    def test_fail_on_findings_catches_a_scale_only_run(self):
+        """Nothing else in this run is non-empty, so this is the only gate that can fire."""
+        summary = build_summary(n_bins=30)
+        scale_superpartition(summary, 83, 0.20)
+        with tempfile.TemporaryDirectory() as tmp:
+            status = vdd.main(_argv_for(
+                summary, tmp, mode='variants',
+                report_path=os.path.join(tmp, 'report.tsv'),
+                extra=['--fail-on-findings']))
+        self.assertNotEqual(0, status)
+
+    def test_a_clean_run_still_says_there_is_nothing_to_adjudicate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            status, sql, scale = self.scale_findings_run(tmp, 1.0)
+        self.assertEqual(0, status)
+        self.assertIn('No candidate dropouts to adjudicate', sql)
+        self.assertEqual(1, len(scale.strip().split('\n')))
 
 
 class TestFileParsing(unittest.TestCase):

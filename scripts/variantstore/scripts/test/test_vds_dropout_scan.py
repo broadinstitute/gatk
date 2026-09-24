@@ -675,9 +675,10 @@ class TestContigCheckpointing(unittest.TestCase):
         return shard
 
     def args(self, vds_path='gs://bucket/r2.vds', mode='variants', bin_size=50_000,
-             injections=()):
+             superpartition_size=vds.DEFAULT_SUPERPARTITION_SIZE, injections=()):
         return types.SimpleNamespace(
-            vds_path=vds_path, mode=mode, bin_size=bin_size, summary_path=self.summary,
+            vds_path=vds_path, mode=mode, bin_size=bin_size,
+            superpartition_size=superpartition_size, summary_path=self.summary,
             injections=injections)
 
     def merge(self, shards, expected):
@@ -719,6 +720,7 @@ class TestContigCheckpointing(unittest.TestCase):
         self.assertIn('gs://bucket/r2.vds', row)
         self.assertIn('variants', row)
         self.assertIn('50000', row)
+        self.assertIn(str(vds.DEFAULT_SUPERPARTITION_SIZE), row)
 
     def test_matching_marker_verifies(self):
         _, marker = vds.shard_paths(self.summary, 'chr1')
@@ -739,6 +741,19 @@ class TestContigCheckpointing(unittest.TestCase):
         vds.write_marker(marker, 'chr1', 42, self.args(bin_size=50_000))
         with self.assertRaises(RuntimeError):
             vds.verify_marker(marker, 'chr1', self.args(bin_size=10_000))
+
+    def test_different_superpartition_size_aborts(self):
+        """Lowering it is the silent case, so it is the one the marker has to catch.
+
+        Old superpartition ids are a subset of the ids a smaller size produces, so nothing
+        downstream errors: the resumed contigs are simply grouped at the previous size and
+        compared against sample counts taken at the new one.
+        """
+        _, marker = vds.shard_paths(self.summary, 'chr1')
+        vds.write_marker(marker, 'chr1', 42, self.args(superpartition_size=4000))
+        with self.assertRaises(RuntimeError) as ctx:
+            vds.verify_marker(marker, 'chr1', self.args(superpartition_size=2000))
+        self.assertIn('superpartition_size', str(ctx.exception))
 
     def test_different_mode_aborts(self):
         _, marker = vds.shard_paths(self.summary, 'chr1')

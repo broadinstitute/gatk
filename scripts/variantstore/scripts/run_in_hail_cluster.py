@@ -74,6 +74,19 @@ CLUSTER_DELETE_TIMEOUT = '45m'
 PARTIAL_CAPACITY_MARKERS = (
     'Timed out waiting for',
     'minimum required datanodes',
+)
+
+# `Cannot start master` is the opening phrase of that same message, but on its own it says
+# only that the master never came up, which a failed init action or a bad --packages install
+# produces just as readily -- and identically in every zone.
+#
+# It stays retryable all the same, because the asymmetry runs that way. Retrying a failure
+# that placement cannot fix costs one create attempt per zone and then reports the real
+# error; declining to retry a capacity failure costs the whole run, and the run is an
+# overnight job. What it should not do is announce itself as a capacity shortage, because
+# that is the part that sends someone looking in the wrong place. So it is classified
+# separately and the log says the cause is unknown.
+UNEXPLAINED_MASTER_FAILURE_MARKERS = (
     'Cannot start master',
 )
 
@@ -228,11 +241,22 @@ def looks_like_partial_capacity(output):
     return any(marker in output for marker in PARTIAL_CAPACITY_MARKERS)
 
 
+def looks_like_unexplained_master_failure(output):
+    """Whether the master failed to start without the message saying a shortage caused it.
+
+    Only when nothing corroborates a capacity reading: the real partial-capacity error names
+    the master too, and that one should be reported as what it is.
+    """
+    return (not looks_like_partial_capacity(output)
+            and any(marker in output for marker in UNEXPLAINED_MASTER_FAILURE_MARKERS))
+
+
 def retry_reason(output):
     """Why this failure is worth retrying in another zone, or None to fail fast.
 
-    Returned as text rather than a boolean so the log records which of the two very
-    different-looking capacity failures was seen.
+    Returned as text rather than a boolean so the log records which failure was seen. The
+    three differ in what they imply about a run that fails the same way in every zone, and
+    that is the moment the distinction is worth having.
     """
     if looks_like_stockout(output):
         return 'the zone is out of capacity'
@@ -240,6 +264,12 @@ def retry_reason(output):
         return ('the zone could not provide all requested nodes (Dataproc reports this as '
                 'a node timeout and blames firewall rules; if every zone fails this way, '
                 'check VM-to-VM firewall rules for real)')
+    if looks_like_unexplained_master_failure(output):
+        return ('the master did not start, and the message does not say why; retrying in '
+                'case it is capacity, but an init action or a bad --packages install fails '
+                'this way too and no zone will fix either -- if every zone fails the same '
+                'way, read the cluster creation output above rather than treating this as '
+                'a shortage')
     return None
 
 

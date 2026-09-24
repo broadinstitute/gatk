@@ -468,6 +468,12 @@ class SuperpartitionScale:
     # against the median superpartition rather than the raw per-bin baseline, so the
     # value means the same thing regardless of --baseline-quantile.
     relative_scale: float
+    # The superpartition closest to typical volume, and its sample count. Carried so this
+    # finding can be adjudicated the way a rectangle is -- against BigQuery, and against
+    # something rather than in isolation. A bare row count for a depleted superpartition
+    # answers nothing on its own, because nobody knows what the number should have been.
+    peer_superpartition: int = 0
+    peer_n_samples: int = 0
 
 
 @dataclass(frozen=True)
@@ -728,6 +734,13 @@ def flag_superpartition_scales(
     if typical <= 0:
         return []
 
+    # An actual superpartition standing in for "typical", rather than the median value
+    # itself, because adjudication needs a table name to count rows in. There is always one
+    # to pick: `typical` is positive only if some contributing superpartition is.
+    peer = min((j for j in contributing if scales[j] > 0),
+               key=lambda j: abs(scales[j] - typical))
+    peer_superpartition = summary.superpartitions[peer]
+
     findings: list[SuperpartitionScale] = []
     for j in contributing:
         superpartition = summary.superpartitions[j]
@@ -737,6 +750,8 @@ def flag_superpartition_scales(
                 superpartition=superpartition,
                 n_samples=summary.n_samples[superpartition],
                 relative_scale=relative,
+                peer_superpartition=peer_superpartition,
+                peer_n_samples=summary.n_samples[peer_superpartition],
             ))
     findings.sort(key=lambda f: f.relative_scale)
     return findings
@@ -789,6 +804,56 @@ def analyze(
 # ---------------------------------------------------------------------------
 # Adjudication SQL
 # ---------------------------------------------------------------------------
+
+
+def superpartition_table(superpartition: int, mode: str) -> str:
+    """The `vet_NNN` or `ref_ranges_NNN` table holding one superpartition's data."""
+    if mode not in MODES:
+        raise ValueError(f"mode must be one of {MODES}, got {mode!r}")
+    prefix = 'vet' if mode == 'variants' else 'ref_ranges'
+    return f'{prefix}_{superpartition:03d}'
+
+
+def scale_adjudication_sql(
+        finding: SuperpartitionScale,
+        project_id: str,
+        dataset_name: str,
+        mode: str = 'variants',
+) -> str:
+    """Generate the BigQuery query that settles whether a depleted superpartition is real.
+
+    A scale finding has no window to bound a query with, which is why it needs a different
+    query from a rectangle rather than none at all.  Total row count serves instead, read
+    against a superpartition of typical volume so the number means something: the screen
+    already established that the VDS holds far less for this superpartition than for its
+    peers, and what remains to be settled is which side of the export the shortfall is on.
+
+    ``COUNT(*)`` with no predicate is answered from table metadata, so this scans no data
+    and costs nothing however large the tables are -- unlike the per-rectangle queries,
+    which are cheap only because the window prunes on the clustering field.  It therefore
+    cannot filter withdrawals or controls, which the windowed queries do; at the scale a
+    scale finding fires on, that is noise against the effect being measured.
+    """
+    table = superpartition_table(finding.superpartition, mode)
+    peer_table = superpartition_table(finding.peer_superpartition, mode)
+    return (
+        f"-- Globally depleted superpartition {finding.superpartition}: relative scale "
+        f"{finding.relative_scale:.4f} over {finding.n_samples:,} samples.\n"
+        f"-- No window bounds this finding, so it is adjudicated by total row count against\n"
+        f"-- superpartition {finding.peer_superpartition} ({finding.peer_n_samples:,} "
+        f"samples), whose volume is typical.\n"
+        f"-- COUNT(*) without a predicate is answered from table metadata, so this scans\n"
+        f"-- nothing and costs nothing. Compare the two rows per sample.\n"
+        f"-- A count in line with the peer means BigQuery holds data the VDS does not, so\n"
+        f"-- the loss is in the Avro export or the VDS build. A count as depleted as the\n"
+        f"-- VDS means the data never reached BigQuery, and the problem is further back.\n"
+        f"SELECT '{table}' AS table_name, {finding.n_samples} AS vds_samples, "
+        f"COUNT(*) AS bq_rows\n"
+        f"FROM `{project_id}.{dataset_name}.{table}`\n"
+        f"UNION ALL\n"
+        f"SELECT '{peer_table}', {finding.peer_n_samples}, COUNT(*)\n"
+        f"FROM `{project_id}.{dataset_name}.{peer_table}`;\n"
+    )
 
 
 def adjudication_sql(
@@ -891,6 +956,32 @@ def write_report(report: Report, handle: IO[str]) -> None:
         ]) + '\n')
 
 
+SCALE_FINDINGS_COLUMNS = (
+    'superpartition', 'n_samples', 'relative_scale', 'peer_superpartition', 'peer_n_samples',
+)
+
+
+def format_scale_findings(report: Report) -> str:
+    """TSV of globally depleted superpartitions, worst first.
+
+    A separate file from the rectangle report rather than extra rows in it, because the two
+    findings are not the same shape: a rectangle is bounded by a window and a scale finding
+    covers a whole superpartition, so the report's position columns would be empty for one
+    and its severity columns would mean different things for the other.
+
+    Written whether or not anything is flagged, so that an empty file is evidence the check
+    ran.  `Report.clean` counts these as failures, and until this file existed they reached
+    no durable output at all -- the report held rectangles only, so a superpartition lost
+    genome-wide produced a header-only report and a successful workflow.
+    """
+    lines = ['\t'.join(SCALE_FINDINGS_COLUMNS)]
+    for finding in report.superpartition_scales:
+        lines.append(f'{finding.superpartition}\t{finding.n_samples}\t'
+                     f'{finding.relative_scale:.6f}\t{finding.peer_superpartition}\t'
+                     f'{finding.peer_n_samples}')
+    return '\n'.join(lines) + '\n'
+
+
 def format_sparse_bins(report: Report) -> str:
     """TSV of the bins the coverage floor excluded, worst coverage last."""
     lines = ['contig\tbin_start\tbin_end\tcoverage_fraction']
@@ -957,6 +1048,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                              'mode only.')
     parser.add_argument('--report-path', default=None,
                         help='Write flagged rectangles here as TSV. Omit for stdout digest only.')
+    parser.add_argument('--scale-findings-path', default=None,
+                        help='Write globally depleted superpartitions here as TSV. These are '
+                             'the other finding type and they do not appear in --report-path, '
+                             'whose rows are rectangles; a superpartition lost across the '
+                             'whole genome produces one of these and no rectangle at all.')
     parser.add_argument('--sql-path', default=None,
                         help='Write BigQuery adjudication queries here. Requires --project-id '
                              'and --dataset-name.')
@@ -1042,6 +1138,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             write_report(report, handle)
         print(f"\nReport written to: {args.report_path}")
 
+    if args.scale_findings_path:
+        with open(args.scale_findings_path, 'wt') as handle:
+            handle.write(format_scale_findings(report))
+        print(f"Globally depleted superpartitions written to: {args.scale_findings_path}")
+
     if args.sparse_bins_path:
         with open(args.sparse_bins_path, 'wt') as handle:
             handle.write(format_sparse_bins(report))
@@ -1051,8 +1152,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         limit = args.max_sql_queries or len(report.rectangles)
         selected = report.rectangles[:limit]
         with open(args.sql_path, 'wt') as handle:
-            if not report.rectangles:
+            # Keyed on `clean`, not on `rectangles`: a scale finding is a finding, and a
+            # file that opened by declaring there was nothing to adjudicate was the last
+            # place one could hide.
+            if report.clean:
                 handle.write('-- No candidate dropouts to adjudicate.\n')
+            elif not report.rectangles:
+                handle.write('-- No candidate dropout rectangles to adjudicate, but this '
+                             'run is NOT clean -- see below.\n\n')
             elif len(selected) < len(report.rectangles):
                 omitted = len(report.rectangles) - len(selected)
                 notice = (f'-- Showing the {len(selected)} most severe of '
@@ -1071,6 +1178,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                     mode=args.mode,
                     sample_table=args.sample_table,
                     reference_schema=args.reference_schema,
+                ))
+                handle.write('\n')
+            # After the rectangles, because these are whole-superpartition queries and
+            # reading them first would frame the windowed ones as a subsidiary detail.
+            for finding in report.superpartition_scales:
+                handle.write(scale_adjudication_sql(
+                    finding,
+                    project_id=args.project_id,
+                    dataset_name=args.dataset_name,
+                    mode=args.mode,
                 ))
                 handle.write('\n')
         print(f"Adjudication SQL written to: {args.sql_path}")

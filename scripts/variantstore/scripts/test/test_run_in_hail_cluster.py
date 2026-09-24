@@ -113,6 +113,27 @@ class TestPartialCapacityDetection(unittest.TestCase):
         """If every zone fails this way it really is networking, and the log should say so."""
         self.assertIn('firewall', runner.retry_reason(REAL_PARTIAL_CAPACITY))
 
+    def test_bare_master_failure_is_not_called_a_capacity_shortage(self):
+        """An init action or a bad --packages install kills the master in every zone.
+
+        Retrying is still the right call -- a create attempt per zone is cheap against
+        losing an overnight run -- but calling it capacity sends the reader to the wrong
+        place, so it is classified on its own.
+        """
+        bare = ("ERROR: (gcloud.dataproc.clusters.create) Operation failed: "
+                "Cannot start master: Initialization action failed. "
+                "Failed action 'gs://bucket/init.sh'.")
+        self.assertFalse(runner.looks_like_partial_capacity(bare))
+        self.assertTrue(runner.looks_like_unexplained_master_failure(bare))
+        self.assertIsNotNone(runner.retry_reason(bare))
+        self.assertIn('does not say why', runner.retry_reason(bare))
+
+    def test_real_capacity_error_keeps_its_own_explanation(self):
+        """It names the master too, so the narrower reading must win."""
+        self.assertFalse(
+            runner.looks_like_unexplained_master_failure(REAL_PARTIAL_CAPACITY))
+        self.assertIn('all requested nodes', runner.retry_reason(REAL_PARTIAL_CAPACITY))
+
     def test_unrelated_failures_are_still_not_retried(self):
         for message in (
             'ERROR: PERMISSION_DENIED: insufficient rights',

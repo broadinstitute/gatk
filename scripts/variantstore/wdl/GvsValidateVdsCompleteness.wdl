@@ -104,6 +104,14 @@ workflow GvsValidateVdsCompleteness {
         Float? scale_threshold
         Float? baseline_quantile
 
+        # Whether a finding fails the workflow. Off by default: a screen is a screen, and a
+        # candidate is unproven until the adjudication SQL has been run against BigQuery, so
+        # a red workflow would be asserting something the run has not established. The
+        # scale check in particular is the most likely of the two to fire on real cohort
+        # structure, its threshold being deliberately loose. Turn it on where the run gates
+        # something automated and a human is not going to read the report.
+        Boolean fail_on_findings = false
+
         # Adjudication SQL generation. Omitting the project or dataset skips it.
         String? bq_project_id
         String? bq_dataset_name
@@ -171,7 +179,7 @@ workflow GvsValidateVdsCompleteness {
             help: "TSV of sample_name and sample_id. Optional: if omitted and bq_project_id and bq_dataset_name are set, it is generated from sample_info automatically."
         }
         bq_sample_table: {
-            help: "Sample table or view the generated map reads from. Defaults to sample_info; use a view such as sample_info_new_to_foxtrot to restrict the sample universe."
+            help: "Sample table or view defining the sample universe: the generated map reads from it, and the adjudication SQL joins against it so both sides of that comparison cover the same samples. Defaults to sample_info; use a view such as sample_info_new_to_foxtrot when screening a partial VDS. Set it to match even when supplying sample_map_path directly, since it is what the adjudication SQL uses."
         }
         intervals: {
             help: "Comma-separated Hail locus intervals. Overrides contigs. Required for full-depth."
@@ -193,6 +201,9 @@ workflow GvsValidateVdsCompleteness {
         }
         reference_schema: {
             help: "Override for the ref_ranges schema, either compressed or uncompressed. Leave unset to detect it from the dataset. AoU callsets are compressed, where reference adjudication filters on packed_ref_data, the clustering field."
+        }
+        fail_on_findings: {
+            help: "Fail the workflow if the screen flags anything, either a dropout rectangle or a globally depleted superpartition. Defaults to false, because a candidate is unproven until the adjudication SQL has been run against BigQuery and a red workflow would overstate what the run established. Set it true where nobody will read the report -- the outputs are still written and delocalized either way."
         }
     }
 
@@ -357,8 +368,10 @@ workflow GvsValidateVdsCompleteness {
             min_coverage_fraction = min_coverage_fraction,
             scale_threshold = scale_threshold,
             baseline_quantile = baseline_quantile,
+            fail_on_findings = fail_on_findings,
             bq_project_id = bq_project_id,
             bq_dataset_name = bq_dataset_name,
+            bq_sample_table = bq_sample_table,
             reference_schema = effective_reference_schema,
             prefix = cluster_prefix,
             cluster_zones = cluster_zones,
@@ -386,6 +399,7 @@ workflow GvsValidateVdsCompleteness {
         String cluster_name = ScanVdsForDropouts.cluster_name
         String scan_log = ScanVdsForDropouts.scan_log
         File report = ScanVdsForDropouts.report
+        File scale_findings = ScanVdsForDropouts.scale_findings
         File adjudication_sql = ScanVdsForDropouts.adjudication_sql
         File sparse_bins = ScanVdsForDropouts.sparse_bins
         Boolean done = true
@@ -510,8 +524,11 @@ task ScanVdsForDropouts {
         Float? scale_threshold
         Float? baseline_quantile
 
+        Boolean fail_on_findings
+
         String? bq_project_id
         String? bq_dataset_name
+        String bq_sample_table
         String reference_schema
 
         String prefix
@@ -605,6 +622,7 @@ task ScanVdsForDropouts {
         echo "# No findings report: ${placeholder}" > report.tsv
         echo "-- No adjudication SQL: ${placeholder}" > adjudicate.sql
         echo "# No excluded-bin list: ${placeholder}" > sparse_bins.tsv
+        echo "# No depleted-superpartition list: ${placeholder}" > scale_findings.tsv
 
         # Build the arguments JSON for the script that will run inside the Hail cluster.
         # run_in_hail_cluster.py renders each key as `--key value`, so every key must be
@@ -728,8 +746,10 @@ task ScanVdsForDropouts {
                 --superpartitions ./superpartitions.tsv
                 --mode ~{mode}
                 --report-path ./report.tsv
+                --scale-findings-path ./scale_findings.tsv
                 --sparse-bins-path ./sparse_bins.tsv
             )
+            ~{true='detect_args+=(--fail-on-findings)' false='' fail_on_findings}
             ~{'detect_args+=(--ratio-threshold ' + ratio_threshold + ')'}
             ~{'detect_args+=(--score-threshold ' + score_threshold + ')'}
             ~{'detect_args+=(--min-expected ' + min_expected + ')'}
@@ -742,6 +762,14 @@ task ScanVdsForDropouts {
                 detect_args+=(--sql-path ./adjudicate.sql)
                 detect_args+=(--project-id "~{default='' bq_project_id}")
                 detect_args+=(--dataset-name "~{default='' bq_dataset_name}")
+                # The same table the sample map came from, so both sides of the comparison
+                # cover the same samples. Adjudication reads the BigQuery row count against
+                # the VDS entry count, and that is only a comparison if the two are drawn
+                # from one sample universe. Left at the default while the map is restricted
+                # to a partial VDS, the query counts every sample in the superpartition
+                # against a VDS holding only some of them, and the surplus rows look like
+                # the dropout the query was meant to test for.
+                detect_args+=(--sample-table ~{bq_sample_table})
                 detect_args+=(--reference-schema ~{reference_schema})
             else
                 # Adjudication is half the method: the screen produces candidates and
@@ -770,9 +798,20 @@ task ScanVdsForDropouts {
                 echo "         without re-running the scan." >&2
             fi
 
-            python3 ~{vds_dropout_detect_script} "${detect_args[@]}" | tee -a scan.log
+            # Status captured rather than allowed to abort the script, because with
+            # fail_on_findings the detector exits non-zero precisely when it has produced
+            # the findings worth keeping -- and errexit would then skip every upload below
+            # and delocalize the placeholders instead. The exit code is re-raised after.
+            detect_status=0
+            python3 ~{vds_dropout_detect_script} "${detect_args[@]}" | tee -a scan.log \
+                || detect_status=$?
 
             gsutil cp ./report.tsv "~{output_prefix}/report_~{mode}.tsv"
+            # The other finding type, and the reason it gets a file of its own: a
+            # superpartition depleted across the whole genome has its own median dragged
+            # down with it, so its per-bin residuals come back near 1 and it produces no
+            # rectangle at all. Reading only report_~{mode}.tsv would call that VDS clean.
+            gsutil cp ./scale_findings.tsv "~{output_prefix}/scale_findings_~{mode}.tsv"
             # Unconditional: the placeholder written above guarantees the path exists, and
             # whichever version of the file is there says something true about itself.
             gsutil cp ./adjudicate.sql "~{output_prefix}/adjudicate_~{mode}.sql"
@@ -781,6 +820,15 @@ task ScanVdsForDropouts {
             # declined to look. Empty but for its header in variants mode, which has no
             # such floor.
             gsutil cp ./sparse_bins.tsv "~{output_prefix}/sparse_bins_~{mode}.tsv"
+
+            if [[ ${detect_status} -ne 0 ]]
+            then
+                echo "The detector exited ${detect_status}. With fail_on_findings set that" >&2
+                echo "means the screen flagged something; every output above was written" >&2
+                echo "and uploaded first, so read report_~{mode}.tsv and" >&2
+                echo "scale_findings_~{mode}.tsv rather than re-running the scan." >&2
+                exit ${detect_status}
+            fi
         fi
 
         # scan.log is uploaded by the EXIT trap installed above, so there is no copy here.
@@ -800,6 +848,7 @@ task ScanVdsForDropouts {
         String scan_log = output_prefix + "/scan_" + action + "_" + mode + ".log"
         # Always written, so these resolve for every action; see the command body.
         File report = "report.tsv"
+        File scale_findings = "scale_findings.tsv"
         File adjudication_sql = "adjudicate.sql"
         File sparse_bins = "sparse_bins.tsv"
     }

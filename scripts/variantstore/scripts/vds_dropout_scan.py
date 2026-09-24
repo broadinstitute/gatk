@@ -833,10 +833,20 @@ def shard_paths(summary_path: str, contig: str) -> tuple[str, str]:
 
 
 # The marker records what produced the shard, not just that something did. Without this, a
-# re-run with the same output_prefix but a different --vds-path or --bin-size would silently
-# reuse the previous run's shards and emit a summary describing the wrong VDS -- a silent
-# wrong answer, which is the single outcome this tool cannot afford to produce.
-MARKER_HEADER = 'contig\trows\tvds_path\tmode\tbin_size\tinjections'
+# re-run with the same output_prefix but a different --vds-path, --bin-size or
+# --superpartition-size would silently reuse the previous run's shards and emit a summary
+# describing the wrong VDS -- a silent wrong answer, which is the single outcome this tool
+# cannot afford to produce.
+#
+# --superpartition-size earns its place for the same reason --bin-size does: both define a
+# grouping key, so changing either makes old shards and new ones describe different things.
+# It is the more dangerous of the two, because only one direction of the mistake is loud.
+# Raising it leaves resumed shards carrying superpartition ids above the universe the fresh
+# superpartitions table declares, and the detector rejects rows for superpartitions it was
+# not told about. Lowering it does not: the old ids are a subset of the new ones, so nothing
+# errors and the resumed contigs are simply keyed at the wrong granularity against the wrong
+# sample counts.
+MARKER_HEADER = 'contig\trows\tvds_path\tmode\tbin_size\tsuperpartition_size\tinjections'
 
 
 def injection_provenance(injections: Sequence[Injection]) -> str:
@@ -846,7 +856,7 @@ def injection_provenance(injections: Sequence[Injection]) -> str:
     resume: it holds a hole that no VDS has, and the summary built from it would look
     complete while describing data that never existed. Recording the spec makes that
     collision an abort rather than a silent wrong answer, which is the same reason
-    `vds_path`, `mode` and `bin_size` are recorded.
+    `vds_path`, `mode`, `bin_size` and `superpartition_size` are recorded.
     """
     return ','.join(str(injection) for injection in injections) if injections else '-'
 
@@ -855,6 +865,7 @@ def write_marker(marker_path: str, contig: str, n_rows: int, args) -> None:
     """Record the shard's provenance alongside its row count."""
     write_lines(marker_path, MARKER_HEADER,
                 [f'{contig}\t{n_rows}\t{args.vds_path}\t{args.mode}\t{args.bin_size}\t'
+                 f'{args.superpartition_size}\t'
                  f'{injection_provenance(args.injections)}'])
 
 
@@ -876,10 +887,10 @@ def verify_marker(marker_path: str, contig: str, args) -> None:
                            f'shard, or choose a different --summary-path.')
 
     fields = row.split('\t')
-    if len(fields) < 6:
+    if len(fields) < 7:
         raise RuntimeError(f'{marker_path}: malformed marker row {row!r}; delete it and '
                            f're-run {contig}.')
-    _, _, vds_path, mode, bin_size, injections = fields[:6]
+    _, _, vds_path, mode, bin_size, superpartition_size, injections = fields[:7]
     mismatches = []
     if injections != injection_provenance(args.injections):
         mismatches.append(
@@ -890,6 +901,9 @@ def verify_marker(marker_path: str, contig: str, args) -> None:
         mismatches.append(f'mode {mode!r} != {args.mode!r}')
     if bin_size != str(args.bin_size):
         mismatches.append(f'bin_size {bin_size} != {args.bin_size}')
+    if superpartition_size != str(args.superpartition_size):
+        mismatches.append(
+            f'superpartition_size {superpartition_size} != {args.superpartition_size}')
     if mismatches:
         raise RuntimeError(
             f'{marker_path} was produced by a different run ({"; ".join(mismatches)}). '
