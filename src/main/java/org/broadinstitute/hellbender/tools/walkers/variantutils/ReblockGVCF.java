@@ -338,6 +338,10 @@ public final class ReblockGVCF extends MultiVariantWalker {
     @Override
     public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
         if (!variant.hasAllele(Allele.NON_REF_ALLELE)) {
+            if (variant.getCommonInfo().getAttributeAsBoolean("TARGETED", false) == true) {
+                // We're currently ignoring targeted sites that don't have a <NON_REF> allele as we're focusing on standard SNPs and Indels.  We may handle these differently later.
+                return;
+            }
             throw new UserException("Variant Context at " + variant.getContig() + ":" + variant.getStart() + " does not contain a <NON-REF> allele. This tool is only intended for use with GVCFs.");
         }
         VariantContext newVC = formatAnnotationsToRemove.size() > 0 ? removeVCFFormatAnnotations(variant) : variant;
