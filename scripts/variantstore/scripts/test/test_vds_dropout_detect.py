@@ -1,0 +1,1222 @@
+#!/usr/bin/env python3
+"""Unit tests for vds_dropout_detect.
+
+These build synthetic summary matrices rather than reading a VDS, which is the whole
+point of keeping the judging logic separate from the Hail scan: the cases that matter
+most -- a region hard for every sample, an ancestry-skewed superpartition, a dropout
+thinned rather than emptied -- are awkward to arrange in real data and trivial to
+arrange here.
+
+The scale used throughout mirrors the real screen: 134 superpartitions, 100 sampled
+samples each, and a per-sample rate of 75 entries per 50 kb bin.
+"""
+
+import gzip
+import os
+import tempfile
+import unittest
+
+import vds_dropout_detect as vdd
+
+N_SUPERPARTITIONS = 134
+N_SAMPLES = 100
+RATE_PER_SAMPLE = 75.0
+BIN_SIZE = 50_000
+CELL = RATE_PER_SAMPLE * N_SAMPLES  # 7500 entries per (bin, superpartition)
+
+
+def build_summary(
+        n_bins: int = 40,
+        contig: str = 'chr4',
+        first_start: int = 56_000_001,
+        n_superpartitions: int = N_SUPERPARTITIONS,
+        n_samples: int = N_SAMPLES,
+        cell_value: float = CELL,
+) -> vdd.Summary:
+    """A clean summary: every cell carries the same amount of data."""
+    superpartitions = list(range(1, n_superpartitions + 1))
+    summary = vdd.Summary(
+        superpartitions=superpartitions,
+        n_samples={sp: n_samples for sp in superpartitions},
+    )
+    from array import array
+    for i in range(n_bins):
+        start = first_start + i * BIN_SIZE
+        summary.bins.append((contig, start, start + BIN_SIZE))
+        summary.observed.append(array('d', [cell_value] * n_superpartitions))
+    return summary
+
+
+def set_cell(summary: vdd.Summary, bin_index: int, superpartition: int, value: float) -> None:
+    summary.observed[bin_index][summary.superpartition_position(superpartition)] = value
+
+
+def scale_superpartition(summary: vdd.Summary, superpartition: int, factor: float) -> None:
+    j = summary.superpartition_position(superpartition)
+    for row in summary.observed:
+        row[j] *= factor
+
+
+def _argv_for(
+        summary: vdd.Summary,
+        directory: str,
+        mode: str,
+        report_path: str,
+        extra: list[str] | None = None,
+) -> list[str]:
+    """Serialize a summary to disk and build the argv that makes main() read it.
+
+    Most tests call analyze() directly, which is enough for the judging logic. A few need
+    main(), because some decisions -- notably which floor applies in which mode -- are made
+    while parsing arguments and are invisible from analyze().
+    """
+    sp_path = os.path.join(directory, 'superpartitions.tsv')
+    with open(sp_path, 'wt') as handle:
+        handle.write('superpartition\tn_samples\n')
+        for sp in summary.superpartitions:
+            handle.write(f'{sp}\t{summary.n_samples[sp]}\n')
+
+    summary_path = os.path.join(directory, 'summary.tsv')
+    with open(summary_path, 'wt') as handle:
+        handle.write('contig\tbin_start\tbin_end\tsuperpartition\tobserved\n')
+        for (contig, start, end), row in zip(summary.bins, summary.observed):
+            for sp, value in zip(summary.superpartitions, row):
+                handle.write(f'{contig}\t{start}\t{end}\t{sp}\t{value:g}\n')
+
+    return ['--summary', summary_path, '--superpartitions', sp_path,
+            '--mode', mode, '--report-path', report_path] + (extra or [])
+
+
+def rectangles_for(report: vdd.Report, superpartition: int) -> list[vdd.Rectangle]:
+    return [r for r in report.rectangles if r.superpartition == superpartition]
+
+
+class TestCleanMatrix(unittest.TestCase):
+
+    def test_uniform_matrix_produces_no_findings(self):
+        report = vdd.analyze(build_summary())
+        self.assertTrue(report.clean, msg=vdd.format_summary(report, 'variants'))
+        self.assertEqual(0, report.n_cells_flagged)
+        self.assertEqual(40, report.n_bins_considered)
+
+    def test_poisson_scale_jitter_does_not_fire(self):
+        """Small cell-to-cell variation must not be mistaken for a dropout."""
+        summary = build_summary()
+        # Deterministic +/- 5% ripple across every cell.
+        for i, row in enumerate(summary.observed):
+            for j in range(len(row)):
+                row[j] = CELL * (1.0 + 0.05 * (((i + j) % 3) - 1))
+        report = vdd.analyze(summary)
+        self.assertTrue(report.clean, msg=vdd.format_summary(report, 'variants'))
+
+
+class TestFullDropout(unittest.TestCase):
+
+    def test_full_rectangle_is_found_with_correct_bounds(self):
+        summary = build_summary()
+        # Nine consecutive bins fully missing for superpartition 83, mirroring the
+        # observed ~450 kb chr4 window.
+        for i in range(10, 19):
+            set_cell(summary, i, 83, 0.0)
+
+        report = vdd.analyze(summary)
+        found = rectangles_for(report, 83)
+        self.assertEqual(1, len(found), msg=vdd.format_summary(report, 'variants'))
+
+        rect = found[0]
+        self.assertEqual('chr4', rect.contig)
+        self.assertEqual(summary.bins[10][1], rect.start)
+        self.assertEqual(summary.bins[18][2], rect.end)
+        self.assertEqual(9, rect.n_bins)
+        self.assertEqual(9 * BIN_SIZE, rect.span)
+        self.assertEqual(0.0, rect.observed)
+        self.assertAlmostEqual(0.0, rect.ratio)
+
+    def test_only_the_affected_superpartition_is_flagged(self):
+        summary = build_summary()
+        for i in range(10, 19):
+            set_cell(summary, i, 83, 0.0)
+        report = vdd.analyze(summary)
+        self.assertEqual({83}, {r.superpartition for r in report.rectangles})
+
+    def test_two_independent_dropouts_are_reported_separately(self):
+        """The two known Foxtrot windows live on different contigs and superpartitions."""
+        summary = build_summary(n_bins=40, contig='chr4')
+        for i in range(10, 19):
+            set_cell(summary, i, 83, 0.0)
+
+        # Splice in a chr19 block for superpartition 64.
+        from array import array
+        for i in range(20):
+            start = 40_000_001 + i * BIN_SIZE
+            summary.bins.append(('chr19', start, start + BIN_SIZE))
+            summary.observed.append(array('d', [CELL] * N_SUPERPARTITIONS))
+        for i in range(42, 53):
+            set_cell(summary, i, 64, 0.0)
+
+        report = vdd.analyze(summary)
+        self.assertEqual(2, len(report.rectangles))
+        by_sp = {r.superpartition: r for r in report.rectangles}
+        self.assertEqual({64, 83}, set(by_sp))
+        self.assertEqual('chr4', by_sp[83].contig)
+        self.assertEqual('chr19', by_sp[64].contig)
+
+
+class TestPartialDropout(unittest.TestCase):
+    """The r2-like regime: windows thinned rather than emptied."""
+
+    def test_ninety_nine_percent_missing_is_found(self):
+        summary = build_summary()
+        for i in range(10, 19):
+            set_cell(summary, i, 83, CELL * 0.01)
+        report = vdd.analyze(summary)
+        found = rectangles_for(report, 83)
+        self.assertEqual(1, len(found))
+        self.assertAlmostEqual(0.01, found[0].ratio, places=3)
+
+    def test_ninety_percent_missing_is_found(self):
+        summary = build_summary()
+        for i in range(10, 19):
+            set_cell(summary, i, 83, CELL * 0.10)
+        report = vdd.analyze(summary)
+        found = rectangles_for(report, 83)
+        self.assertEqual(1, len(found))
+        self.assertAlmostEqual(0.10, found[0].ratio, places=3)
+
+    def test_fifty_percent_missing_is_found(self):
+        """Right at the default ratio threshold boundary, so this pins the default."""
+        summary = build_summary()
+        for i in range(10, 19):
+            set_cell(summary, i, 83, CELL * 0.40)
+        report = vdd.analyze(summary)
+        found = rectangles_for(report, 83)
+        self.assertEqual(1, len(found), msg=vdd.format_summary(report, 'variants'))
+
+    def test_severity_ordering_is_worst_first(self):
+        summary = build_summary(n_bins=60)
+        for i in range(5, 8):
+            set_cell(summary, i, 83, CELL * 0.40)
+        for i in range(20, 23):
+            set_cell(summary, i, 64, 0.0)
+        report = vdd.analyze(summary)
+        self.assertEqual(2, len(report.rectangles))
+        self.assertEqual(64, report.rectangles[0].superpartition)
+        self.assertGreater(report.rectangles[0].score, report.rectangles[1].score)
+
+    def test_mild_depletion_below_threshold_does_not_fire(self):
+        summary = build_summary()
+        for i in range(10, 19):
+            set_cell(summary, i, 83, CELL * 0.80)
+        report = vdd.analyze(summary)
+        self.assertEqual([], rectangles_for(report, 83))
+
+
+class TestFalsePositiveGuards(unittest.TestCase):
+
+    def test_region_hard_for_every_superpartition_does_not_fire(self):
+        """A centromere depresses all superpartitions equally, so the ratio stays near 1."""
+        summary = build_summary()
+        for i in range(15, 20):
+            for sp in summary.superpartitions:
+                set_cell(summary, i, sp, 0.0)
+        report = vdd.analyze(summary)
+        self.assertTrue(report.clean, msg=vdd.format_summary(report, 'variants'))
+        self.assertEqual(5, report.n_bins_skipped_empty)
+
+    def test_partially_hard_region_does_not_fire(self):
+        """Uniformly low but non-zero coverage everywhere is still not a dropout."""
+        summary = build_summary()
+        for i in range(15, 20):
+            for sp in summary.superpartitions:
+                set_cell(summary, i, sp, CELL * 0.02)
+        report = vdd.analyze(summary)
+        self.assertTrue(report.clean, msg=vdd.format_summary(report, 'variants'))
+
+    def test_ancestry_skewed_superpartition_does_not_fire(self):
+        """A superpartition carrying 40% more variants everywhere is a global offset."""
+        summary = build_summary()
+        scale_superpartition(summary, 7, 1.40)
+        report = vdd.analyze(summary)
+        self.assertTrue(report.clean, msg=vdd.format_summary(report, 'variants'))
+
+    def test_low_scale_superpartition_does_not_mask_a_real_dropout(self):
+        """A superpartition running 25% light globally must still report a real window."""
+        summary = build_summary()
+        scale_superpartition(summary, 83, 0.75)
+        for i in range(10, 19):
+            set_cell(summary, i, 83, 0.0)
+        report = vdd.analyze(summary)
+        found = rectangles_for(report, 83)
+        self.assertEqual(1, len(found), msg=vdd.format_summary(report, 'variants'))
+
+    def test_thin_bins_are_not_flagged_on_noise(self):
+        """Below the evidence floor, an empty cell carries no weight."""
+        summary = build_summary(cell_value=10.0)  # expected well under min_expected
+        for i in range(10, 19):
+            set_cell(summary, i, 83, 0.0)
+        report = vdd.analyze(summary)
+        self.assertEqual([], rectangles_for(report, 83))
+
+    def test_lowering_min_expected_surfaces_thin_bins(self):
+        """The floor is a threshold, not a blind spot -- it can be lowered deliberately."""
+        summary = build_summary(cell_value=10.0)
+        for i in range(10, 19):
+            set_cell(summary, i, 83, 0.0)
+        report = vdd.analyze(summary, min_expected=5.0, score_threshold=2.0)
+        self.assertEqual(1, len(rectangles_for(report, 83)))
+
+
+class TestCoverageFraction(unittest.TestCase):
+    """The references-mode evidence floor.
+
+    ``min_expected`` is an absolute count of covered bases summed over every sample in the
+    superpartition, so the value that works scales with n_samples x bin width. It is not
+    that it never bites -- on Foxtrot r2 it would have cleared the false positives at
+    130,000 -- but that the figure is a property of that one callset and bin size, so no
+    default can be right twice. A coverage fraction is per-sample and dimensionless and
+    means the same thing at any scale.
+
+    Note the reference cell values below dwarf the variant ones the other tests use. That is
+    the point: one sample fully covered across a 50 kb bin contributes 50,000, where in
+    variants mode it contributes a few dozen entries. A floor stated as a count cannot serve
+    both.
+    """
+
+    @staticmethod
+    def _cell_for(coverage_fraction: float) -> float:
+        """Covered bases for a cell in which every sample is covered this fraction of the bin."""
+        return coverage_fraction * BIN_SIZE * N_SAMPLES
+
+    def _dead_region(self, coverage_fraction: float) -> vdd.Summary:
+        """A summary at the given per-sample coverage, with sp 83 empty over bins 10-18."""
+        summary = build_summary(cell_value=self._cell_for(coverage_fraction))
+        for i in range(10, 19):
+            set_cell(summary, i, 83, 0.0)
+        return summary
+
+    def test_dead_region_is_not_flagged_in_references_mode(self):
+        # 0.01% of the bin covered: nobody has data here, so nobody is missing any.
+        summary = self._dead_region(0.0001)
+        report = vdd.analyze(summary, min_coverage_fraction=0.05)
+        self.assertEqual([], rectangles_for(report, 83))
+        self.assertEqual(len(summary.bins), report.n_bins_skipped_sparse)
+
+    def test_dead_region_would_be_flagged_without_the_floor(self):
+        """Shows the floor is doing the work, not some other guard."""
+        summary = self._dead_region(0.0001)
+        report = vdd.analyze(summary, min_coverage_fraction=None)
+        self.assertEqual(1, len(rectangles_for(report, 83)))
+
+    def test_well_covered_region_still_flags(self):
+        """The floor must not cost sensitivity where there is real coverage to lose."""
+        summary = self._dead_region(0.90)
+        report = vdd.analyze(summary, min_coverage_fraction=0.05)
+        self.assertEqual(1, len(rectangles_for(report, 83)))
+        self.assertEqual(0, report.n_bins_skipped_sparse)
+
+    def test_floor_is_a_fraction_of_bin_width_not_an_absolute(self):
+        """The same cell value passes in a narrow bin and fails in a four-times wider one."""
+        narrow = self._dead_region(0.10)
+        self.assertEqual(1, len(rectangles_for(
+            vdd.analyze(narrow, min_coverage_fraction=0.05), 83)))
+
+        wide = self._dead_region(0.10)
+        for i, (contig, start, _) in enumerate(wide.bins):
+            wide.bins[i] = (contig, start, start + BIN_SIZE * 4)
+        self.assertEqual([], rectangles_for(
+            vdd.analyze(wide, min_coverage_fraction=0.05), 83))
+
+    def test_skipped_bins_are_reported_not_silently_dropped(self):
+        summary = self._dead_region(0.0001)
+        report = vdd.analyze(summary, min_coverage_fraction=0.05)
+        digest = vdd.format_summary(report, 'references')
+        self.assertIn('below coverage floor', digest)
+        self.assertIn(f'{len(summary.bins):,}', digest)
+        self.assertEqual(0, report.n_bins_considered)
+
+    def test_default_floor_is_applied_in_references_mode(self):
+        """Through main(), since the mode gate and the default both live there."""
+        summary = self._dead_region(0.0001)
+        with tempfile.TemporaryDirectory() as tmp:
+            report_path = os.path.join(tmp, 'report.tsv')
+            self.assertEqual(0, vdd.main(_argv_for(
+                summary, tmp, mode='references', report_path=report_path)))
+            with open(report_path) as handle:
+                self.assertNotIn('\t83\t', handle.read())
+
+    def test_excluded_bins_are_named_not_just_counted(self):
+        """A claim that a region is clean is worth only as much as the list of gaps in it."""
+        summary = self._dead_region(0.0001)
+        with tempfile.TemporaryDirectory() as tmp:
+            sparse_path = os.path.join(tmp, 'sparse.tsv')
+            self.assertEqual(0, vdd.main(_argv_for(
+                summary, tmp, mode='references',
+                report_path=os.path.join(tmp, 'report.tsv'),
+                extra=['--sparse-bins-path', sparse_path])))
+            with open(sparse_path) as handle:
+                rows = handle.read().strip().split('\n')
+
+        self.assertEqual('contig\tbin_start\tbin_end\tcoverage_fraction', rows[0])
+        self.assertEqual(len(summary.bins), len(rows) - 1)
+        contig, start, end, fraction = rows[1].split('\t')
+        self.assertEqual(summary.bins[0][0], contig)
+        self.assertEqual((int(start), int(end)), summary.bins[0][1:])
+        self.assertAlmostEqual(0.0001, float(fraction), places=6)
+
+    def test_variants_mode_ignores_the_coverage_floor(self):
+        """An entry count has no denominator, so the CLI must not apply the floor to it.
+
+        A variants cell of 7,500 entries is 0.15% of a 50 kb bin by this arithmetic, so were
+        the gate written backwards a threshold of 0.05 would erase a total dropout.
+        """
+        summary = build_summary(cell_value=CELL)
+        for i in range(10, 19):
+            set_cell(summary, i, 83, 0.0)
+        with tempfile.TemporaryDirectory() as tmp:
+            report_path = os.path.join(tmp, 'report.tsv')
+            self.assertEqual(0, vdd.main(_argv_for(
+                summary, tmp, mode='variants', report_path=report_path,
+                extra=['--min-coverage-fraction', '0.05'])))
+            with open(report_path) as handle:
+                self.assertIn('\t83\t', handle.read())
+
+
+class TestGeometry(unittest.TestCase):
+
+    def test_single_bin_dropout_is_reported(self):
+        summary = build_summary()
+        set_cell(summary, 12, 83, 0.0)
+        report = vdd.analyze(summary)
+        found = rectangles_for(report, 83)
+        self.assertEqual(1, len(found))
+        self.assertEqual(1, found[0].n_bins)
+        self.assertEqual(BIN_SIZE, found[0].span)
+
+    def test_partial_boundary_bins_extend_the_rectangle(self):
+        """A window with half-populated edges should report the wider span."""
+        summary = build_summary()
+        set_cell(summary, 9, 83, CELL * 0.45)
+        for i in range(10, 19):
+            set_cell(summary, i, 83, 0.0)
+        set_cell(summary, 19, 83, CELL * 0.45)
+
+        report = vdd.analyze(summary)
+        found = rectangles_for(report, 83)
+        self.assertEqual(1, len(found))
+        self.assertEqual(11, found[0].n_bins)
+        self.assertEqual(summary.bins[9][1], found[0].start)
+        self.assertEqual(summary.bins[19][2], found[0].end)
+
+    def test_gap_between_flagged_bins_splits_rectangles(self):
+        summary = build_summary()
+        for i in (10, 11):
+            set_cell(summary, i, 83, 0.0)
+        for i in (20, 21):
+            set_cell(summary, i, 83, 0.0)
+        report = vdd.analyze(summary)
+        self.assertEqual(2, len(rectangles_for(report, 83)))
+
+    def test_dropout_spanning_a_whole_contig_is_caught_as_scale_finding(self):
+        """The blind spot in per-bin normalization, covered by the scale check.
+
+        A superpartition missing everywhere has its own median dragged to zero, so the
+        per-bin residuals look unremarkable. The global scale comparison is what catches
+        it.
+        """
+        summary = build_summary(n_bins=30)
+        for i in range(30):
+            set_cell(summary, i, 83, 0.0)
+        report = vdd.analyze(summary)
+        self.assertFalse(report.clean)
+        flagged = {f.superpartition for f in report.superpartition_scales}
+        self.assertIn(83, flagged)
+
+    def test_majority_depleted_superpartition_is_caught_as_scale_finding(self):
+        summary = build_summary(n_bins=30)
+        for i in range(22):
+            set_cell(summary, i, 83, 0.0)
+        report = vdd.analyze(summary)
+        self.assertFalse(report.clean)
+        self.assertIn(83, {f.superpartition for f in report.superpartition_scales})
+
+    def test_uneven_sample_counts_are_normalized(self):
+        """A short final superpartition must not look like a dropout."""
+        summary = build_summary()
+        summary.n_samples[134] = 20
+        j = summary.superpartition_position(134)
+        for row in summary.observed:
+            row[j] = RATE_PER_SAMPLE * 20
+        report = vdd.analyze(summary)
+        self.assertTrue(report.clean, msg=vdd.format_summary(report, 'variants'))
+
+    def test_superpartition_with_no_samples_is_ignored(self):
+        summary = build_summary()
+        summary.n_samples[134] = 0
+        j = summary.superpartition_position(134)
+        for row in summary.observed:
+            row[j] = 0.0
+        report = vdd.analyze(summary)
+        self.assertTrue(report.clean, msg=vdd.format_summary(report, 'variants'))
+
+
+class TestBaselineQuantile(unittest.TestCase):
+    """The baseline is a high quantile so that a dropout hitting many superpartitions
+    at once still leaves a usable reference point."""
+
+    def test_quantile_interpolates(self):
+        self.assertEqual(0.0, vdd._quantile([], 0.75))
+        self.assertEqual(5.0, vdd._quantile([5.0], 0.75))
+        self.assertEqual(1.0, vdd._quantile([1.0, 2.0, 3.0, 4.0], 0.0))
+        self.assertEqual(4.0, vdd._quantile([1.0, 2.0, 3.0, 4.0], 1.0))
+        self.assertAlmostEqual(3.25, vdd._quantile([1.0, 2.0, 3.0, 4.0], 0.75))
+
+    def test_dropout_across_sixty_percent_of_superpartitions_is_found(self):
+        """A median baseline would collapse to zero here and discard the bin."""
+        summary = build_summary()
+        affected = list(range(1, 81))  # 80 of 134, just over half
+        for i in range(10, 19):
+            for sp in affected:
+                set_cell(summary, i, sp, 0.0)
+
+        report = vdd.analyze(summary)
+        flagged = {r.superpartition for r in report.rectangles}
+        self.assertEqual(set(affected), flagged, msg=vdd.format_summary(report, 'variants'))
+        self.assertEqual(0, report.n_bins_skipped_empty)
+
+    def test_median_baseline_would_have_missed_it(self):
+        """Pins the reason for the default: the same input at quantile 0.5 finds nothing."""
+        summary = build_summary()
+        for i in range(10, 19):
+            for sp in range(1, 81):
+                set_cell(summary, i, sp, 0.0)
+
+        median_report = vdd.analyze(summary, baseline_quantile=0.5)
+        self.assertEqual([], median_report.rectangles)
+        self.assertEqual(9, median_report.n_bins_skipped_empty)
+
+    def test_baseline_still_zero_when_nearly_everything_is_empty(self):
+        """Beyond the quantile's reach the bin is genuinely uninformative, not a finding."""
+        summary = build_summary()
+        for i in range(10, 19):
+            for sp in range(1, 131):  # 130 of 134 empty, past the 75th percentile
+                set_cell(summary, i, sp, 0.0)
+        report = vdd.analyze(summary)
+        self.assertEqual(9, report.n_bins_skipped_empty)
+        self.assertEqual([], report.rectangles)
+
+    def test_clean_matrix_unaffected_by_quantile_baseline(self):
+        summary = build_summary()
+        for i, row in enumerate(summary.observed):
+            for j in range(len(row)):
+                row[j] = CELL * (1.0 + 0.05 * (((i + j) % 3) - 1))
+        self.assertTrue(vdd.analyze(summary).clean)
+
+
+class TestReportedRange(unittest.TestCase):
+    """`end` is the exclusive bin bound, so anything read as a range must print end - 1.
+
+    The consequence of getting this wrong is mild but corrosive: the stdout digest and the
+    SQL comment claim a 50,001 bp window while the query underneath correctly asks for
+    50,000, and whoever reconciles the two has to work out which is lying.
+    """
+
+    def setUp(self):
+        summary = build_summary()
+        for i in range(10, 19):
+            set_cell(summary, i, 83, 0.0)
+        self.rectangle = rectangles_for(vdd.analyze(summary), 83)[0]
+
+    def test_span_and_printed_range_agree(self):
+        printed = self.rectangle.last_position - self.rectangle.start + 1
+        self.assertEqual(self.rectangle.span, printed)
+
+    def test_digest_prints_the_last_covered_position(self):
+        summary_text = vdd.format_summary(
+            vdd.Report(rectangles=[self.rectangle]), 'variants')
+        self.assertIn(f'{self.rectangle.start:,}-{self.rectangle.last_position:,}',
+                      summary_text)
+        self.assertNotIn(f'-{self.rectangle.end:,} ', summary_text)
+
+    def test_sql_comment_matches_the_location_bound_below_it(self):
+        sql = vdd.adjudication_sql(self.rectangle, project_id='p', dataset_name='d',
+                                   mode='variants')
+        self.assertIn(f'{self.rectangle.start:,}-{self.rectangle.last_position:,}', sql)
+        self.assertIn(str(vdd.encode_location(self.rectangle.contig,
+                                              self.rectangle.last_position)), sql)
+
+
+class TestSuperpartitionScale(unittest.TestCase):
+
+    def test_reported_scale_is_invariant_to_baseline_quantile(self):
+        """The threshold must mean the same thing however the baseline is chosen."""
+        summary = build_summary(n_bins=30)
+        scale_superpartition(summary, 83, 0.40)
+        at_median = vdd.analyze(summary, baseline_quantile=0.5).superpartition_scales
+        at_upper = vdd.analyze(summary, baseline_quantile=0.75).superpartition_scales
+        self.assertEqual(1, len(at_median))
+        self.assertEqual(1, len(at_upper))
+        self.assertAlmostEqual(
+            at_median[0].relative_scale, at_upper[0].relative_scale, places=2)
+
+    def test_typical_superpartition_scores_one(self):
+        summary = build_summary(n_bins=30)
+        scale_superpartition(summary, 83, 0.40)
+        report = vdd.analyze(summary)
+        self.assertAlmostEqual(0.40, report.superpartition_scales[0].relative_scale, places=2)
+
+    def test_modest_batch_variation_stays_below_threshold(self):
+        """25% light is within plausible batch variation and must not fire by default."""
+        summary = build_summary(n_bins=30)
+        scale_superpartition(summary, 83, 0.75)
+        self.assertEqual([], vdd.analyze(summary).superpartition_scales)
+
+
+class TestScaleFindingOutput(unittest.TestCase):
+    """The second finding type, and the outputs that let anyone act on it.
+
+    A superpartition depleted across the whole genome produces no rectangle -- step 3 of
+    the pipeline divides each cell by that superpartition's own median, which the
+    depletion has dragged down with it -- so everything below is the only trace such a
+    VDS leaves.
+    """
+
+    def depleted(self, factor: float = 0.20, superpartition: int = 83) -> vdd.Report:
+        summary = build_summary(n_bins=30)
+        scale_superpartition(summary, superpartition, factor)
+        return vdd.analyze(summary)
+
+    def test_a_genome_wide_depletion_produces_no_rectangle(self):
+        """The premise of the whole class, asserted rather than assumed."""
+        report = self.depleted()
+        self.assertEqual([], report.rectangles)
+        self.assertEqual(1, len(report.superpartition_scales))
+        self.assertFalse(report.clean)
+
+    def test_peer_is_a_real_superpartition_carrying_typical_volume(self):
+        finding = self.depleted().superpartition_scales[0]
+        self.assertNotEqual(finding.superpartition, finding.peer_superpartition)
+        self.assertIn(finding.peer_superpartition, range(1, N_SUPERPARTITIONS + 1))
+        self.assertEqual(N_SAMPLES, finding.peer_n_samples)
+
+    def test_peer_is_not_itself_one_of_the_depleted(self):
+        """Adjudicating against another depleted superpartition would prove nothing."""
+        summary = build_summary(n_bins=30)
+        scale_superpartition(summary, 83, 0.20)
+        scale_superpartition(summary, 64, 0.10)
+        report = vdd.analyze(summary)
+        flagged = {f.superpartition for f in report.superpartition_scales}
+        self.assertEqual({64, 83}, flagged)
+        for finding in report.superpartition_scales:
+            self.assertNotIn(finding.peer_superpartition, flagged)
+
+    def test_scale_findings_tsv_has_a_row_per_finding_worst_first(self):
+        summary = build_summary(n_bins=30)
+        scale_superpartition(summary, 83, 0.20)
+        scale_superpartition(summary, 64, 0.10)
+        lines = vdd.format_scale_findings(vdd.analyze(summary)).strip().split('\n')
+        self.assertEqual(list(vdd.SCALE_FINDINGS_COLUMNS), lines[0].split('\t'))
+        self.assertEqual(3, len(lines))
+        self.assertEqual('64', lines[1].split('\t')[0])
+        self.assertEqual('83', lines[2].split('\t')[0])
+        self.assertEqual(str(N_SAMPLES), lines[1].split('\t')[1])
+        self.assertAlmostEqual(0.10, float(lines[1].split('\t')[2]), places=2)
+
+    def test_clean_run_still_writes_a_header(self):
+        """An empty file is evidence the check ran; a missing one is not."""
+        text = vdd.format_scale_findings(vdd.analyze(build_summary(n_bins=30)))
+        self.assertEqual(['\t'.join(vdd.SCALE_FINDINGS_COLUMNS)], text.strip().split('\n'))
+
+
+class TestScaleAdjudicationSql(unittest.TestCase):
+    """The query that settles a scale finding, and the two things it must not get wrong.
+
+    It has no window to prune on, so it must not scan the tables at all; and its figure is
+    rows per sample, so its denominator must be the sample universe the scan used.
+    """
+
+    def make_finding(self, **overrides):
+        defaults = dict(superpartition=83, n_samples=1162, relative_scale=0.02,
+                        peer_superpartition=110, peer_n_samples=4000)
+        defaults.update(overrides)
+        return vdd.SuperpartitionScale(**defaults)
+
+    def sql(self, **kwargs):
+        params = dict(project_id='p', dataset_name='d', mode='variants')
+        params.update(kwargs)
+        return vdd.scale_adjudication_sql(self.make_finding(), **params)
+
+    @staticmethod
+    def body(sql: str) -> str:
+        return '\n'.join(l for l in sql.split('\n') if not l.strip().startswith('--'))
+
+    def test_counts_the_finding_and_its_peer(self):
+        sql = self.sql()
+        self.assertIn("'vet_083'", sql)
+        self.assertIn("'vet_110'", sql)
+        self.assertIn('UNION ALL', sql)
+
+    def test_reads_partition_metadata_rather_than_the_tables(self):
+        """The cost claim rests on this: no FROM against vet_%, so nothing is scanned."""
+        body = self.body(self.sql())
+        self.assertIn('INFORMATION_SCHEMA.PARTITIONS', body)
+        self.assertNotIn('`p.d.vet_083`', body)
+        self.assertNotIn('`p.d.vet_110`', body)
+        self.assertNotIn('COUNT(*) AS bq_rows', body)
+
+    def test_restricts_to_the_sample_universe(self):
+        """A partial-VDS scan uses a view, and n_samples is counted against that view."""
+        body = self.body(self.sql(sample_table='sample_info_new_to_foxtrot'))
+        self.assertIn('`p.d.sample_info_new_to_foxtrot`', body)
+        self.assertNotIn('`p.d.sample_info`', body)
+
+    def test_defaults_to_sample_info(self):
+        self.assertIn('`p.d.sample_info`', self.body(self.sql()))
+
+    def test_excludes_withdrawals_and_controls(self):
+        body = self.body(self.sql())
+        self.assertIn('withdrawn IS NULL', body)
+        self.assertIn('is_control = false', body)
+
+    def test_sample_id_range_matches_the_table_the_superpartition_was_built_as(self):
+        """GvsCreateTables.wdl ranges vet_083 over [(83-1)*4000+1, 83*4000]."""
+        body = self.body(self.sql())
+        self.assertIn('BETWEEN 328001 AND 332000', body)
+        self.assertIn('BETWEEN 436001 AND 440000', body)
+
+    def test_a_different_superpartition_size_moves_the_range(self):
+        body = self.body(self.sql(superpartition_size=1000))
+        self.assertIn('BETWEEN 82001 AND 83000', body)
+        self.assertNotIn('BETWEEN 328001 AND 332000', body)
+
+    def test_safe_cast_keeps_the_pseudo_partitions_out(self):
+        """__UNPARTITIONED__ is not an integer; a bare CAST would fail the whole query."""
+        self.assertIn('SAFE_CAST(partition_id AS INT64)', self.body(self.sql()))
+
+    def test_vds_sample_counts_are_carried_through_for_comparison(self):
+        body = self.body(self.sql())
+        self.assertIn('1162 AS vds_samples', body)
+        self.assertIn('4000 AS vds_samples', body)
+
+    def test_references_mode_targets_ref_ranges(self):
+        sql = self.sql(mode='references')
+        self.assertIn("'ref_ranges_083'", sql)
+        self.assertIn("'ref_ranges_110'", sql)
+        self.assertNotIn('vet_', sql)
+
+
+class TestSuperpartitionTable(unittest.TestCase):
+
+    def test_zero_pads_to_three_digits(self):
+        self.assertEqual('vet_004', vdd.superpartition_table(4, 'variants'))
+        self.assertEqual('ref_ranges_083', vdd.superpartition_table(83, 'references'))
+
+    def test_three_digit_superpartitions_are_unpadded(self):
+        self.assertEqual('vet_136', vdd.superpartition_table(136, 'variants'))
+
+    def test_unknown_mode_raises(self):
+        with self.assertRaises(ValueError):
+            vdd.superpartition_table(4, 'entries')
+
+
+class TestLocationEncoding(unittest.TestCase):
+
+    def test_encodes_autosomes(self):
+        self.assertEqual(1_000_000_001_000, vdd.encode_location('chr1', 1000))
+        self.assertEqual(4_000_056_585_368, vdd.encode_location('chr4', 56_585_368))
+        self.assertEqual(19_000_040_097_642, vdd.encode_location('chr19', 40_097_642))
+
+    def test_encodes_sex_chromosomes(self):
+        self.assertEqual(23, vdd.contig_index('chrX'))
+        self.assertEqual(24, vdd.contig_index('chrY'))
+        self.assertEqual(24_000_056_694_638, vdd.encode_location('chrY', 56_694_638))
+
+    def test_unknown_contig_raises(self):
+        with self.assertRaises(KeyError):
+            vdd.contig_index('chr1_KI270706v1_random')
+
+
+class TestAdjudicationSql(unittest.TestCase):
+
+    def make_rectangle(self, **overrides):
+        defaults = dict(
+            contig='chr4', start=56_585_001, end=57_035_001, superpartition=83,
+            n_samples=100, n_bins=9, observed=0.0, expected=67_500.0,
+        )
+        defaults.update(overrides)
+        return vdd.Rectangle(**defaults)
+
+    def test_variant_sql_targets_the_right_table_and_window(self):
+        sql = vdd.adjudication_sql(
+            self.make_rectangle(),
+            project_id='aou-genomics-curation-prod',
+            dataset_name='foxtrot',
+            mode='variants',
+        )
+        self.assertIn('`aou-genomics-curation-prod.foxtrot.vet_083`', sql)
+        self.assertIn(str(vdd.encode_location('chr4', 56_585_001)), sql)
+        self.assertIn(str(vdd.encode_location('chr4', 57_035_000)), sql)
+        self.assertIn('s.withdrawn IS NULL', sql)
+        self.assertIn('s.is_control = false', sql)
+
+    def test_superpartition_is_zero_padded_to_three_digits(self):
+        sql = vdd.adjudication_sql(
+            self.make_rectangle(superpartition=7),
+            project_id='p', dataset_name='d', mode='variants',
+        )
+        self.assertIn('vet_007', sql)
+
+    def test_reference_sql_targets_ref_ranges(self):
+        sql = vdd.adjudication_sql(
+            self.make_rectangle(), project_id='p', dataset_name='d', mode='references',
+        )
+        self.assertIn('ref_ranges_083', sql)
+        self.assertNotIn('vet_083', sql)
+
+    def test_compressed_is_the_default_reference_schema(self):
+        """AoU callsets use the compressed schema, so it must be what you get by default."""
+        sql = vdd.adjudication_sql(
+            self.make_rectangle(), project_id='p', dataset_name='d', mode='references')
+        self.assertIn('packed_ref_data', sql)
+        self.assertNotIn('v.location', sql)
+
+    def test_compressed_reference_sql_filters_on_the_clustering_field(self):
+        """Filtering the decoded location would prune nothing and scan the whole table."""
+        sql = vdd.adjudication_sql(
+            self.make_rectangle(), project_id='p', dataset_name='d',
+            mode='references', reference_schema='compressed')
+        where = [line for line in sql.split('\n') if line.startswith('WHERE')][0]
+        self.assertIn('v.packed_ref_data BETWEEN', where)
+
+    def test_uncompressed_reference_sql_filters_on_location(self):
+        sql = vdd.adjudication_sql(
+            self.make_rectangle(), project_id='p', dataset_name='d',
+            mode='references', reference_schema='uncompressed')
+        where = [line for line in sql.split('\n') if line.startswith('WHERE')][0]
+        self.assertIn('v.location BETWEEN', where)
+        self.assertNotIn('packed_ref_data', sql)
+
+    def test_invalid_reference_schema_raises(self):
+        with self.assertRaises(ValueError):
+            vdd.adjudication_sql(
+                self.make_rectangle(), project_id='p', dataset_name='d',
+                mode='references', reference_schema='squashed')
+
+    def test_header_records_the_vds_side_figures(self):
+        sql = vdd.adjudication_sql(
+            self.make_rectangle(observed=6_750.0),
+            project_id='p', dataset_name='d', mode='variants',
+        )
+        self.assertIn('6,750', sql)
+        self.assertIn('67,500', sql)
+
+    def test_defaults_to_sample_info(self):
+        sql = vdd.adjudication_sql(
+            self.make_rectangle(), project_id='p', dataset_name='d', mode='variants',
+        )
+        self.assertIn('`p.d.sample_info`', sql)
+
+    def test_restricted_sample_universe_reaches_the_join(self):
+        """A partial VDS is screened against a view, and the query must use the same one.
+
+        Both sides of the adjudication have to cover the same samples: the VDS side counts
+        only the samples in the map, so a query joining the full sample_info counts rows for
+        samples the VDS was never asked about, and those surplus rows read as the dropout
+        the query exists to test for.
+        """
+        sql = vdd.adjudication_sql(
+            self.make_rectangle(), project_id='p', dataset_name='d', mode='variants',
+            sample_table='sample_info_new_to_foxtrot',
+        )
+        self.assertIn('`p.d.sample_info_new_to_foxtrot`', sql)
+        self.assertNotIn('`p.d.sample_info`', sql)
+
+    def test_end_is_exclusive(self):
+        """bin_end is exclusive, so the query's upper bound is one position lower."""
+        sql = vdd.adjudication_sql(
+            self.make_rectangle(start=1000, end=2000),
+            project_id='p', dataset_name='d', mode='variants',
+        )
+        self.assertIn(str(vdd.encode_location('chr4', 1999)), sql)
+        self.assertNotIn(str(vdd.encode_location('chr4', 2000)), sql)
+
+    def test_invalid_mode_raises(self):
+        with self.assertRaises(ValueError):
+            vdd.adjudication_sql(
+                self.make_rectangle(), project_id='p', dataset_name='d', mode='nonsense',
+            )
+
+
+class TestPackedRefData(unittest.TestCase):
+    """Bit arithmetic for the compressed ref_ranges schema.
+
+    This is safety-critical in a way most of this module is not: a wrong range predicate
+    returns zero rows, which reads as "BigQuery does not have this data either" and would
+    *confirm* a false conclusion instead of raising an error. So the bounds are checked
+    against an independent reimplementation of UnpackRefRangeInfo rather than against the
+    production decoder.
+    """
+
+    @staticmethod
+    def pack(chromosome: int, position: int, length: int, state: int) -> int:
+        """Independent re-implementation of the packing UnpackRefRangeInfo reverses."""
+        return (chromosome << 48) | (position << 16) | (length << 4) | state
+
+    def test_decode_matches_independent_packing(self):
+        packed = self.pack(4, 56_585_368, 1000, 7)
+        self.assertEqual(vdd.encode_location('chr4', 56_585_368),
+                         vdd.decode_packed_location(packed))
+
+    def test_decode_ignores_length_and_state(self):
+        """Location must not shift as the low bits vary across their whole range."""
+        expected = vdd.encode_location('chr19', 40_097_642)
+        for length, state in ((0, 0), (1000, 7), (0xFFF, 0xF)):
+            packed = self.pack(19, 40_097_642, length, state)
+            self.assertEqual(expected, vdd.decode_packed_location(packed),
+                             msg=f'length={length} state={state}')
+
+    def test_bounds_include_every_low_bit_combination_in_range(self):
+        low, high = vdd.packed_ref_data_bounds('chr4', 56_585_368, 57_035_833)
+        for position in (56_585_368, 56_800_000, 57_035_833):
+            for length, state in ((0, 0), (500, 3), (0xFFF, 0xF)):
+                packed = self.pack(4, position, length, state)
+                self.assertTrue(low <= packed <= high,
+                                msg=f'{position} length={length} state={state}')
+
+    def test_bounds_exclude_positions_outside_the_range(self):
+        low, high = vdd.packed_ref_data_bounds('chr4', 56_585_368, 57_035_833)
+        for position in (56_585_367, 57_035_834, 1, 100_000_000):
+            for length, state in ((0, 0), (0xFFF, 0xF)):
+                packed = self.pack(4, position, length, state)
+                self.assertFalse(low <= packed <= high,
+                                 msg=f'{position} length={length} state={state}')
+
+    def test_bounds_exclude_other_contigs(self):
+        """The chromosome occupies the high bits, so ranges must not bleed across contigs."""
+        low, high = vdd.packed_ref_data_bounds('chr4', 1, 1_000_000)
+        for contig_number in (3, 5, 19, 23, 24):
+            packed = self.pack(contig_number, 500_000, 100, 1)
+            self.assertFalse(low <= packed <= high, msg=f'chr{contig_number}')
+
+    def test_bounds_round_trip_through_the_decoder(self):
+        low, high = vdd.packed_ref_data_bounds('chr19', 40_097_642, 40_646_743)
+        self.assertEqual(vdd.encode_location('chr19', 40_097_642),
+                         vdd.decode_packed_location(low))
+        self.assertEqual(vdd.encode_location('chr19', 40_646_743),
+                         vdd.decode_packed_location(high))
+
+    def test_single_position_range(self):
+        low, high = vdd.packed_ref_data_bounds('chr1', 1000, 1000)
+        self.assertTrue(low <= self.pack(1, 1000, 0, 0) <= high)
+        self.assertTrue(low <= self.pack(1, 1000, 0xFFF, 0xF) <= high)
+        self.assertFalse(low <= self.pack(1, 1001, 0, 0) <= high)
+
+    def test_sex_chromosomes(self):
+        low, high = vdd.packed_ref_data_bounds('chrY', 56_694_638, 56_694_638)
+        self.assertTrue(low <= self.pack(24, 56_694_638, 10, 1) <= high)
+
+    def test_bit_widths_match_the_canonical_encoder(self):
+        """Masks must match SchemaUtils#encodeCompressedRefBlock (SchemaUtils.java:114)."""
+        self.assertEqual(48, vdd.PACKED_CHROMOSOME_SHIFT)
+        self.assertEqual(16, vdd.PACKED_POSITION_SHIFT)
+        self.assertEqual(0xFFFF, vdd.PACKED_CHROMOSOME_MASK)
+        self.assertEqual(0xFFFFFFFF, vdd.PACKED_POSITION_MASK)
+        # Length (12 bits) and state (4 bits) together fill the low 16.
+        self.assertEqual(0xFFFF, vdd.PACKED_LOW_BITS_MASK)
+
+    def test_packed_order_matches_location_order(self):
+        """Why clustering on packed_ref_data prunes a location range at all."""
+        packed = [
+            self.pack(4, 1000, 500, 3), self.pack(4, 2000, 0, 0),
+            self.pack(4, 2000, 4095, 15), self.pack(5, 1, 0, 0),
+            self.pack(19, 40_097_642, 100, 1), self.pack(24, 1, 0, 0),
+        ]
+        self.assertEqual(packed, sorted(packed))
+        locations = [vdd.decode_packed_location(v) for v in packed]
+        self.assertEqual(locations, sorted(locations))
+
+    def test_inverted_range_raises(self):
+        with self.assertRaises(ValueError):
+            vdd.packed_ref_data_bounds('chr4', 2000, 1000)
+
+
+class TestSqlQueryCap(unittest.TestCase):
+    """Generated SQL is capped so a loose threshold cannot bury the real findings.
+
+    A genome-wide scan examines millions of cells. If thresholds prove loose the report
+    could name thousands of rectangles, and generating a query for each produces a file
+    nobody will work through.
+    """
+
+    def test_default_cap_is_sane(self):
+        self.assertGreater(vdd.DEFAULT_MAX_SQL_QUERIES, 1)
+        self.assertLess(vdd.DEFAULT_MAX_SQL_QUERIES, 1000)
+
+    def test_report_still_lists_every_rectangle(self):
+        """The cap applies to SQL only; nothing is hidden from the report itself."""
+        import io
+        summary = build_summary(n_bins=80)
+        for sp in range(1, 40):
+            set_cell(summary, 10 + sp % 20, sp, 0.0)
+        report = vdd.analyze(summary)
+        self.assertGreater(len(report.rectangles), 10)
+        buffer = io.StringIO()
+        vdd.write_report(report, buffer)
+        rows = [l for l in buffer.getvalue().strip().split('\n')[1:] if l.strip()]
+        self.assertEqual(len(report.rectangles), len(rows))
+
+    def test_rectangles_are_ordered_worst_first_so_the_cap_keeps_the_worst(self):
+        summary = build_summary(n_bins=60)
+        for i in range(5, 8):
+            set_cell(summary, i, 83, CELL * 0.40)
+        for i in range(20, 23):
+            set_cell(summary, i, 64, 0.0)
+        report = vdd.analyze(summary)
+        scores = [r.score for r in report.rectangles]
+        self.assertEqual(scores, sorted(scores, reverse=True))
+
+
+class TestScaleFindingsReachTheOutputs(unittest.TestCase):
+    """Through main(), because the failure this guards against was one of plumbing.
+
+    The detection itself always worked. What did not was that a run whose only finding
+    was a depleted superpartition wrote a header-only report, an adjudication file that
+    opened by announcing there was nothing to adjudicate, and exit status 0.
+    """
+
+    def scale_findings_run(self, tmp: str, factor: float) -> tuple[int, str, str]:
+        summary = build_summary(n_bins=30)
+        if factor != 1.0:
+            scale_superpartition(summary, 83, factor)
+        sql_path = os.path.join(tmp, 'adjudicate.sql')
+        scale_path = os.path.join(tmp, 'scale.tsv')
+        status = vdd.main(_argv_for(
+            summary, tmp, mode='variants',
+            report_path=os.path.join(tmp, 'report.tsv'),
+            extra=['--sql-path', sql_path, '--project-id', 'p', '--dataset-name', 'd',
+                   '--scale-findings-path', scale_path]))
+        with open(sql_path) as handle:
+            sql = handle.read()
+        with open(scale_path) as handle:
+            scale = handle.read()
+        return status, sql, scale
+
+    def test_sql_file_does_not_claim_there_is_nothing_to_adjudicate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _, sql, _ = self.scale_findings_run(tmp, 0.20)
+        self.assertNotIn('No candidate dropouts to adjudicate', sql)
+        self.assertIn('NOT clean', sql)
+        self.assertIn("'vet_083'", sql)
+        self.assertIn('INFORMATION_SCHEMA.PARTITIONS', sql)
+
+    def test_scale_findings_file_names_the_superpartition(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            _, _, scale = self.scale_findings_run(tmp, 0.20)
+        rows = scale.strip().split('\n')
+        self.assertEqual(2, len(rows))
+        self.assertEqual('83', rows[1].split('\t')[0])
+
+    def test_fail_on_findings_catches_a_scale_only_run(self):
+        """Nothing else in this run is non-empty, so this is the only gate that can fire."""
+        summary = build_summary(n_bins=30)
+        scale_superpartition(summary, 83, 0.20)
+        with tempfile.TemporaryDirectory() as tmp:
+            status = vdd.main(_argv_for(
+                summary, tmp, mode='variants',
+                report_path=os.path.join(tmp, 'report.tsv'),
+                extra=['--fail-on-findings']))
+        self.assertNotEqual(0, status)
+
+    def test_a_clean_run_still_says_there_is_nothing_to_adjudicate(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            status, sql, scale = self.scale_findings_run(tmp, 1.0)
+        self.assertEqual(0, status)
+        self.assertIn('No candidate dropouts to adjudicate', sql)
+        self.assertEqual(1, len(scale.strip().split('\n')))
+
+
+class TestFileParsing(unittest.TestCase):
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+
+    def write(self, name: str, content: str) -> str:
+        path = os.path.join(self.tmp.name, name)
+        opener = gzip.open if name.endswith('.gz') else open
+        with opener(path, 'wt') as handle:
+            handle.write(content)
+        return path
+
+    SUPERPARTITIONS = 'superpartition\tn_samples\n1\t100\n2\t100\n3\t100\n'
+
+    def test_round_trip(self):
+        sp_path = self.write('sp.tsv', self.SUPERPARTITIONS)
+        summary_path = self.write('summary.tsv', (
+            'contig\tbin_start\tbin_end\tsuperpartition\tobserved\n'
+            'chr1\t1\t50001\t1\t7500\n'
+            'chr1\t1\t50001\t2\t7500\n'
+            'chr1\t1\t50001\t3\t7500\n'
+        ))
+        n_samples = vdd.load_superpartitions(sp_path)
+        summary = vdd.load_summary(summary_path, n_samples)
+        self.assertEqual([1, 2, 3], summary.superpartitions)
+        self.assertEqual([('chr1', 1, 50001)], summary.bins)
+        self.assertEqual([7500.0, 7500.0, 7500.0], list(summary.observed[0]))
+
+    def test_absent_cells_are_zero(self):
+        """Cells missing from the file are the dropout, so they must read as zero."""
+        sp_path = self.write('sp.tsv', self.SUPERPARTITIONS)
+        summary_path = self.write('summary.tsv', (
+            'contig\tbin_start\tbin_end\tsuperpartition\tobserved\n'
+            'chr1\t1\t50001\t1\t7500\n'
+            'chr1\t1\t50001\t3\t7500\n'
+        ))
+        summary = vdd.load_summary(summary_path, vdd.load_superpartitions(sp_path))
+        self.assertEqual(0.0, summary.observed[0][summary.superpartition_position(2)])
+
+    def test_gzipped_inputs_are_read(self):
+        sp_path = self.write('sp.tsv.gz', self.SUPERPARTITIONS)
+        summary_path = self.write('summary.tsv.gz', (
+            'contig\tbin_start\tbin_end\tsuperpartition\tobserved\n'
+            'chr1\t1\t50001\t1\t7500\n'
+        ))
+        summary = vdd.load_summary(summary_path, vdd.load_superpartitions(sp_path))
+        self.assertEqual(1, len(summary.bins))
+
+    def test_undeclared_superpartition_is_an_error(self):
+        """Mismatched inputs would silently corrupt every median, so fail loudly."""
+        sp_path = self.write('sp.tsv', self.SUPERPARTITIONS)
+        summary_path = self.write('summary.tsv', (
+            'contig\tbin_start\tbin_end\tsuperpartition\tobserved\n'
+            'chr1\t1\t50001\t99\t7500\n'
+        ))
+        with self.assertRaises(vdd.SummaryFormatError):
+            vdd.load_summary(summary_path, vdd.load_superpartitions(sp_path))
+
+    def test_bad_header_is_an_error(self):
+        path = self.write('summary.tsv', 'contig\tstart\tend\tsp\tvalue\n')
+        with self.assertRaises(vdd.SummaryFormatError):
+            vdd.load_summary(path, {1: 100})
+
+    def test_inverted_bin_bounds_are_an_error(self):
+        sp_path = self.write('sp.tsv', self.SUPERPARTITIONS)
+        summary_path = self.write('summary.tsv', (
+            'contig\tbin_start\tbin_end\tsuperpartition\tobserved\n'
+            'chr1\t50001\t1\t1\t7500\n'
+        ))
+        with self.assertRaises(vdd.SummaryFormatError):
+            vdd.load_summary(summary_path, vdd.load_superpartitions(sp_path))
+
+    def test_duplicate_superpartition_declaration_is_an_error(self):
+        path = self.write('sp.tsv', 'superpartition\tn_samples\n1\t100\n1\t50\n')
+        with self.assertRaises(vdd.SummaryFormatError):
+            vdd.load_superpartitions(path)
+
+    def test_empty_file_is_an_error(self):
+        path = self.write('sp.tsv', '')
+        with self.assertRaises(vdd.SummaryFormatError):
+            vdd.load_superpartitions(path)
+
+
+class TestReportOutput(unittest.TestCase):
+
+    def test_report_tsv_has_a_row_per_rectangle(self):
+        import io
+        summary = build_summary()
+        for i in range(10, 19):
+            set_cell(summary, i, 83, 0.0)
+        report = vdd.analyze(summary)
+        buffer = io.StringIO()
+        vdd.write_report(report, buffer)
+        lines = buffer.getvalue().strip().split('\n')
+        self.assertEqual(list(vdd.REPORT_COLUMNS), lines[0].split('\t'))
+        self.assertEqual(2, len(lines))
+        self.assertEqual('83', lines[1].split('\t')[4])
+
+    def test_clean_summary_says_so(self):
+        report = vdd.analyze(build_summary())
+        self.assertIn('No candidate dropouts found', vdd.format_summary(report, 'variants'))
+
+    def test_summary_reports_percent_present(self):
+        summary = build_summary()
+        for i in range(10, 19):
+            set_cell(summary, i, 83, CELL * 0.10)
+        report = vdd.analyze(summary)
+        text = vdd.format_summary(report, 'variants')
+        self.assertIn('10.00% present', text)
+
+
+class TestSuperpartitionWidth(unittest.TestCase):
+    """The screen is comparative, so it needs peers to compare against.
+
+    The hazard is specific: at widths where it cannot work it does not fail, it returns no
+    findings -- indistinguishable from a real clean result to anyone reading the report.
+    """
+
+    def test_single_superpartition_is_refused(self):
+        """With one superpartition every residual is 1.0, so nothing can ever be flagged."""
+        summary = build_summary(n_superpartitions=1)
+        for i in range(10, 19):
+            set_cell(summary, i, 1, 0.0)
+        with self.assertRaises(ValueError) as caught:
+            vdd.analyze(summary)
+        self.assertIn('superpartition', str(caught.exception))
+
+    def test_the_refusal_says_why_a_clean_result_would_be_meaningless(self):
+        with self.assertRaises(ValueError) as caught:
+            vdd.analyze(build_summary(n_superpartitions=1))
+        self.assertIn('mean nothing', str(caught.exception))
+
+    def test_a_single_superpartition_would_otherwise_report_clean(self):
+        """What the refusal prevents: the emptied cells produce no finding on their own.
+
+        Run the pipeline stages directly, bypassing the guard, to show that the wholly
+        empty window really does come back unflagged rather than merely unranked.
+        """
+        summary = build_summary(n_superpartitions=1)
+        for i in range(10, 19):
+            set_cell(summary, i, 1, 0.0)
+        baselines = vdd.bin_baseline_rates(summary, vdd.DEFAULT_BASELINE_QUANTILE)
+        scales = vdd.superpartition_scales(summary, baselines)
+        cells, _, _, _ = vdd.flag_cells(summary, baselines, scales)
+        self.assertEqual([], cells)
+
+    def test_two_superpartitions_still_find_a_total_dropout(self):
+        """The floor is two, not three: a total loss is detectable as soon as a peer exists."""
+        summary = build_summary(n_superpartitions=2)
+        for i in range(10, 19):
+            set_cell(summary, i, 2, 0.0)
+        report = vdd.analyze(summary)
+        self.assertEqual([2], [r.superpartition for r in report.rectangles])
+
+    def test_two_superpartitions_miss_a_partly_depleted_window(self):
+        """Why two is the floor and not the recommendation.
+
+        The dropped superpartition is one of the two values the quantile interpolates
+        between, so it deflates its own baseline. A cell retaining 45% of its data scores
+        0.45 / (0.75 + 0.25 * 0.45) = 0.52, above the ratio threshold, and no finding is
+        produced. The cutoff moves from "retains less than 50%" to "retains less than 43%".
+        """
+        summary = build_summary(n_superpartitions=2)
+        for i in range(10, 19):
+            set_cell(summary, i, 2, CELL * 0.45)
+        self.assertEqual([], vdd.analyze(summary).rectangles)
+
+    def test_a_wider_summary_finds_the_same_partly_depleted_window(self):
+        """The same depletion at full width, to show the miss above is about width alone.
+
+        Here the dropped superpartition is one of 134, so it cannot move the quantile and
+        the cell is judged on its true ratio of 0.45.
+        """
+        summary = build_summary()
+        for i in range(10, 19):
+            set_cell(summary, i, 83, CELL * 0.45)
+        report = vdd.analyze(summary)
+        self.assertEqual([83], [r.superpartition for r in report.rectangles])
+
+    def test_narrow_summaries_warn(self):
+        self.assertLess(vdd.MIN_SUPERPARTITIONS, vdd.RECOMMENDED_SUPERPARTITIONS)
+
+
+if __name__ == '__main__':
+    unittest.main()

@@ -429,6 +429,75 @@ Note that a redacted file and its working counterpart tend to drift apart. Where
 both are needed, keep the redacted one as the file that is edited, and treat any
 real-ID version as a throwaway.
 
+# WDL Conventions
+
+## Heredocs in command blocks
+
+Cromwell dedents a `command <<< >>>` block by the leading whitespace common to every
+non-blank line in it. So a single line at column zero -- a wrapped string, a
+pasted comment -- drops that common prefix to nothing, nothing is stripped, and
+the indentation the block was written with reaches bash intact.
+
+Two things have to survive that dedent:
+
+1. the terminator must land at column zero, or bash reads to end of file. This
+   holds for every heredoc, whatever it feeds;
+2. where the heredoc feeds an interpreter that rejects leading whitespace on its
+   input -- in this repo that means inline Python -- the body must land at
+   column zero too, or that interpreter is handed input indented by whatever the
+   dedent failed to strip. A heredoc feeding `cat`, SQL, R or `yq` gets its body
+   as data and does not care what column it arrives at, so only the first rule
+   applies to those.
+
+The first case fails loudly at task execution: `unexpected end of file`
+reported at the generated script's last line, nowhere near the cause, and only
+once the task runs in the cloud. `womtool validate` passes throughout, because a
+command block is just a string to it.
+
+The second case is quieter, and it is what the obvious repair for the first produces
+-- outdent the terminator so bash is satisfied, leave the body alone. `bash -n`
+then passes, since the terminator really is where bash wants it, so the script
+runs and the inline Python fails on its own input instead: `IndentationError:
+unexpected indent` at `"<stdin>", line 1`. The interpreter is reading the
+heredoc on stdin and counts from the first line of it, so that report names
+neither the WDL, nor the task, nor the real line.
+
+Two conventions reach column zero and both are fine: indent the terminator with
+the rest of the block and let the dedent strip it, or write it at column zero and
+accept that the block is then never dedented at all. What fails is mixing them.
+The choice is not free for a whitespace-sensitive body, though, because that body
+has to agree with its own terminator -- which is why the second convention forces
+inline Python against the left margin wherever this repo uses it.
+
+Check before handing over a WDL:
+
+```shell
+scripts/variantstore/scripts/check-wdl-heredocs              # the variantstore tree
+scripts/variantstore/scripts/check-wdl-heredocs FILE...      # just these
+scripts/variantstore/scripts/check-wdl-heredocs --strict     # fail on FRAGILE too
+```
+
+The script does two things, and the second is not implied by its name. It flags
+heredocs that will not survive the dedent, and it compiles the body of any
+heredoc feeding a Python interpreter. Nothing else in the toolchain parses that
+code: CI runs the Python unit tests and no linter, and a linter would not reach
+this body in any case, since it is a string inside a `.wdl`. `womtool validate`
+treats the command block as exactly that. So a missing colon in an embedded
+script is otherwise found by running it on a cluster. WDL interpolations are stubbed out before
+compiling, which makes the check structural -- it will not catch a `~{...}` that
+interpolates to something Python cannot parse. It exits non-zero on a broken
+block. `test/test_check_wdl_heredocs.py` runs it over every WDL under
+`scripts/variantstore` as part of the Python unit tests, so CI enforces this.
+
+"FRAGILE" means only that a block is never dedented, so it works today but breaks
+the moment a heredoc whose terminator is indented with the block is added next to
+it. Two blocks in the tree are in that state deliberately and need no action.
+
+Like `reflow-md` and `check-us-spelling`, this script is deliberately
+extensionless so that the Dockerfile's `COPY *.py /app/` leaves it out of the
+Variants image and out of the rebuild-and-bump obligation. Do not rename it to
+`check_wdl_heredocs.py`.
+
 # Documentation Conventions
 
 ## Markdown tables must be rectangular
@@ -453,6 +522,34 @@ and never touches content inside fenced code blocks.
 Some existing docs predate this and are still ragged. Only format files you are
 already modifying; reformatting untouched docs adds diff noise that obscures the
 actual change.
+
+## US English spelling
+
+This codebase is US English. British forms slip in easily and are invisible in
+review, since nothing is functionally wrong. Check before handing over prose:
+
+```shell
+scripts/variantstore/scripts/check-us-spelling <file-or-dir>...   # report; exit 1 if found
+scripts/variantstore/scripts/check-us-spelling --fix <file>...    # rewrite in place
+```
+
+It uses an explicit word list rather than an `-ise` suffix rule, because "analysis",
+"optimistic", "premise" and "exercise" are all correct US English and a checker that flags
+them gets ignored. Only the verb shifts: `analyse` becomes `analyze` while `analysis` stays
+put. Adding a word is a one-line edit to the tables in the script.
+
+Files that legitimately contain British spellings — the word list itself, its test
+fixtures, a document quoting them — opt out with `check-us-spelling: disable` anywhere in
+the file, or `check-us-spelling: ok` on a single line. Both are honored by `--fix`, so an
+exempt file is never rewritten.
+
+Identifiers are deliberately out of scope: word boundaries treat underscore as a word
+character, so `n_behaviour_flags` is not reported. Renaming an identifier here but not at
+its definition elsewhere would turn a spelling nit into broken code.
+
+Like `reflow-md`, this script is deliberately extensionless so that the Dockerfile's
+`COPY *.py /app/` leaves it out of the Variants image and out of the rebuild-and-bump
+obligation. Do not rename it to `check_us_spelling.py`.
 
 # Code Review Conventions
 

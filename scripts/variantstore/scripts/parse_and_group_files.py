@@ -29,7 +29,7 @@ def _validate_table_prefixes(superpartitioned_table_prefixes, regular_table_pref
     Raise ValueError if any prefix does not match '^[a-zA-Z][A-Za-z0-9_]+$'.
 
     Prefixes are embedded in SQL queries and regex patterns, so invalid values
-    could produce malformed queries or silently incorrect behaviour.
+    could produce malformed queries or silently incorrect behavior.
     """
     invalid = [
         p for p in (superpartitioned_table_prefixes + regular_table_prefixes)
