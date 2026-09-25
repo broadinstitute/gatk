@@ -1,11 +1,13 @@
 import hashlib
 import os
+import tempfile
 import unittest
 
 import check_vcf_headers as cvh
 
 PROJECT = "test-project"
 DATASET = "test_dataset"
+NAMES_TABLE = f"{PROJECT}.{DATASET}.header_validation_sample_names_deadbeef"
 
 
 def _norm(sql):
@@ -52,6 +54,73 @@ class TestSqlBuilders(unittest.TestCase):
     def test_shared_blob_distribution_is_false_blob(self):
         sql = _norm(cvh.shared_blob_distribution_sql(PROJECT, DATASET))
         self.assertIn("is_expected_unique = FALSE", sql)
+
+    def test_unrestricted_sql_mentions_no_names_table(self):
+        """With no sample names file the queries must be exactly the whole-dataset ones."""
+        for sql in (cvh.per_sample_summary_sql(PROJECT, DATASET),
+                    cvh.dragen_version_breakdown_sql(PROJECT, DATASET),
+                    cvh.orphan_hash_sql(PROJECT, DATASET),
+                    cvh.shared_blob_distribution_sql(PROJECT, DATASET)):
+            self.assertNotIn(NAMES_TABLE, sql)
+
+    def test_every_query_is_restricted_to_the_staged_names(self):
+        """VS-1995: --sample_names_file must narrow ALL four checks, not just the cohort rollup.
+
+        A query left unrestricted would fail the current batch on an earlier batch's problem, which
+        is the whole reason the option exists.
+        """
+        semi_join = f"IN (SELECT sample_name FROM `{NAMES_TABLE}`)"
+        for sql in (cvh.per_sample_summary_sql(PROJECT, DATASET, NAMES_TABLE),
+                    cvh.dragen_version_breakdown_sql(PROJECT, DATASET, NAMES_TABLE)):
+            self.assertIn(semi_join, _norm(sql))
+        # sample_vcf_header has no sample_name, so these two resolve names through sample_info.
+        for sql in (cvh.orphan_hash_sql(PROJECT, DATASET, NAMES_TABLE),
+                    cvh.shared_blob_distribution_sql(PROJECT, DATASET, NAMES_TABLE)):
+            normalized = _norm(sql)
+            self.assertIn(semi_join, normalized)
+            self.assertIn(f"svh.sample_id IN ( SELECT si.sample_id FROM `{PROJECT}.{DATASET}.sample_info` si",
+                          normalized)
+
+    def test_restriction_keeps_the_cohort_filter(self):
+        """Restricting by name must not become a way around is_control / withdrawn."""
+        for sql in (cvh.per_sample_summary_sql(PROJECT, DATASET, NAMES_TABLE),
+                    cvh.dragen_version_breakdown_sql(PROJECT, DATASET, NAMES_TABLE),
+                    cvh.orphan_hash_sql(PROJECT, DATASET, NAMES_TABLE),
+                    cvh.shared_blob_distribution_sql(PROJECT, DATASET, NAMES_TABLE)):
+            normalized = _norm(sql)
+            self.assertIn("is_control = FALSE", normalized)
+            self.assertIn("withdrawn IS NULL", normalized)
+
+    def test_bad_names_table_raises_before_building_sql(self):
+        for bad in ("no_dots", "proj.dataset", "proj.dataset.tbl`; DROP TABLE x --", "p.d.t extra"):
+            with self.assertRaises(ValueError):
+                cvh.per_sample_summary_sql(PROJECT, DATASET, bad)
+
+
+class TestReadSampleNames(unittest.TestCase):
+    """--sample_names_file parsing. A FOFN always ends in a newline, so blank-line handling is not
+    an edge case here, it is the normal case."""
+
+    def _write(self, text):
+        handle = tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False)
+        handle.write(text)
+        handle.close()
+        self.addCleanup(os.unlink, handle.name)
+        return handle.name
+
+    def test_reads_names_dropping_blanks_and_whitespace(self):
+        path = self._write("sample_1\n  sample_2  \n\nsample_3\n")
+        self.assertEqual(cvh.read_sample_names(path), ["sample_1", "sample_2", "sample_3"])
+
+    def test_deduplicates_preserving_order(self):
+        path = self._write("b\na\nb\n")
+        self.assertEqual(cvh.read_sample_names(path), ["b", "a"])
+
+    def test_empty_file_raises(self):
+        # Validating nothing must not look like a clean cohort.
+        for content in ("", "\n\n   \n"):
+            with self.assertRaises(ValueError):
+                cvh.read_sample_names(self._write(content))
 
 
 class TestTripletParsing(unittest.TestCase):
@@ -387,6 +456,26 @@ class TestEvaluate(unittest.TestCase):
         self.assertTrue(ok)
         self.assertFalse(self._names(checks)['shared_blob_distribution'].fatal)
 
+    def test_requested_samples_all_matched_passes(self):
+        ok, checks = cvh.evaluate(_summary(), _DRAGEN_378, _NO_ORPHANS, _ONE_BLOB,
+                                  expected_dragen_version='3.7.8', requested_samples=3)
+        self.assertTrue(ok, [(c.name, c.passed) for c in checks])
+        self.assertTrue(self._names(checks)['requested_samples_present'].passed)
+
+    def test_requested_sample_missing_from_sample_info_fails(self):
+        """VS-1995: 4 names requested, 3 eligible samples found. Without this check the shortfall is
+        invisible -- every other check would measure the 3 that matched and report a clean pass."""
+        ok, checks = cvh.evaluate(_summary(), _DRAGEN_378, _NO_ORPHANS, _ONE_BLOB,
+                                  expected_dragen_version='3.7.8', requested_samples=4)
+        self.assertFalse(ok)
+        check = self._names(checks)['requested_samples_present']
+        self.assertFalse(check.passed)
+        self.assertTrue(check.fatal)
+
+    def test_requested_samples_check_absent_when_unrestricted(self):
+        _, checks = cvh.evaluate(_summary(), _DRAGEN_378, _NO_ORPHANS, _ONE_BLOB)
+        self.assertNotIn('requested_samples_present', self._names(checks))
+
     def test_report_renders(self):
         ok, checks = cvh.evaluate(_summary(samples_not_reblocked=1, example_not_reblocked=['S2']),
                                   _DRAGEN_378, _NO_ORPHANS, _ONE_BLOB, expected_dragen_version='3.7.8')
@@ -394,6 +483,16 @@ class TestEvaluate(unittest.TestCase):
         self.assertIn("OVERALL: FAIL", report)
         self.assertIn("[FAIL] reblocking", report)
         self.assertIn("[INFO] shared_blob_distribution", report)
+
+    def test_report_states_the_scope(self):
+        """The report is the failure message the workflow aborts with, so it has to say whether a
+        pass covered the whole dataset or only the requested batch."""
+        ok, checks = cvh.evaluate(_summary(), _DRAGEN_378, _NO_ORPHANS, _ONE_BLOB)
+        self.assertIn("Scope: whole dataset", cvh.compose_report(PROJECT, DATASET, None, ok, checks))
+
+        ok, checks = cvh.evaluate(_summary(), _DRAGEN_378, _NO_ORPHANS, _ONE_BLOB, requested_samples=3)
+        self.assertIn("Scope: 3 requested sample name(s)",
+                      cvh.compose_report(PROJECT, DATASET, None, ok, checks, requested_samples=3))
 
 
 @unittest.skipUnless(
@@ -442,6 +541,7 @@ class TestValidateIntegration(unittest.TestCase):
             cls.client.query(probe).result()
         except Exception as err:  # noqa: BLE001 -- any backend limitation should skip, not fail
             raise unittest.SkipTest(f"BigQuery backend lacks required SQL features; skipping: {err}")
+
 
     def _fq(self, table):
         return f"{self.project}.{self.dataset}.{table}"
@@ -550,6 +650,91 @@ class TestValidateIntegration(unittest.TestCase):
         by_name = {c.name: c for c in checks}
         self.assertFalse(by_name['dragen_version'].passed)
         self.assertTrue(by_name['reblocking'].passed)
+
+    def _stage_names(self, names):
+        """Build the sample names table with plain SQL and return its path.
+
+        Production stages it with a BigQuery load job (``stage_sample_names_table``), which scales to
+        an AoU-sized batch but which the emulator does not implement. Building the same table by DDL
+        keeps the restricted queries themselves under test on every backend.
+        """
+        table = self._fq("staged_sample_names")
+        values = ", ".join(f"('{name}')" for name in names)
+        self._run(f"CREATE OR REPLACE TABLE `{table}` (sample_name STRING)")
+        self._run(f"INSERT INTO `{table}` (sample_name) VALUES {values}")
+        self.addCleanup(lambda: self._run(f"DROP TABLE IF EXISTS `{table}`"))
+        return table
+
+    def _run_restricted(self, names, expected_dragen_version='3.7.8'):
+        summary, dragen_rows, orphan, blob_rows = cvh.run_queries(
+            self.client, self.project, self.dataset, self._stage_names(names))
+        return cvh.evaluate(summary, dragen_rows, orphan, blob_rows, expected_dragen_version,
+                            requested_samples=len(names))
+
+    def test_restriction_ignores_a_sample_outside_the_batch(self):
+        """VS-1995: sample_2 is an earlier batch's problem -- wrong DRAGEN triplet and not reblocked.
+
+        Unrestricted, it fails the run. Restricted to the batch actually being ingested it must not,
+        which is the behaviour GvsBulkIngestGenomes depends on for an incremental ingest.
+        """
+        self._create_tables()
+        self._load_cohort({
+            1: [(self.BLOB, False), (self.DRAGEN_378, True), (self.REBLOCK, True)],
+            2: [(self.BLOB, False), (self.DRAGEN_3412, True)],
+        })
+        ok, checks = self._run_restricted(['sample_1'])
+        self.assertTrue(ok, cvh.compose_report(self.project, self.dataset, '3.7.8', ok, checks,
+                                               requested_samples=1))
+        by_name = {c.name: c for c in checks}
+        self.assertEqual(by_name['samples_present'].lines[0].split(': ')[-1], '1')
+
+        ok_whole_dataset, _ = cvh.run_checks(self.project, self.dataset,
+                                             expected_dragen_version='3.7.8', client=self.client)
+        self.assertFalse(ok_whole_dataset)
+
+    def test_restriction_fails_on_a_name_with_no_sample_info_row(self):
+        """A requested name that ingest never assigned an id must fail, not shrink the cohort."""
+        self._create_tables()
+        self._load_cohort({
+            1: [(self.BLOB, False), (self.DRAGEN_378, True), (self.REBLOCK, True)],
+        })
+        ok, checks = self._run_restricted(['sample_1', 'never_ingested'])
+        self.assertFalse(ok)
+        by_name = {c.name: c for c in checks}
+        self.assertFalse(by_name['requested_samples_present'].passed)
+        # The one sample that did land is healthy, so nothing else should have tripped.
+        self.assertTrue(by_name['reblocking'].passed)
+        self.assertTrue(by_name['dragen_version'].passed)
+
+    def test_restriction_narrows_the_orphan_and_blob_queries_too(self):
+        """Those two are keyed on sample_id, not sample_name, so they take a different code path.
+
+        sample_2 is outside the batch and carries both an orphan association and a second shared
+        blob; neither may show up in the restricted run.
+        """
+        self._create_tables()
+        self._load_cohort({
+            1: [(self.BLOB, False), (self.DRAGEN_378, True), (self.REBLOCK, True)],
+            2: [('##fileformat=VCFv4.2 ##contig=<ID=chr2>', False), (self.DRAGEN_378, True),
+                (self.REBLOCK, True)],
+        })
+        # An association from the out-of-batch sample to a hash with no vcf_header_lines row.
+        self._run(f"INSERT INTO `{self._fq('sample_vcf_header')}` "
+                  "(sample_id, vcf_header_lines_hash) VALUES (2, 'no_such_hash')")
+
+        ok, checks = self._run_restricted(['sample_1'])
+        by_name = {c.name: c for c in checks}
+        self.assertTrue(ok, cvh.compose_report(self.project, self.dataset, '3.7.8', ok, checks,
+                                               requested_samples=1))
+        self.assertIn("associations (no matching vcf_header_lines row): 0",
+                      by_name['referential_integrity'].lines[0])
+        self.assertIn("1", by_name['shared_blob_distribution'].lines[0])
+
+        # ... and the same dataset fails unrestricted, proving the restriction is what suppressed it.
+        summary, dragen_rows, orphan, blob_rows = cvh.run_queries(
+            self.client, self.project, self.dataset)
+        self.assertGreater(orphan['orphan_associations'], 0)
+        self.assertEqual(len(blob_rows), 2)
 
     @classmethod
     def tearDownClass(cls):

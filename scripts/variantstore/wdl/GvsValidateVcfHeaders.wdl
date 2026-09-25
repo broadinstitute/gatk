@@ -1,13 +1,12 @@
 version 1.0
 
-# VS-1966: Validate the VCF headers ingested during a headers-only GVS ingest, as an early
+# VS-1966 / VS-1995: Validate the VCF headers ingested during a headers-only GVS ingest, as an early
 # fail-fast sanity check of the input gVCFs *before* the expensive vet/ref data ingest.
 #
-# Operational model (see scripts/variantstore/docs/parquet/header_loading_design.md and
-# scripts/variantstore/docs/aou/AOU_DELIVERABLES.md): run GvsBulkIngestGenomes / GvsImportGenomes
-# once with load_vcf_headers=true / load_vet_and_ref_ranges=false to load only headers, then run
-# this workflow to validate them, and only if it passes proceed with the data ingest. This
-# automates the manual DRAGEN-version query that AoU previously ran by hand.
+# Operational model: by default GvsBulkIngestGenomes and GvsJointVariantCalling automatically run an
+# initial headers pass, call this workflow to validate them, and proceed to vet/ref data ingest only
+# if validation passes. This workflow can also be run standalone against any existing dataset to
+# validate headers or verify consistency across an incremental batch of samples.
 import "GvsUtils.wdl" as Utils
 
 workflow GvsValidateVcfHeaders {
@@ -20,6 +19,7 @@ workflow GvsValidateVcfHeaders {
         Boolean go = true
         String dataset_name
         String project_id
+        File? sample_names_file
         String? expected_dragen_version
         Boolean require_reblocking = true
         Boolean fail_on_validation_errors = true
@@ -35,6 +35,9 @@ workflow GvsValidateVcfHeaders {
         }
         project_id: {
             help: "Google project for the GVS dataset."
+        }
+        sample_names_file: {
+            help: "Optional text file containing sample names (one per line) to restrict validation to (e.g. the current ingest batch). When provided, only these samples are checked; when omitted, all non-control, non-withdrawn samples in the dataset are validated."
         }
         expected_dragen_version: {
             help: "Optional expected DRAGEN version. A single triplet, e.g. '3.7.8', requires every sample to match it exactly (AoU); a range requires every sample's triplet to fall within it. Ranges accept interval notation: '3.4.12-3.7.8' (both inclusive), '[3.7.8-3.8)' (inclusive-exclusive), '(3.7-3.8)' (both exclusive). Bounds compare positionally, so an inclusive two-component upper bound is not 'all of that minor' -- '3.7.8-3.8' excludes 3.8.1; use the exclusive form '3.7.8-3.8)' for 'everything below 3.8'. If unset, only cross-sample consistency is enforced."
@@ -61,6 +64,7 @@ workflow GvsValidateVcfHeaders {
         input:
             dataset_name = dataset_name,
             project_id = project_id,
+            sample_names_file = sample_names_file,
             expected_dragen_version = expected_dragen_version,
             require_reblocking = require_reblocking,
             variants_docker = effective_variants_docker,
@@ -88,6 +92,7 @@ task ValidateVcfHeaders {
     input {
         String dataset_name
         String project_id
+        File? sample_names_file
         String? expected_dragen_version
         Boolean require_reblocking = true
         String variants_docker
@@ -110,9 +115,13 @@ task ValidateVcfHeaders {
         # metacharacters -- e.g. unquoted '(3.7-3.8)' is a bash syntax error. Cromwell does not quote
         # interpolated values, so the quotes must be inside the placeholder. The whole placeholder
         # still drops to an empty string when this optional input is undefined.
+        # With --sample_names_file the script stages the names in a short-lived table in the dataset
+        # under validation (dropped on the way out, and expiring after 12 hours if this task dies
+        # first), so it needs the same BigQuery write access the ingest it follows already has.
         python3 /app/check_vcf_headers.py \
             --project_id ~{project_id} \
             --dataset_name ~{dataset_name} \
+            ~{"--sample_names_file " + sample_names_file} \
             ~{"--expected_dragen_version '" + expected_dragen_version + "'"} \
             ~{if require_reblocking then "" else "--allow_non_reblocked"} \
             --pass_file_output pass.txt \

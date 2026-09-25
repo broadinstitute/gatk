@@ -218,6 +218,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - ng_vs_1995_header_checks_before_ingest
          tags:
              - /.*/
    - name: GvsBulkIngestGenomes
@@ -227,6 +228,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - ng_vs_1995_header_checks_before_ingest
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
@@ -349,6 +351,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - ng_vs_1995_header_checks_before_ingest
          tags:
              - /.*/
    - name: GvsIngestTieout
