@@ -77,9 +77,12 @@ class TestStockoutDetection(unittest.TestCase):
             'Error Code: UNAVAILABLE, errorSource: COMPUTE_ENGINE'))
 
 
-# The us-central1-b failure that followed a genuine stockout in us-central1-a: a capacity
-# shortfall that Dataproc reports as a node timeout and attributes to firewall rules.
-REAL_PARTIAL_CAPACITY = (
+# Nodes that never joined the cluster. Dataproc reports this as a node timeout and blames
+# firewall rules, and it does so identically whether the cause is a zone shortage (the
+# us-central1-b failure that followed a genuine stockout in us-central1-a) or a startup
+# race with no capacity component (vds-cluster-62a5e713-f743, 2026-09-24, where all VMs
+# were created and one worker simply lost a DNS race with the master).
+REAL_INCOMPLETE_CLUSTER = (
     "ERROR: (gcloud.dataproc.clusters.create) Operation "
     "[projects/terra-40d6b12d/regions/us-central1/operations/110baf15] failed: "
     "Cannot start master: Timed out waiting for 2 nodes. This usually happens when VM to "
@@ -89,31 +92,41 @@ REAL_PARTIAL_CAPACITY = (
 )
 
 
-class TestPartialCapacityDetection(unittest.TestCase):
-    """A zone that can provide some but not all requested workers never says STOCKOUT."""
+class TestIncompleteClusterDetection(unittest.TestCase):
+    """A cluster whose nodes did not all join never says STOCKOUT."""
 
-    def test_recognizes_the_real_partial_capacity_error(self):
-        self.assertTrue(runner.looks_like_partial_capacity(REAL_PARTIAL_CAPACITY))
+    def test_recognizes_the_real_incomplete_cluster_error(self):
+        self.assertTrue(runner.looks_like_incomplete_cluster(REAL_INCOMPLETE_CLUSTER))
 
     def test_is_not_confused_with_a_stockout(self):
         """They are separate categories so the log can say which one occurred."""
-        self.assertFalse(runner.looks_like_stockout(REAL_PARTIAL_CAPACITY))
-        self.assertFalse(runner.looks_like_partial_capacity(REAL_STOCKOUT))
+        self.assertFalse(runner.looks_like_stockout(REAL_INCOMPLETE_CLUSTER))
+        self.assertFalse(runner.looks_like_incomplete_cluster(REAL_STOCKOUT))
 
     def test_both_categories_are_retryable(self):
-        for output in (REAL_STOCKOUT, REAL_PARTIAL_CAPACITY):
+        for output in (REAL_STOCKOUT, REAL_INCOMPLETE_CLUSTER):
             self.assertIsNotNone(runner.retry_reason(output))
 
     def test_retry_reason_explains_which_happened(self):
         self.assertIn('out of capacity', runner.retry_reason(REAL_STOCKOUT))
         self.assertIn('all requested nodes',
-                      runner.retry_reason(REAL_PARTIAL_CAPACITY))
+                      runner.retry_reason(REAL_INCOMPLETE_CLUSTER))
 
-    def test_partial_capacity_reason_mentions_the_firewall_alternative(self):
-        """If every zone fails this way it really is networking, and the log should say so."""
-        self.assertIn('firewall', runner.retry_reason(REAL_PARTIAL_CAPACITY))
+    def test_incomplete_cluster_reason_mentions_the_firewall_alternative(self):
+        """If every attempt fails this way it really is networking, and the log should say so."""
+        self.assertIn('firewall', runner.retry_reason(REAL_INCOMPLETE_CLUSTER))
 
-    def test_bare_master_failure_is_not_called_a_capacity_shortage(self):
+    def test_incomplete_cluster_reason_does_not_assert_a_capacity_cause(self):
+        """The same message has been seen for a shortage and for a startup race.
+
+        Naming one of them in the log sent the reader to the wrong place, which is the
+        mistake the firewall sentence in Dataproc's own message already makes.
+        """
+        reason = runner.retry_reason(REAL_INCOMPLETE_CLUSTER)
+        self.assertIn('startup race', reason)
+        self.assertNotIn('the zone could not provide', reason)
+
+    def test_bare_master_failure_is_not_called_an_incomplete_cluster(self):
         """An init action or a bad --packages install kills the master in every zone.
 
         Retrying is still the right call -- a create attempt per zone is cheap against
@@ -123,16 +136,16 @@ class TestPartialCapacityDetection(unittest.TestCase):
         bare = ("ERROR: (gcloud.dataproc.clusters.create) Operation failed: "
                 "Cannot start master: Initialization action failed. "
                 "Failed action 'gs://bucket/init.sh'.")
-        self.assertFalse(runner.looks_like_partial_capacity(bare))
+        self.assertFalse(runner.looks_like_incomplete_cluster(bare))
         self.assertTrue(runner.looks_like_unexplained_master_failure(bare))
         self.assertIsNotNone(runner.retry_reason(bare))
         self.assertIn('does not say why', runner.retry_reason(bare))
 
-    def test_real_capacity_error_keeps_its_own_explanation(self):
+    def test_incomplete_cluster_error_keeps_its_own_explanation(self):
         """It names the master too, so the narrower reading must win."""
         self.assertFalse(
-            runner.looks_like_unexplained_master_failure(REAL_PARTIAL_CAPACITY))
-        self.assertIn('all requested nodes', runner.retry_reason(REAL_PARTIAL_CAPACITY))
+            runner.looks_like_unexplained_master_failure(REAL_INCOMPLETE_CLUSTER))
+        self.assertIn('all requested nodes', runner.retry_reason(REAL_INCOMPLETE_CLUSTER))
 
     def test_unrelated_failures_are_still_not_retried(self):
         for message in (
@@ -185,9 +198,9 @@ class TestClientCrashDetection(unittest.TestCase):
     def test_is_a_separate_category_from_capacity_failures(self):
         """Three distinct recovery strategies, so the categories must not overlap."""
         self.assertFalse(runner.looks_like_client_crash(REAL_STOCKOUT))
-        self.assertFalse(runner.looks_like_client_crash(REAL_PARTIAL_CAPACITY))
+        self.assertFalse(runner.looks_like_client_crash(REAL_INCOMPLETE_CLUSTER))
         self.assertFalse(runner.looks_like_stockout(REAL_CLIENT_CRASH))
-        self.assertFalse(runner.looks_like_partial_capacity(REAL_CLIENT_CRASH))
+        self.assertFalse(runner.looks_like_incomplete_cluster(REAL_CLIENT_CRASH))
 
     def test_reattach_budget_is_bounded_and_nonzero(self):
         self.assertGreater(runner.JOB_REATTACH_ATTEMPTS, 1)
@@ -325,12 +338,47 @@ class TestZoneResolution(unittest.TestCase):
         )
 
 
+class TestAttemptPlacements(unittest.TestCase):
+    """How the zone list becomes the ordered sequence of create attempts."""
+
+    def test_each_zone_is_attempted_the_configured_number_of_times(self):
+        self.assertEqual(['a', 'a', 'b', 'b'],
+                         runner.attempt_placements(['a', 'b'], 2))
+
+    def test_a_zone_is_exhausted_before_the_next_is_tried(self):
+        """Consecutive, not round robin.
+
+        A startup race is fixed by trying again anywhere, so there is no reason to pay a
+        zone change for it; a shortage is fixed only by moving, and burning the second
+        attempt where we are costs one failed create before we do.
+        """
+        self.assertEqual(['a', 'a', 'a', 'b', 'b', 'b'],
+                         runner.attempt_placements(['a', 'b'], 3))
+
+    def test_no_zones_configured_still_gets_its_retries(self):
+        """The case that matters most: GvsCreateVDS.wdl passes no --zones.
+
+        Before the attempt budget existed this was a single attempt with no retry, so the
+        one workflow most likely to hit a transient create failure was the one that could
+        not recover from it.
+        """
+        self.assertEqual([None, None], runner.attempt_placements([None], 2))
+
+    def test_one_attempt_per_zone_disables_retrying_at_a_placement(self):
+        self.assertEqual(['a', 'b'], runner.attempt_placements(['a', 'b'], 1))
+
+    def test_a_nonsense_attempt_count_still_attempts_once(self):
+        for count in (0, -1):
+            self.assertEqual(['a'], runner.attempt_placements(['a'], count))
+
+
 class TestRetryPolicy(unittest.TestCase):
     """The decision table the retry loop implements, stated directly."""
 
     @staticmethod
-    def should_retry(output, index, zones):
-        return index + 1 < len(zones) and runner.retry_reason(output) is not None
+    def should_retry(output, index, zones, attempts_per_zone=1):
+        placements = runner.attempt_placements(zones, attempts_per_zone)
+        return index + 1 < len(placements) and runner.retry_reason(output) is not None
 
     def test_retries_a_stockout_while_zones_remain(self):
         zones = ['a', 'b', 'c']
@@ -343,12 +391,25 @@ class TestRetryPolicy(unittest.TestCase):
     def test_does_not_retry_a_non_capacity_failure(self):
         self.assertFalse(self.should_retry('PERMISSION_DENIED', 0, ['a', 'b', 'c']))
 
-    def test_retries_partial_capacity_too(self):
-        self.assertTrue(self.should_retry(REAL_PARTIAL_CAPACITY, 0, ['a', 'b', 'c']))
+    def test_retries_an_incomplete_cluster_too(self):
+        self.assertTrue(self.should_retry(REAL_INCOMPLETE_CLUSTER, 0, ['a', 'b', 'c']))
 
-    def test_single_attempt_when_no_zones_configured(self):
-        """Preserves today's behavior for callers that pass no zones."""
-        self.assertFalse(self.should_retry(REAL_STOCKOUT, 0, [None]))
+    def test_retries_without_zones_when_a_budget_allows_it(self):
+        """No --zones no longer means no retry.
+
+        The failure that motivated this was an incomplete cluster caused by a DNS startup
+        race, where every zone would have failed identically and only trying again helped.
+        """
+        self.assertTrue(
+            self.should_retry(REAL_INCOMPLETE_CLUSTER, 0, [None], attempts_per_zone=2))
+
+    def test_the_budget_is_still_finite_without_zones(self):
+        self.assertFalse(
+            self.should_retry(REAL_INCOMPLETE_CLUSTER, 1, [None], attempts_per_zone=2))
+
+    def test_a_single_attempt_budget_preserves_the_old_behavior(self):
+        self.assertFalse(
+            self.should_retry(REAL_STOCKOUT, 0, [None], attempts_per_zone=1))
 
 
 if __name__ == '__main__':
