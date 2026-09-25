@@ -400,8 +400,9 @@ public enum TranscriptSelectionMode {
             byTranscriptLength = new ComparatorByTranscriptSequenceLength();
             byTranscriptName = new ComparatorByTranscriptName();
 
-            // Always start with the user transcript comparator
-            chainedComparator = byUserTranscript;
+            // Always start with the user transcript comparator, IGR status, and variant classification
+            chainedComparator = byUserTranscript.thenComparing(byIgrStatus)
+                    .thenComparing(byVariantClassification);
 
             // Next highest level of priority is MANE transcripts if the user has specified this preference
             if(preferMANETranscripts) {
@@ -409,9 +410,7 @@ public enum TranscriptSelectionMode {
             }
 
             // Add the rest of the BEST_EFFECT comparators
-            chainedComparator = chainedComparator.thenComparing(byIgrStatus)
-                    .thenComparing(byVariantClassification)
-                    .thenComparing(byProteinCodingStatus)
+            chainedComparator = chainedComparator.thenComparing(byProteinCodingStatus)
                     .thenComparing(byLocusLevel)
                     .thenComparing(byApprisRank)
                     .thenComparing(byTranscriptLength)
