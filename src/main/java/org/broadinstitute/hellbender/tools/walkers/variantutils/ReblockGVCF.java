@@ -338,6 +338,10 @@ public final class ReblockGVCF extends MultiVariantWalker {
     @Override
     public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
         if (!variant.hasAllele(Allele.NON_REF_ALLELE)) {
+            if (variant.getCommonInfo().getAttributeAsBoolean("TARGETED", false) == true) {
+                // We're currently ignoring targeted sites that don't have a <NON_REF> allele as we're focusing on standard SNPs and Indels.  We may handle these differently later.
+                return;
+            }
             throw new UserException("Variant Context at " + variant.getContig() + ":" + variant.getStart() + " does not contain a <NON-REF> allele. This tool is only intended for use with GVCFs.");
         }
         VariantContext newVC = formatAnnotationsToRemove.size() > 0 ? removeVCFFormatAnnotations(variant) : variant;
@@ -371,7 +375,16 @@ public final class ReblockGVCF extends MultiVariantWalker {
      *
      * @param originalVC     the combined genomic VC
      */
-    private void regenotypeVC(final VariantContext originalVC) {
+    @VisibleForTesting
+    void regenotypeVC(final VariantContext originalVC) {
+
+        // Somatic-style records (e.g. DRAGEN mitochondrial output) do not provide diploid GQ/PL data,
+        // so pass them through untouched instead of applying reblocking logic.
+        final Genotype inputGenotype = originalVC.getGenotype(0);
+        if (inputGenotype.hasExtendedAttribute("SQ") && !inputGenotype.hasGQ() && !inputGenotype.hasPL()) {
+            vcfWriter.add(originalVC);
+            return;
+        }
 
         //Pass back ref-conf homRef sites/blocks to be combined by the GVCFWriter
         if (isHomRefBlock(originalVC)) {
