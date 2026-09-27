@@ -1,36 +1,48 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.DeprecatedFeature;
 import org.broadinstitute.gatk.nativebindings.pdhmm.PDHMMNativeArguments;
 
 /**
- * Arguments for native PairHMM implementations
+ * Arguments for native PDPairHMM implementations. The native implementation runs on the calling thread and selects
+ * its own kernel and memory, so every argument here is accepted for compatibility and has no effect.
  */
 public class PDPairHMMNativeArgumentCollection {
+    private static final Logger logger = LogManager.getLogger(PDPairHMMNativeArgumentCollection.class);
 
-    public static final int THREADS = 8;
+    public static final int THREADS = 1;
     public static final PDHMMNativeArguments.AVXLevel AVX_LEVEL = PDHMMNativeArguments.AVXLevel.FASTEST_AVAILABLE;
     public static final int MEMLIMIT = 1024;
     public static final PDHMMNativeArguments.OpenMPSetting OPEN_MP_SETTING = PDHMMNativeArguments.OpenMPSetting.FASTEST_AVAILABLE;
+
+    @DeprecatedFeature(detail = "The native PDPairHMM runs on the calling thread, so this argument has no effect")
     @Advanced
-    @Argument(fullName = "native-dragen-pd-pair-hmm-threads", doc="How many threads should a native DRAGEN pd-pairHMM implementation use", optional = true)
+    @Argument(fullName = "native-dragen-pd-pair-hmm-threads", doc="Ignored: the native DRAGEN pd-pairHMM runs on the calling thread", optional = true)
     private int pairHmmNativeThreads = THREADS;
 
+    @DeprecatedFeature(detail = "The native PDPairHMM selects the fastest kernel for the running CPU, so this argument has no effect")
     @Advanced
-    @Argument(fullName = "native-dragen-pd-pair-avx-level", doc="AVX level instruction for gkl pd-pair-hmm impelmentation to use [SCALAR, AVX2, AVX512].", optional = true)
+    @Argument(fullName = "native-dragen-pd-pair-avx-level", doc="Ignored: the native DRAGEN pd-pairHMM selects the fastest kernel for the running CPU", optional = true)
     private PDHMMNativeArguments.AVXLevel avxLevel = AVX_LEVEL;
 
+    @DeprecatedFeature(detail = "The native PDPairHMM manages its own memory, so this argument has no effect")
     @Advanced
-    @Argument(fullName = "native-dragen-pd-pair-memory-limit", doc="Maximum limit for memory (in MB) to the GKL for internal uses. (NOTE: this memory is not manage by Java and is not subject to -Xmx limits)", optional = true)
+    @Argument(fullName = "native-dragen-pd-pair-memory-limit", doc="Ignored: the native DRAGEN pd-pairHMM manages its own memory", optional = true)
     private int memoryLimit = MEMLIMIT;
 
+    @DeprecatedFeature(detail = "The native PDPairHMM runs on the calling thread, so this argument has no effect")
     @Advanced
-    @Argument(fullName = "native-dragen-pd-pair-open-mp-settings", doc="Whether to enable use of Open MP library within the GKL.", optional = true)
+    @Argument(fullName = "native-dragen-pd-pair-open-mp-settings", doc="Ignored: the native DRAGEN pd-pairHMM runs on the calling thread", optional = true)
     private PDHMMNativeArguments.OpenMPSetting openMP = OPEN_MP_SETTING;
 
-    // NOTE: the PDHMMNativeArguments class is in the GKL code and thus we must work around it here.
     public PDHMMNativeArguments getPDPairHMMArgs(){
+        if (pairHmmNativeThreads != THREADS || avxLevel != AVX_LEVEL || memoryLimit != MEMLIMIT || openMP != OPEN_MP_SETTING) {
+            logger.warn("The --native-dragen-pd-pair-* arguments are deprecated and have no effect: the native PDPairHMM runs on the calling thread and selects its own kernel");
+        }
         final PDHMMNativeArguments args = new PDHMMNativeArguments();
         args.maxNumberOfThreads = pairHmmNativeThreads;
         args.avxLevel = avxLevel;
@@ -38,7 +50,8 @@ public class PDPairHMMNativeArgumentCollection {
         args.openMPSetting = openMP;
         return args;
     }
-    // The args below are defaults provided for the GKL. The GKL arguments class does not have arguments
+
+    // The gatk-native-bindings arguments class has no defaults of its own
     public static PDHMMNativeArguments getDefaultPDPairHMMArgs() {
         final PDHMMNativeArguments args = new PDHMMNativeArguments();
         args.maxNumberOfThreads = THREADS;

@@ -1,8 +1,6 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
-import com.intel.gkl.pairhmm.IntelPairHmm;
-import com.intel.gkl.pairhmm.IntelPairHmmOMP;
-import com.intel.gkl.pairhmm.IntelPairHmmFpga;
+import com.fulcrumgenomics.fgkl.pairhmm.FgklPairHmm;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.gatk.nativebindings.pairhmm.HaplotypeDataHolder;
@@ -19,25 +17,13 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Class for performing the pair HMM for global alignment using AVX instructions contained in a native shared library.
+ * Class for performing the pair HMM for global alignment using the fgkl native library, which selects the fastest
+ * SIMD kernel available on the running CPU and computes on the calling thread.
  */
 public final class VectorLoglessPairHMM extends LoglessPairHMM {
 
-    /**
-     * Type for implementation of VectorLoglessPairHMM
-     */
-    public enum Implementation {
-        /**
-         * AVX-accelerated version of PairHMM
-         */
-        AVX,
-        /**
-         * OpenMP multi-threaded AVX-accelerated version of PairHMM
-         */
-        OMP,
-    }
-
     private static final Logger logger = LogManager.getLogger(VectorLoglessPairHMM.class);
+
     private long threadLocalSetupTimeDiff = 0;
     private long pairHMMSetupTime = 0;
 
@@ -51,36 +37,18 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
     /**
      * Create a VectorLoglessPairHMM
      *
-     * @param implementation    which implementation to use (AVX or OMP)
-     * @param args              arguments to the native GKL implementation
+     * @param args              arguments to the native implementation
+     * @throws UserException.HardwareFeatureException if no native library is available for this platform
      */
-    public VectorLoglessPairHMM(Implementation implementation, PairHMMNativeArguments args) throws UserException.HardwareFeatureException {
-        final boolean isSupported;
-
-        switch (implementation) {
-            case AVX:
-                pairHmm = new IntelPairHmm();
-                isSupported = pairHmm.load(null);
-                if (!isSupported) {
-                    throw new UserException.HardwareFeatureException("Machine does not support AVX PairHMM.");
-                }
-                break;
-
-            case OMP:
-                pairHmm = new IntelPairHmmOMP();
-                isSupported = pairHmm.load(null);
-                if (!isSupported) {
-                    throw new UserException.HardwareFeatureException("Machine does not support OpenMP AVX PairHMM.");
-                }
-                break;
-
-            default:
-                throw new UserException.HardwareFeatureException("Unknown PairHMM implementation.");
+    public VectorLoglessPairHMM(final PairHMMNativeArguments args) throws UserException.HardwareFeatureException {
+        final FgklPairHmm fgklPairHmm = new FgklPairHmm();
+        if (!fgklPairHmm.load(null)) {
+            throw new UserException.HardwareFeatureException("The native PairHMM library is not available on this platform.");
         }
-
-        pairHmm.initialize(args);
+        fgklPairHmm.initialize(args);
+        logger.info("Using the native PairHMM with the " + fgklPairHmm.backend() + " backend");
+        pairHmm = fgklPairHmm;
     }
-
 
     /**
      * {@inheritDoc}

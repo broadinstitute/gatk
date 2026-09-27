@@ -51,21 +51,18 @@ public abstract class PDPairHMM implements Closeable{
             logger.info("Using the non-hardware-accelerated Java LOGLESS_CACHING PDPairHMM implementation");
             return hmm;
         }),
-        /* Optimized version of the PairHMM which caches per-read computations and operations in real space to avoid costly sums of log10'ed likelihoods */
-        AVX_LOGLESS_CACHING(args -> {
-            final PDPairHMM hmm = new VectorLoglessPairPDHMM( args);
-            logger.info("Using the hardware-accelerated Java LOGLESS_CACHING PDPairHMM implementation");
-            return hmm;
-        }),
+        /* Native SIMD implementation of LOGLESS_CACHING called through JNI. Throws if no native library is available for this platform */
+        AVX_LOGLESS_CACHING(VectorLoglessPairPDHMM::new),
+        /* Uses the native implementation when a native library is available for this platform, and LOGLESS_CACHING otherwise */
         FASTEST_AVAILABLE(args -> {
             try {
-                final PDPairHMM hmm = new VectorLoglessPairPDHMM(args);
-                logger.info("Using the hardware-accelerated AVX_LOGLESS_CACHING PDPairHMM implementation");
-                return hmm;
+                return new VectorLoglessPairPDHMM(args);
             } catch (final UserException.HardwareFeatureException e) {
-                final PDPairHMM hmm = new LoglessPDPairHMM();
-                logger.info("Falling back to the non-hardware-accelerated Java LOGLESS_CACHING PDPairHMM implementation");
-                return hmm;
+                logger.warn("***********************************************************************************************");
+                logger.warn("*** WARNING: no native PDPairHMM library is available for this platform: " + e.getMessage());
+                logger.warn("*** Falling back to the MUCH slower Java LOGLESS_CACHING PDPairHMM implementation!");
+                logger.warn("***********************************************************************************************");
+                return new LoglessPDPairHMM();
             }
         });
 
