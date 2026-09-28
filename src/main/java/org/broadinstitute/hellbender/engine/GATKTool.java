@@ -88,6 +88,12 @@ public abstract class GATKTool extends CommandLineProgram {
             doc = "If true, create a MD5 digest for any BAM/SAM/CRAM file created", optional=true, common = true)
     public boolean createOutputBamMD5 = false;
 
+    @Argument(fullName = StandardArgumentDefinitions.OUTPUT_CRAM_VERSION_LONG_NAME,
+            doc = "The CRAM version ('3.0' or '3.1') to write for CRAM output. Ignored for BAM/SAM output. " +
+                  "Note that CRAM 3.1 (the default) cannot be read by tools that only support CRAM 3.0.",
+            optional = true, common = true)
+    public String outputCramVersion = ConfigFactory.getInstance().getGATKConfig().outputCramVersion();
+
     @Argument(fullName=StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_LONG_NAME,
             shortName=StandardArgumentDefinitions.CREATE_OUTPUT_VARIANT_INDEX_SHORT_NAME,
             doc = "If true, create a VCF index when writing a coordinate-sorted VCF file.", optional=true, common = true)
@@ -864,7 +870,8 @@ public abstract class GATKTool extends CommandLineProgram {
                 getHeaderForSAMWriter(),
                 preSorted,
                 createOutputBamIndex,
-                createOutputBamMD5
+                createOutputBamMD5,
+                ReadUtils.getCRAMVersion(outputCramVersion)
             )
         );
     }

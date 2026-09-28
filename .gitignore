@@ -52,7 +52,7 @@ test*.dot
 # pip install "headroom-ai[all]"
 # HEADROOM_WORKSPACE_DIR=$PWD/.headroom_data headroom wrap claude --port <unique port>
 venv
-.headroom_data
+.headroom_data*
 .serena
 .claude
 
