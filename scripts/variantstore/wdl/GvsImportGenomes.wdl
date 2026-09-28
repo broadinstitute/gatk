@@ -92,8 +92,8 @@ workflow GvsImportGenomes {
     # discoverable (womtool inputs, Terra, integration tests) alongside use_parquet_ingest.
     parquet_vet_duplication_threshold: "VS-1989 post-load verification: ratio-to-callset-median at or above which a vet sample's row count is flagged as a possible duplicate. Must be > 1; default 1.6, calibrated against Foxtrot."
     parquet_vet_truncation_threshold: "VS-1989 post-load verification: ratio whose reciprocal sets the low-side floor -- a vet sample at or below median/ratio is flagged as possibly truncated. Must be > 1, or 0 to disable the truncation screen; default 1.6 (i.e. 0.625x). Separate from parquet_vet_duplication_threshold because only the high side has been calibrated, so the low side can be retuned or switched off on its own."
-    parquet_allow_flagged_vet_loads: "VS-1989 post-load verification: when false (default), the Parquet of any sample a vet duplication- or truncation-screen flag names is moved to a quarantine prefix instead of deleted (the load itself still succeeds, and the unflagged samples' Parquet is deleted as normal); when true the screens are waived and everything is deleted despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless."
-    parquet_fail_on_quarantine: "VS-1989 post-load verification: when true (default), a run that quarantined the Parquet of a duplication-flagged sample aborts after the quarantine completes, so the run is not silently green. Set false to leave the quarantine advisory (reported only through the parquet_quarantined_* outputs and the quarantine directory's README). Truncation-only flags never abort, because that threshold is not yet calibrated."
+    parquet_allow_flagged_vet_loads: "VS-1989 post-load verification: when false (default), the Parquet of any sample a vet duplication- or truncation-screen flag names is moved to a quarantine prefix instead of deleted (the load itself still succeeds, and the unflagged samples' Parquet is deleted as normal); when true the screens are waived and everything is deleted despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless. Supersedes parquet_fail_on_quarantine in practice: waiving the screens leaves nothing quarantined, so that gate has nothing to fire on. Note that it also deletes the flagged sample's Parquet, so prefer parquet_fail_on_quarantine = false when the intent is to finish a flagged run with its Parquet still recoverable."
+    parquet_fail_on_quarantine: "VS-1989 post-load verification: when true (default), a run that quarantined the Parquet of a duplication-flagged sample aborts after the quarantine completes, so the run is not silently green. Set false to leave the quarantine advisory (reported only through the parquet_quarantined_* outputs and the quarantine directory's README). Truncation-only flags never abort, because that threshold is not yet calibrated. Has no effect when parquet_allow_flagged_vet_loads is true, which waives the screens upstream and so leaves nothing to abort on."
     parquet_expected_ploidy_rows_per_sample: "VS-1989 post-load verification: exact per-sample sample_chromosome_ploidy row count to validate against (e.g. 24 for WGS) instead of the inferred callset mode; leave unset to infer from the data (correct for exome/BGE/chrM)."
   }
 
@@ -373,6 +373,8 @@ workflow GvsImportGenomes {
     call QuarantineFlaggedParquetFiles {
       input:
         output_gcs_dir = defined_parquet_output_dir,
+        project_id = project_id,
+        dataset_name = dataset_name,
         quarantine_subdir = parquet_quarantine_subdir,
         quarantine_suffix = parquet_quarantine_suffix,
         quarantine_files_list = VerifyParquetLoading.quarantine_files_list,
@@ -411,6 +413,12 @@ workflow GvsImportGenomes {
     # Only duplication flags abort. A truncation-only flag still quarantines and still reports, but the
     # truncation threshold has been measured on its high side only, and an uncalibrated heuristic should
     # not be able to fail a completed 500k-sample ingest.
+    #
+    # This condition is also what makes parquet_allow_flagged_vet_loads supersede
+    # parquet_fail_on_quarantine. There is no precedence rule anywhere; waiving the screens simply
+    # empties the quarantine work list, and an abort keyed on quarantined_files then has nothing to fire
+    # on. Anything that re-keys this on the screen flags themselves would break that, silently turning a
+    # waived run back into a failing one.
     if (parquet_fail_on_quarantine && QuarantineFlaggedParquetFiles.quarantined_files > 0 && VerifyParquetLoading.quarantined_duplication_samples > 0) {
       call Utils.TerminateWorkflow as ParquetWasQuarantined {
         input:
@@ -1666,6 +1674,10 @@ task QuarantineFlaggedParquetFiles {
 
   input {
     String output_gcs_dir
+    # Only used to name the dataset in the restore instructions this task writes into the quarantine
+    # directory. Nothing here reads or writes BigQuery -- the quarantine is a pure GCS operation.
+    String project_id
+    String dataset_name
     String quarantine_subdir
     # Appended to each quarantined object's name so that it no longer ends in ".parquet". Two things
     # then have to go wrong at once for a quarantined file to be lost, rather than one: DeleteParquetFiles'
@@ -1719,6 +1731,14 @@ task QuarantineFlaggedParquetFiles {
     # The move preserves each file's path relative to the output dir, so vet/001/<file> lands at
     # quarantine/vet/001/<file>. That keeps which table and sample a quarantined file belongs to
     # readable from its path, and makes a collision between two families' files impossible.
+    #
+    # Each move is also recorded as a destination/source pair. The work list this task consumes holds
+    # pre-move paths, so printing it into the README would name objects that no longer exist -- the
+    # rename is precisely what the quarantine did. Recording the pair here means the README can name
+    # the object that is actually there AND the path to put it back at, instead of asking the reader to
+    # apply the rename in their head.
+    : > quarantine_manifest.txt
+
     while IFS= read -r src
     do
       if [[ -z "${src}" ]]
@@ -1736,6 +1756,10 @@ task QuarantineFlaggedParquetFiles {
       fi
       gcloud storage mv ~{"--billing-project " + billing_project_id} \
         "${src}" "${QUARANTINE_DIR}/${rel}~{quarantine_suffix}"
+      {
+        echo "  ${QUARANTINE_DIR}/${rel}~{quarantine_suffix}"
+        echo "    restores to: ${src}"
+      } >> quarantine_manifest.txt
     done < ~{quarantine_files_list}
 
     # Leave the restore instructions where whoever finds the quarantine will find them too. The .txt
@@ -1745,19 +1769,47 @@ task QuarantineFlaggedParquetFiles {
       echo "screen flagged the owning sample. These files were loaded to BigQuery; they were held back"
       echo "from deletion so the load can be inspected, not because the load failed."
       echo
-      echo "Each object keeps its path relative to ${OUTPUT_GCS_DIR}/, with '~{quarantine_suffix}'"
-      echo "appended to its name. To restore one for re-ingest, copy it back and drop that suffix:"
+      echo "Re-ingesting one of these takes TWO steps, and the second one alone does nothing. The"
+      echo "sample's rows are still in BigQuery, so the loader treats it as already loaded and skips"
+      echo "any file you restore: DiscoverParquetFiles considers a (table, sample_id) pair loaded when"
+      echo "its partition holds any bytes at all, which a duplicated partition certainly does."
       echo
-      echo "  gcloud storage cp <object> ${OUTPUT_GCS_DIR}/<relative path without the suffix>"
+      echo "1. Remove the sample's rows from BigQuery. Each filename carries the table and the"
+      echo "   sample_id it belongs to -- 'vet_123_4567_<...>.parquet' is table vet_123, sample_id"
+      echo "   4567 -- and these tables are range-partitioned on sample_id with step 1, so the"
+      echo "   partition id IS the sample_id:"
       echo
-      echo "The suffix is what keeps these objects out of the bulk delete's '*.parquet' glob, so do not"
-      echo "strip it in place."
+      echo "     bq rm -f -t '~{project_id}:~{dataset_name}.<table>\$<sample_id>'"
+      echo
+      echo "   or, equivalently:"
+      echo
+      echo "     bq query --use_legacy_sql=false \\"
+      echo "       'DELETE FROM \`~{project_id}.~{dataset_name}.<table>\` WHERE sample_id = <sample_id>'"
+      echo
+      echo "   Do this for every table the sample appears under here, not just vet: a sample's"
+      echo "   ref_ranges and sample_chromosome_ploidy rows are quarantined alongside it, and a"
+      echo "   partial delete reloads the sample inconsistently across families."
+      echo
+      echo "2. Restore the Parquet. Each object keeps its path relative to ${OUTPUT_GCS_DIR}/, moved"
+      echo "   under ${QUARANTINE_DIR}/ with '~{quarantine_suffix}' appended to its name. The listing"
+      echo "   below pairs every quarantined object with the path to copy it back to:"
+      echo
+      echo "     gcloud storage cp <quarantined object> <the path listed under it>"
+      echo
+      echo "   The suffix is what keeps these objects out of the bulk delete's '*.parquet' glob, so do"
+      echo "   not strip it in place -- copy, then delete the quarantined object once you are done."
+      echo
+      echo "Then re-run the ingest. It will now see an empty partition and load the restored files."
+      echo
+      echo "If instead the flag has been reviewed and dismissed, nothing needs restoring: the data is"
+      echo "already loaded and correct. Delete this directory and carry on, or re-run with"
+      echo "parquet_allow_flagged_vet_loads = true if a later step is still blocked on the screens."
       echo
       echo "Nothing deletes this directory: it is outside the four prefixes the bucket's 14-day"
       echo "lifecycle rule matches. Clean it up by hand once the samples have been reviewed."
       echo
-      echo "Quarantined files:"
-      cat ~{quarantine_files_list}
+      echo "Quarantined files, each followed by the path it restores to:"
+      cat quarantine_manifest.txt
     } > quarantine_README.txt
     gcloud storage cp ~{"--billing-project " + billing_project_id} \
       quarantine_README.txt "${QUARANTINE_DIR}/README.txt"
