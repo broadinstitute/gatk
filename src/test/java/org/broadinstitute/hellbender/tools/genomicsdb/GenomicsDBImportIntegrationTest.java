@@ -1586,6 +1586,10 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
                 args.add(GenomicsDBImport.USE_GCS_HDFS_CONNECTOR, (Boolean)options.get(key));
                 isGcsHDFSConnectorSet = (Boolean)options.get(key);
             }
+            if (key.equals(GenomicsDBImport.COMPRESSION_LONG_NAME)) {
+                Assert.assertTrue(options.get(key) instanceof String);
+                args.add(GenomicsDBImport.COMPRESSION_LONG_NAME, (String)options.get(key));
+            }
         }
         runCommandLine(args);
         checkJSONFilesAreWritten(workspace);
@@ -1609,6 +1613,84 @@ public final class GenomicsDBImportIntegrationTest extends CommandLineProgramTes
         // Test with shared posixfs optimizations and overwrite workspace set
         options.put(GenomicsDBImport.OVERWRITE_WORKSPACE_LONG_NAME, true);
         basicWriteAndQueryWithOptions(workspace, options);
+    }
+
+    @Test
+    public void testUnsetTileCompressionWritesTheSameTilesAsGzipLevelSix() throws IOException {
+        // GenomicsDB's default is gzip at zlib's default level, which is 6
+        Assert.assertEquals(tileBytesAfterImport(null), tileBytesAfterImport("gzip:6"));
+    }
+
+    @Test
+    public void testGzipLevelOneWritesDifferentTilesFromTheDefault() throws IOException {
+        Assert.assertNotEquals(tileBytesAfterImport("gzip:1"), tileBytesAfterImport(null));
+    }
+
+    @Test
+    public void testLz4AccelerationChangesTheTiles() throws IOException {
+        Assert.assertNotEquals(tileBytesAfterImport("lz4:127"), tileBytesAfterImport("lz4:1"));
+    }
+
+    @Test
+    public void testEachCodecCompressesTheTiles() throws IOException {
+        final long uncompressed = tileBytesAfterImport("none");
+        for (final String codec : Arrays.asList("gzip:1", "zstd:1", "lz4")) {
+            final long compressed = tileBytesAfterImport(codec);
+            Assert.assertTrue(uncompressed > 2 * compressed, codec + ": " + compressed + " bytes, none: " + uncompressed + " bytes");
+        }
+    }
+
+    @Test
+    public void testZstdWorkspaceImportedInConsolidatedBatchesOfParallelIntervalsQueriesTheExpectedVariants() throws IOException {
+        // the only import path that also decompresses tiles, in the consolidation threads
+        final String workspace = createTempDir("genomicsdb-compression-batches").getAbsolutePath() + "/workspace";
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add(GenomicsDBImport.WORKSPACE_ARG_LONG_NAME, workspace);
+        MULTIPLE_INTERVALS.forEach(args::addInterval);
+        LOCAL_GVCFS.forEach(vcf -> args.add("V", vcf));
+        args.add(GenomicsDBImport.BATCHSIZE_ARG_LONG_NAME, "1");
+        args.add(GenomicsDBImport.CONSOLIDATE_ARG_NAME, true);
+        args.add(GenomicsDBImport.MAX_NUM_INTERVALS_TO_IMPORT_IN_PARALLEL, String.valueOf(MULTIPLE_INTERVALS.size()));
+        args.add(GenomicsDBImport.COMPRESSION_LONG_NAME, "zstd:1");
+        runCommandLine(args);
+        checkGenomicsDBAgainstExpected(workspace, MULTIPLE_INTERVALS, COMBINED_MULTI_INTERVAL, b38_reference_20_21, true, ATTRIBUTES_TO_IGNORE);
+    }
+
+    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class,
+            expectedExceptionsMessageRegExp = "(?s).*brotli.*the codec must be one of none, gzip, zstd, lz4.*")
+    public void testUnknownTileCompressionCodecIsRejected() throws IOException {
+        final String workspace = createTempDir("genomicsdb-bad-compression").getAbsolutePath() + "/workspace";
+        basicWriteAndQueryWithOptions(workspace, Map.of(GenomicsDBImport.COMPRESSION_LONG_NAME, "brotli"));
+    }
+
+    @Test(expectedExceptions = CommandLineException.class,
+            expectedExceptionsMessageRegExp = "(?s).*genomicsdb-(compression|update-workspace-path).*cannot be used in conjunction.*genomicsdb-(compression|update-workspace-path).*")
+    public void testTileCompressionCannotBeGivenWhenUpdatingAWorkspace() {
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.add(GenomicsDBImport.INCREMENTAL_WORKSPACE_ARG_LONG_NAME, createTempDir("genomicsdb-update-compression").getAbsolutePath());
+        args.add(GenomicsDBImport.COMPRESSION_LONG_NAME, "zstd");
+        args.add("V", HG_00096);
+        runCommandLine(args);
+    }
+
+    /**
+     * Imports and queries the standard inputs with a tile codec (checking the query against the expected variants),
+     * and returns the bytes in the workspace's tile files, which unlike the rest of the workspace depend on the codec.
+     *
+     * @param compression a --genomicsdb-compression value, or null to leave the option unset
+     */
+    private long tileBytesAfterImport(final String compression) throws IOException {
+        final Path workspace = createTempDir("genomicsdb-compression").toPath().resolve("workspace");
+        basicWriteAndQueryWithOptions(workspace.toString(),
+                compression == null ? Collections.emptyMap() : Map.of(GenomicsDBImport.COMPRESSION_LONG_NAME, compression));
+        try (final var paths = Files.walk(workspace)) {
+            // a fragment directory's name starts with "__"; its tiles are the .tdb files other than the array schema
+            return paths.filter(Files::isRegularFile)
+                    .filter(path -> path.getParent().getFileName().toString().startsWith("__"))
+                    .filter(path -> path.getFileName().toString().endsWith(".tdb"))
+                    .mapToLong(path -> path.toFile().length())
+                    .sum();
+        }
     }
 
     @Test(expectedExceptions = GenomicsDBImport.UnableToCreateGenomicsDBWorkspace.class)
