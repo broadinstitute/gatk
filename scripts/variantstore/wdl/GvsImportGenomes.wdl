@@ -80,9 +80,6 @@ workflow GvsImportGenomes {
     # Aborting is safe here because it happens after the files are already quarantined, so it destroys
     # nothing and reverses nothing -- it is purely a notification that the run needs a human.
     Boolean parquet_fail_on_quarantine = true
-    # If set, the exact per-sample ploidy row count to validate against (e.g. 24 for WGS) instead of
-    # the callset mode. Leave unset to infer the reference from the data (correct for exome/BGE/chrM).
-    Int? parquet_expected_ploidy_rows_per_sample
 
     Boolean is_wgs = true
   }
@@ -94,7 +91,6 @@ workflow GvsImportGenomes {
     parquet_vet_truncation_threshold: "VS-1989 post-load verification: ratio whose reciprocal sets the low-side floor -- a vet sample at or below median/ratio is flagged as possibly truncated. Must be > 1, or 0 to disable the truncation screen; default 1.6 (i.e. 0.625x). Separate from parquet_vet_duplication_threshold because only the high side has been calibrated, so the low side can be retuned or switched off on its own."
     parquet_allow_flagged_vet_loads: "VS-1989 post-load verification: when false (default), the Parquet of any sample a vet duplication- or truncation-screen flag names is moved to a quarantine prefix instead of deleted (the load itself still succeeds, and the unflagged samples' Parquet is deleted as normal); when true the screens are waived and everything is deleted despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless. Supersedes parquet_fail_on_quarantine in practice: waiving the screens leaves nothing quarantined, so that gate has nothing to fire on. Note that it also deletes the flagged sample's Parquet, so prefer parquet_fail_on_quarantine = false when the intent is to finish a flagged run with its Parquet still recoverable."
     parquet_fail_on_quarantine: "VS-1989 post-load verification: when true (default), a run that quarantined the Parquet of a duplication-flagged sample aborts after the quarantine completes, so the run is not silently green. Set false to leave the quarantine advisory (reported only through the parquet_quarantined_* outputs and the quarantine directory's README). Truncation-only flags never abort, because that threshold is not yet calibrated. Has no effect when parquet_allow_flagged_vet_loads is true, which waives the screens upstream and so leaves nothing to abort on."
-    parquet_expected_ploidy_rows_per_sample: "VS-1989 post-load verification: exact per-sample sample_chromosome_ploidy row count to validate against (e.g. 24 for WGS) instead of the inferred callset mode; leave unset to infer from the data (correct for exome/BGE/chrM)."
   }
 
   Int max_auto_scatter_width = if is_wgs then 25000 else 100000
@@ -354,7 +350,6 @@ workflow GvsImportGenomes {
         vet_duplication_threshold = parquet_vet_duplication_threshold,
         vet_truncation_threshold = parquet_vet_truncation_threshold,
         allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
-        expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
         verification_diagnostics_gcs_dir = defined_parquet_output_dir + "/verification_diagnostics",
         billing_project_id = billing_project_id,
         go = LoadParquetFilesToBQ.done,
@@ -1544,8 +1539,6 @@ task VerifyParquetLoading {
     Float vet_duplication_threshold = 1.6
     Float vet_truncation_threshold = 1.6
     Boolean allow_flagged_vet_loads = false
-    # Exact per-sample ploidy row count to validate against (e.g. 24 for WGS); unset infers the mode.
-    Int? expected_ploidy_rows_per_sample
     # Optional durable location for the verdict JSON. This task is fail-loud -- a bad load exits non-zero
     # and aborts the workflow -- and Cromwell does not delocalize a failed task's outputs, so copying the
     # results JSON here keeps the diagnostic recoverable at a predictable path on failure. Unset -> no copy
@@ -1583,7 +1576,6 @@ task VerifyParquetLoading {
       --vet-duplication-threshold ~{vet_duplication_threshold} \
       --vet-truncation-threshold ~{vet_truncation_threshold} \
       ~{true="--allow-flagged-vet-loads" false="" allow_flagged_vet_loads} \
-      ~{"--expected-ploidy-rows-per-sample " + expected_ploidy_rows_per_sample} \
       --output-dir verification_output || rc=$?
 
     # Copy the verdict JSON to a durable location if one was configured, so the diagnostic survives the

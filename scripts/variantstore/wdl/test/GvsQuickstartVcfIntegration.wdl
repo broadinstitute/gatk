@@ -29,7 +29,6 @@ workflow GvsQuickstartVcfIntegration {
         Float parquet_vet_truncation_threshold = 1.6
         Boolean parquet_allow_flagged_vet_loads = false
         Boolean parquet_fail_on_quarantine = true
-        Int? parquet_expected_ploidy_rows_per_sample
         String drop_state = "FORTY"
         Boolean bgzip_output_vcfs = false
         String dataset_suffix
@@ -148,7 +147,6 @@ workflow GvsQuickstartVcfIntegration {
             parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
             parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
             parquet_fail_on_quarantine = parquet_fail_on_quarantine,
-            parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
     }
 
     # VS-1966: if headers were loaded, validate them end to end and fail the test if validation fails.

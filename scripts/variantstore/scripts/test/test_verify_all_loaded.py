@@ -79,8 +79,7 @@ class VerifyAllLoadedTestBase(unittest.TestCase):
             f.write("\n".join(FIXTURE_FILES) + "\n")
         self.out_dir = os.path.join(self.tmp, "out")
 
-    def _run(self, loaded_pairs, structural, allow_flagged_vet_loads=False,
-             expected_ploidy_rows_per_sample=None, **kwargs):
+    def _run(self, loaded_pairs, structural, allow_flagged_vet_loads=False, **kwargs):
         with patch("verify_all_loaded.get_already_loaded_tables_and_sample_ids",
                    return_value=loaded_pairs), \
              patch("verify_all_loaded.run_structural_checks",
@@ -92,7 +91,6 @@ class VerifyAllLoadedTestBase(unittest.TestCase):
                 gcs_files_list=self.gcs_list,
                 output_dir=self.out_dir,
                 allow_flagged_vet_loads=allow_flagged_vet_loads,
-                expected_ploidy_rows_per_sample=expected_ploidy_rows_per_sample,
                 **kwargs,
             )
 
@@ -135,14 +133,6 @@ class TestHappyPath(VerifyAllLoadedTestBase):
         self.assertEqual(set(expected_by_family["vet"]), {1, 2})
         self.assertEqual(set(expected_by_family["ref_ranges"]), {1, 2})
         self.assertEqual(set(expected_by_family["sample_chromosome_ploidy"]), {1, 2})
-
-    def test_expected_ploidy_override_threaded_to_structural_checks(self):
-        self._run(set(ALL_PAIRS), _structural(), expected_ploidy_rows_per_sample=24)
-        self.assertEqual(self.mock_struct.call_args.kwargs["expected_ploidy_rows_per_sample"], 24)
-
-    def test_expected_ploidy_override_defaults_to_none(self):
-        self._run(set(ALL_PAIRS), _structural())
-        self.assertIsNone(self.mock_struct.call_args.kwargs["expected_ploidy_rows_per_sample"])
 
 
 class TestExactChecksGateAllLoaded(VerifyAllLoadedTestBase):
@@ -566,9 +556,6 @@ class TestLogStructuralSummary(unittest.TestCase):
                 "cardinality": {
                     "sample_chromosome_ploidy": {
                         "ok": True,
-                        "reference_source": "mode",
-                        "reference_count": 24,
-                        "mode": 24,
                         "min": 23,
                         "max": 24,
                         "distinct_samples": 2,
@@ -603,7 +590,7 @@ class TestLogStructuralSummary(unittest.TestCase):
         logs = "\n".join(cm.output)
         self.assertIn("1 sample(s) >= 1.6x baseline (100) (quarantining their Parquet)", logs)
         self.assertIn("1 sample(s) <= baseline/1.6 (200) (quarantining their Parquet)", logs)
-        self.assertIn("modal count 24 rows/sample, no duplications detected", logs)
+        self.assertIn("one row per chromosome for every one of them (min=23, max=24 rows/sample)", logs)
 
     def test_disabled_truncation_screen_is_logged_as_disabled_not_clean(self):
         # A switched-off screen must not read like a screen that looked and found nothing -- that is

@@ -20,8 +20,8 @@ metadata reads that share no code with the loader predicate:
     families (partition metadata is a flat ~10 MB regardless of callset size; ``partition_id`` *is*
     the ``sample_id`` because these tables are integer-range partitioned on ``sample_id`` with step
     1), and
-  * a per-sample ``COUNT(*)`` on the regular ploidy table (scans a single column, ~100 MB on a
-    500k-sample callset).
+  * a per-sample ``COUNT(*)`` and ``COUNT(DISTINCT chromosome)`` on the regular ploidy table (scans
+    two columns, ~100 MB on a 500k-sample callset).
 
 The crux of the independence is ``total_rows`` vs. ``total_logical_bytes``: a partition that is
 present but partial or duplicated has a wrong row count, which these checks catch and the loader
@@ -60,7 +60,7 @@ Scope notes (VS-1989):
 import logging
 import math
 import statistics
-from collections import Counter, defaultdict
+from collections import defaultdict
 
 try:
     from google.cloud import bigquery
@@ -81,13 +81,10 @@ log = logging.getLogger(__name__)
 DEFAULT_DUPLICATION_SCREEN_FAMILIES = ["vet"]
 
 # Regular (non-superpartitioned) tables held to cardinality consistency by the cardinality check.
-# When an explicit expected count is configured (e.g. expected_ploidy_rows_per_sample=24 for WGS),
-# all expected samples must match that exact count. When unset, the callset mode is inferred:
-# legitimate contig variations (such as 23 or 25 when mode is 24, since RefRangesCreator only records
-# ploidy for contigs with usable reference blocks) pass, while duplicated loads (>= 1.5x baseline, such
-# as 48 vs 24) are flagged as deviating and fail cardinality. Only ploidy qualifies for cardinality
-# checking: tables whose per-sample count legitimately varies across samples (such as
-# vcf_header_lines_scratch) are excluded entirely.
+# The check is exact and per-sample: COUNT(*) must equal COUNT(DISTINCT chromosome), which a
+# duplicated load cannot satisfy. Only ploidy qualifies, because only ploidy has a column whose values
+# are unique per sample by construction; tables whose per-sample row count legitimately varies with
+# nothing to compare it against (such as vcf_header_lines_scratch) are excluded entirely.
 DEFAULT_CARDINALITY_TABLE_PREFIXES = ["sample_chromosome_ploidy"]
 
 # Families that Parquet generation produces TOGETHER, per sample, so their sample sets must be
@@ -121,9 +118,10 @@ TRUNCATION_SCREEN_DISABLED = 0
 
 PLOIDY_BACKFILL_CAVEAT = (
     "Ploidy duplication is only detectable here where a sample's ploidy rows were written at ingest. "
-    "A later backfill writes a full per-sample set regardless, so a doubled sample would still show "
-    "the modal row count. Do not read a green ploidy result as a duplication guarantee for callsets "
-    "or sample ranges whose ploidy was backfilled (provenance is not captured today -- see VS-1989)."
+    "A later backfill writes one row per chromosome regardless of what the reference tables held, so a "
+    "doubled sample still satisfies COUNT(*) == COUNT(DISTINCT chromosome). Do not read a green ploidy "
+    "result as a duplication guarantee for callsets or sample ranges whose ploidy was backfilled "
+    "(provenance is not captured today -- see VS-1989)."
 )
 
 
@@ -257,7 +255,9 @@ def assess_family_completeness(partition_rows, regular_counts, expected_by_famil
         # Nonzero partition row count check. Per VS-1989 design (see module docstring Scope notes),
         # exact per-file Parquet footer reads are intentionally deferred due to pyarrow dependency and
         # scale limits at 400k+ samples. BigQuery load jobs commit atomically; partial/truncated data is
-        # screened downstream via assess_truncation_screen on vet and assess_cardinality on ploidy.
+        # screened downstream via assess_truncation_screen on vet. Ploidy has no truncation screen:
+        # assess_cardinality detects duplication exactly and deliberately screens nothing on the low
+        # side (see its docstring).
         if total_rows and total_rows > 0:
             present_by_family[fam].add(sample_id)
         else:
@@ -354,24 +354,34 @@ def assess_cross_family_consistency(expected_by_family, co_produced_families):
     return {"ok": overall_ok, "union_size": len(union), "per_family": per_family}
 
 
-def assess_cardinality(counts, expected_samples, expected_count=None):
+def assess_cardinality(counts, expected_samples):
     """
-    Check that every expected sample has the expected per-sample row count and that none is missing
-    or duplicated.
+    Check that every expected sample is present in a cardinality-checked regular table, and that no
+    sample holds more rows than it holds distinct chromosomes.
 
-    When ``expected_count`` is supplied, cardinality is strictly enforced against that exact constant
-    (e.g. pass 24 for a WGS ploidy table). Any sample whose row count differs from ``expected_count``
-    is flagged as deviating, failing ``ok``.
+    ``SamplePloidyCreator`` writes at most one row per chromosome per sample, so
+    ``COUNT(*) == COUNT(DISTINCT chromosome)`` is an exact duplication detector: a doubled load
+    repeats chromosomes, and nothing legitimate does. That is the whole check, and it needs no
+    reference count to compare against -- it holds for a single sample as readily as for a callset.
 
-    When ``expected_count`` is None, duplication and partial loads are detected via:
-    1. Exact chromosome collision: SamplePloidyCreator writes at most one row per chromosome, so
-       comparing COUNT(*) against COUNT(DISTINCT chromosome) identifies duplicated loads exactly.
-    2. Modal ratio: row count >= 1.5x baseline flags duplicated loads (such as 48 vs 24).
-    3. Modal floor: row count < mode - 2 (for mode >= 10) flags partial loads missing autosomes (such
-       as 20 vs 24) while allowing legitimate karyotype variations (such as 23 vs 24 or 25 with chrM).
+    Nothing here compares one sample's row count against another's. Those counts legitimately vary
+    (a female sample has no chrY, chrM is recorded or not, an exome or BGE callset covers fewer
+    contigs), and every screen built on that variation was either redundant with the exact comparison
+    -- the 1.5x modal ceiling, which fired only where ``COUNT(*) > COUNT(DISTINCT chromosome)``
+    already had -- or unsound: a floor below the callset mode reads a legitimately smaller contig set
+    as a partial load, and on a small batch there is no mode worth measuring against in the first
+    place.
 
-    ``counts`` can map sample_id to raw row counts (int), tuples ``(total_rows, distinct_chromosomes)``,
-    or dicts ``{"count": int, "distinct": int}``. Only ``expected_samples`` are assessed.
+    The gap that leaves: ploidy rows lost for *some* of a sample's chromosomes, with no repeats, is
+    not detectable from row counts at all. The count is merely smaller, which is also what a
+    legitimate karyotype looks like, so no threshold separates the two. Catching it needs the expected
+    contig set for the sample's assay, which GVS does not record today. Whole-sample loss is still
+    caught, by completeness. VS-1989.
+
+    ``counts`` maps sample_id to ``(row_count, distinct_chromosomes)``, to
+    ``{"count": int, "distinct": int}``, or to a raw row count. A value carrying no
+    distinct-chromosome count degenerates to a presence check, the exact comparison being
+    unavailable. Only ``expected_samples`` are assessed.
     """
     expected = set(expected_samples)
     present = {
@@ -380,98 +390,18 @@ def assess_cardinality(counts, expected_samples, expected_count=None):
     }
     missing = sorted(expected - set(present))
 
-    reference_source = "override" if expected_count is not None else "mode"
-
-    if not present:
-        return {
-            "ok": not expected,
-            "mode": None,
-            "reference_count": expected_count,
-            "reference_source": reference_source,
-            "baseline": None,
-            "min": None,
-            "max": None,
-            "distinct_samples": 0,
-            "total_rows": 0,
-            "missing_samples": missing,
-            "deviating_samples": [],
-        }
+    deviating = []
+    for sid, val in sorted(present.items(), key=lambda d: d[0]):
+        n, n_distinct = _extract_count_info(val)
+        if n_distinct is not None and n > n_distinct:
+            deviating.append({"sample_id": sid, "count": n, "distinct_chromosomes": n_distinct})
 
     values = [_extract_count_info(val)[0] for val in present.values()]
-    freq = Counter(values)
-    max_freq = max(freq.values())
-    top_modes = sorted([val for val, count in freq.items() if count == max_freq])
-
-    if len(top_modes) == 1:
-        observed_mode = top_modes[0]
-    else:
-        # Non-unique modes (e.g. {20, 20, 24, 24} or {23, 23, 24, 24}):
-        # Break ties deterministically independent of dictionary iteration order. If tied modes
-        # include a gross duplicate (ratio >= 1.5), choose the lower count as the un-duplicated
-        # baseline (e.g. 24 over 48). Otherwise, choose the higher count as the conservative
-        # complete-genome baseline (e.g. 24 over 20), ensuring truncated samples missing autosomes
-        # (< mode - 2) are reliably flagged.
-        min_top = top_modes[0]
-        max_top = top_modes[-1]
-        if min_top > 0 and max_top / min_top >= 1.5:
-            observed_mode = min_top
-        else:
-            observed_mode = max_top
-
-    if expected_count is not None:
-        reference = expected_count
-        baseline = expected_count
-        deviating = []
-        for sid, val in sorted(present.items(), key=lambda d: d[0]):
-            n, n_distinct = _extract_count_info(val)
-            if n != expected_count or (n_distinct is not None and n > n_distinct):
-                deviating.append({"sample_id": sid, "count": n})
-    else:
-        reference = observed_mode
-        deviating = []
-        if len(values) == 2:
-            lower_val = min(values)
-            upper_val = max(values)
-            baseline = lower_val
-            if lower_val > 0 and upper_val / lower_val >= 1.5:
-                # Duplication for N=2: flag the high sample (and any chromosome collision)
-                for sid, val in sorted(present.items(), key=lambda d: d[0]):
-                    n, n_distinct = _extract_count_info(val)
-                    if (n_distinct is not None and n > n_distinct) or n == upper_val:
-                        deviating.append({"sample_id": sid, "count": n})
-            elif upper_val >= 10 and lower_val < upper_val - 2:
-                # Truncation for N=2: flag the low sample (and any chromosome collision)
-                for sid, val in sorted(present.items(), key=lambda d: d[0]):
-                    n, n_distinct = _extract_count_info(val)
-                    if (n_distinct is not None and n > n_distinct) or n == lower_val:
-                        deviating.append({"sample_id": sid, "count": n})
-            else:
-                # Permitted minor variation (e.g. 23 vs 24): flag only chromosome collision
-                for sid, val in sorted(present.items(), key=lambda d: d[0]):
-                    n, n_distinct = _extract_count_info(val)
-                    if n_distinct is not None and n > n_distinct:
-                        deviating.append({"sample_id": sid, "count": n})
-        else:
-            baseline = observed_mode
-            # Legitimate karyotype variations in human callsets include female samples lacking chrY
-            # (mode - 1), or samples lacking chrM when mode includes it (mode - 2). A count below
-            # mode - 2 indicates missing autosomes (a partial ploidy load), which fails cardinality.
-            min_allowed = max(1, observed_mode - 2) if observed_mode >= 10 else max(1, observed_mode - 1)
-            for sid, val in sorted(present.items(), key=lambda d: d[0]):
-                n, n_distinct = _extract_count_info(val)
-                if ((n_distinct is not None and n > n_distinct)
-                        or (baseline > 0 and n / baseline >= 1.5)
-                        or (n < min_allowed)):
-                    deviating.append({"sample_id": sid, "count": n})
 
     return {
         "ok": not missing and not deviating,
-        "mode": observed_mode,
-        "reference_count": reference,
-        "reference_source": reference_source,
-        "baseline": baseline,
-        "min": min(values),
-        "max": max(values),
+        "min": min(values) if values else None,
+        "max": max(values) if values else None,
         "distinct_samples": len(present),
         "total_rows": sum(values),
         "missing_samples": missing,
@@ -638,7 +568,6 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
                           vet_duplication_threshold=DEFAULT_VET_DUPLICATION_THRESHOLD,
                           vet_truncation_threshold=DEFAULT_VET_TRUNCATION_THRESHOLD,
                           allow_flagged_vet_loads=False,
-                          expected_ploidy_rows_per_sample=None,
                           duplication_screen_families=None,
                           cardinality_table_prefixes=None,
                           co_produced_families=None):
@@ -656,13 +585,9 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
     per header line and samples differ -- must NOT be listed here, or every sample would read as
     "deviating" and fail a valid ingest; completeness alone covers it.
 
-    ``expected_ploidy_rows_per_sample``, when set, is the exact per-sample row count each
-    cardinality-checked table is validated against (e.g. 24 for WGS). When unset, the callset's
-    modal count is used as the reference baseline: legitimate contig variations (e.g. 23 or 25 when
-    mode is 24, as RefRangesCreator only records ploidy for contigs with usable reference blocks) pass,
-    while duplicated loads (>= 1.5x baseline, such as 48 vs 24) are flagged as deviating and fail
-    cardinality. (Today ploidy is the only cardinality-checked table; if others with differing exact
-    counts are ever added this single override would need to become a per-table mapping.)
+    Cardinality is assessed exactly, per sample, with no configurable expected count: COUNT(*) must
+    equal COUNT(DISTINCT chromosome). See assess_cardinality for why no count-to-count comparison is
+    made and what that leaves undetected.
 
     The returned dict carries flat booleans read shallowly downstream (``completeness_ok``,
     ``cardinality_ok``, ``cross_family_ok``, ``duplication_flagged``, ``truncation_flagged``) plus a
@@ -754,11 +679,10 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
         active_co_produced_families.append(header_family)
     cross_family = assess_cross_family_consistency(expected_by_family, active_co_produced_families)
 
-    # Per-sample cardinality consistency, applied only to regular tables that carry a UNIFORM
-    # per-sample row count (ploidy). Tables whose per-sample count legitimately varies -- notably
-    # vcf_header_lines_scratch, one row per header line with counts differing across samples -- are
-    # excluded here (completeness above still covers them); enforcing the mode on them would
-    # false-positive every sample as "deviating" and fail a valid ingest.
+    # Per-sample cardinality consistency, applied only to regular tables with a per-chromosome unique
+    # row (ploidy). Tables whose rows carry no such uniqueness -- notably vcf_header_lines_scratch, one
+    # row per header line -- are excluded here, there being nothing exact to compare their counts
+    # against; completeness above still covers them.
     cardinality = {}
     cardinality_ok = True
     for prefix in regular_table_prefixes:
@@ -767,7 +691,6 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
         result = assess_cardinality(
             regular_counts.get(prefix, {}),
             expected_by_family.get(prefix, set()),
-            expected_count=expected_ploidy_rows_per_sample,
         )
         result["backfill_caveat"] = PLOIDY_BACKFILL_CAVEAT
         cardinality[prefix] = result

@@ -44,7 +44,6 @@ workflow GvsJointVariantCalling {
         Float parquet_vet_truncation_threshold = 1.6
         Boolean parquet_allow_flagged_vet_loads = false
         Boolean parquet_fail_on_quarantine = true
-        Int? parquet_expected_ploidy_rows_per_sample
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
         String? billing_project_id
 
@@ -111,7 +110,6 @@ workflow GvsJointVariantCalling {
         parquet_vet_truncation_threshold: "VS-1989 post-load verification: ratio whose reciprocal sets the low-side floor -- a vet sample at or below median/ratio is flagged as possibly truncated. Must be > 1, or 0 to disable the truncation screen; default 1.6 (i.e. 0.625x). Separate from parquet_vet_duplication_threshold because only the high side has been calibrated."
         parquet_allow_flagged_vet_loads: "VS-1989 post-load verification: when false (default), the Parquet of any sample a vet duplication- or truncation-screen flag names is moved to a quarantine prefix instead of deleted (the load itself still succeeds, and the unflagged samples' Parquet is deleted as normal); when true the screens are waived and everything is deleted despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless."
         parquet_fail_on_quarantine: "VS-1989 post-load verification: when true (default), a run that quarantined the Parquet of a duplication-flagged sample aborts after the quarantine completes, so the run is not silently green. Set false to leave the quarantine advisory (reported only through the parquet_quarantined_* outputs and the quarantine directory's README). Truncation-only flags never abort, because that threshold is not yet calibrated."
-        parquet_expected_ploidy_rows_per_sample: "VS-1989 post-load verification: exact per-sample sample_chromosome_ploidy row count to validate against (e.g. 24 for WGS) instead of the inferred callset mode; leave unset to infer from the data (correct for exome/BGE/chrM)."
     }
 
     # The `call_set_identifier` string is used to name many different things throughout this workflow (BQ tables, vcfs etc).
@@ -190,7 +188,6 @@ workflow GvsJointVariantCalling {
             parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
             parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
             parquet_fail_on_quarantine = parquet_fail_on_quarantine,
-            parquet_expected_ploidy_rows_per_sample = parquet_expected_ploidy_rows_per_sample,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {

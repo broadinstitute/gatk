@@ -105,21 +105,16 @@ def _log_structural_summary(structural):
 
     for table, card in sorted(details["cardinality"].items()):
         if card["ok"]:
-            if card.get("reference_source") == "override":
-                log.info(
-                    f"  [cardinality] {table}: {card['distinct_samples']} samples, all with {card.get('reference_count')} rows/sample (override)"
-                )
-            else:
-                log.info(
-                    f"  [cardinality] {table}: {card['distinct_samples']} samples present, modal count {card['mode']} rows/sample, no duplications detected "
-                    f"(min={card['min']}, max={card['max']})"
-                )
+            log.info(
+                f"  [cardinality] {table}: {card['distinct_samples']} samples present, one row per "
+                f"chromosome for every one of them (min={card['min']}, max={card['max']} rows/sample)"
+            )
         else:
-            ref_desc = f"{card.get('reference_count')} rows/sample ({card.get('reference_source', 'mode')})"
             log.error(
-                f"  [cardinality] {table}: expected {ref_desc}, observed mode={card['mode']} "
-                f"min={card['min']} max={card['max']}; "
-                f"{len(card['missing_samples'])} missing, {len(card['deviating_samples'])} deviating/duplicated"
+                f"  [cardinality] {table}: {len(card['missing_samples'])} sample(s) missing, "
+                f"{len(card['deviating_samples'])} with more rows than distinct chromosomes "
+                f"(a duplicated load); {card['distinct_samples']} samples present, "
+                f"min={card['min']} max={card['max']} rows/sample"
             )
 
     for family, screen in sorted(details["duplication_screen"].items()):
@@ -316,7 +311,7 @@ def describe_incomplete_reasons(results):
     if not results.get("family_completeness_ok", True):
         reasons.append("family completeness check failed (missing or empty partitions)")
     if not results.get("ploidy_cardinality_ok", True):
-        reasons.append("ploidy cardinality check failed (missing or off-reference samples)")
+        reasons.append("ploidy cardinality check failed (samples missing, or holding more rows than distinct chromosomes)")
     if not results.get("cross_family_consistency_ok", True):
         reasons.append("cross-family consistency check failed (a sample present in some families is absent from another)")
     return reasons
@@ -326,8 +321,7 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
                       superpartitioned_table_prefixes=None, regular_table_prefixes=None,
                       vet_duplication_threshold=DEFAULT_VET_DUPLICATION_THRESHOLD,
                       vet_truncation_threshold=DEFAULT_VET_TRUNCATION_THRESHOLD,
-                      allow_flagged_vet_loads=False,
-                      expected_ploidy_rows_per_sample=None):
+                      allow_flagged_vet_loads=False):
     """
     Compare GCS-derived (table_name, sample_id) pairs against what is actually
     present in BigQuery to find loads that are missing, then run independent
@@ -345,12 +339,11 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
             sample is flagged as possibly truncated (default 1.6, i.e. 0.625x). Separate from the
             duplication threshold because only the high side has been calibrated; pass 0 to disable
             the truncation screen and leave the duplication screen running (VS-1989).
-        allow_flagged_vet_loads: If False (default), a vet duplication- or truncation-screen flag
-            blocks deletion of the source Parquet (the load still succeeds -- all_loaded stays factual
-            -- and the Parquet is retained). If True, the screens are waived and deletion may proceed
-            despite a flag.
-        expected_ploidy_rows_per_sample: If set, the exact per-sample ploidy row count to validate
-            against (e.g. 24 for WGS) instead of the callset mode; leave unset to infer from the data.
+        allow_flagged_vet_loads: If False (default), the Parquet of each sample a vet duplication- or
+            truncation-screen flag names is moved to a quarantine prefix instead of deleted, while the
+            unflagged samples' Parquet is deleted as normal. The load itself still succeeds either way
+            -- all_loaded stays factual. If True, the screens are waived: nothing is quarantined and
+            the flagged samples' Parquet is deleted with the rest.
 
     Returns:
         Dictionary with verification results
@@ -459,7 +452,6 @@ def verify_all_loaded(project_id, dataset_name, gcs_files_list, output_dir,
         vet_duplication_threshold=vet_duplication_threshold,
         vet_truncation_threshold=vet_truncation_threshold,
         allow_flagged_vet_loads=allow_flagged_vet_loads,
-        expected_ploidy_rows_per_sample=expected_ploidy_rows_per_sample,
     )
     _log_structural_summary(structural)
 
@@ -614,15 +606,6 @@ def main():
             "pass this to waive both screens and delete the flagged files too."
         )
     )
-    parser.add_argument(
-        "--expected-ploidy-rows-per-sample",
-        type=int,
-        default=None,
-        help=(
-            "Exact per-sample ploidy row count to validate against (e.g. 24 for WGS) instead of the "
-            "callset mode. Leave unset to infer the reference from the data."
-        )
-    )
 
     args = parser.parse_args()
 
@@ -636,7 +619,6 @@ def main():
         vet_duplication_threshold=args.vet_duplication_threshold,
         vet_truncation_threshold=args.vet_truncation_threshold,
         allow_flagged_vet_loads=args.allow_flagged_vet_loads,
-        expected_ploidy_rows_per_sample=args.expected_ploidy_rows_per_sample,
     )
 
     if results["all_loaded"]:
@@ -675,8 +657,6 @@ def main():
 
         if results.get("missing_files_list"):
             log.error(f"  See missing files list: {results['missing_files_list']}")
-        if results.get("unmatched_files_list"):
-            log.error(f"  See unmatched files list: {results['unmatched_files_list']}")
 
     if not results["all_loaded"]:
         sys.exit(1)
