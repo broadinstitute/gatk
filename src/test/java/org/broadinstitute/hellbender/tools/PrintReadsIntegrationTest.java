@@ -22,6 +22,47 @@ import java.util.List;
 
 public final class PrintReadsIntegrationTest extends AbstractPrintReadsIntegrationTest {
 
+    @DataProvider(name = "cramVersionData")
+    public Object[][] cramVersionData() {
+        return new Object[][] {
+                {null,  (byte) 3, (byte) 1}, // default -> htsjdk default (3.1)
+                {"3.0", (byte) 3, (byte) 0},
+                {"3.1", (byte) 3, (byte) 1},
+        };
+    }
+
+    @Test(dataProvider = "cramVersionData")
+    public void testOutputCramVersion(final String requestedVersion, final byte expectedMajor, final byte expectedMinor) throws IOException {
+        final File in = new File(TEST_DATA_DIR, "print_reads.bam");
+        final File ref = new File(TEST_DATA_DIR, "print_reads.fasta");
+        final File out = createTempFile("printreads.cramversion", ".cram");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(in)
+                .addReference(ref)
+                .addOutput(out);
+        if (requestedVersion != null) {
+            args.add(StandardArgumentDefinitions.OUTPUT_CRAM_VERSION_LONG_NAME, requestedVersion);
+        }
+        runCommandLine(args);
+
+        final byte[] magic = new byte[6];
+        try (final java.io.InputStream is = new java.io.FileInputStream(out)) { is.read(magic); }
+        Assert.assertEquals(new String(magic, 0, 4), "CRAM");
+        Assert.assertEquals(magic[4], expectedMajor, "CRAM major version");
+        Assert.assertEquals(magic[5], expectedMinor, "CRAM minor version");
+    }
+
+    @Test(expectedExceptions = org.broadinstitute.hellbender.exceptions.UserException.BadInput.class)
+    public void testOutputCramVersionRejectsBadValue() {
+        final File in = new File(TEST_DATA_DIR, "print_reads.bam");
+        final File ref = new File(TEST_DATA_DIR, "print_reads.fasta");
+        final File out = createTempFile("printreads.badcramversion", ".cram");
+        runCommandLine(new ArgumentsBuilder()
+                .addInput(in).addReference(ref).addOutput(out)
+                .add(StandardArgumentDefinitions.OUTPUT_CRAM_VERSION_LONG_NAME, "3.2"));
+    }
+
     @Test(dataProvider="testingData")
     public void testFileToFileWithMD5(String fileIn, String extOut, String reference) throws Exception {
         doFileToFile(fileIn, extOut, reference, true);

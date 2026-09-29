@@ -424,29 +424,29 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
         final GencodeGtfTranscriptFeature NONBASIC_MANEPLUSCLINICAL = provideArtificialTranscriptForTestMANEExtractMode(new SimpleInterval("chr1", 99, 101), false, false, true);
 
         return new Object[][]{
-                // trivial cases where only one transcript is present
+                // Only one transcript is present. preferMANETranscripts enabled will return all MANE and basic transcripts; but not non-basic, non-mane ones
                 {TEST_VARIANT_CONTEXT, List.of(NONBASIC_A), List.of()},
                 {TEST_VARIANT_CONTEXT, List.of(BASIC_A), List.of(BASIC_A)},
                 {TEST_VARIANT_CONTEXT, List.of(BASIC_MANESELECT_A), List.of(BASIC_MANESELECT_A)},
                 {TEST_VARIANT_CONTEXT, List.of(BASIC_MANEPLUSCLINICAL_A), List.of(BASIC_MANEPLUSCLINICAL_A)},
                 {TEST_VARIANT_CONTEXT, List.of(BASIC_MANESELECT_MANEPLUSCLINICAL), List.of(BASIC_MANESELECT_MANEPLUSCLINICAL)},
-                // NOTE that these are (NOT BASIC TRANSCRIPTS), we still return them in MANE select mode
+                // NOTE that these are (NOT BASIC TRANSCRIPTS), we still return them with preferMANETranscripts enabled
                 {TEST_VARIANT_CONTEXT, List.of(NONBASIC_MANESELECT), List.of(NONBASIC_MANESELECT)},
                 {TEST_VARIANT_CONTEXT, List.of(NONBASIC_MANESELECT), List.of(NONBASIC_MANESELECT)},
 
-                // More complicated cases with multiple transcripts
+                // Cases with multiple transcripts
                 {TEST_VARIANT_CONTEXT, List.of(NONBASIC_A, BASIC_B), List.of(BASIC_B)}, // filter out non-basic transcripts
                 {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_B), List.of(BASIC_A, BASIC_B)}, // return all basic transcripts
-                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A), List.of(BASIC_MANESELECT_A)}, // return only MANE select transcript
-                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANESELECT_B), List.of(BASIC_MANESELECT_A, BASIC_MANESELECT_B)}, // return ALL MANE_SELECT transcripts present
-                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, NONBASIC_MANESELECT), List.of(BASIC_MANESELECT_A, NONBASIC_MANESELECT)}, // return ALL MANE_SELECT transcripts present, even if one is non-basic
-                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANEPLUSCLINICAL_B), List.of(BASIC_MANEPLUSCLINICAL_B)}, // return only MANE+Clinical transcript
-                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANEPLUSCLINICAL_A, BASIC_MANEPLUSCLINICAL_B), List.of(BASIC_MANEPLUSCLINICAL_A, BASIC_MANEPLUSCLINICAL_B)}, // return multiple MANE+Clinical transcripts
-                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANEPLUSCLINICAL_B), List.of(BASIC_MANEPLUSCLINICAL_B)}, // MANE+Clinical Overrides MANE select
+                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A), List.of(BASIC_A, BASIC_MANESELECT_A)}, // return both MANE and basic transcripts
+                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANESELECT_B), List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANESELECT_B)},
+                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, NONBASIC_MANESELECT), List.of(BASIC_A, BASIC_MANESELECT_A, NONBASIC_MANESELECT)},
+                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANEPLUSCLINICAL_B), List.of(BASIC_A, BASIC_MANEPLUSCLINICAL_B)},
+                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANEPLUSCLINICAL_A, BASIC_MANEPLUSCLINICAL_B), List.of(BASIC_A, BASIC_MANEPLUSCLINICAL_A, BASIC_MANEPLUSCLINICAL_B)},
+                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANEPLUSCLINICAL_B), List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANEPLUSCLINICAL_B)},
 
-                //edge cases
-                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, NONBASIC_MANEPLUSCLINICAL), List.of(NONBASIC_MANEPLUSCLINICAL)}, // MANE+Clinical Overrides MANE select EVEN if it is non-basic and MANE select is basic (probably doesn't happen in practice)
-                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANESELECT_B, BASIC_MANESELECT_MANEPLUSCLINICAL), List.of(BASIC_MANESELECT_MANEPLUSCLINICAL)}, // MANE+Clinical trumps MANE_Select if both are present (should not happen in practice)
+                // Edge cases (made simpler with the new logic that returns all MANE and basic transcripts and lets Funcotator do the prioritization based on variant classification severity)
+                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, NONBASIC_MANEPLUSCLINICAL), List.of(BASIC_A, BASIC_MANESELECT_A, NONBASIC_MANEPLUSCLINICAL)},
+                {TEST_VARIANT_CONTEXT, List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANESELECT_B, BASIC_MANESELECT_MANEPLUSCLINICAL), List.of(BASIC_A, BASIC_MANESELECT_A, BASIC_MANESELECT_B, BASIC_MANESELECT_MANEPLUSCLINICAL)},
         };
     }
 
@@ -1353,7 +1353,7 @@ public class GencodeFuncotationFactoryUnitTest extends GATKBaseTest {
 
     @Test ( dataProvider = "provideTestForMANESelectMode" )
         void testMANESelectTranscriptSelectionCriteria(final VariantContext variant, final List<GencodeGtfTranscriptFeature> inputTranscripts, final List<GencodeGtfTranscriptFeature> expectedTranscripts) {
-        final List<GencodeGtfTranscriptFeature> selectedTranscripts = GencodeFuncotationFactory.retrieveMANESelectModeTranscriptsCriteria(variant, inputTranscripts);
+        final List<GencodeGtfTranscriptFeature> selectedTranscripts = GencodeFuncotationFactory.retrieveMANEAndBasicTranscripts(variant, inputTranscripts);
         Assert.assertEquals(selectedTranscripts.size(), expectedTranscripts.size());
         for (int i = 0; i < selectedTranscripts.size(); i++) {
             Assert.assertEquals(selectedTranscripts.get(i), expectedTranscripts.get(i));
