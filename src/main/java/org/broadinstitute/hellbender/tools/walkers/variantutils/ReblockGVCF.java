@@ -411,7 +411,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
         // Somatic-style records (e.g. DRAGEN mitochondrial output) do not provide diploid GQ/PL data,
         // so pass them through untouched instead of applying reblocking logic.
         final Genotype inputGenotype = originalVC.getGenotype(0);
-        if (inputGenotype.hasExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY) && !inputGenotype.hasGQ() && !inputGenotype.hasPL()) {
+        if (isSomaticStyleGenotype(inputGenotype)) {
             vcfWriter.add(originalVC);
             return;
         }
@@ -518,6 +518,25 @@ public final class ReblockGVCF extends MultiVariantWalker {
      */
     public static boolean isHomRefBlock(final VariantContext result) {
         return (result.getAlternateAlleles().size() == 1) && result.getAlternateAllele(0).equals(Allele.NON_REF_ALLELE);
+    }
+
+    /**
+     * Determine whether a genotype is somatic-style, i.e. carries a somatic quality (SQ) in place of the diploid
+     * GQ/PL pair that reblocking is built around.  DRAGEN emits these for mitochondrial calls.
+     *
+     * Such records can be neither reblocked nor banded -- there is no GQ to threshold or partition on -- so they are
+     * passed through to the output untouched.  That decision is taken twice on the way out, once in
+     * {@link #regenotypeVC} before any reblocking logic runs, and again in
+     * {@link org.broadinstitute.hellbender.utils.variant.writers.ReblockingGVCFBlockCombiner#addHomRefSite} before
+     * the record would be merged into a block.  Both gates must agree: if only the first treats a record as somatic
+     * the combiner fails it for having no GQ or PL, and if only the second does, a record that has already been
+     * reblocked escapes banding and is emitted unmerged.  Hence one definition, called from both places.
+     *
+     * @param g genotype to test
+     * @return true if the genotype has SQ and neither GQ nor PL
+     */
+    public static boolean isSomaticStyleGenotype(final Genotype g) {
+        return g.hasExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY) && !g.hasGQ() && !g.hasPL();
     }
 
     /**

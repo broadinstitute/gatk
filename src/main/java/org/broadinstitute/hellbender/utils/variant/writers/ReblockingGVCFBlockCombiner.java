@@ -12,7 +12,6 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.iterators.PushPullTransformer;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
-import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -65,7 +64,7 @@ public class ReblockingGVCFBlockCombiner extends GVCFBlockCombiner implements Pu
         // *completed block* (or null when the site was absorbed into the open one).  Because this record bypasses
         // the block machinery entirely, any band still open covers earlier positions and would otherwise be emitted
         // after this record when it is eventually flushed.  Close it out first so the output stays position-ordered.
-        if (genotype.hasExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY) && !genotype.hasGQ() && !genotype.hasPL()) {
+        if (ReblockGVCF.isSomaticStyleGenotype(genotype)) {
             emitCurrentBlock();
             return vc;
         }
