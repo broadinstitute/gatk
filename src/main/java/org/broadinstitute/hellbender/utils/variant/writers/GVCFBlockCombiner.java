@@ -6,7 +6,9 @@ import com.google.common.collect.RangeMap;
 import com.google.common.collect.TreeRangeMap;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
@@ -19,7 +21,9 @@ import org.broadinstitute.hellbender.utils.variant.GATKVCFHeaderLines;
 
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Queue;
 
 import static htsjdk.variant.vcf.VCFConstants.MAX_GENOTYPE_QUAL;
@@ -91,7 +95,10 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
         Utils.nonNull(header, "header cannot be null");
 
         header.addMetaDataLine(VCFStandardHeaderLines.getInfoLine(VCFConstants.END_KEY));
-        header.addMetaDataLine(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.MIN_DP_FORMAT_KEY));
+        // Floored blocks carry no MIN_DP (see HomRefBlock), and a field no record uses still costs downstream tools
+        if (!floorBlocks) {
+            header.addMetaDataLine(GATKVCFHeaderLines.getFormatLine(GATKVCFConstants.MIN_DP_FORMAT_KEY));
+        }
 
         for (final Range<Integer> partition : gqPartitions.asMapOfRanges().keySet()) {
             header.addMetaDataLine(rangeToVCFHeaderLine(partition));
@@ -205,8 +212,23 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
             emitCurrentBlock();
             nextAvailableStart = vc.getEnd();
             contigOfNextAvailableStart = vc.getContig();
-            toOutput.add(vc);
+            toOutput.add(floorBlocks ? withoutMinDP(vc) : vc);
         }
+    }
+
+    /**
+     * With floored blocks the header doesn't declare MIN_DP (see {@link #addRangesToHeader}), so a record written as it
+     * is mustn't carry it either. HaplotypeCaller puts MIN_DP only on reference blocks, but a record passed through from
+     * an input gVCF may have one.
+     */
+    private static VariantContext withoutMinDP(final VariantContext vc) {
+        final Genotype g = vc.getGenotype(0);
+        if (!g.hasExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY)) {
+            return vc;
+        }
+        final Map<String, Object> attributes = new LinkedHashMap<>(g.getExtendedAttributes());
+        attributes.remove(GATKVCFConstants.MIN_DP_FORMAT_KEY);
+        return new VariantContextBuilder(vc).genotypes(new GenotypeBuilder(g).noAttributes().attributes(attributes).make()).make();
     }
 
     @Override
