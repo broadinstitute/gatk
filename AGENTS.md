@@ -589,3 +589,61 @@ once merged, which remains a legitimate (and usually serious) finding:
 The distinction is whether the leftover changes what a merged workflow does. If
 it only affects what is visible or runnable on the developer's own branch, leave
 it alone.
+
+# Session Retrospectives
+
+## Offer to capture what a session taught you, every time
+
+When a piece of work reaches a natural end — the review is delivered, the tests
+pass, the image is built and pushed — say plainly that it is done, then tell the
+user you would like to record what the session taught you and ask whether to go
+ahead. Ask every time. Do not skip it because the session felt routine, and do
+not write to the repo or to memory without the user agreeing first.
+
+The standing preference is that this conversation happens, so the question put
+to the user is *what* to write and *where*, not whether retrospection is
+wanted. Keep the ask to a couple of sentences naming the specific lessons you
+have in mind; a vague "shall I record some learnings?" wastes a turn because
+the user cannot answer it without asking you what you mean.
+
+If nothing from the session is worth keeping, say that instead of inventing
+something. A thin retrospective is worse than none, because it dilutes the
+files that later sessions actually read.
+
+## What is worth keeping
+
+Keep a lesson when knowing it at the start would have saved real time, and when
+it will still be true next session. The strongest candidates:
+
+- **Environment facts not derivable from the code.** A required VM shape, a
+  network or IAM constraint, an auth path that works where the documented one
+  does not.
+- **Mistakes with a generalisable root cause.** Not "I mistyped a flag", but
+  "a VM with no external IP looks healthy until the first non-Google download,
+  because Private Google Access keeps gcloud working and masks the problem".
+- **A procedure that took several attempts to get right**, where the working
+  sequence is worth replaying rather than rediscovering.
+- **Corrections the user made to how you work**, together with the reason, so
+  the next session applies the principle rather than just the instance.
+- **Verification techniques that caught something**, such as mutation-testing a
+  new test to prove it fails without the fix.
+
+Skip anything the code, the git history, or this file already records; anything
+that mattered only inside the conversation; and narrative retellings. A lesson
+is a fact plus what to do about it, not a diary entry.
+
+## Where each kind of lesson goes
+
+| Kind of lesson                                                   | Home                          |
+|------------------------------------------------------------------|-------------------------------|
+| Convention any agent working in this repo should follow          | this file                     |
+| Fact about the user, their preferences, or ongoing project state | the agent's memory directory  |
+| Repeatable multi-step procedure worth replaying verbatim         | a skill                       |
+| Detail relevant only to one open ticket                          | the JIRA ticket, not the repo |
+
+Propose the actual edit — a diff, or the exact text and the file it lands in —
+rather than describing it in the abstract. The user is approving specific
+wording in a specific place, and a description is not reviewable.
+
+Remember that anything written to this repo is public: the redaction rules in
+the Data Handling section apply to retrospectives exactly as they do to code.
