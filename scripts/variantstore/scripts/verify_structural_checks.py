@@ -29,32 +29,55 @@ predicate cannot.
 
 Scope notes (VS-1989):
   * The exact footer-vs-BigQuery per-sample comparison (the gold-standard loss+duplication detector
-    from the ticket description) is intentionally deferred: it needs a new heavy image dependency
-    (pyarrow) and a footer read per file, which is prohibitive at AoU scale. It would also catch
-    little that the checks here do not. A partial *load* cannot occur: BigQuery load jobs are atomic
-    (``load_parquet_to_bq.py`` loads each batch via ``load_table_from_uri`` with ``WRITE_APPEND``, and
-    a failed job commits nothing), so a present partition is either complete, empty (caught by
+    from the ticket description) is deferred to VS-2032, not rejected, and is deferred on scope
+    rather than on cost -- it is cheap. BigQuery reads the Parquet footers itself, so an external
+    table over the source files answering ``COUNT(*)`` grouped by the ``_FILE_NAME`` pseudo-column
+    yields per-file row counts from footer metadata at zero bytes billed, needing no Parquet reader,
+    no image change and no client-side read path. Measured on real GVS Parquet, all six
+    ``(family, sample)`` pairs agreed exactly with ``INFORMATION_SCHEMA.PARTITIONS.total_rows`` at
+    ``totalBytesBilled: 0``. What defers it is the interaction with what is already here: an exact
+    per-sample check makes the ``vet`` duplication screen below, its threshold input, its waiver and
+    its gate redundant or ambiguous, and settling that means re-qualifying them. Do not repeat the
+    two older rationales: that pyarrow cannot be had on musl (it has published
+    ``musllinux_1_2_x86_64`` wheels since 20.0.0, and ``build_base.Dockerfile`` is stale on this
+    point), or that the read I/O is prohibitive at AoU scale (it is cents, and moot here anyway).
+    On the loss side this would catch little that the checks here do not, but on the duplication side
+    it is the detector ``ref_ranges`` lacks entirely (next bullet) and would make the ``vet``
+    duplication screen exact rather than a ratio heuristic. A partial *load* cannot occur: BigQuery
+    load jobs are atomic (``load_parquet_to_bq.py`` loads each batch via ``load_table_from_uri``
+    with ``WRITE_APPEND``, and a failed job commits nothing), so a present partition is either
+    complete, empty (caught by
     completeness), or duplicated (caught by the duplication screen). The one residual truncation source
     is a Parquet file generated upstream with too few rows -- and there the footer count and the
     BigQuery count agree, so footer-vs-BigQuery would pass it too. That case is instead surfaced
     cheaply by ``assess_truncation_screen``, a below-median heuristic on its own threshold (equal to
     the duplication screen's by default, but only the duplication side has been calibrated); catching
-    it exactly would need a gVCF-level variant count, which is out of scope. Do not re-attempt the
-    footer comparison without re-reading this note.
+    it exactly would need a gVCF-level variant count, which is out of scope. Note that the footer
+    comparison shares that blind spot: ``num_rows`` is the file's own self-report, so it closes the
+    double-*load* gap (footer N vs. partition 2N) and not the doubled-*file* gap (footer 2N vs.
+    partition 2N, which reads as agreement). Coordinate with VS-2032 before implementing it here.
   * ``ref_ranges`` has no cheap per-sample duplication signal -- its row count tracks GQ-band
     transitions, not genome length, and legitimate samples reach many times the median -- so only
-    whole-sample presence is verified for it and the gap is recorded rather than papered over. The
-    only detector that does work is exact: ``COUNT(*)`` vs. ``COUNT(DISTINCT packed_ref_data)`` per
-    sample, which costs a full per-sample scan rather than a partition-metadata read and so is out
-    of scope here. Comparing a sample's row count against its counterpart in the parent callset was
+    whole-sample presence is verified for it and the gap is recorded rather than papered over.
+    Recording it is not detecting it: a ``ref_ranges`` partition loaded twice reaches the callset
+    unnoticed today, and closing that is VS-2032, where the footer comparison above is the proposed
+    mechanism. The other detector that works is exact: ``COUNT(*)`` vs.
+    ``COUNT(DISTINCT packed_ref_data)`` per sample, which costs a full per-sample scan rather than a
+    partition-metadata read and so is out of scope here. Comparing a sample's row count against its
+    counterpart in the parent callset was
     also considered and rejected: a child callset is seeded by copying its parent, so a defect
     already present in the parent is copied forward identically and reads as agreement, not
     disagreement. Cross-generation comparison can only catch a change introduced at or after the
     copy -- never a defect the parent already had -- so it is not a substitute for a real detector
     and is not implemented. Do not re-attempt either approach without re-reading this note.
-  * The ploidy *duplication* reading holds only where a sample's ploidy rows were written at ingest;
-    a later backfill writes a full per-sample set regardless of what the reference tables contained,
-    masking a doubled sample. See ``PLOIDY_BACKFILL_CAVEAT``.
+  * Ploidy cardinality is not a ``ref_ranges`` detector, and must not be read as one. What it sees is
+    a doubled load of the *ploidy* file; because a sample's vet, ref_ranges and ploidy files are
+    written in one pass (see ``DEFAULT_CO_PRODUCED_FAMILIES``), a flag is evidence about that pass
+    rather than a readout of what landed in ``ref_ranges``. A ``ref_ranges`` partition doubled on its
+    own -- the gap in the bullet above -- is invisible to it. And the reading holds only where a
+    sample's ploidy rows were written at ingest: a later backfill writes one row per chromosome by
+    construction, so it satisfies the check whatever the data families hold. See
+    ``PLOIDY_BACKFILL_CAVEAT``.
 """
 
 import logging
@@ -117,11 +140,13 @@ DEFAULT_VET_TRUNCATION_THRESHOLD = 1.6
 TRUNCATION_SCREEN_DISABLED = 0
 
 PLOIDY_BACKFILL_CAVEAT = (
-    "Ploidy duplication is only detectable here where a sample's ploidy rows were written at ingest. "
-    "A later backfill writes one row per chromosome regardless of what the reference tables held, so a "
-    "doubled sample still satisfies COUNT(*) == COUNT(DISTINCT chromosome). Do not read a green ploidy "
-    "result as a duplication guarantee for callsets or sample ranges whose ploidy was backfilled "
-    "(provenance is not captured today -- see VS-1989)."
+    "This check covers the ploidy table's own rows and nothing else -- it is not a vet or ref_ranges "
+    "duplication detector, and ref_ranges has none today (see VS-2032). Even for ploidy it is only "
+    "meaningful where a sample's rows were written at ingest: a later backfill writes one row per "
+    "chromosome by construction, so a backfilled sample satisfies "
+    "COUNT(*) == COUNT(DISTINCT chromosome) whatever happened at load time. Do not read a green "
+    "ploidy result as a duplication guarantee for callsets or sample ranges whose ploidy was "
+    "backfilled (provenance is not captured today -- see VS-1989)."
 )
 
 
@@ -364,9 +389,11 @@ def assess_cardinality(counts, expected_samples):
     repeats chromosomes, and nothing legitimate does. That is the whole check, and it needs no
     reference count to compare against -- it holds for a single sample as readily as for a callset.
 
-    Nothing here compares one sample's row count against another's. Those counts legitimately vary
-    (a female sample has no chrY, chrM is recorded or not, an exome or BGE callset covers fewer
-    contigs), and every screen built on that variation was either redundant with the exact comparison
+    Nothing here compares one sample's row count against another's. Those counts legitimately vary:
+    a sample's contig set is whatever its input gVCF contains, which follows the calling pipeline
+    rather than the participant's karyotype -- every gVCF ingested for Foxtrot carries a chrY row,
+    female participants included -- chrM is recorded or not, and an exome or BGE callset covers fewer
+    contigs. Every screen built on that variation was either redundant with the exact comparison
     -- the 1.5x modal ceiling, which fired only where ``COUNT(*) > COUNT(DISTINCT chromosome)``
     already had -- or unsound: a floor below the callset mode reads a legitimately smaller contig set
     as a partial load, and on a small batch there is no mode worth measuring against in the first

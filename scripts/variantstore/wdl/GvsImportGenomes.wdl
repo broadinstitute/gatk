@@ -1764,23 +1764,31 @@ task QuarantineFlaggedParquetFiles {
       echo "Re-ingesting one of these takes TWO steps, and the second one alone does nothing. The"
       echo "sample's rows are still in BigQuery, so the loader treats it as already loaded and skips"
       echo "any file you restore: DiscoverParquetFiles considers a (table, sample_id) pair loaded when"
-      echo "its partition holds any bytes at all, which a duplicated partition certainly does."
+      echo "its vet_%/ref_ranges_% partition holds any bytes at all -- which a duplicated partition"
+      echo "certainly does -- and, for the unpartitioned tables, when the sample_id appears in the"
+      echo "table at all."
       echo
       echo "1. Remove the sample's rows from BigQuery. Each filename carries the table and the"
       echo "   sample_id it belongs to -- 'vet_123_4567_<...>.parquet' is table vet_123, sample_id"
-      echo "   4567 -- and these tables are range-partitioned on sample_id with step 1, so the"
-      echo "   partition id IS the sample_id:"
-      echo
-      echo "     bq rm -f -t '~{project_id}:~{dataset_name}.<table>\$<sample_id>'"
-      echo
-      echo "   or, equivalently:"
+      echo "   4567. This form works for every table quarantined here:"
       echo
       echo "     bq query --use_legacy_sql=false \\"
       echo "       'DELETE FROM \`~{project_id}.~{dataset_name}.<table>\` WHERE sample_id = <sample_id>'"
       echo
+      echo "   For vet_% and ref_ranges_% only, dropping the partition is equivalent and cheaper --"
+      echo "   those tables are range-partitioned on sample_id with step 1, so the partition id IS"
+      echo "   the sample_id:"
+      echo
+      echo "     bq rm -f -t '~{project_id}:~{dataset_name}.<table>\$<sample_id>'"
+      echo
+      echo "   Do not reach for that form on sample_chromosome_ploidy or vcf_header_lines_scratch."
+      echo "   Both are created with partitioned = false (GvsAssignIds.wdl), so there is no partition"
+      echo "   to drop and the decorator is rejected outright: 'Cannot read partition information"
+      echo "   from a table that is not partitioned'. Use the DELETE above for those two."
+      echo
       echo "   Do this for every table the sample appears under here, not just vet: a sample's"
-      echo "   ref_ranges and sample_chromosome_ploidy rows are quarantined alongside it, and a"
-      echo "   partial delete reloads the sample inconsistently across families."
+      echo "   ref_ranges, sample_chromosome_ploidy and vcf_header_lines_scratch rows are quarantined"
+      echo "   alongside it, and a partial delete reloads the sample inconsistently across families."
       echo
       echo "2. Restore the Parquet. Each object keeps its path relative to ${OUTPUT_GCS_DIR}/, moved"
       echo "   under ${QUARANTINE_DIR}/ with '~{quarantine_suffix}' appended to its name. The listing"

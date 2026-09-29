@@ -180,7 +180,7 @@ class TestAssessCardinality(unittest.TestCase):
         self.assertEqual([d["sample_id"] for d in r["deviating_samples"]], [1, 2])
 
     def test_heterogeneous_contig_counts_pass(self):
-        # Legitimate contig coverage variations (23 for a female sample, 25 with chrM) pass.
+        # Legitimate contig coverage variations (23 where the gVCF omits a contig, 25 with chrM) pass.
         r = assess_cardinality({1: (23, 23), 2: (24, 24), 3: (25, 25)}, {1, 2, 3})
         self.assertTrue(r["ok"])
         self.assertEqual(r["min"], 23)
@@ -642,7 +642,7 @@ class TestRunStructuralChecks(unittest.TestCase):
 
     def test_heterogeneous_ploidy_passes(self):
         part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
-        self._patch(part, {1: (24, 24), 2: (23, 23)})  # sample 2 legitimately has 23 contigs (female sample lacking chrY)
+        self._patch(part, {1: (24, 24), 2: (23, 23)})  # sample 2's gVCF legitimately covers 23 contigs
         exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
         r = run_structural_checks("proj", "ds", exp)
         self.assertTrue(r["completeness_ok"])
