@@ -575,6 +575,45 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
     }
 
     /**
+     * A somatic record bypasses the block machinery in ReblockingGVCFBlockCombiner.addHomRefSite and is emitted
+     * directly. Any band left open by preceding ordinary hom-ref records covers earlier positions, so it has to be
+     * closed out first -- otherwise it is flushed at end-of-input and lands *after* the somatic record, leaving the
+     * output out of position order.
+     *
+     * The blocks here are deliberately contiguous (2-50 then 51-100) so that nothing else triggers a flush in
+     * between: the only thing that can emit the first band before the second record is the somatic branch itself.
+     */
+    @Test
+    public void testOpenBandIsFlushedBeforeSomaticRecordIsEmitted() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+
+        // an ordinary hom-ref block, which opens a band
+        final GenotypeBuilder normalGB = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
+        normalGB.GQ(40).PL(new int[]{0, 40, 400}).AD(new int[]{50, 0}).DP(50);
+        final VariantContext normalBlock = new VariantContextBuilder("test", "chrM", 2, 50,
+                Arrays.asList(CHR_M_REF, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, 50)
+                .genotypes(normalGB.make()).unfiltered().make();
+
+        reblocker.regenotypeVC(normalBlock);
+        reblocker.regenotypeVC(makeSomaticRefBlock(51, 100, "6", 82));
+        reblocker.vcfWriter.close();
+
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 2, "both blocks should reach the output");
+        Assert.assertEquals(emitted.get(0).getStart(), 2,
+                "the banded hom-ref block must be emitted first; emitting the somatic record ahead of it puts the "
+                        + "output out of position order");
+        Assert.assertEquals(emitted.get(1).getStart(), 51, "the somatic block should follow the band it came after");
+
+        // and the records should still be the ones we expect, not swapped in content
+        Assert.assertTrue(emitted.get(0).getGenotype(0).hasGQ(), "the first record should be the banded one");
+        Assert.assertEquals(emitted.get(1).getGenotype(0).getExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY), "6",
+                "the second record should be the somatic one");
+    }
+
+    /**
      * The somatic guard in ReblockingGVCFBlockCombiner.addHomRefSite carries the same "no GQ and no PL"
      * requirement as the one in regenotypeVC, and needs its own coverage: a hom-ref block carrying SQ
      * alongside a real GQ must still be banded by the combiner rather than passed straight through.
@@ -627,7 +666,7 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         gb.GQ(50).PL(new int[]{500, 0, 600}).AD(new int[]{10, 20}).DP(30);
         final VariantContext targetedNoNonRef = new VariantContextBuilder("test", "chrM", 150, 150,
                 Arrays.asList(CHR_M_REF, CHR_M_ALT))
-                .attribute("TARGETED", true)
+                .attribute(GATKVCFConstants.TARGETED_KEY, true)
                 .genotypes(gb.make()).unfiltered().make();
 
         reblocker.apply(targetedNoNonRef, null, null, null);
@@ -635,6 +674,35 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
 
         Assert.assertEquals(mockWriter.getEmitted().size(), 0,
                 "a flagged targeted record with no <NON_REF> allele should be dropped, not emitted");
+        Assert.assertEquals(reblocker.droppedTargetedRecordCount, 1,
+                "the dropped record should be counted so closeTool() can report it");
+    }
+
+    /**
+     * Dropped targeted records are counted rather than logged individually, so the count has to accumulate across
+     * the traversal. Records that are not dropped must not be counted.
+     */
+    @Test
+    public void testDroppedTargetedRecordsAreCounted() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        attachMockWriter(reblocker);
+
+        Assert.assertEquals(reblocker.droppedTargetedRecordCount, 0, "nothing dropped before any records are seen");
+
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_ALT));
+        gb.GQ(50).PL(new int[]{500, 0, 600}).AD(new int[]{10, 20}).DP(30);
+        for (final int position : new int[]{150, 151, 152}) {
+            reblocker.apply(new VariantContextBuilder("test", "chrM", position, position,
+                    Arrays.asList(CHR_M_REF, CHR_M_ALT))
+                    .attribute(GATKVCFConstants.TARGETED_KEY, true)
+                    .genotypes(gb.make()).unfiltered().make(), null, null, null);
+        }
+        Assert.assertEquals(reblocker.droppedTargetedRecordCount, 3, "each dropped record should be counted");
+
+        // a targeted record that still has <NON_REF> is processed, not dropped, so it must not be counted
+        reblocker.apply(new VariantContextBuilder(makeSomaticVariant(73))
+                .attribute(GATKVCFConstants.TARGETED_KEY, true).make(), null, null, null);
+        Assert.assertEquals(reblocker.droppedTargetedRecordCount, 3, "records that are not dropped should not be counted");
     }
 
     /**
@@ -667,7 +735,7 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         gb.GQ(50).PL(new int[]{500, 0, 600}).AD(new int[]{10, 20}).DP(30);
         final VariantContext notTargeted = new VariantContextBuilder("test", "chrM", 150, 150,
                 Arrays.asList(CHR_M_REF, CHR_M_ALT))
-                .attribute("TARGETED", false)
+                .attribute(GATKVCFConstants.TARGETED_KEY, false)
                 .genotypes(gb.make()).unfiltered().make();
 
         Assert.assertThrows(UserException.class, () -> reblocker.apply(notTargeted, null, null, null));
@@ -684,7 +752,7 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
 
         final VariantContext somatic = makeSomaticVariant(73);
         final VariantContext targetedWithNonRef = new VariantContextBuilder(somatic)
-                .attribute("TARGETED", true).make();
+                .attribute(GATKVCFConstants.TARGETED_KEY, true).make();
 
         reblocker.apply(targetedWithNonRef, null, null, null);
         reblocker.vcfWriter.close();

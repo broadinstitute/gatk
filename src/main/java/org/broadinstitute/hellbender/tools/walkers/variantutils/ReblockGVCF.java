@@ -194,6 +194,13 @@ public final class ReblockGVCF extends MultiVariantWalker {
     private HaplotypeCallerGenotypingEngine genotypingEngine;
     // the annotation engine
     private VariantAnnotatorEngine annotationEngine;
+
+    // tally of targeted-caller records dropped by apply(), reported once in closeTool() rather than
+    // per-record so that a targeted callset does not flood the log
+    @VisibleForTesting
+    long droppedTargetedRecordCount = 0;
+    // position of the first dropped record, to give the summary somewhere to point
+    private String firstDroppedTargetedRecord = null;
     // the INFO field annotation key names to remove
     private static final List<String> infoFieldAnnotationKeyNamesToRemove = Arrays.asList(GVCFWriter.GVCF_BLOCK, GATKVCFConstants.HAPLOTYPE_SCORE_KEY,
             GATKVCFConstants.INBREEDING_COEFFICIENT_KEY, GATKVCFConstants.MLE_ALLELE_COUNT_KEY,
@@ -338,7 +345,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
     @Override
     public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
         if (!variant.hasAllele(Allele.NON_REF_ALLELE)) {
-            if (variant.getCommonInfo().getAttributeAsBoolean("TARGETED", false) == true) {
+            if (variant.getAttributeAsBoolean(GATKVCFConstants.TARGETED_KEY, false)) {
                 // We're currently ignoring targeted sites that don't have a <NON_REF> allele as we're focusing on
                 // standard SNPs and Indels.  We may handle these differently later.
                 //
@@ -356,6 +363,13 @@ public final class ReblockGVCF extends MultiVariantWalker {
                 // dropped span rather than to drop it outright.  See the coverage in ReblockGVCFUnitTest
                 // (testTargetedCallWithoutNonRefIsDropped and friends), which pins the current drop behavior so
                 // that a deliberate change to it is visible rather than silent.
+                //
+                // Counted rather than logged per-record: a targeted callset can carry a great many of these, and a
+                // line apiece would bury the rest of the log.  The total is reported in closeTool().
+                droppedTargetedRecordCount++;
+                if (firstDroppedTargetedRecord == null) {
+                    firstDroppedTargetedRecord = variant.getContig() + ":" + variant.getStart();
+                }
                 return;
             }
             throw new UserException("Variant Context at " + variant.getContig() + ":" + variant.getStart() + " does not contain a <NON-REF> allele. This tool is only intended for use with GVCFs.");
@@ -1096,6 +1110,11 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
     @Override
     public void closeTool() {
+        if (droppedTargetedRecordCount > 0) {
+            logger.warn(droppedTargetedRecordCount + " record(s) from a targeted caller had no <NON_REF> allele and were dropped from the output, "
+                    + "starting at " + firstDroppedTargetedRecord + ".  These positions are not represented in the output GVCF at all, "
+                    + "so downstream tools will treat them as no-calls rather than as hom-ref.");
+        }
         if ( vcfWriter != null ) {
             vcfWriter.close();
         }
