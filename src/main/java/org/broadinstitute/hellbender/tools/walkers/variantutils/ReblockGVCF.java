@@ -339,7 +339,23 @@ public final class ReblockGVCF extends MultiVariantWalker {
     public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
         if (!variant.hasAllele(Allele.NON_REF_ALLELE)) {
             if (variant.getCommonInfo().getAttributeAsBoolean("TARGETED", false) == true) {
-                // We're currently ignoring targeted sites that don't have a <NON_REF> allele as we're focusing on standard SNPs and Indels.  We may handle these differently later.
+                // We're currently ignoring targeted sites that don't have a <NON_REF> allele as we're focusing on
+                // standard SNPs and Indels.  We may handle these differently later.
+                //
+                // CAVEAT -- dropping the record is not the same as asserting hom-ref at that position.  A gVCF is
+                // expected to account for every position via either a variant record or an overlapping reference
+                // block, and callers generally split their reference blocks around called positions so the two do
+                // not overlap.  If DRAGEN splits its blocks around targeted calls the same way it does around
+                // ordinary variants, then discarding the record here leaves the position described by nothing at
+                // all, and downstream consumers (GVS ingest in particular) will read that gap as a no-call rather
+                // than as hom-ref -- a different assertion about the sample than "we ignored this call".
+                //
+                // Whether that actually happens depends on how DRAGEN emits blocks around targeted calls, which has
+                // not been confirmed against real targeted-caller output.  If it turns out these positions are not
+                // covered by a surrounding reference block, the fix is to emit a GQ0 reference block over the
+                // dropped span rather than to drop it outright.  See the coverage in ReblockGVCFUnitTest
+                // (testTargetedCallWithoutNonRefIsDropped and friends), which pins the current drop behavior so
+                // that a deliberate change to it is visible rather than silent.
                 return;
             }
             throw new UserException("Variant Context at " + variant.getContig() + ":" + variant.getStart() + " does not contain a <NON-REF> allele. This tool is only intended for use with GVCFs.");
