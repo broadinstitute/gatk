@@ -546,7 +546,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(outVCs.size(), 5, "All SQ-style records should be passed through");
 
         // The SQ FORMAT header line from the input must survive in the output header
-        Assert.assertNotNull(result.getLeft().getFormatHeaderLine("SQ"),
+        Assert.assertNotNull(result.getLeft().getFormatHeaderLine(GATKVCFConstants.SOMATIC_QUALITY_KEY),
                 "SQ FORMAT header line must be preserved in output header");
 
         // The called variant at chrM:73 should be present with SQ but no GQ or PL
@@ -554,7 +554,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                 .filter(vc -> vc.getStart() == 73).findFirst().orElse(null);
         Assert.assertNotNull(variantRecord, "chrM:73 variant record should be present");
         final Genotype variantG = variantRecord.getGenotype(0);
-        Assert.assertTrue(variantG.hasExtendedAttribute("SQ"), "SQ attribute should be present");
+        Assert.assertTrue(variantG.hasExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY), "SQ attribute should be present");
         Assert.assertFalse(variantG.hasGQ(), "GQ should not have been added to SQ-only record");
         Assert.assertFalse(variantG.hasPL(), "PL should not have been added to SQ-only record");
     }

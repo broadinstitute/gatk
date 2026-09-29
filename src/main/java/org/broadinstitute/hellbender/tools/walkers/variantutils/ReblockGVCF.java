@@ -397,7 +397,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
         // Somatic-style records (e.g. DRAGEN mitochondrial output) do not provide diploid GQ/PL data,
         // so pass them through untouched instead of applying reblocking logic.
         final Genotype inputGenotype = originalVC.getGenotype(0);
-        if (inputGenotype.hasExtendedAttribute("SQ") && !inputGenotype.hasGQ() && !inputGenotype.hasPL()) {
+        if (inputGenotype.hasExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY) && !inputGenotype.hasGQ() && !inputGenotype.hasPL()) {
             vcfWriter.add(originalVC);
             return;
         }

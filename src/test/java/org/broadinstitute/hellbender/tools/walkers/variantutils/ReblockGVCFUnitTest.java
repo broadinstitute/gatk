@@ -448,7 +448,7 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
      */
     private static VariantContext makeSomaticRefBlock(final int start, final int end, final String sq, final int minDP) {
         final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
-        gb.attribute("SQ", sq)
+        gb.attribute(GATKVCFConstants.SOMATIC_QUALITY_KEY, sq)
           .attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, minDP)
           .AD(new int[]{76, 0})
           .DP(76)
@@ -465,7 +465,7 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
      */
     private static VariantContext makeSomaticVariant(final int position) {
         final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_ALT, CHR_M_ALT));
-        gb.attribute("SQ", "97.96,0.00")
+        gb.attribute(GATKVCFConstants.SOMATIC_QUALITY_KEY, "97.96,0.00")
           .AD(new int[]{0, 88, 0})
           .DP(88)
           .noGQ()
@@ -500,14 +500,14 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         Assert.assertEquals(outRefBlock.getStart(), 2, "ref block start should be unchanged");
         Assert.assertEquals(outRefBlock.getEnd(), 72, "ref block end should be unchanged");
         final Genotype refBlockGenotype = outRefBlock.getGenotype(0);
-        Assert.assertEquals(refBlockGenotype.getExtendedAttribute("SQ"), "10", "SQ should survive on the ref block");
+        Assert.assertEquals(refBlockGenotype.getExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY), "10", "SQ should survive on the ref block");
         Assert.assertFalse(refBlockGenotype.hasGQ(), "no GQ should be synthesized for the somatic ref block");
         Assert.assertFalse(refBlockGenotype.hasPL(), "no PL should be synthesized for the somatic ref block");
 
         final VariantContext outVariant = emitted.get(1);
         Assert.assertEquals(outVariant.getStart(), 73, "call should be emitted at its original position");
         final Genotype variantGenotype = outVariant.getGenotype(0);
-        Assert.assertEquals(variantGenotype.getExtendedAttribute("SQ"), "97.96,0.00", "SQ should survive on the call");
+        Assert.assertEquals(variantGenotype.getExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY), "97.96,0.00", "SQ should survive on the call");
         Assert.assertFalse(variantGenotype.hasGQ(), "no GQ should be synthesized for the somatic call");
         Assert.assertFalse(variantGenotype.hasPL(), "no PL should be synthesized for the somatic call");
     }
@@ -533,8 +533,8 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         Assert.assertEquals(emitted.get(0).getEnd(), 72);
         Assert.assertEquals(emitted.get(1).getStart(), 73);
         Assert.assertEquals(emitted.get(1).getEnd(), 126);
-        Assert.assertEquals(emitted.get(0).getGenotype(0).getExtendedAttribute("SQ"), "10");
-        Assert.assertEquals(emitted.get(1).getGenotype(0).getExtendedAttribute("SQ"), "6");
+        Assert.assertEquals(emitted.get(0).getGenotype(0).getExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY), "10");
+        Assert.assertEquals(emitted.get(1).getGenotype(0).getExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY), "6");
     }
 
     /**
@@ -554,12 +554,12 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         reblocker.dropLowQuals = false;
 
         final Genotype lowQualG = VariantContextTestUtils.makeG("sample1", 11, LONG_REF, Allele.NON_REF_ALLELE, 200, 100, 200, 11, 0, 37);
-        final Genotype withSQ = new GenotypeBuilder(lowQualG).attribute("SQ", "10").make();
+        final Genotype withSQ = new GenotypeBuilder(lowQualG).attribute(GATKVCFConstants.SOMATIC_QUALITY_KEY, "10").make();
         final VariantContext lowQualVariantWithSQ = makeDeletionVC("lowQualVarWithSQ",
                 Arrays.asList(LONG_REF, DELETION, Allele.NON_REF_ALLELE), LONG_REF.length(), withSQ);
 
         // sanity check on the fixture: the input really does carry SQ alongside GQ and PL
-        Assert.assertTrue(lowQualVariantWithSQ.getGenotype(0).hasExtendedAttribute("SQ"));
+        Assert.assertTrue(lowQualVariantWithSQ.getGenotype(0).hasExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY));
         Assert.assertTrue(lowQualVariantWithSQ.getGenotype(0).hasGQ());
         Assert.assertTrue(lowQualVariantWithSQ.getGenotype(0).hasPL());
 
@@ -588,7 +588,7 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         final MockVcfWriter mockWriter = attachMockWriter(reblocker);
 
         final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
-        gb.attribute("SQ", "10")
+        gb.attribute(GATKVCFConstants.SOMATIC_QUALITY_KEY, "10")
           .GQ(42)
           .PL(new int[]{0, 42, 420})
           .AD(new int[]{76, 0})

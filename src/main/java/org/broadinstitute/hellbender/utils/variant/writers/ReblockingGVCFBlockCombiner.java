@@ -12,6 +12,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.iterators.PushPullTransformer;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -58,7 +59,7 @@ public class ReblockingGVCFBlockCombiner extends GVCFBlockCombiner implements Pu
         final VariantContextBuilder vcBuilder = new VariantContextBuilder(vc);
 
         // Somatic-style records (e.g. DRAGEN mitochondrial output) lack diploid GQ/PL; pass through untouched.
-        if (genotype.hasExtendedAttribute("SQ") && !genotype.hasGQ() && !genotype.hasPL()) {
+        if (genotype.hasExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY) && !genotype.hasGQ() && !genotype.hasPL()) {
             return vc;
         }
 
