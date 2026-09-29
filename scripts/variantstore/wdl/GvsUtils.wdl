@@ -148,8 +148,20 @@ task GetToolVersions {
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-slim"
     String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-09-09-alpine-56d98f52a857"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
-    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-08-19-gatkbase-lite-087565f1a432"
-    String gatk_heavy_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-08-19-gatkbase-32785e9276be"
+    # The hex suffix on a GATK tag is the Docker image ID that `build_docker_tag.py` was handed, but *which* digest
+    # that ID refers to depends on the Docker version of the machine that built it, so do not compare suffixes across
+    # tags or assume one is derivable from the other:
+    #   - Classic Docker (graph driver), which the Azure VM in
+    #     `scripts/variantstore/docs/Build Docker from VM/building_gatk_docker_on_a_vm.md` has historically used:
+    #     the image ID is the *config* digest, and the image pushes as a single Docker v2 manifest.
+    #   - Docker 29+ with the containerd image store, which a current Ubuntu 22.04 GCP VM gets by default: the image
+    #     ID is the *manifest* digest, and the image pushes as an OCI image index carrying an extra BuildKit
+    #     attestation manifest (it shows up as an `unknown/unknown` platform entry).
+    # Both forms pull correctly under modern Docker and Cromwell. Neither the suffix nor the manifest media type says
+    # anything about image contents -- verify a tag by layer count and size, not by the shape of its name. The two
+    # tags below were built on a GCP VM and are therefore OCI indexes; the ones they replaced were Azure-built.
+    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-09-29-gatkbase-lite-64383fd3ade2"
+    String gatk_heavy_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-09-29-gatkbase-af3bd30e7305"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
     String plink_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/plink2:2024-04-23-slim-a0a65f52cc0e"

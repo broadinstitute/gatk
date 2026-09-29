@@ -647,3 +647,50 @@ wording in a specific place, and a description is not reviewable.
 
 Remember that anything written to this repo is public: the redaction rules in
 the Data Handling section apply to retrospectives exactly as they do to code.
+
+# Verification Practices
+
+## A new test is not evidence until you have seen it fail
+
+A test that passes against fixed code tells you almost nothing on its own: it
+passes whether it exercises the fix, exercises nothing, or asserts something
+vacuously true. Before reporting that new coverage protects a change, break the
+change and confirm the test fails — and confirm it fails for the stated reason,
+not incidentally.
+
+Temporarily invert or disable the specific line the test is meant to guard,
+re-run, check the failure message names the behaviour in question, then restore
+the source and re-run to confirm you are back to green. Keep the mutation in
+one place at a time; mutating two guards at once cannot tell you whether both
+are covered.
+
+This is worth the extra minutes because it routinely finds hollow tests. In the
+VS-2028 reblocking work it caught a test whose assertion could not distinguish
+the two code paths it was named for — both paths handed the writer the same
+`VariantContext`, so the assertion held either way. The fix was to choose an
+input where the paths genuinely diverge. Nothing but a mutation run would have
+surfaced that, and the test read perfectly well.
+
+Tests guarding a *negative* ("X should not take path Y") deserve particular
+suspicion, since the cheapest way to write one is also the vacuous way.
+
+Where two call sites must agree on a predicate, a single mutation should break
+tests covering both. If it breaks only one, either the coverage is incomplete
+or the predicate is still duplicated.
+
+## Do not trust a completion signal without checking it is fresh
+
+When polling for a marker that means "the long job finished" — a sentinel file,
+a status field, a log line — confirm the marker belongs to the run you are
+watching before believing it. A leftover marker from a previous attempt is
+indistinguishable from success if you only test for existence.
+
+Check a timestamp, or delete the marker before starting and verify the deletion
+actually took effect. During the VS-2028 Docker build a stale `phase1.rc` from
+a failed first attempt was read as a completed second attempt within seconds of
+launching it; the giveaway was that the file's mtime predated the run. The same
+applies to `pgrep -f <script>`, which happily matches the SSH command string
+that contains the script name and reports a process that does not exist.
+
+More generally: when a check returns the answer you were hoping for
+suspiciously early, spend one command confirming it means what you think.
