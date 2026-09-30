@@ -450,6 +450,13 @@ Add `--check` to report without rewriting (exit status 1 if anything would
 change), and pass a directory to search it recursively. The script is idempotent
 and never touches content inside fenced code blocks.
 
+"Editing a table" includes edits that were not aimed at the table. A
+find-and-replace that changes a word's length — a spelling pass turning
+`behaviour` into `behavior`, a rename — breaks the padding of every table cell
+it touches. In VS-2029 a US-spelling pass over `validation.md` left two
+previously aligned tables ragged. After any bulk text edit, run the formatter
+with `--check` on the files you touched.
+
 Some existing docs predate this and are still ragged. Only format files you are
 already modifying; reformatting untouched docs adds diff noise that obscures the
 actual change.
