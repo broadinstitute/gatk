@@ -1,0 +1,24 @@
+##fileformat=VCFv4.2
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+##FILTER=<ID=PASS,Description="All filters passed">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths (counting only informative reads out of the total reads) for the ref and alt alleles in the order listed">
+##FORMAT=<ID=AF,Number=A,Type=Float,Description="Allele fractions for alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth">
+##FORMAT=<ID=F1R2,Number=R,Type=Integer,Description="Count of reads in F1R2 pair orientation supporting each allele">
+##FORMAT=<ID=F2R1,Number=R,Type=Integer,Description="Count of reads in F2R1 pair orientation supporting each allele">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MB,Number=4,Type=Integer,Description="Per-sample component statistics to detect mate bias">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=SB,Number=4,Type=Integer,Description="Per-sample component statistics to detect strand bias">
+##FORMAT=<ID=SQ,Number=A,Type=Float,Description="Somatic quality">
+##INFO=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=FractionInformativeReads,Number=1,Type=Float,Description="The fraction of informative reads out of the total reads">
+##INFO=<ID=MQ,Number=1,Type=Float,Description="RMS Mapping Quality">
+##contig=<ID=chrM,length=16569>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	HG01161
+chrM	1	.	G	<NON_REF>	.	PASS	END=1	GT:AD:DP:SQ:MIN_DP	0/0:42,0:42:9:42
+chrM	2	.	A	<NON_REF>	.	PASS	END=72	GT:AD:DP:SQ:MIN_DP	0/0:76,0:76:10:45
+chrM	73	.	A	G,<NON_REF>	.	PASS	DP=99;MQ=144.75;FractionInformativeReads=1.000	GT:SQ:AD:AF:F1R2:F2R1:DP:SB:MB	1/1:97.96,0.00:0,88,0:1.0000,0.0000:0,40,0:0,48,0:88:0,0,54,34:0,0,44,44
+chrM	74	.	T	<NON_REF>	.	PASS	END=74	GT:AD:DP:SQ:MIN_DP	0/0:87,0:87:18:87
+chrM	75	.	G	<NON_REF>	.	PASS	END=126	GT:AD:DP:SQ:MIN_DP	0/0:88,1:89:6:82
