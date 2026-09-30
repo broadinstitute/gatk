@@ -33,6 +33,15 @@ workflow GvsCreateVATfromVDS {
         Int? split_intervals_scatter_count
         Boolean use_reference_disk = true
 
+        # TEMPORARY (ClinVar 2025-07 validation). When true, AnnotateVCF bypasses the Nirvana reference
+        # disk entirely, downloads a fresh Nirvana data bundle with Downloader.dll, and then replaces that
+        # bundle's ClinVar .nsa/.nsa.idx with the manually rebuilt 2025-07 files (see the manual_clinvar_*
+        # inputs on AnnotateVCF). The reference disk cannot be used for this because it is mounted
+        # read-only, so the stale ClinVar files on it cannot be removed -- and they must be removed, since
+        # Nirvana aborts if two supplementary annotation files claim the same "clinvar" JSON key.
+        # Set to false to restore normal production behavior.
+        Boolean use_manual_clinvar_update = true
+
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
         String? gatk_docker
@@ -342,7 +351,11 @@ workflow GvsCreateVATfromVDS {
                     output_annotated_file_name = "${vcf_filename}_annotated",
                     custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
                     variants_nirvana_docker = effective_variants_nirvana_docker,
-                    use_reference_disk = use_reference_disk,
+                    # The manual ClinVar swap requires a writable annotation directory, which only the
+                    # download path provides -- so it forces the reference disk off rather than silently
+                    # producing a run with two conflicting ClinVar databases.
+                    use_reference_disk = use_reference_disk && !use_manual_clinvar_update,
+                    use_manual_clinvar_update = use_manual_clinvar_update,
             }
 
             call PrepVtAnnotationJson {
@@ -1203,6 +1216,15 @@ task AnnotateVCF {
         File splice_ai_annotations = "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/SpliceAi_1.3.nsa"
         File splice_ai_annotations_idx = "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/SpliceAi_1.3.nsa.idx"
         Boolean use_reference_disk
+
+        # TEMPORARY (ClinVar 2025-07 validation): ClinVar database rebuilt from the July 2025 ClinVar
+        # release with a patched SAUtils, replacing the ClinVar that ships in the Nirvana bundle (which is
+        # from 2023). Only consulted when use_manual_clinvar_update is true, though note that WDL localizes
+        # these ~115 MB regardless of the flag.
+        Boolean use_manual_clinvar_update
+        File manual_clinvar_nsa        = "gs://gvs-internal/nirvana-manual-updates/ClinVar_2025-07.nsa"
+        File manual_clinvar_nsa_idx    = "gs://gvs-internal/nirvana-manual-updates/ClinVar_2025-07.nsa.idx"
+        File manual_clinvar_nsa_schema = "gs://gvs-internal/nirvana-manual-updates/ClinVar_2025-07.nsa.schema"
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -1287,6 +1309,39 @@ task AnnotateVCF {
             ln ~{primate_ai_annotations_idx} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
             ln ~{splice_ai_annotations} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
             ln ~{splice_ai_annotations_idx} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
+
+            if [[ "~{use_manual_clinvar_update}" == "true" ]]
+            then
+                # Replace the bundle's ClinVar database with the manually rebuilt 2025-07 one.
+                #
+                # The old .nsa MUST be deleted rather than merely shadowed: Nirvana collects every .nsa
+                # across all --sd directories into one list and rejects two readers sharing a JSON key,
+                # so leaving both in place aborts the run with
+                #   "Duplicate variant-level (.nsa or fusion) JSON keys found for: clinvar"
+                #
+                # The glob deliberately matches only ClinVar_*.nsa* -- the bundle's ClinVar .nsi
+                # (structural-variant intervals) is left alone. SAUtils has no verb that regenerates a
+                # ClinVar .nsi, and .nsi readers are key-checked in a separate namespace from .nsa
+                # readers, so an older .nsi coexists with the new .nsa without conflict. The VAT loader
+                # reads per-variant ClinVar annotations only and never looks at intervals.
+                echo "ClinVar files from the Nirvana bundle, before replacement:"
+                ls -l ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/ClinVar_* || true
+
+                rm -f ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/ClinVar_*.nsa*
+                ln ~{manual_clinvar_nsa} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
+                ln ~{manual_clinvar_nsa_idx} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
+                ln ~{manual_clinvar_nsa_schema} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
+
+                echo "ClinVar files after replacement:"
+                ls -l ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/ClinVar_* || true
+
+                # Fail loudly here rather than 40 minutes later inside Nirvana if the swap didn't take.
+                if [[ $(ls ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/ClinVar_*.nsa | wc -l) -ne 1 ]]
+                then
+                    >&2 echo "Expected exactly one ClinVar .nsa after the manual update, found the above. Exiting."
+                    exit 1
+                fi
+            fi
         fi
 
         # =======================================
