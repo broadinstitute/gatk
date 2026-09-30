@@ -17,7 +17,7 @@ release, which meant rebuilding the ClinVar `.nsa` ourselves.
 ### The blocker
 
 Nirvana's ClinVar parsers hard-code allow-lists for clinical significance and review status and
-*throw* on anything unrecognised. NCBI's germline/somatic classification split now emits placeholder
+*throw* on anything unrecognized. NCBI's germline/somatic classification split now emits placeholder
 text — `no classifications from unflagged records` — in both fields, for variants whose submissions
 have all been flagged. The run aborted about 15 seconds in. Nirvana's ClinVar code has had no commits
 since June 2022, so this is an unfixed upstream bug, not a configuration error on our side.
@@ -28,21 +28,21 @@ Rebuilt from the Illumina/Nirvana tag `v3.18.1` — confirmed to be the exact ve
 `variantstore:nirvana_2022_10_19` image and on the reference disk, so there is no schema-version
 drift. Nothing else in the source was touched.
 
-| # | File | Change |
-|---|---|---|
-| 1 | `ClinVarCommon.cs` | Added `uncertain risk allele` to `ValidPathogenicity` — the third tier of the same ClinGen risk-allele set as the two already listed, omitted originally. |
-| 2 | `ClinVarVariationReader.cs` | New `ResolveReviewStatus()` does a safe dictionary lookup falling back to `no_assertion`, replacing a raw indexer that threw `KeyNotFoundException`. |
-| 3 | `ClinVarCommon.cs` | `GetSignificances()` filters tokens against `ValidPathogenicity`, warning and skipping rather than throwing. One function, both the RCV and VCV paths. |
-| 4 | `NsaWriter.cs` | Progress logging only — added while diagnosing an apparent hang. No functional change. |
+| # | File                        | Change                                                                                                                                                    |
+|---|-----------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 | `ClinVarCommon.cs`          | Added `uncertain risk allele` to `ValidPathogenicity` — the third tier of the same ClinGen risk-allele set as the two already listed, omitted originally. |
+| 2 | `ClinVarVariationReader.cs` | New `ResolveReviewStatus()` does a safe dictionary lookup falling back to `no_assertion`, replacing a raw indexer that threw `KeyNotFoundException`.      |
+| 3 | `ClinVarCommon.cs`          | `GetSignificances()` filters tokens against `ValidPathogenicity`, warning and skipping rather than throwing. One function, both the RCV and VCV paths.    |
+| 4 | `NsaWriter.cs`              | Progress logging only — added while diagnosing an apparent hang. No functional change.                                                                    |
 
 ### Inputs
 
-| File | Notes |
-|---|---|
-| `ClinVarFullRelease_2025-07.xml.gz` | NCBI FTP, RCV release (~5.0 GB) |
-| `ClinVarVariationRelease_2025-07.xml.gz` | NCBI FTP, VCV release (~4.8 GB) |
+| File                                        | Notes                                                                                                                                |
+|---------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|
+| `ClinVarFullRelease_2025-07.xml.gz`         | NCBI FTP, RCV release (~5.0 GB)                                                                                                      |
+| `ClinVarVariationRelease_2025-07.xml.gz`    | NCBI FTP, VCV release (~4.8 GB)                                                                                                      |
 | `ClinVarFullRelease_2025-07.xml.gz.version` | Hand-written sidecar (`NAME=ClinVar`, `VERSION=2025-07`, `DATE=2025-07-15`). Drives the output filenames; the date is a placeholder. |
-| `Homo_sapiens.GRCh38.Nirvana.dat` | Reference sequence, from the existing bundle |
+| `Homo_sapiens.GRCh38.Nirvana.dat`           | Reference sequence, from the existing bundle                                                                                         |
 
 ### Build and run environment
 
@@ -85,7 +85,7 @@ there. Changes to `GvsCreateVATfromVDS.wdl`:
    listings, and hard-fail unless exactly one ClinVar `.nsa` remains — so a botched swap surfaces
    immediately rather than 40 minutes later inside Nirvana.
 
-Validated with `womtool`. Reverting to production behaviour is a single flag:
+Validated with `womtool`. Reverting to production behavior is a single flag:
 `use_manual_clinvar_update = false`.
 
 ---
@@ -102,22 +102,22 @@ every ClinVar column.
 
 ### Checks and what each establishes
 
-| Check | Result | Establishes |
-|---|---|---|
-| Loader diff between the two commits | Byte-identical | No star or classification change can originate in the loader |
-| Patch #2 reachability | Loader accepts `RCV*` ids only; patch #2 is VCV-side | Patch #2 cannot affect any VAT column — crash-prevention only |
-| Star distribution | −702 one-star variants, +1023 two-star | Framed the question: was anything lost? |
-| Origin of new 2-star variants | 1024 newly 2-star; **all 1024** were 1-star before; none from no-ClinVar | Re-grading of existing calls, not invented annotations |
-| Origin at record level | 1588 = 1131 same accession re-graded + 456 unchanged + 1 new; **0** demotions from 3/4-star | The same records were re-graded; new records are not appearing |
-| Accession versions on re-grades | **0** at an unchanged version; all 1131 version-bumped | No record parsed differently — every change had an upstream revision |
-| Accession versions, all 3649 shared | 1607 same, 2042 bumped, **all forward**, 0 backward | The data is strictly fresher; no staleness regression |
-| One-star decomposition | 1762 kept, 827 promoted away, **0 / 0 / 0** across all loss buckets, 125 gained — reconciles to −702 exactly | No variant lost its ClinVar annotation |
-| **Same-version control group** | 1607 records read from byte-identical input: **0** star differences, **0** classification differences, none lost, none gained | The direct patched-vs-unpatched test: identical input produces identical output |
-| Record-level losses | 17 records across 16 variants, all 1-star | Located the only losses anywhere in the comparison |
-| Those 17 resolved against the source XML | 15 retired by ClinVar; 2 re-represented as a microsatellite; **0 defects** | Every loss is explained by source data |
-| Pathogenic sweep, whole table | Exactly **1** variant | Only one high-stakes change exists, and it is understood |
-| Vocabulary audit of the full release | Only non-classifications are filtered; 0.041% of review statuses hit the fallback | The patches discard nothing clinically meaningful |
-| Deployed binary | `uncertain risk allele` present in `SAUtils.dll` | Patch #1 shipped, and is load-bearing — 623 occurrences in the release |
+| Check                                    | Result                                                                                                                        | Establishes                                                                     |
+|------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------|---------------------------------------------------------------------------------|
+| Loader diff between the two commits      | Byte-identical                                                                                                                | No star or classification change can originate in the loader                    |
+| Patch #2 reachability                    | Loader accepts `RCV*` ids only; patch #2 is VCV-side                                                                          | Patch #2 cannot affect any VAT column — crash-prevention only                   |
+| Star distribution                        | −702 one-star variants, +1023 two-star                                                                                        | Framed the question: was anything lost?                                         |
+| Origin of new 2-star variants            | 1024 newly 2-star; **all 1024** were 1-star before; none from no-ClinVar                                                      | Re-grading of existing calls, not invented annotations                          |
+| Origin at record level                   | 1588 = 1131 same accession re-graded + 456 unchanged + 1 new; **0** demotions from 3/4-star                                   | The same records were re-graded; new records are not appearing                  |
+| Accession versions on re-grades          | **0** at an unchanged version; all 1131 version-bumped                                                                        | No record parsed differently — every change had an upstream revision            |
+| Accession versions, all 3649 shared      | 1607 same, 2042 bumped, **all forward**, 0 backward                                                                           | The data is strictly fresher; no staleness regression                           |
+| One-star decomposition                   | 1762 kept, 827 promoted away, **0 / 0 / 0** across all loss buckets, 125 gained — reconciles to −702 exactly                  | No variant lost its ClinVar annotation                                          |
+| **Same-version control group**           | 1607 records read from byte-identical input: **0** star differences, **0** classification differences, none lost, none gained | The direct patched-vs-unpatched test: identical input produces identical output |
+| Record-level losses                      | 17 records across 16 variants, all 1-star                                                                                     | Located the only losses anywhere in the comparison                              |
+| Those 17 resolved against the source XML | 15 retired by ClinVar; 2 re-represented as a microsatellite; **0 defects**                                                    | Every loss is explained by source data                                          |
+| Pathogenic sweep, whole table            | Exactly **1** variant                                                                                                         | Only one high-stakes change exists, and it is understood                        |
+| Vocabulary audit of the full release     | Only non-classifications are filtered; 0.041% of review statuses hit the fallback                                             | The patches discard nothing clinically meaningful                               |
+| Deployed binary                          | `uncertain risk allele` present in `SAUtils.dll`                                                                              | Patch #1 shipped, and is load-bearing — 623 occurrences in the release          |
 
 ### The two anomalies, both resolved against source data
 
@@ -164,5 +164,5 @@ Three optional cross-checks were not run (variant-universe overlap, decompositio
 1-star variants, per-column fill rates). Each re-verifies figures already reconciled by other means.
 
 At production scale, expect proportionally more `not provided` and `flagged submission` records to
-be excluded — near 0.55% and 0.041% of records respectively. That is correct behaviour, not a
+be excluded — near 0.55% and 0.041% of records respectively. That is correct behavior, not a
 regression.
