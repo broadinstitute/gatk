@@ -3,13 +3,14 @@
 How the updated ClinVar annotation files were produced, and the evidence that the resulting VAT
 differs from the previous one only because the underlying ClinVar data changed.
 
-**Tickets** VS-1988 → VS-1994 · **Output** `ClinVar_2025-07.nsa` · **Status: no unexplained differences found**
+**Tickets** VS-1994 (build and validation), VS-2029 (WDL integration) · **Output** `ClinVar_2025-07.nsa` · **Status: no unexplained differences found**
 
-Full detail lives in `PROGRESS.md` (build) and `validation.md` (validation, including every query used).
+Full validation detail, including the queries, is in [`validation.md`](validation.md). The Nirvana
+source patch is not yet checked in; see VS-2029.
 
 ---
 
-# 1. Building the annotation files
+## 1. Building the annotation files
 
 Nirvana's shipped reference bundle carries ClinVar from **October 2023**. We needed the July 2025
 release, which meant rebuilding the ClinVar `.nsa` ourselves.
@@ -68,32 +69,30 @@ dotnet SAUtils.dll clinvar \
 and `.nsa.schema`. No `.nsi` is produced — SAUtils has no ClinVar interval writer, and the VAT
 loader reads per-allele `.nsa` data only, so this does not matter here.
 
-### WDL changes that made testing possible
+### Using the rebuilt files in the VAT
 
-Nirvana merges every `.nsa` from every `--sd` directory into one list and rejects two readers sharing
-a JSON key. ClinVar's key is the hardcoded constant `clinvar`, so simply adding a second directory
-collides and aborts. The production reference disk is read-only, so the old file cannot be removed
-there. Changes to `GvsCreateVATfromVDS.wdl`:
+The three output files live in `gs://gvs_quickstart_storage/Nirvana/ClinVar/`. `GvsCreateVATfromVDS`
+uses them when `use_manual_clinvar_update` is `true`; the default is `false`, which annotates with
+the bundled October 2023 ClinVar. `manual_clinvar_path_prefix` points at a different build.
 
-1. New workflow input `Boolean use_manual_clinvar_update = true`, marked TEMPORARY.
-2. At the `AnnotateVCF` call site, `use_reference_disk = use_reference_disk && !use_manual_clinvar_update`
-   — enabling the manual update *forces* the downloader path, whose scratch directory is writable,
-   making the duplicate-key crash unreachable by construction rather than relying on the operator to
-   set two flags consistently.
-3. New task inputs pointing at the three uploaded files in GCS.
-4. In the download branch, remove `ClinVar_*.nsa*`, hard-link the new three in, log before/after
-   listings, and hard-fail unless exactly one ClinVar `.nsa` remains — so a botched swap surfaces
-   immediately rather than 40 minutes later inside Nirvana.
-
-Validated with `womtool`. Reverting to production behavior is a single flag:
-`use_manual_clinvar_update = false`.
+Nirvana merges every `.nsa` from every `--sd` directory and rejects two readers sharing a JSON key.
+ClinVar's key is the hardcoded constant `clinvar`, so the bundled file cannot simply be joined by a
+second directory holding the new one; it has to be taken out of the directory Nirvana reads. The
+reference disk is read-only, so it cannot be deleted in place either. Instead, when the flag is on,
+the `AnnotateVCF` task builds a writable directory of symlinks to everything in the bundle's
+supplementary-annotation directory except `ClinVar_*.nsa*`, links in the three new files, and
+passes that directory to `--sd`. This works the same with or without "Use reference disks". The
+bundled `.nsi` is kept: Nirvana checks interval keys separately from `.nsa` keys, and SAUtils
+produces no ClinVar `.nsi`. The task fails immediately unless exactly one ClinVar `.nsa` is present
+after the swap, rather than 40 minutes later inside Nirvana.
 
 ---
 
-# 2. Validation
+## 2. Validation
 
-The new VAT (`0c32721`, VS-1994) was compared against the previous VAT (`4e0cc60`, VS-1988) across
-every ClinVar column.
+The new VAT (`0c32721`, VS-1994) was compared against the previous VAT across every ClinVar column.
+The baseline (`4e0cc60`) was the most recent quickit VAT built with the bundled ClinVar; its
+VS-1988 branch is unrelated to ClinVar.
 
 > ⚠️ **The baseline is not a correctness reference.** It was built with the Nirvana-bundled ClinVar,
 > whose records stop at **2023-10-28**; the new build runs to **2025-06-29**. The two runs differ by
