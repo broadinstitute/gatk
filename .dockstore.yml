@@ -247,6 +247,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_2029_clinvar_clean
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -349,6 +350,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_2029_clinvar_clean
          tags:
              - /.*/
    - name: GvsIngestTieout
