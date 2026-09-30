@@ -358,6 +358,34 @@ output files. Output files are partitioned at a minimum by chromosome, but for
 "wide" extracts (callsets with many large numbers of samples), there may be
 hundreds of output files per chromosome.
 
+## Nested inputs, and why a WDL 1.1 upgrade would change them
+
+The GVS WDLs are `version 1.0`. Under 1.0, a call input that the caller leaves
+unset becomes an input of the enclosing workflow, addressed by its
+fully-qualified name. This is true whether the call is to a task or a
+subworkflow. Terra lists these nested inputs in the workflow configuration, so
+you can set them there with no plumbing. For example, `GvsQuickstartIntegration`
+does not pass `use_manual_clinvar_update` to its `GvsQuickstartVATIntegration`
+call, but in VS-2029 the flag could still be set from Terra when running the
+top-level workflow. So before adding pass-through inputs to a parent workflow
+just to reach a child's input, check whether the child's input is already
+exposed.
+
+WDL 1.1 reverses the default. By default, only the top-level workflow's own
+`input` section is settable. A workflow opts back in to nested inputs with
+`allowNestedInputs: true` in its `meta` section. WDL 1.2 moves that key to the
+workflow `hints` section, and restricts it to inputs that are optional or have
+a default. The only WDL in this repo that sets it today is
+`scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl`, which is not a GVS
+workflow.
+
+An upgrade to 1.1 therefore has to either add `allowNestedInputs` to every
+workflow whose nested inputs are set in Terra, or plumb each of those inputs
+through explicitly. Otherwise, any existing Terra method configuration that sets
+a nested input should be rejected for supplying an unexpected input. This has
+not been tried here. The quickstart integration workflows and the AoU workflows'
+method configurations are the places to audit.
+
 ## Variant Annotation Table (VAT)
 
 ### Overview
