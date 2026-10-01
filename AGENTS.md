@@ -309,6 +309,15 @@ fails a site when `max(score) < threshold` and a genotype when
 lower-is-better, so `ExtractCohortVETSEngine` overrides both and fails a site
 when `min(score) > threshold` and a genotype when `max(score) > threshold`.
 
+### `bq --apilog=false` writes a file named `false`
+
+`--apilog` takes a file path, not a boolean, so `--apilog=false` writes the
+API debug log to a file literally named `false` in the current directory.
+The idiom appears throughout the WDLs, where it is harmless because the file
+lands in the task's working directory and is discarded. Do not copy it into
+commands run locally: there it leaves a log of several hundred KB in the
+repo. Omit the flag instead.
+
 ## Key Workflows
 
 ### GvsJointVariantCalling.wdl
@@ -367,9 +376,13 @@ subworkflow. Terra lists these nested inputs in the workflow configuration, so
 you can set them there with no plumbing. For example, `GvsQuickstartIntegration`
 does not pass `use_manual_clinvar_update` to its `GvsQuickstartVATIntegration`
 call, but in VS-2029 the flag could still be set from Terra when running the
-top-level workflow. So before adding pass-through inputs to a parent workflow
-just to reach a child's input, check whether the child's input is already
-exposed.
+top-level workflow. Terra only exposes one level of this, though: the inputs of
+calls made directly by the workflow being run, not those of calls nested inside
+a subworkflow. In VS-2029, setting `GvsCreateVATfromVDS`'s `use_reference_disk`
+from `GvsQuickstartIntegration` (two levels down) required temporarily adding a
+pass-through input to `GvsQuickstartVATIntegration`. So before adding
+pass-through inputs, check whether the input belongs to a direct child call and
+is therefore already exposed.
 
 WDL 1.1 reverses the default. By default, only the top-level workflow's own
 `input` section is settable. A workflow opts back in to nested inputs with
@@ -432,6 +445,29 @@ Note that for the past Echo callset there may need to be an additional step to
 patch this table for a set of VIDs that did not have corresponding Participant
 IDs. See the directory `pseudo_vids_only_in_vat` for more information on
 unmatched VIDs that were discovered in the VATs of the Delta and Echo callsets.
+
+### The VAT's gnomAD version depends on reference disks
+
+`AnnotateVCF` in `GvsCreateVATfromVDS.wdl` reads its Nirvana data sources
+from one of two places, and they do not hold the same data. With
+`use_reference_disk = true` (the default) it reads the Broad bundle
+`gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/`,
+which has gnomAD 3.1.2. With it false, `Nirvana/Downloader.dll` fetches
+whatever Illumina currently serves; in September 2026 that was gnomAD 4.0
+(plus a newer bundled ClinVar). So the two paths produce different gnomAD
+columns in the VAT, and the download path is not pinned to any version.
+
+gnomAD 4.0 is not just newer numbers. It renames the `oth` subpopulation to
+`remaining` and adds `ami` and `mid`, none of which
+`create_vt_bqloadjson_from_annotations.py` knows about. On the download path
+the `gnomad_oth_*` columns therefore come out empty, and `ami`/`mid` are
+silently dropped. The integration truth data comes from the reference-disk
+path, so nothing tests the other one.
+
+Note that `use_reference_disk` is a WDL input, distinct from Terra's "Use
+reference disks" submission option. Unchecking the option does not change the
+input, and since the option is not part of the call-cache hash, an otherwise
+identical rerun simply reuses the reference-disk results.
 
 # Data Handling
 

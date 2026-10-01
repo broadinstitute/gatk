@@ -432,6 +432,19 @@ None of these affect the verdict on this dataset. They are worth carrying into a
 
 ---
 
+## 8. Reproduced through the VAT workflow
+
+The tables above came from the VS-1994 build. On 2026-09-30, two `GvsQuickstartIntegration`
+runs of `vs_2029_clinvar_clean` used reference disks and differed only in
+`use_manual_clinvar_update`. Queries A, B and C1 and the check 1 and check 7 figures, re-run with
+the flag-off VAT as `OLD` and the flag-on VAT as `NEW`, reproduced every number in §3. That
+covers the star deltas, version moves, control group, the 17 dropped RCVs, the single pathogenic
+loss and the `clinvar_last_updated` range. All non-ClinVar columns were identical between the
+two runs. The flag-off run passed the integration test's exactness assertions; the flag-on run
+failed them, as expected until the truth data is regenerated.
+
+---
+
 ## Appendix — queries
 
 These can be rerun against the next ClinVar refresh with the table aliases substituted:
