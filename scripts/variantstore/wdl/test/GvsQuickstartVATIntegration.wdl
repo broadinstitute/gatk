@@ -26,6 +26,7 @@ workflow GvsQuickstartVATIntegration {
         String? variants_nirvana_docker
         String? gatk_docker
         Boolean use_manual_clinvar_update = false
+        Boolean use_reference_disk = true
     }
     String project_id = "gvs-internal"
 
@@ -87,6 +88,7 @@ workflow GvsQuickstartVATIntegration {
             variants_docker = effective_variants_docker,
             variants_nirvana_docker = effective_variants_nirvana_docker,
             use_manual_clinvar_update = use_manual_clinvar_update,
+            use_reference_disk = use_reference_disk,
     }
 
     # Intentionally unused: runs for its side effect of validating the VAT; its output is not consumed downstream.
