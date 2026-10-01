@@ -33,9 +33,8 @@ Scope notes (VS-1989):
     rather than on cost -- it is cheap. BigQuery reads the Parquet footers itself, so an external
     table over the source files answering ``COUNT(*)`` grouped by the ``_FILE_NAME`` pseudo-column
     yields per-file row counts from footer metadata at zero bytes billed, needing no Parquet reader,
-    no image change and no client-side read path. Measured on real GVS Parquet, all six
-    ``(family, sample)`` pairs agreed exactly with ``INFORMATION_SCHEMA.PARTITIONS.total_rows`` at
-    ``totalBytesBilled: 0``. What defers it is the interaction with what is already here: an exact
+    no image change and no client-side read path; VS-2032 carries the measurements. What defers it
+    is the interaction with what is already here: an exact
     per-sample check makes the ``vet`` duplication screen below, its threshold input, its waiver and
     its gate redundant or ambiguous, and settling that means re-qualifying them. Do not repeat the
     two older rationales: that pyarrow cannot be had on musl (it has published
@@ -46,8 +45,9 @@ Scope notes (VS-1989):
     duplication screen exact rather than a ratio heuristic. A partial *load* cannot occur: BigQuery
     load jobs are atomic (``load_parquet_to_bq.py`` loads each batch via ``load_table_from_uri``
     with ``WRITE_APPEND``, and a failed job commits nothing), so a present partition is either
-    complete, empty (caught by
-    completeness), or duplicated (caught by the duplication screen). The one residual truncation source
+    complete, empty (caught by completeness), or duplicated -- and duplicated is caught only for
+    ``vet``, by the duplication screen; for ``ref_ranges`` nothing catches it (next bullet). The one
+    residual truncation source
     is a Parquet file generated upstream with too few rows -- and there the footer count and the
     BigQuery count agree, so footer-vs-BigQuery would pass it too. That case is instead surfaced
     cheaply by ``assess_truncation_screen``, a below-median heuristic on its own threshold (equal to
@@ -390,10 +390,11 @@ def assess_cardinality(counts, expected_samples):
     reference count to compare against -- it holds for a single sample as readily as for a callset.
 
     Nothing here compares one sample's row count against another's. Those counts legitimately vary:
-    a sample's contig set is whatever its input gVCF contains, which follows the calling pipeline
-    rather than the participant's karyotype -- every gVCF ingested for Foxtrot carries a chrY row,
-    female participants included -- chrM is recorded or not, and an exome or BGE callset covers fewer
-    contigs. Every screen built on that variation was either redundant with the exact comparison
+    a chromosome gets a ploidy row only where a non-PAR reference block on it survived ``drop_state``
+    (``RefRangesCreator.apply``), so a sample's contig count depends on its data, not just its sex --
+    every gVCF ingested for Foxtrot carries a chrY row, female participants included -- chrM is
+    recorded or not, and an exome or BGE callset covers fewer contigs. Every screen built on that
+    variation was either redundant with the exact comparison
     -- the 1.5x modal ceiling, which fired only where ``COUNT(*) > COUNT(DISTINCT chromosome)``
     already had -- or unsound: a floor below the callset mode reads a legitimately smaller contig set
     as a partial load, and on a small batch there is no mode worth measuring against in the first
