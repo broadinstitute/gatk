@@ -469,6 +469,20 @@ reference disks" submission option. Unchecking the option does not change the
 input, and since the option is not part of the call-cache hash, an otherwise
 identical rerun simply reuses the reference-disk results.
 
+### Comparing VATs after the BigQuery dataset has expired
+
+Integration-test VAT datasets expire after 14 days, but the workflow's TSV
+outlives them in the workspace bucket. It is the `vat_complete.bgz.tsv.gz`
+output of `MergeVatTSVs`, inside `GvsCreateVATFilesFromBigQuery`; find it by
+walking the run's Cromwell metadata with `expand_sub_workflows=True`. Row order
+is not guaranteed, so `gunzip | LC_ALL=C sort` both TSVs before comparing. If
+`cmp` finds them identical, you are done. Otherwise, diff the columns keyed on
+`(vid, transcript)`, taking column names from
+`scripts/variantstore/scripts/variant_annotation_table/schema/vat_schema.json`.
+That separates ClinVar changes from gnomAD changes. In VS-2029 it showed
+that the flag-on VAT matched the VS-1994 VAT in every ClinVar column, with every
+remaining difference in gnomAD.
+
 # Data Handling
 
 ## Redact participant IDs from anything committed to this repo
