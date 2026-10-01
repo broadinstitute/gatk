@@ -392,7 +392,7 @@ def assess_cardinality(counts, expected_samples):
     Nothing here compares one sample's row count against another's. Those counts legitimately vary:
     a chromosome gets a ploidy row only where a non-PAR reference block on it survived ``drop_state``
     (``RefRangesCreator.apply``), so a sample's contig count depends on its data, not just its sex --
-    every gVCF ingested for Foxtrot carries a chrY row, female participants included -- chrM is
+    every gVCF ingested for Foxtrot carries chrY, female participants included -- chrM is
     recorded or not, and an exome or BGE callset covers fewer contigs. Every screen built on that
     variation was either redundant with the exact comparison
     -- the 1.5x modal ceiling, which fired only where ``COUNT(*) > COUNT(DISTINCT chromosome)``
