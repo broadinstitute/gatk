@@ -194,6 +194,13 @@ public final class ReblockGVCF extends MultiVariantWalker {
     private HaplotypeCallerGenotypingEngine genotypingEngine;
     // the annotation engine
     private VariantAnnotatorEngine annotationEngine;
+
+    // tally of targeted-caller records dropped by apply(), reported once in closeTool() rather than
+    // per-record so that a targeted callset does not flood the log
+    @VisibleForTesting
+    long droppedTargetedRecordCount = 0;
+    // position of the first dropped record, to give the summary somewhere to point
+    private String firstDroppedTargetedRecord = null;
     // the INFO field annotation key names to remove
     private static final List<String> infoFieldAnnotationKeyNamesToRemove = Arrays.asList(GVCFWriter.GVCF_BLOCK, GATKVCFConstants.HAPLOTYPE_SCORE_KEY,
             GATKVCFConstants.INBREEDING_COEFFICIENT_KEY, GATKVCFConstants.MLE_ALLELE_COUNT_KEY,
@@ -338,6 +345,33 @@ public final class ReblockGVCF extends MultiVariantWalker {
     @Override
     public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
         if (!variant.hasAllele(Allele.NON_REF_ALLELE)) {
+            if (variant.getAttributeAsBoolean(GATKVCFConstants.TARGETED_KEY, false)) {
+                // We're currently ignoring targeted sites that don't have a <NON_REF> allele as we're focusing on
+                // standard SNPs and Indels.  We may handle these differently later.
+                //
+                // CAVEAT -- dropping the record is not the same as asserting hom-ref at that position.  A gVCF is
+                // expected to account for every position via either a variant record or an overlapping reference
+                // block, and callers generally split their reference blocks around called positions so the two do
+                // not overlap.  If DRAGEN splits its blocks around targeted calls the same way it does around
+                // ordinary variants, then discarding the record here leaves the position described by nothing at
+                // all, and downstream consumers (GVS ingest in particular) will read that gap as a no-call rather
+                // than as hom-ref -- a different assertion about the sample than "we ignored this call".
+                //
+                // Whether that actually happens depends on how DRAGEN emits blocks around targeted calls, which has
+                // not been confirmed against real targeted-caller output.  If it turns out these positions are not
+                // covered by a surrounding reference block, the fix is to emit a GQ0 reference block over the
+                // dropped span rather than to drop it outright.  See the coverage in ReblockGVCFUnitTest
+                // (testTargetedCallWithoutNonRefIsDropped and friends), which pins the current drop behavior so
+                // that a deliberate change to it is visible rather than silent.
+                //
+                // Counted rather than logged per-record: a targeted callset can carry a great many of these, and a
+                // line apiece would bury the rest of the log.  The total is reported in closeTool().
+                droppedTargetedRecordCount++;
+                if (firstDroppedTargetedRecord == null) {
+                    firstDroppedTargetedRecord = variant.getContig() + ":" + variant.getStart();
+                }
+                return;
+            }
             throw new UserException("Variant Context at " + variant.getContig() + ":" + variant.getStart() + " does not contain a <NON-REF> allele. This tool is only intended for use with GVCFs.");
         }
         VariantContext newVC = formatAnnotationsToRemove.size() > 0 ? removeVCFFormatAnnotations(variant) : variant;
@@ -371,7 +405,16 @@ public final class ReblockGVCF extends MultiVariantWalker {
      *
      * @param originalVC     the combined genomic VC
      */
-    private void regenotypeVC(final VariantContext originalVC) {
+    @VisibleForTesting
+    void regenotypeVC(final VariantContext originalVC) {
+
+        // Somatic-style records (e.g. DRAGEN mitochondrial output) do not provide diploid GQ/PL data,
+        // so pass them through untouched instead of applying reblocking logic.
+        final Genotype inputGenotype = originalVC.getGenotype(0);
+        if (isSomaticStyleGenotype(inputGenotype)) {
+            vcfWriter.add(originalVC);
+            return;
+        }
 
         //Pass back ref-conf homRef sites/blocks to be combined by the GVCFWriter
         if (isHomRefBlock(originalVC)) {
@@ -475,6 +518,25 @@ public final class ReblockGVCF extends MultiVariantWalker {
      */
     public static boolean isHomRefBlock(final VariantContext result) {
         return (result.getAlternateAlleles().size() == 1) && result.getAlternateAllele(0).equals(Allele.NON_REF_ALLELE);
+    }
+
+    /**
+     * Determine whether a genotype is somatic-style, i.e. carries a somatic quality (SQ) in place of the diploid
+     * GQ/PL pair that reblocking is built around.  DRAGEN emits these for mitochondrial calls.
+     *
+     * Such records can be neither reblocked nor banded -- there is no GQ to threshold or partition on -- so they are
+     * passed through to the output untouched.  That decision is taken twice on the way out, once in
+     * {@link #regenotypeVC} before any reblocking logic runs, and again in
+     * {@link org.broadinstitute.hellbender.utils.variant.writers.ReblockingGVCFBlockCombiner#addHomRefSite} before
+     * the record would be merged into a block.  Both gates must agree: if only the first treats a record as somatic
+     * the combiner fails it for having no GQ or PL, and if only the second does, a record that has already been
+     * reblocked escapes banding and is emitted unmerged.  Hence one definition, called from both places.
+     *
+     * @param g genotype to test
+     * @return true if the genotype has SQ and neither GQ nor PL
+     */
+    public static boolean isSomaticStyleGenotype(final Genotype g) {
+        return g.hasExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY) && !g.hasGQ() && !g.hasPL();
     }
 
     /**
@@ -1067,6 +1129,11 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
     @Override
     public void closeTool() {
+        if (droppedTargetedRecordCount > 0) {
+            logger.warn(droppedTargetedRecordCount + " record(s) from a targeted caller had no <NON_REF> allele and were dropped from the output, "
+                    + "starting at " + firstDroppedTargetedRecord + ".  These positions are not represented in the output GVCF at all, "
+                    + "so downstream tools will treat them as no-calls rather than as hom-ref.");
+        }
         if ( vcfWriter != null ) {
             vcfWriter.close();
         }

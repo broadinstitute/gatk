@@ -57,6 +57,18 @@ public class ReblockingGVCFBlockCombiner extends GVCFBlockCombiner implements Pu
         final Genotype genotype = vc.getGenotype(0);
         final VariantContextBuilder vcBuilder = new VariantContextBuilder(vc);
 
+        // Somatic-style records (e.g. DRAGEN mitochondrial output) lack diploid GQ/PL, so there is nothing to band
+        // on and they are emitted as-is rather than being merged into a block.
+        //
+        // Returning the input record is a departure from this method's usual contract, which is to return a
+        // *completed block* (or null when the site was absorbed into the open one).  Because this record bypasses
+        // the block machinery entirely, any band still open covers earlier positions and would otherwise be emitted
+        // after this record when it is eventually flushed.  Close it out first so the output stays position-ordered.
+        if (ReblockGVCF.isSomaticStyleGenotype(genotype)) {
+            emitCurrentBlock();
+            return vc;
+        }
+
         if (dropLowQuals && (!genotype.hasGQ() || genotype.getGQ() < rgqThreshold || genotype.getGQ() == 0)) {
             return null;
         } else if (isHomRef(g)) {
