@@ -38,6 +38,13 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
+# Some tests assert things about the WDLs, which live alongside this directory rather than
+# inside it -- so docker mode has to mount the variantstore tree as well, or those tests
+# find no WDL, skip themselves, and a run that checked none of them still reports success.
+# Exported in both modes so the two resolve the tree the same way. Read-only: nothing here
+# writes to it.
+VARIANTSTORE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
+
 # Pinned to a specific emulator release: Override if needed.
 EMULATOR_IMAGE="${EMULATOR_IMAGE:-ghcr.io/goccy/bigquery-emulator:0.8}"
 EMULATOR_PORT="${EMULATOR_PORT:-9050}"
@@ -96,6 +103,8 @@ do
     set +o errexit
     if [[ "${MODE}" == "docker" ]]; then
         docker run --platform linux/amd64 --rm -v "${SCRIPT_DIR}":/in \
+            -v "${VARIANTSTORE_DIR}":/variantstore:ro \
+            -e GVS_VARIANTSTORE_DIR=/variantstore \
             --network "${EMULATOR_NETWORK}" \
             -e GVS_HEADER_IT_PROJECT="${EMULATOR_PROJECT}" \
             -e GVS_HEADER_IT_DATASET="${EMULATOR_DATASET}" \
@@ -106,6 +115,7 @@ do
         # Invoke by bare module name with the test dir on PYTHONPATH so the stdlib `test` package
         # does not shadow our local test/ directory.
         module="$(basename "${test}" .py)"
+        GVS_VARIANTSTORE_DIR="${VARIANTSTORE_DIR}" \
         GVS_HEADER_IT_PROJECT="${EMULATOR_PROJECT}" \
         GVS_HEADER_IT_DATASET="${EMULATOR_DATASET}" \
         GVS_HEADER_IT_ENDPOINT="${EMULATOR_ENDPOINT}" \
