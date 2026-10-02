@@ -309,6 +309,15 @@ fails a site when `max(score) < threshold` and a genotype when
 lower-is-better, so `ExtractCohortVETSEngine` overrides both and fails a site
 when `min(score) > threshold` and a genotype when `max(score) > threshold`.
 
+### `bq --apilog=false` writes a file named `false`
+
+`--apilog` takes a file path, not a boolean, so `--apilog=false` writes the
+API debug log to a file literally named `false` in the current directory.
+The idiom appears throughout the WDLs, where it is harmless because the file
+lands in the task's working directory and is discarded. Do not copy it into
+commands run locally: there it leaves a log of several hundred KB in the
+repo. Omit the flag instead.
+
 ## Key Workflows
 
 ### GvsJointVariantCalling.wdl
@@ -358,6 +367,38 @@ output files. Output files are partitioned at a minimum by chromosome, but for
 "wide" extracts (callsets with many large numbers of samples), there may be
 hundreds of output files per chromosome.
 
+## Nested inputs, and why a WDL 1.1 upgrade would change them
+
+The GVS WDLs are `version 1.0`. Under 1.0, a call input that the caller leaves
+unset becomes an input of the enclosing workflow, addressed by its
+fully-qualified name. This is true whether the call is to a task or a
+subworkflow. Terra lists these nested inputs in the workflow configuration, so
+you can set them there with no plumbing. For example, `GvsQuickstartIntegration`
+does not pass `use_manual_clinvar_update` to its `GvsQuickstartVATIntegration`
+call, but in VS-2029 the flag could still be set from Terra when running the
+top-level workflow. Terra only exposes one level of this, though: the inputs of
+calls made directly by the workflow being run, not those of calls nested inside
+a subworkflow. In VS-2029, setting `GvsCreateVATfromVDS`'s `use_reference_disk`
+from `GvsQuickstartIntegration` (two levels down) required temporarily adding a
+pass-through input to `GvsQuickstartVATIntegration`. So before adding
+pass-through inputs, check whether the input belongs to a direct child call and
+is therefore already exposed.
+
+WDL 1.1 reverses the default. By default, only the top-level workflow's own
+`input` section is settable. A workflow opts back in to nested inputs with
+`allowNestedInputs: true` in its `meta` section. WDL 1.2 moves that key to the
+workflow `hints` section, and restricts it to inputs that are optional or have
+a default. The only WDL in this repo that sets it today is
+`scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl`, which is not a GVS
+workflow.
+
+An upgrade to 1.1 therefore has to either add `allowNestedInputs` to every
+workflow whose nested inputs are set in Terra, or plumb each of those inputs
+through explicitly. Otherwise, any existing Terra method configuration that sets
+a nested input should be rejected for supplying an unexpected input. This has
+not been tried here. The quickstart integration workflows and the AoU workflows'
+method configurations are the places to audit.
+
 ## Variant Annotation Table (VAT)
 
 ### Overview
@@ -405,6 +446,43 @@ patch this table for a set of VIDs that did not have corresponding Participant
 IDs. See the directory `pseudo_vids_only_in_vat` for more information on
 unmatched VIDs that were discovered in the VATs of the Delta and Echo callsets.
 
+### The VAT's gnomAD version depends on reference disks
+
+`AnnotateVCF` in `GvsCreateVATfromVDS.wdl` reads its Nirvana data sources
+from one of two places, and they do not hold the same data. With
+`use_reference_disk = true` (the default) it reads the Broad bundle
+`gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/`,
+which has gnomAD 3.1.2. With it false, `Nirvana/Downloader.dll` fetches
+whatever Illumina currently serves; in September 2026 that was gnomAD 4.0
+(plus a newer bundled ClinVar). So the two paths produce different gnomAD
+columns in the VAT, and the download path is not pinned to any version.
+
+gnomAD 4.0 is not just newer numbers. It renames the `oth` subpopulation to
+`remaining` and adds `ami` and `mid`, none of which
+`create_vt_bqloadjson_from_annotations.py` knows about. On the download path
+the `gnomad_oth_*` columns therefore come out empty, and `ami`/`mid` are
+silently dropped. The integration truth data comes from the reference-disk
+path, so nothing tests the other one.
+
+Note that `use_reference_disk` is a WDL input, distinct from Terra's "Use
+reference disks" submission option. Unchecking the option does not change the
+input, and since the option is not part of the call-cache hash, an otherwise
+identical rerun simply reuses the reference-disk results.
+
+### Comparing VATs after the BigQuery dataset has expired
+
+Integration-test VAT datasets expire after 14 days, but the workflow's TSV
+outlives them in the workspace bucket. It is the `vat_complete.bgz.tsv.gz`
+output of `MergeVatTSVs`, inside `GvsCreateVATFilesFromBigQuery`; find it by
+walking the run's Cromwell metadata with `expand_sub_workflows=True`. Row order
+is not guaranteed, so `gunzip | LC_ALL=C sort` both TSVs before comparing. If
+`cmp` finds them identical, you are done. Otherwise, diff the columns keyed on
+`(vid, transcript)`, taking column names from
+`scripts/variantstore/scripts/variant_annotation_table/schema/vat_schema.json`.
+That separates ClinVar changes from gnomAD changes. In VS-2029 it showed
+that the flag-on VAT matched the VS-1994 VAT in every ClinVar column, with every
+remaining difference in gnomAD.
+
 # Data Handling
 
 ## Redact participant IDs from anything committed to this repo
@@ -450,9 +528,31 @@ Add `--check` to report without rewriting (exit status 1 if anything would
 change), and pass a directory to search it recursively. The script is idempotent
 and never touches content inside fenced code blocks.
 
+"Editing a table" includes edits that were not aimed at the table. A
+find-and-replace that changes a word's length — a spelling pass turning
+`behaviour` into `behavior`, a rename — breaks the padding of every table cell
+it touches. In VS-2029 a US-spelling pass over `validation.md` left two
+previously aligned tables ragged. After any bulk text edit, run the formatter
+with `--check` on the files you touched.
+
 Some existing docs predate this and are still ragged. Only format files you are
 already modifying; reformatting untouched docs adds diff noise that obscures the
 actual change.
+
+## Cite a run's results by something that will still resolve
+
+Integration-test BigQuery datasets expire 14 days after creation
+(`table_ttl_seconds` in `GvsUtils.wdl`), so a doc that cites one as evidence
+goes stale within weeks. In VS-2029, `validation.md` named two VAT datasets
+that had expired before the doc was reviewed. The run's outputs last longer.
+Every task's files stay in the workspace bucket under
+`gs://<bucket>/submissions/<submission id>/` for as long as the workspace
+exists, whatever the workflow.
+
+So cite the run itself rather than a dataset it wrote to. A workspace and
+submission ID may be enough. A full `gs://` path to the output file saves the
+reader from walking Cromwell metadata, but it can run to several hundred
+characters. Ask the user which they want.
 
 # Code Review Conventions
 

@@ -35,6 +35,7 @@ Optional inputs of note:
 
 - `split_intervals_scatter_count`: If you want to override the step function that decides this based on the number of samples (for Delta we used a scatter of 500, and for Echo a scatter of 1000).
 - `vat_version`: if you are creating multiple VATs for one callset, you can distinguish between them (and not overwrite others) by passing in increasing numbers
+- `use_manual_clinvar_update`: set to `true` to annotate with a manually rebuilt ClinVar database (currently the July 2025 release) instead of the October 2023 ClinVar that ships with Nirvana 3.18.1. This works with or without the 'Use reference disks' option. The database location is set by `manual_clinvar_path_prefix`. See [the ClinVar rebuild notes](../docs/vat_manual_ClinVar_updating/summary.md) for how the database was built and validated.
 - If you are debugging a Hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](../docs/aou/HAIL_DEBUGGING.md). 
 
 There are several temporary tables that are created in addition to the main VAT table. The Genes, VT (variant transcripts), and intermediate `_w_dups` VAT tables all have a time to live of 24 hours. The VEP/LOFTEE raw and cooked tables have a time to live of 3 days. The final VAT table is (re)created fresh each time so that there is no risk of duplicates.
