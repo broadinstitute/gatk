@@ -6,7 +6,7 @@ Self-contained instructions for rebuilding Nirvana's `SAUtils` with ClinVar supp
 ## Why this patch exists
 
 Nirvana's ClinVar parsers hard-code allow-lists for clinical significance and review status and
-**throw** on anything unrecognised. Since the germline/somatic classification split, NCBI emits
+**throw** on anything unrecognized. Since the germline/somatic classification split, NCBI emits
 placeholder text — `no classifications from unflagged records` — in both fields for variants whose
 submissions have all been flagged. Stock Nirvana aborts about 15 seconds into the run:
 
@@ -20,12 +20,12 @@ bug, not a misconfiguration. Without this patch you cannot convert any recent Cl
 
 ## What the patch changes
 
-| # | File | Change |
-|---|---|---|
-| 1 | `ClinVarCommon.cs` | Adds `uncertain risk allele` to `ValidPathogenicity`. **Not cosmetic** — 623 occurrences in the 2025-07 release would otherwise be silently discarded. |
-| 2 | `ClinVarVariationReader.cs` | `ResolveReviewStatus()`: safe lookup falling back to `no_assertion` instead of a raw indexer that threw `KeyNotFoundException`. |
-| 3 | `ClinVarCommon.cs` | `GetSignificances()` filters tokens against `ValidPathogenicity`, warning and skipping instead of throwing. One function, covers both the RCV and VCV paths. |
-| 4 | `NsaWriter.cs` | **Diagnostic progress logging only.** Added while chasing an apparent hang (see step 5). No functional change — safe to drop if you want a minimal patch. |
+| # | File                        | Change                                                                                                                                                       |
+|---|-----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1 | `ClinVarCommon.cs`          | Adds `uncertain risk allele` to `ValidPathogenicity`. **Not cosmetic** — 623 occurrences in the 2025-07 release would otherwise be silently discarded.       |
+| 2 | `ClinVarVariationReader.cs` | `ResolveReviewStatus()`: safe lookup falling back to `no_assertion` instead of a raw indexer that threw `KeyNotFoundException`.                              |
+| 3 | `ClinVarCommon.cs`          | `GetSignificances()` filters tokens against `ValidPathogenicity`, warning and skipping instead of throwing. One function, covers both the RCV and VCV paths. |
+| 4 | `NsaWriter.cs`              | **Diagnostic progress logging only.** Added while chasing an apparent hang (see step 5). No functional change — safe to drop if you want a minimal patch.    |
 
 ---
 
@@ -71,12 +71,12 @@ and run elsewhere.
 
 ## 4. Gather inputs
 
-| File | Where from |
-|---|---|
-| `ClinVarFullRelease_<ver>.xml.gz` | NCBI FTP — the RCV release (~5 GB) |
-| `ClinVarVariationRelease_<ver>.xml.gz` | NCBI FTP — the VCV release (~4.8 GB) |
-| `Homo_sapiens.GRCh38.Nirvana.dat` | Nirvana reference sequence, from the existing bundle |
-| `ClinVarFullRelease_<ver>.xml.gz.version` | **You must create this by hand** — see below |
+| File                                      | Where from                                           |
+|-------------------------------------------|------------------------------------------------------|
+| `ClinVarFullRelease_<ver>.xml.gz`         | NCBI FTP — the RCV release (~5 GB)                   |
+| `ClinVarVariationRelease_<ver>.xml.gz`    | NCBI FTP — the VCV release (~4.8 GB)                 |
+| `Homo_sapiens.GRCh38.Nirvana.dat`         | Nirvana reference sequence, from the existing bundle |
+| `ClinVarFullRelease_<ver>.xml.gz.version` | **You must create this by hand** — see below         |
 
 NCBI does not ship the `.version` sidecar; `SAUtils` requires it and derives the output filenames
 from it. Create it next to the RCV XML:
@@ -145,12 +145,18 @@ sharing a JSON key. ClinVar's key is the hardcoded constant `clinvar`, baked in 
 regardless of filename or version.
 
 **You cannot simply add a second `--sd` directory containing the new ClinVar** — it collides with
-the bundled one and aborts with `Duplicate variant-level JSON keys found for: clinvar`. The old
-`.nsa` has to be genuinely removed, which the read-only Terra reference disk does not allow. See
-`GvsCreateVATfromVDS.wdl` on branch `VS-1994` for the workaround (`use_manual_clinvar_update`
-forces the writable downloader path, then swaps the files in).
+the bundled one and aborts with `Duplicate variant-level JSON keys found for: clinvar`. Nor can the
+old `.nsa` be deleted in place, because the Terra reference disk is mounted read-only.
 
-## Known behaviour worth knowing
+`GvsCreateVATfromVDS.wdl` handles this when `use_manual_clinvar_update` is true. `AnnotateVCF`
+builds a writable directory of symlinks to every bundled supplementary annotation file except
+`ClinVar_*.nsa*`, links in the three manually built ClinVar files, and points Nirvana's `--sd`
+at that directory. This works the same with or without reference disks. A guard fails the task
+unless exactly one ClinVar `.nsa` ends up in the directory. To deliver a new build, upload its three
+files to GCS and set `manual_clinvar_path_prefix` to their common path prefix (the path without the
+`.nsa` extension). The default is `gs://gvs_quickstart_storage/Nirvana/ClinVar/ClinVar_2025-07`.
+
+## Known behavior worth knowing
 
 - The patches discard only values that are **not** clinical classifications — `not provided`,
   `flagged submission`, and NCBI's placeholder. A vocabulary audit of the full 2025-07 release
@@ -162,9 +168,8 @@ forces the writable downloader path, then swaps the files in).
 
 ## Further reading
 
-Everything above is derived from, and expanded on, in the project root:
+These sit alongside this file in `scripts/variantstore/docs/vat_manual_ClinVar_updating/`:
 
-- `summary.md` — two-page overview of the build and its validation
-- `PROGRESS.md` — full build log, including every dead end
-- `validation.md` — the evidence that the resulting VAT differs from its predecessor only because
-  ClinVar itself changed
+- [`summary.md`](summary.md) — two-page overview of the build and its validation
+- [`validation.md`](validation.md) — the evidence that the resulting VAT differs from its
+  predecessor only because ClinVar itself changed

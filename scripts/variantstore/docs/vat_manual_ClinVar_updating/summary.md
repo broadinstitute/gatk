@@ -6,7 +6,8 @@ differs from the previous one only because the underlying ClinVar data changed.
 **Tickets** VS-1994 (build and validation), VS-2029 (WDL integration) · **Output** `ClinVar_2025-07.nsa` · **Status: no unexplained differences found**
 
 Full validation detail, including the queries, is in [`validation.md`](validation.md). The Nirvana
-source patch is not yet checked in; see VS-2029.
+source patch is [`clinvar_patches.diff`](clinvar_patches.diff), with build instructions in
+[`clinvar_patches.README.md`](clinvar_patches.README.md).
 
 ---
 

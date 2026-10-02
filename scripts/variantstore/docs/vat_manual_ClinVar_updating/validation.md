@@ -8,32 +8,50 @@ difference between the two VAT tables is attributable to a ~20-month ClinVar rel
 patches introduced no annotation change beyond discarding values that were never clinical
 classifications.
 
-**Last updated:** 2026-10-01 · **Reusable:** §8 and Appendix A are written to be re-run for the
+**Last updated:** 2026-10-02 · **Reusable:** §8 and Appendix A are written to be re-run for the
 next ClinVar upgrade.
 
 ---
 
 ## 1. What is being compared
 
-| | New | Old (baseline) |
-|---|---|---|
-| BigQuery table | `gvs-internal.quickit_2026_09_10_VS_1994_0c32721_vat.quickit_vat` | `gvs-internal.quickit_2026_09_09_ng_vs_1988_failed_load_job_4e0cc60_vat.quickit_vat` |
-| GATK commit | `0c32721` (VS-1994) | `4e0cc60` (VS-1988) |
-| ClinVar source | `ClinVar_2025-07.nsa`, built from `ClinVarFullRelease_2025-07.xml.gz` | Nirvana-bundled ClinVar |
-| `clinvar_last_updated` range | 2022-04-23 → **2025-06-29** (2784 vids) | 2022-04-23 → **2023-10-28** (2671 vids) |
+|                              | New                                                                   | Old (baseline)                                         |
+|------------------------------|-----------------------------------------------------------------------|--------------------------------------------------------|
+| Terra workspace              | `gvs-dev/GVS Integration mcovarr`                                     | `gp-dsp-gvs-operations-terra/GVS Integration - Nalini` |
+| Terra submission             | `ab719aab-c2fb-43ea-ac1e-6abe31810a4f`                                | `552694c3-807b-44dd-bb2d-57eddbf15b4d`                 |
+| GATK commit                  | `0c32721` (VS-1994)                                                   | `4e0cc60` (VS-1988)                                    |
+| ClinVar source               | `ClinVar_2025-07.nsa`, built from `ClinVarFullRelease_2025-07.xml.gz` | Nirvana-bundled ClinVar                                |
+| `clinvar_last_updated` range | 2022-04-23 → **2025-06-29** (2784 vids)                               | 2022-04-23 → **2023-10-28** (2671 vids)                |
 
 > ⚠️ **The baseline is not a correctness reference.** It is a ~20-month-older ClinVar release
-> parsed by unpatched code, and its table name says `failed_load_job`. Divergence from it is
-> expected. Correctness must be established against the source XML, not against this table.
+> parsed by unpatched code, built from the development branch `ng_vs_1988_failed_load_job`.
+> Divergence from it is expected. Correctness must be established against the source XML, not
+> against this table.
 
-### Patches under test — `gcp/clinvar_patches.diff`
+Both VATs were loaded into integration-test BigQuery datasets that have since expired. Each
+submission's VAT survives as the TSV it wrote, `vat_complete.bgz.tsv.gz` from `MergeVatTSVs`. The
+baseline submission is marked failed, but only because of a VCF-side cost assertion; its VAT
+steps completed. Both TSVs were reproduced byte for byte by the later runs in §9.
 
-| # | File | Change |
-|---|---|---|
-| 1 | `ClinVarCommon.cs` | Added `uncertain risk allele` to `ValidPathogenicity` |
-| 2 | `ClinVarVariationReader.cs` | `ResolveReviewStatus()` falls back to `no_assertion` instead of throwing (**VCV path only**) |
+```
+# New
+gs://fc-358fc8a2-f84e-4d45-846a-a533d08f6103/submissions/ab719aab-c2fb-43ea-ac1e-6abe31810a4f/GvsQuickstartIntegration/d0ccc0c1-2d65-4914-8ea6-c63f4bd3d5e0/call-GvsQuickstartVATIntegration/GvsQuickstartVATIntegration/29d6f1d9-b8bd-4a99-8473-e34110fb84c7/call-CreateVATFromVDS/GvsCreateVATfromVDS/ccb39e44-1d27-4939-8856-7694777a23c6/call-GvsCreateVATFilesFromBigQuery/GvsCreateVATFilesFromBigQuery/9036451e-e0a4-441d-8336-85531b2aee24/call-MergeVatTSVs/vat_complete.bgz.tsv.gz
+# Old (baseline)
+gs://fc-22843ae9-4dbd-4751-ba8a-10fccdb797cd/submissions/552694c3-807b-44dd-bb2d-57eddbf15b4d/GvsQuickstartIntegration/79c6b053-c05d-4d13-a174-21671b84f327/call-GvsQuickstartVATIntegration/GvsQuickstartVATIntegration/5c25560f-f074-448d-9b95-75e5d21af22a/call-CreateVATFromVDS/GvsCreateVATfromVDS/9cd05997-641e-4781-9df7-2473ba552d1f/call-GvsCreateVATFilesFromBigQuery/GvsCreateVATFilesFromBigQuery/0ac5d4b1-469a-487c-810d-5a652e1c2c8b/call-MergeVatTSVs/vat_complete.bgz.tsv.gz
+```
+
+The TSVs are gzipped and unsorted; compare them with `gunzip -c <tsv> | LC_ALL=C sort`.
+
+### Patches under test — [`clinvar_patches.diff`](clinvar_patches.diff)
+
+Build and apply instructions are in [`clinvar_patches.README.md`](clinvar_patches.README.md).
+
+| # | File                               | Change                                                                                          |
+|---|------------------------------------|-------------------------------------------------------------------------------------------------|
+| 1 | `ClinVarCommon.cs`                 | Added `uncertain risk allele` to `ValidPathogenicity`                                           |
+| 2 | `ClinVarVariationReader.cs`        | `ResolveReviewStatus()` falls back to `no_assertion` instead of throwing (**VCV path only**)    |
 | 3 | `ClinVarCommon.GetSignificances()` | Filters significances to `ValidPathogenicity`, skipping unrecognized values instead of throwing |
-| 4 | `NsaWriter.cs` | Progress logging only — no functional impact |
+| 4 | `NsaWriter.cs`                     | Progress logging only — no functional impact                                                    |
 
 Patches #2 and #3 exist because NCBI's germline/somatic classification split now emits placeholder
 text (e.g. `no classifications from unflagged records`) in fields that previously held only
@@ -78,27 +96,27 @@ Loader: `gatk/scripts/variantstore/scripts/create_vt_bqloadjson_from_annotations
 
 Every query and command is reproduced in **Appendix A**, keyed by the check number below.
 
-| # | Check | Result |
-|---|---|---|
-| 1 | Star distribution | −702 one-star vids, +1023 two-star vids (net) |
-| 2 | Vid-level 2-star origin | 1337 new 2-star vids; 1024 newly so; **all 1024** were 1-star before; **0** from no-ClinVar |
-| 3 | RCV-level 2-star origin | 1588 = 1131 promoted + 456 unchanged + 1 new accession; **0** demotions from 3/4-star; **0** vids absent from old |
-| 4 | Lost 2-star vids | Exactly one: `20-2403658-G-A`, `[1,2] → [1]` |
-| 5 | 1-star decomposition | 1762 kept · 827 promoted away · **0 / 0 / 0** loss buckets · 125 gained |
-| 6 | Version check, promotions only | **0** same-version · 1131 version-changed |
-| 7 | Version check, all shared RCVs | 3649 shared · 1607 same · 2042 bumped · **all forward** · 0 backward |
-| 8 | ClinVar recency | old ≤ 2023-10-28 · new ≤ 2025-06-29 (~20-month gap) |
-| 9 | Loader diff `4e0cc60`→`0c32721` | Byte-identical |
-| 10 | Patch #2 reachability | Unreachable — loader accepts `RCV*` ids only |
-| 11 | XML ground truth, `20-2403658-G-A` | 3 RCVs, all 1-star, all Benign — **new table correct** |
-| 12 | Live ClinVar cross-check, `VCV000337923` | Same 3 RCVs (completeness confirmed); **never pathogenic**; post-snapshot drift `.8`→`.12` |
-| 13 | **Same-version control group** | 1607 RCVs · **0 / 0 / 0 / 0** — no star, classification, loss or gain difference on byte-identical input |
-| 14 | **RCV-level losses** | 17 RCVs dropped across 16 vids, all 1-star. No 2/3/4-star loss |
-| 15 | **XML resolution of all 17** | **15 retired by ClinVar · 2 re-represented as an FMR1 microsatellite · 0 defects** |
-| 16 | **Pathogenic-loss sweep** | **Exactly one vid**, `X-147912049-CGCG-C` — the FMR1 case. No other variant lost `pathogenic` by any route |
-| 17 | **Review-status vocabulary audit** | 9 distinct values; 7 mapped. Only `flagged submission` + the placeholder (**4,218 / 10.18M = 0.041%**) hit the fallback — both correctly dropped |
-| 18 | **Significance vocabulary audit** | 77 distinct values; **no real classification term is filtered** |
-| 19 | **Deployed-binary check** | `uncertain risk allele` present in `SAUtils.dll` — patch #1 confirmed in the artifact that built the `.nsa` |
+| #  | Check                                    | Result                                                                                                                                           |
+|----|------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1  | Star distribution                        | −702 one-star vids, +1023 two-star vids (net)                                                                                                    |
+| 2  | Vid-level 2-star origin                  | 1337 new 2-star vids; 1024 newly so; **all 1024** were 1-star before; **0** from no-ClinVar                                                      |
+| 3  | RCV-level 2-star origin                  | 1588 = 1131 promoted + 456 unchanged + 1 new accession; **0** demotions from 3/4-star; **0** vids absent from old                                |
+| 4  | Lost 2-star vids                         | Exactly one: `20-2403658-G-A`, `[1,2] → [1]`                                                                                                     |
+| 5  | 1-star decomposition                     | 1762 kept · 827 promoted away · **0 / 0 / 0** loss buckets · 125 gained                                                                          |
+| 6  | Version check, promotions only           | **0** same-version · 1131 version-changed                                                                                                        |
+| 7  | Version check, all shared RCVs           | 3649 shared · 1607 same · 2042 bumped · **all forward** · 0 backward                                                                             |
+| 8  | ClinVar recency                          | old ≤ 2023-10-28 · new ≤ 2025-06-29 (~20-month gap)                                                                                              |
+| 9  | Loader diff `4e0cc60`→`0c32721`          | Byte-identical                                                                                                                                   |
+| 10 | Patch #2 reachability                    | Unreachable — loader accepts `RCV*` ids only                                                                                                     |
+| 11 | XML ground truth, `20-2403658-G-A`       | 3 RCVs, all 1-star, all Benign — **new table correct**                                                                                           |
+| 12 | Live ClinVar cross-check, `VCV000337923` | Same 3 RCVs (completeness confirmed); **never pathogenic**; post-snapshot drift `.8`→`.12`                                                       |
+| 13 | **Same-version control group**           | 1607 RCVs · **0 / 0 / 0 / 0** — no star, classification, loss or gain difference on byte-identical input                                         |
+| 14 | **RCV-level losses**                     | 17 RCVs dropped across 16 vids, all 1-star. No 2/3/4-star loss                                                                                   |
+| 15 | **XML resolution of all 17**             | **15 retired by ClinVar · 2 re-represented as an FMR1 microsatellite · 0 defects**                                                               |
+| 16 | **Pathogenic-loss sweep**                | **Exactly one vid**, `X-147912049-CGCG-C` — the FMR1 case. No other variant lost `pathogenic` by any route                                       |
+| 17 | **Review-status vocabulary audit**       | 9 distinct values; 7 mapped. Only `flagged submission` + the placeholder (**4,218 / 10.18M = 0.041%**) hit the fallback — both correctly dropped |
+| 18 | **Significance vocabulary audit**        | 77 distinct values; **no real classification term is filtered**                                                                                  |
+| 19 | **Deployed-binary check**                | `uncertain risk allele` present in `SAUtils.dll` — patch #1 confirmed in the artifact that built the `.nsa`                                      |
 
 ### Detailed results
 
@@ -165,35 +183,35 @@ old_star  rcvs_dropped  vids_affected
 The only non-zero loss result in the validation: 17 of 3649 shared RCVs (~0.5%), confined entirely
 to 1-star records. The 17:
 
-| vid | rcv_id | stars | classification in OLD |
-|---|---|---|---|
-| 20-34945933-A-C | RCV001516822.13 | 1 | benign |
-| 20-59193946-G-A | RCV002977546.1 | 1 | likely benign |
-| 20-6041987-A-G | RCV003211151.1 | 1 | uncertain significance |
-| X-120456678-T-A | RCV000715317.2 | 1 | benign |
-| X-136209863-C-T | RCV000576703.1 | 1 | benign |
-| X-141906091-C-A | RCV003359679.1 | 1 | likely benign |
-| **X-147912049-CGCG-C** | **RCV000761551.2** | 1 | **pathogenic** |
-| **X-147912049-CGCG-C** | **RCV000761550.2** | 1 | **pathogenic** |
-| X-153905526-T-G | RCV000576631.1 | 1 | benign |
-| X-23000274-G-C | RCV003346747.1 | 1 | uncertain significance |
-| X-31679519-A-G | RCV000576429.9 | 1 | benign |
-| X-47846285-C-T | RCV002316332.8 | 1 | benign |
-| X-50607408-G-A | RCV002316320.8 | 1 | benign |
-| X-50607674-T-C | RCV002460044.1 | 1 | benign |
-| X-50607728-T-TTCC | RCV002453406.1 | 1 | benign |
-| X-50607758-C-CTGCTGCTGCTGT | RCV002453405.1 | 1 | benign |
-| X-71123671-T-A | RCV000460842.17 | 1 | benign |
+| vid                        | rcv_id             | stars | classification in OLD  |
+|----------------------------|--------------------|-------|------------------------|
+| 20-34945933-A-C            | RCV001516822.13    | 1     | benign                 |
+| 20-59193946-G-A            | RCV002977546.1     | 1     | likely benign          |
+| 20-6041987-A-G             | RCV003211151.1     | 1     | uncertain significance |
+| X-120456678-T-A            | RCV000715317.2     | 1     | benign                 |
+| X-136209863-C-T            | RCV000576703.1     | 1     | benign                 |
+| X-141906091-C-A            | RCV003359679.1     | 1     | likely benign          |
+| **X-147912049-CGCG-C**     | **RCV000761551.2** | 1     | **pathogenic**         |
+| **X-147912049-CGCG-C**     | **RCV000761550.2** | 1     | **pathogenic**         |
+| X-153905526-T-G            | RCV000576631.1     | 1     | benign                 |
+| X-23000274-G-C             | RCV003346747.1     | 1     | uncertain significance |
+| X-31679519-A-G             | RCV000576429.9     | 1     | benign                 |
+| X-47846285-C-T             | RCV002316332.8     | 1     | benign                 |
+| X-50607408-G-A             | RCV002316320.8     | 1     | benign                 |
+| X-50607674-T-C             | RCV002460044.1     | 1     | benign                 |
+| X-50607728-T-TTCC          | RCV002453406.1     | 1     | benign                 |
+| X-50607758-C-CTGCTGCTGCTGT | RCV002453405.1     | 1     | benign                 |
+| X-71123671-T-A             | RCV000460842.17    | 1     | benign                 |
 
 Composition: 10 benign · 3 likely benign · 2 uncertain significance · **2 pathogenic**.
 
 **Check 15 — resolution of all 17 against `ClinVarFullRelease_2025-07.xml.gz`**
 
-| Outcome | Count | Verdict |
-|---|---|---|
-| **Absent from the 2025-07 release** — accession retired or merged by ClinVar | 15 | ✅ Benign attrition over 20 months |
-| **Present, but re-represented as a microsatellite** | 2 | ✅ Correct drop — see §4 |
-| Present with valid significance and non-zero review status at the same allele | **0** | ✅ No defect found |
+| Outcome                                                                       | Count | Verdict                           |
+|-------------------------------------------------------------------------------|-------|-----------------------------------|
+| **Absent from the 2025-07 release** — accession retired or merged by ClinVar  | 15    | ✅ Benign attrition over 20 months |
+| **Present, but re-represented as a microsatellite**                           | 2     | ✅ Correct drop — see §4           |
+| Present with valid significance and non-zero review status at the same allele | **0** | ✅ No defect found                 |
 
 **Check 16 — pathogenic-loss sweep.** Every vid whose `clinvar_classification` lost `pathogenic`:
 
@@ -212,23 +230,23 @@ a new or updated RCV from the refresh — and the output ordering incidentally c
 **Checks 17-19 — vocabulary audit.** The converter VM was deleted and its stderr lost. Re-running
 was unnecessary: the patch warnings are a deterministic function of the input XML, so the same
 information — and more — was derived by enumerating the release's vocabulary and diffing it against
-the allow-lists recovered from `gcp/build_output/SAUtils.dll` (UTF-16 literals in the .NET string
+the allow-lists recovered from `build_output/SAUtils.dll` (UTF-16 literals in the .NET string
 heap). This is strictly stronger than stderr: stderr records only what fired, the audit shows every
 value that *could*.
 
 *Review statuses — all 9 in the release:*
 
-| Review status | Count | Mapped? |
-|---|---:|---|
-| criteria provided, single submitter | 8,979,691 | ✅ |
-| no assertion criteria provided | 688,991 | ✅ |
-| criteria provided, multiple submitters, no conflicts | 345,497 | ✅ |
-| criteria provided, conflicting interpretations | 57,516 | ✅ |
-| no assertion provided | 55,931 | ✅ |
-| reviewed by expert panel | 40,516 | ✅ |
-| practice guideline | 5,006 | ✅ |
-| **flagged submission** | **2,706** | ❌ → `no_assertion` |
-| **no classifications from unflagged records** | **1,512** | ❌ → `no_assertion` |
+| Review status                                        | Count     | Mapped?            |
+|------------------------------------------------------|----------:|--------------------|
+| criteria provided, single submitter                  | 8,979,691 | ✅                  |
+| no assertion criteria provided                       | 688,991   | ✅                  |
+| criteria provided, multiple submitters, no conflicts | 345,497   | ✅                  |
+| criteria provided, conflicting interpretations       | 57,516    | ✅                  |
+| no assertion provided                                | 55,931    | ✅                  |
+| reviewed by expert panel                             | 40,516    | ✅                  |
+| practice guideline                                   | 5,006     | ✅                  |
+| **flagged submission**                               | **2,706** | ❌ → `no_assertion` |
+| **no classifications from unflagged records**        | **1,512** | ❌ → `no_assertion` |
 
 Only 0.041% hit the fallback, and both are cases where dropping is correct — `flagged submission`
 means ClinVar itself flagged the submission as unreliable; the other is the placeholder emitted
@@ -240,13 +258,13 @@ all**, so that divergence is never exercised.
 
 *Significances — 77 distinct values over 10,177,558 occurrences. Outside `ValidPathogenicity`:*
 
-| Value | Count | Assessment |
-|---|---:|---|
-| `not provided` | 56,125 | Not a classification — ClinVar's "submitter gave none" marker |
-| `no classifications from unflagged records` | 1,515 | The placeholder that caused the original crash |
-| `low penetrance` | 82 | Modifier split off `Pathogenic, low penetrance` by the comma; the `pathogenic` half is kept |
-| `no known pathogenicity` | 1 | Non-standard term |
-| `pathogenic, low penetrance` | 1 | ⚠️ Explanation path splits only on `/` and `;`, so this stays whole and is dropped **entirely** |
+| Value                                       | Count  | Assessment                                                                                      |
+|---------------------------------------------|-------:|-------------------------------------------------------------------------------------------------|
+| `not provided`                              | 56,125 | Not a classification — ClinVar's "submitter gave none" marker                                   |
+| `no classifications from unflagged records` | 1,515  | The placeholder that caused the original crash                                                  |
+| `low penetrance`                            | 82     | Modifier split off `Pathogenic, low penetrance` by the comma; the `pathogenic` half is kept     |
+| `no known pathogenicity`                    | 1      | Non-standard term                                                                               |
+| `pathogenic, low penetrance`                | 1      | ⚠️ Explanation path splits only on `/` and `;`, so this stays whole and is dropped **entirely** |
 
 **No real clinical-significance term is filtered.** `Uncertain risk allele` (623 occurrences)
 survives *only* because of patch #1.
@@ -257,14 +275,14 @@ survives *only* because of patch #1.
 
 ### Arithmetic reconciliation — all consistent
 
-| Identity | Check |
-|---|---|
-| `125 − 827` | `= −702` ✅ matches the check-1 one-star delta |
-| `827 + 197` | `= 1024` ✅ (197 = promoted but retained a 1-star RCV) |
-| `1024 + 98` | `= 1122` ✅ (98 = already had 2-star, gained another promotion) |
-| `313 + 1024` | `= 1337` ✅ |
-| `1131 + 456 + 1` | `= 1588` ✅ every new 2-star RCV accounted for |
-| `1337 − 1023 = 314`, `314 − 313` | `= 1` ✅ exactly one vid lost 2-star status |
+| Identity                         | Check                                                          |
+|----------------------------------|----------------------------------------------------------------|
+| `125 − 827`                      | `= −702` ✅ matches the check-1 one-star delta                  |
+| `827 + 197`                      | `= 1024` ✅ (197 = promoted but retained a 1-star RCV)          |
+| `1024 + 98`                      | `= 1122` ✅ (98 = already had 2-star, gained another promotion) |
+| `313 + 1024`                     | `= 1337` ✅                                                     |
+| `1131 + 456 + 1`                 | `= 1588` ✅ every new 2-star RCV accounted for                  |
+| `1337 − 1023 = 314`, `314 − 313` | `= 1` ✅ exactly one vid lost 2-star status                     |
 
 ---
 
@@ -277,11 +295,11 @@ Canonical SPDI `NC_000020.11:2403657:G:A` · GRCh38 `20:2403658` · GRCh37 `20:2
 
 Ground truth from `ClinVarFullRelease_2025-07.xml.gz`, matched on GRCh38 `start=2403658`, `G>A`:
 
-| RCV accession | ReviewStatus | Stars | Description |
-|---|---|---|---|
-| RCV000277947.7 | criteria provided, single submitter | 1 | Benign |
-| RCV000713829.8 | criteria provided, single submitter | 1 | Benign |
-| RCV004999340.1 | criteria provided, single submitter | 1 | Benign |
+| RCV accession  | ReviewStatus                        | Stars | Description |
+|----------------|-------------------------------------|-------|-------------|
+| RCV000277947.7 | criteria provided, single submitter | 1     | Benign      |
+| RCV000713829.8 | criteria provided, single submitter | 1     | Benign      |
+| RCV004999340.1 | criteria provided, single submitter | 1     | Benign      |
 
 **Verdict: the new table is correct; the old table was stale.** Every record in the snapshot is
 1-star, so `new_stars = [1]` is right. The old `[1,2]` reflects the 2023 bundle, where one record
@@ -350,7 +368,7 @@ consequential one, since a variant previously annotated Pathogenic no longer is.
 
 **No unexplained change was found at any level — vid, RCV, or classification.** Patch #3's
 filtering is ruled out both for records that survived into the new table (check 13) and for every
-record that did not (check 15), and the patches' behaviour was audited directly against the source
+record that did not (check 15), and the patches' behavior was audited directly against the source
 release rather than inferred.
 
 ---
@@ -360,11 +378,11 @@ release rather than inferred.
 All blocking questions are closed. These three were defined early and never run; each is a
 cross-check on numbers already reconciled by other means. Queries are in **Appendix B**.
 
-| | Item | Why it was not needed |
-|---|---|---|
-| D | Vid-universe overlap | Largely answered indirectly: check 3 returned `vid_absent_from_old = 0`, check 2 returned `newly_2star_no_clinvar_in_old = 0`, and check 5 returned `vid_gone_from_new_table = 0`. No variant appeared or vanished in any population examined. Worth running on a production-scale comparison, where partial loads are a real risk. |
-| E | Decomposition of the 125 `gained_1star` vids | Gains are the expected direction for a newer release. Splits the 125 into "new to the table" vs "new ClinVar data for an existing variant" — informative, not load-bearing. |
-| G | Per-column fill rates | **Structurally near-moot.** The loader writes all six ClinVar columns inside one `if len(clinvar_rcv_ids) > 0:` block, so they populate atomically per variant and cannot diverge independently. Only `clinvar_phenotype` can legitimately be empty while the others are set. |
+|   | Item                                         | Why it was not needed                                                                                                                                                                                                                                                                                                               |
+|---|----------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| D | Vid-universe overlap                         | Largely answered indirectly: check 3 returned `vid_absent_from_old = 0`, check 2 returned `newly_2star_no_clinvar_in_old = 0`, and check 5 returned `vid_gone_from_new_table = 0`. No variant appeared or vanished in any population examined. Worth running on a production-scale comparison, where partial loads are a real risk. |
+| E | Decomposition of the 125 `gained_1star` vids | Gains are the expected direction for a newer release. Splits the 125 into "new to the table" vs "new ClinVar data for an existing variant" — informative, not load-bearing.                                                                                                                                                         |
+| G | Per-column fill rates                        | **Structurally near-moot.** The loader writes all six ClinVar columns inside one `if len(clinvar_rcv_ids) > 0:` block, so they populate atomically per variant and cannot diverge independently. Only `clinvar_phenotype` can legitimately be empty while the others are set.                                                       |
 
 ---
 
@@ -383,7 +401,7 @@ None affect the verdict on this dataset. All are worth carrying into a full-call
    occurrences), so it is not free. Recommend leaving as-is unless a clinically important variant
    is affected.
 3. **`not provided` records no longer contribute entries.** 56,125 occurrences release-wide (upper
-   bound). Correct behaviour, but at production scale it will visibly reduce RCV counts relative to
+   bound). Correct behavior, but at production scale it will visibly reduce RCV counts relative to
    the Nirvana-bundled baseline. Expect it; it is not a regression.
 4. **Scale expectation.** `quickit` is a small callset — only 17 RCV-level drops surfaced here. A
    full callset will hit proportionally more `not provided` and `flagged submission` records. The
@@ -398,17 +416,17 @@ None affect the verdict on this dataset. All are worth carrying into a full-call
 
 Each step either frames the comparison or closes a specific hiding place for an unexplained change.
 
-| Order | Check(s) | Purpose |
-|---|---|---|
-| 1 | **D** (Appendix B), then **8** | Establish comparability and size the release gap *before* interpreting anything. If the variant universes differ materially, every later number is suspect. |
-| 2 | **1** | Frame the question — where did stars move? |
-| 3 | **2, 3** | Attribute the gains. Vid-level first, then record-level; only the record-level query distinguishes "existing record re-graded" from "new record appeared." |
-| 4 | **6, 7** | **The pivotal step.** Compare accession *versions*. A change at an unchanged version implicates your code; a change with a version bump implicates ClinVar. |
-| 5 | **5** | Decompose the losses and confirm the arithmetic closes against step 2. |
-| 6 | **13** | The control group — the only true A/B test available. |
-| 7 | **14**, then **15** | Find record-level losses, then resolve every one against the source XML. Do not stop at the count. |
-| 8 | **16** | Sweep the derived `clinvar_classification` for high-stakes losses that drop no record. |
-| 9 | **17, 18, 19** | Audit the release vocabulary against the allow-lists in the deployed binary. |
+| Order | Check(s)                       | Purpose                                                                                                                                                     |
+|-------|--------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 1     | **D** (Appendix B), then **8** | Establish comparability and size the release gap *before* interpreting anything. If the variant universes differ materially, every later number is suspect. |
+| 2     | **1**                          | Frame the question — where did stars move?                                                                                                                  |
+| 3     | **2, 3**                       | Attribute the gains. Vid-level first, then record-level; only the record-level query distinguishes "existing record re-graded" from "new record appeared."  |
+| 4     | **6, 7**                       | **The pivotal step.** Compare accession *versions*. A change at an unchanged version implicates your code; a change with a version bump implicates ClinVar. |
+| 5     | **5**                          | Decompose the losses and confirm the arithmetic closes against step 2.                                                                                      |
+| 6     | **13**                         | The control group — the only true A/B test available.                                                                                                       |
+| 7     | **14**, then **15**            | Find record-level losses, then resolve every one against the source XML. Do not stop at the count.                                                          |
+| 8     | **16**                         | Sweep the derived `clinvar_classification` for high-stakes losses that drop no record.                                                                      |
+| 9     | **17, 18, 19**                 | Audit the release vocabulary against the allow-lists in the deployed binary.                                                                                |
 
 ### Principles that made this work
 
@@ -439,13 +457,45 @@ Each step either frames the comparison or closes a specific hiding place for an 
 
 ---
 
-## Appendix A — queries and commands, by check
+## 9. Reproduced through the VAT workflow
 
-Substitute your two tables throughout:
+The checks above compare tables from the VS-1994 build. On 2026-09-30, two `GvsQuickstartIntegration`
+runs of `vs_2029_clinvar_clean` used reference disks and differed only in
+`use_manual_clinvar_update`. Checks 1, 7, 8, 13, 14 and 16 were re-run with the flag-off VAT as
+`{{OLD}}` and the flag-on VAT as `{{NEW}}`, and they reproduced every number in §3. That covers the
+star deltas, version moves, `clinvar_last_updated` range, control group, the 17 dropped RCVs and
+the single pathogenic loss. All non-ClinVar columns were identical between the two runs. The
+flag-off run passed the integration test's exactness assertions, and the flag-on run failed them,
+as expected until the truth data is regenerated.
+
+The two runs are submissions `6ee83e18-2181-4e54-ba0b-22b9c47d0da0` (flag off) and
+`af0f9e5d-dd99-499f-b8ae-77ba3ae260f0` (flag on) in `gvs-dev/GVS Integration mcovarr`.
+
+A third run on 2026-10-01, `c8d31878-9245-43e8-986c-1e3c47f0c7e9`, set the flag and `use_reference_disk = false`, the configuration of the
+VS-1994 build. Its sorted VAT TSV was byte-for-byte identical to the new table's TSV (§1). The
+flag-off run's sorted TSV was likewise byte-for-byte identical to the baseline's, so both sides of
+the original comparison have been reproduced exactly through the VS-2029 WDL.
+
+The three runs' TSVs:
 
 ```
-{{NEW}} = gvs-internal.quickit_2026_09_10_VS_1994_0c32721_vat.quickit_vat
-{{OLD}} = gvs-internal.quickit_2026_09_09_ng_vs_1988_failed_load_job_4e0cc60_vat.quickit_vat
+# Flag off, reference disks (6ee83e18)
+gs://fc-358fc8a2-f84e-4d45-846a-a533d08f6103/submissions/6ee83e18-2181-4e54-ba0b-22b9c47d0da0/GvsQuickstartIntegration/9f1fda0d-4886-4e25-8fa8-ea22852466c4/call-GvsQuickstartVATIntegration/GvsQuickstartVATIntegration/e3ca8dd0-b741-405e-878b-5c56ca33ced2/call-CreateVATFromVDS/GvsCreateVATfromVDS/325d1f80-614d-4499-a1d4-f48aacc87c4e/call-GvsCreateVATFilesFromBigQuery/GvsCreateVATFilesFromBigQuery/a618183b-7469-49b3-b8e9-85ca8a7beeb9/call-MergeVatTSVs/vat_complete.bgz.tsv.gz
+# Flag on, reference disks (af0f9e5d)
+gs://fc-358fc8a2-f84e-4d45-846a-a533d08f6103/submissions/af0f9e5d-dd99-499f-b8ae-77ba3ae260f0/GvsQuickstartIntegration/65c8b0c2-7249-4069-928c-a058229c4b9d/call-GvsQuickstartVATIntegration/GvsQuickstartVATIntegration/d7b85b65-aea2-45ba-b693-293762594609/call-CreateVATFromVDS/GvsCreateVATfromVDS/37fb09e7-eb94-4dc9-80a7-6e43f6bfebf5/call-GvsCreateVATFilesFromBigQuery/GvsCreateVATFilesFromBigQuery/59dd24bd-21e3-4921-8065-dba030017baa/call-MergeVatTSVs/vat_complete.bgz.tsv.gz
+# Flag on, no reference disks (c8d31878)
+gs://fc-358fc8a2-f84e-4d45-846a-a533d08f6103/submissions/c8d31878-9245-43e8-986c-1e3c47f0c7e9/GvsQuickstartIntegration/0fcad72f-b28d-4820-aba5-95d6e3c89c9b/call-GvsQuickstartVATIntegration/GvsQuickstartVATIntegration/fc56b43c-3335-44dd-b777-61ebe26aac61/call-CreateVATFromVDS/GvsCreateVATfromVDS/83932f26-ca8d-4ad4-bc67-454a2223fbd6/call-GvsCreateVATFilesFromBigQuery/GvsCreateVATFilesFromBigQuery/a9a1f60a-ac94-45a0-8da4-307f136b8e55/call-MergeVatTSVs/vat_complete.bgz.tsv.gz
+```
+
+---
+
+## Appendix A — queries and commands, by check
+
+Substitute your two VAT tables throughout:
+
+```
+{{NEW}} = <project>.<dataset>.<table>   -- VAT built with the new ClinVar
+{{OLD}} = <project>.<dataset>.<table>   -- VAT built with the previous ClinVar
 ```
 
 Several queries share the same `old_rcv` / `new_rcv` CTE pair that zips the parallel RCV arrays;
@@ -822,10 +872,10 @@ gzcat $XML | grep -E -A 8 "ClinVarAccession Acc=\"($ACC)\"" > dropped_rcvs.txt
 
 Each hit shows `RecordStatus`, `ReviewStatus` and `Description`. Interpretation:
 
-| Finding | Verdict |
-|---|---|
-| Accession absent entirely | ClinVar retired/merged it — benign |
-| Present, review status maps to 0 stars | Correctly dropped by loader line 262 — benign |
+| Finding                                                | Verdict                                                                     |
+|--------------------------------------------------------|-----------------------------------------------------------------------------|
+| Accession absent entirely                              | ClinVar retired/merged it — benign                                          |
+| Present, review status maps to 0 stars                 | Correctly dropped by loader line 262 — benign                               |
 | Present, valid significance and non-zero review status | **Investigate** — check the allele mapping before concluding it is a defect |
 
 For the third case, pull the `MeasureSet` to see which variant the record now describes — a
@@ -953,7 +1003,7 @@ Compare the `REVIEWSTATUS` rows against `ReviewStatusNameMapping` by hand — th
 ```sh
 python3 - <<'PY'
 import re
-d = open('gcp/build_output/SAUtils.dll', 'rb').read()
+d = open('build_output/SAUtils.dll', 'rb').read()
 out = set()
 for m in re.finditer(rb'(?:[\x20-\x7e]\x00){4,}', d):
     out.add(m.group(0).decode('utf-16-le'))
@@ -1084,10 +1134,12 @@ ORDER BY delta
   deletion. **Zero defects.**
 - **2026-09-15** — Check 16: full `clinvar_classification` sweep returned exactly one pathogenic
   loss, the FMR1 case already resolved.
-- **2026-09-16** — Checks 17-19 close the patch-behaviour question **without re-running the
+- **2026-09-16** — Checks 17-19 close the patch-behavior question **without re-running the
   converter**: allow-lists recovered from `SAUtils.dll` and diffed against the full 2025-07
   vocabulary. No real classification term is filtered; patch #1 confirmed present and load-bearing.
 - **2026-10-01** — Restructured as a reusable model. Added **Appendix A** (every query and command,
   keyed by check), **Appendix B** (the three optional checks), and **§8** (suggested run order,
   principles, schema traps). Renumbered conclusions, folded both resolved anomalies into §4, and
   cleared stale cross-references left by incremental editing.
+- **2026-10-02** — Added §9, reproducing the results through the VS-2029 WDL with and without
+  reference disks. Pointed patch and binary references at the checked-in diff and its build.
