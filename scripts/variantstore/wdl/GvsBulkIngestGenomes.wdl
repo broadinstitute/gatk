@@ -182,42 +182,6 @@ workflow GvsBulkIngestGenomes {
     # files from a prior header pass, even if validate_vcf_headers is false.
     String? headers_parquet_output_gcs_dir = if (defined(parquet_output_gcs_dir) && effective_validate_vcf_headers) then select_first([parquet_output_gcs_dir]) + "/headers" else none_string
     String? data_parquet_output_gcs_dir = if defined(parquet_output_gcs_dir) then select_first([parquet_output_gcs_dir]) + "/data" else none_string
-    call ImportGenomes.GvsImportGenomes as ImportGenomes {
-        input:
-            go = AssignIds.done,
-            git_branch_or_tag = git_branch_or_tag,
-            git_hash = effective_git_hash,
-            dataset_name = dataset_name,
-            project_id = project_id,
-            external_sample_names = SplitBulkImportFofn.sample_name_fofn,
-            num_samples = SplitBulkImportFofn.sample_num,
-            input_vcfs = SplitBulkImportFofn.vcf_file_name_fofn,
-            input_vcf_indexes = SplitBulkImportFofn.vcf_index_file_name_fofn,
-            reference_name = reference_name,
-            interval_list = interval_list,
-            load_data_scatter_width = load_data_scatter_width,
-            load_data_maxretries_override = load_data_maxretries_override,
-            load_data_preemptible_override = load_data_preemptible_override,
-            basic_docker = effective_basic_docker,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-            variants_docker = effective_variants_docker,
-            gatk_docker = effective_gatk_docker,
-            load_data_gatk_override = gatk_override,
-            drop_state = drop_state,
-            billing_project_id = billing_project_id,
-            use_compressed_references = use_compressed_references,
-            load_vet_and_ref_ranges = load_vet_and_ref_ranges,
-            load_vcf_headers = load_vcf_headers,
-            is_rate_limited_beta_customer = tighter_gcp_quotas,
-            use_parquet_ingest = use_parquet_ingest,
-            parquet_output_gcs_dir = parquet_output_gcs_dir,
-            parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
-            parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
-            parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
-            parquet_fail_on_quarantine = parquet_fail_on_quarantine,
-            is_wgs = is_wgs,
-    }
-
     # VS-1966 / VS-1995: If validate_vcf_headers is true, run an initial headers-only ingest pass,
     # validate the ingested headers, and generate a report. If validation fails, the workflow halts
     # fast before any expensive vet/ref data ingest.
@@ -304,6 +268,10 @@ workflow GvsBulkIngestGenomes {
                 is_rate_limited_beta_customer = tighter_gcp_quotas,
                 use_parquet_ingest = use_parquet_ingest,
                 parquet_output_gcs_dir = data_parquet_output_gcs_dir,
+                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+                parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+                parquet_fail_on_quarantine = parquet_fail_on_quarantine,
                 is_wgs = is_wgs,
         }
     }
@@ -324,10 +292,10 @@ workflow GvsBulkIngestGenomes {
         # sees these on is a truncation-only flag or a run with that abort turned off -- either way a
         # non-zero parquet_quarantined_samples on a green run means review it.
         # Optional for the same reason as the header outputs above: the Parquet path is conditional.
-        Int? parquet_quarantined_samples = ImportGenomes.parquet_quarantined_samples
-        Int? parquet_quarantined_duplication_samples = ImportGenomes.parquet_quarantined_duplication_samples
-        Int? parquet_quarantined_files = ImportGenomes.parquet_quarantined_files
-        File? parquet_quarantine_files_list = ImportGenomes.parquet_quarantine_files_list
+        Int? parquet_quarantined_samples = ImportGenomesData.parquet_quarantined_samples
+        Int? parquet_quarantined_duplication_samples = ImportGenomesData.parquet_quarantined_duplication_samples
+        Int? parquet_quarantined_files = ImportGenomesData.parquet_quarantined_files
+        File? parquet_quarantine_files_list = ImportGenomesData.parquet_quarantine_files_list
     }
 }
 
