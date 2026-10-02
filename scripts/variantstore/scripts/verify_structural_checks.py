@@ -744,13 +744,11 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
             )
     unscreened = {
         "checked": False,
-        "reason": ("No cheap per-sample duplication detector exists for these families (row count "
-                   "tracks GQ-band transitions, not genome length). The exact detector -- COUNT(*) "
-                   "vs. COUNT(DISTINCT packed_ref_data) per sample -- needs a full per-sample scan "
-                   "and is out of scope. Comparing against the parent callset's row count was also "
-                   "considered and rejected: a child callset copies its parent, so a pre-existing "
-                   "parent-side defect is copied forward identically and would read as agreement. "
-                   "See the module docstring and VS-1989."),
+        "reason": ("These families have no duplication detector today: a partition loaded twice "
+                   "passes every check here. A row-count ratio screen like vet's does not work for "
+                   "them, since row count tracks GQ-band transitions, not genome length. The exact "
+                   "footer-vs-partition row count comparison is deferred to VS-2032. See the module "
+                   "docstring."),
         "families": sorted(f for f in superpartitioned_table_prefixes if f not in duplication),
     }
 
