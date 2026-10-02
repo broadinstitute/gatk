@@ -539,6 +539,21 @@ Some existing docs predate this and are still ragged. Only format files you are
 already modifying; reformatting untouched docs adds diff noise that obscures the
 actual change.
 
+## Cite a run's results by something that will still resolve
+
+Integration-test BigQuery datasets expire 14 days after creation
+(`table_ttl_seconds` in `GvsUtils.wdl`), so a doc that cites one as evidence
+goes stale within weeks. In VS-2029, `validation.md` named two VAT datasets
+that had expired before the doc was reviewed. The run's outputs last longer.
+Every task's files stay in the workspace bucket under
+`gs://<bucket>/submissions/<submission id>/` for as long as the workspace
+exists, whatever the workflow.
+
+So cite the run itself rather than a dataset it wrote to. A workspace and
+submission ID may be enough. A full `gs://` path to the output file saves the
+reader from walking Cromwell metadata, but it can run to several hundred
+characters. Ask the user which they want.
+
 # Code Review Conventions
 
 ## Do the review inline — do not use the `code-review` skill
