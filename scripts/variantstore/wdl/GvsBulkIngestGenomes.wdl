@@ -75,6 +75,14 @@ workflow GvsBulkIngestGenomes {
         Boolean use_parquet_ingest = true
         # `parquet_output_gcs_dir` must be defined if `use_parquet_ingest` is true.
         String? parquet_output_gcs_dir
+        # Independent post-load structural checks (VS-1989), forwarded to GvsImportGenomes; see that
+        # workflow. Defaults keep the vet screens quarantining a flagged sample's Parquet, aborting the
+        # run when the duplication screen is what flagged it, and ploidy mode-inferred, so leaving them
+        # unset changes nothing.
+        Float parquet_vet_duplication_threshold = 1.6
+        Float parquet_vet_truncation_threshold = 1.6
+        Boolean parquet_allow_flagged_vet_loads = false
+        Boolean parquet_fail_on_quarantine = true
 
         Boolean use_compressed_references = false
     }
@@ -86,6 +94,10 @@ workflow GvsBulkIngestGenomes {
         vcf_index_files_column_name: "The column that supplies the path for the GVCF index files to be ingested. If not specified, the workflow will attempt to derive the column name."
         sample_set_name: "The recommended way to load samples; Sample sets must be created by the user. If no sample_set_name is specified, all samples will be loaded into GVS"
         bulk_ingest_fofn: "An explicitly specified FOFN of VCFs to be ingested. If specified, the workflow will not generate a FOFN from the data table. This can be useful for avoiding the scale limitations of Terra data tables. The format is tab delimited with no header: sample_name<tab>gvcf_file_path<tab>gvcf_index_file_path. If this value is specified, none of the data table parameters should be specified."
+        parquet_vet_duplication_threshold: "VS-1989 post-load verification, forwarded to GvsImportGenomes: ratio-to-callset-median at or above which a vet sample's row count is flagged as a possible duplicate, and (mirrored) at or below median/ratio as a possible truncation. Must be > 1; default 1.6."
+        parquet_vet_truncation_threshold: "VS-1989 post-load verification, forwarded to GvsImportGenomes: ratio whose reciprocal sets the low-side floor -- a vet sample at or below median/ratio is flagged as possibly truncated. Must be > 1, or 0 to disable the truncation screen; default 1.6 (i.e. 0.625x). Separate from parquet_vet_duplication_threshold because only the high side has been calibrated."
+        parquet_allow_flagged_vet_loads: "VS-1989 post-load verification, forwarded to GvsImportGenomes: when false (default), the Parquet of any sample a vet duplication- or truncation-screen flag names is moved to a quarantine prefix instead of deleted (the load itself still succeeds, and the unflagged samples' Parquet is deleted as normal); when true the screens are waived and everything is deleted despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless."
+        parquet_fail_on_quarantine: "VS-1989 post-load verification, forwarded to GvsImportGenomes: when true (default), a run that quarantined the Parquet of a duplication-flagged sample aborts after the quarantine completes, so the run is not silently green. Set false to leave the quarantine advisory (reported only through the parquet_quarantined_* outputs and the quarantine directory's README). Truncation-only flags never abort, because that threshold is not yet calibrated."
     }
 
     if (!defined(git_hash) ||
@@ -170,6 +182,41 @@ workflow GvsBulkIngestGenomes {
     # files from a prior header pass, even if validate_vcf_headers is false.
     String? headers_parquet_output_gcs_dir = if (defined(parquet_output_gcs_dir) && effective_validate_vcf_headers) then select_first([parquet_output_gcs_dir]) + "/headers" else none_string
     String? data_parquet_output_gcs_dir = if defined(parquet_output_gcs_dir) then select_first([parquet_output_gcs_dir]) + "/data" else none_string
+    call ImportGenomes.GvsImportGenomes as ImportGenomes {
+        input:
+            go = AssignIds.done,
+            git_branch_or_tag = git_branch_or_tag,
+            git_hash = effective_git_hash,
+            dataset_name = dataset_name,
+            project_id = project_id,
+            external_sample_names = SplitBulkImportFofn.sample_name_fofn,
+            num_samples = SplitBulkImportFofn.sample_num,
+            input_vcfs = SplitBulkImportFofn.vcf_file_name_fofn,
+            input_vcf_indexes = SplitBulkImportFofn.vcf_index_file_name_fofn,
+            reference_name = reference_name,
+            interval_list = interval_list,
+            load_data_scatter_width = load_data_scatter_width,
+            load_data_maxretries_override = load_data_maxretries_override,
+            load_data_preemptible_override = load_data_preemptible_override,
+            basic_docker = effective_basic_docker,
+            cloud_sdk_docker = effective_cloud_sdk_docker,
+            variants_docker = effective_variants_docker,
+            gatk_docker = effective_gatk_docker,
+            load_data_gatk_override = gatk_override,
+            drop_state = drop_state,
+            billing_project_id = billing_project_id,
+            use_compressed_references = use_compressed_references,
+            load_vet_and_ref_ranges = load_vet_and_ref_ranges,
+            load_vcf_headers = load_vcf_headers,
+            is_rate_limited_beta_customer = tighter_gcp_quotas,
+            use_parquet_ingest = use_parquet_ingest,
+            parquet_output_gcs_dir = parquet_output_gcs_dir,
+            parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+            parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
+            parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+            parquet_fail_on_quarantine = parquet_fail_on_quarantine,
+            is_wgs = is_wgs,
+    }
 
     # VS-1966 / VS-1995: If validate_vcf_headers is true, run an initial headers-only ingest pass,
     # validate the ingested headers, and generate a report. If validation fails, the workflow halts
@@ -271,6 +318,16 @@ workflow GvsBulkIngestGenomes {
         Boolean? vcf_headers_validation_passed = ValidateHeaders.validation_passed
         File? vcf_headers_validation_report = ValidateHeaders.validation_report
         String? vcf_headers_validation_report_contents = ValidateHeaders.validation_report_contents
+        # Parquet quarantine observability (VS-1989). A run whose screens flagged a sample sets that
+        # sample's Parquet aside instead of deleting it with the rest. A duplication flag also aborts
+        # the ingest by default (parquet_fail_on_quarantine in GvsImportGenomes), so the run a reader
+        # sees these on is a truncation-only flag or a run with that abort turned off -- either way a
+        # non-zero parquet_quarantined_samples on a green run means review it.
+        # Optional for the same reason as the header outputs above: the Parquet path is conditional.
+        Int? parquet_quarantined_samples = ImportGenomes.parquet_quarantined_samples
+        Int? parquet_quarantined_duplication_samples = ImportGenomes.parquet_quarantined_duplication_samples
+        Int? parquet_quarantined_files = ImportGenomes.parquet_quarantined_files
+        File? parquet_quarantine_files_list = ImportGenomes.parquet_quarantine_files_list
     }
 }
 

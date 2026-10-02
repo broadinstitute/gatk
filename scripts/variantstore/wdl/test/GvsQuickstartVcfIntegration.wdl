@@ -20,6 +20,13 @@ workflow GvsQuickstartVcfIntegration {
         # (its samples predate DRAGEN, so the DRAGEN check is informational there).
         String? expected_dragen_version
         Boolean use_parquet_ingest = true
+        # VS-1989 independent post-load structural checks, forwarded through GvsJointVariantCalling so an
+        # integration run can exercise them (e.g. set parquet_allow_flagged_vet_loads = true to waive the
+        # screens and let deletion proceed despite a flag).
+        Float parquet_vet_duplication_threshold = 1.6
+        Float parquet_vet_truncation_threshold = 1.6
+        Boolean parquet_allow_flagged_vet_loads = false
+        Boolean parquet_fail_on_quarantine = true
         String drop_state = "FORTY"
         Boolean bgzip_output_vcfs = false
         String dataset_suffix
@@ -136,6 +143,46 @@ workflow GvsQuickstartVcfIntegration {
             parquet_output_gcs_dir = parquet_output_gcs_dir,
             validate_vcf_headers = validate_vcf_headers,
             expected_dragen_version = expected_dragen_version,
+            parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+            parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
+            parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+            parquet_fail_on_quarantine = parquet_fail_on_quarantine,
+    }
+
+    # VS-1989: the quickstart samples are ordinary, so the vet duplication and truncation screens must
+    # flag none of them. A duplication flag already aborts inside GvsImportGenomes (parquet_fail_on_quarantine
+    # defaults to true), so what this adds is coverage of a truncation-only flag -- which quarantines but
+    # deliberately does not abort, the truncation threshold being uncalibrated -- and of a run that turned
+    # that abort off. A screen that starts flagging normal samples is otherwise a silently green regression.
+    #
+    # The message reports the thresholds it fired at, because a forced quarantine run is the other way
+    # to reach this assertion: lowering a threshold is how the quarantine path gets exercised on an
+    # ordinary callset, and without the threshold in the text this abort tells that operator to go
+    # hunting for a regression they caused on purpose.
+    #
+    # Gated on parquet_fail_on_quarantine, which means exactly "a quarantine must not fail this run" --
+    # honouring it in GvsImportGenomes and then failing here anyway would make the input a lie. Nothing
+    # is lost at the default of true: a duplication flag aborts inside GvsImportGenomes before reaching
+    # this point, so what this catches is a truncation-only flag, which never aborts there. A run that
+    # turned the input off has declared a quarantine acceptable, and gets a green run reporting one
+    # through parquet_quarantined_samples.
+    if (use_parquet_ingest && parquet_fail_on_quarantine &&
+        select_first([JointVariantCalling.parquet_quarantined_samples, 0]) > 0) {
+        call Utils.TerminateWorkflow as VetScreensFlaggedQuickstartSamples {
+            input:
+                message = "The VS-1989 vet screens quarantined the Parquet of " +
+                          select_first([JointVariantCalling.parquet_quarantined_samples, 0]) +
+                          " quickstart sample(s), of which " +
+                          select_first([JointVariantCalling.parquet_quarantined_duplication_samples, 0]) +
+                          " came from the duplication screen, at a duplication threshold of " +
+                          parquet_vet_duplication_threshold + " and a truncation threshold of " +
+                          parquet_vet_truncation_threshold + ". At the 1.6 defaults the quickstart callset " +
+                          "is ordinary and should flag nothing, so treat this as a screen regression rather " +
+                          "than as bad input data. If a threshold was lowered deliberately to exercise the " +
+                          "quarantine path, set parquet_fail_on_quarantine = false and the run will finish " +
+                          "green, reporting the quarantine through parquet_quarantined_samples.",
+                basic_docker = effective_basic_docker,
+        }
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VETS (which is deterministic)

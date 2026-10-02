@@ -36,6 +36,14 @@ workflow GvsQuickstartIntegration {
         Int? maximum_alternate_alleles
         File? gatk_override
         Boolean use_parquet_ingest = true
+        # VS-1989 independent post-load structural checks, forwarded to every Parquet-ingest sub-workflow
+        # (the VCF VETS/VQSR/exome/BGE calls and the Beta GvsJointVariantCalling call) so an integration
+        # run can exercise them; e.g. set parquet_allow_flagged_vet_loads = true to waive the screens and
+        # let deletion proceed despite a flag.
+        Float parquet_vet_duplication_threshold = 1.6
+        Float parquet_vet_truncation_threshold = 1.6
+        Boolean parquet_allow_flagged_vet_loads = false
+        Boolean parquet_fail_on_quarantine = true
         # DRAGEN version asserted by the header-validation check. Left unset, the BGE call defaults to
         # the triplet its samples carry ("3.7.8") and the other header-checked calls run consistency-
         # only. When set, this value flows to BOTH the VETS/Hail (WGS) call and the BGE call. The WGS
@@ -181,6 +189,10 @@ workflow GvsQuickstartIntegration {
                 submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 use_parquet_ingest = use_parquet_ingest,
+                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+                parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+                parquet_fail_on_quarantine = parquet_fail_on_quarantine,
         }
         call QuickstartVcfIntegration.GvsQuickstartVcfIntegration as QuickstartVcfVQSRIntegration {
             input:
@@ -209,6 +221,10 @@ workflow GvsQuickstartIntegration {
                 submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 use_parquet_ingest = use_parquet_ingest,
+                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+                parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+                parquet_fail_on_quarantine = parquet_fail_on_quarantine,
         }
 
         if (QuickstartVcfVQSRIntegration.used_tighter_gcp_quotas) {
@@ -246,9 +262,12 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = vcf_index_files_column_name,
                 sample_set_name = exome_sample_set_name,
                 drop_state = "FORTY",
-                # Validate headers on the exome cohort too -- a distinct sample set whose headers are
-                # checked nowhere else. Consistency-only (no expected_dragen_version): the shared
-                # top-level value targets the WGS/BGE cohorts and the exome cohort may differ.
+                # Explicitly pass load_vcf_headers = true so the exome cohort's headers are loaded and
+                # then validated -- a distinct sample set whose headers are checked nowhere else.
+                # (validate_vcf_headers is not passed: it already defaults to true in the sub-workflow,
+                # and it only takes effect where headers were loaded.) Consistency-only (no
+                # expected_dragen_version): the shared top-level value targets the WGS/BGE cohorts and
+                # the exome cohort may differ.
                 load_vcf_headers = true,
                 basic_docker = effective_basic_docker,
                 cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -261,6 +280,10 @@ workflow GvsQuickstartIntegration {
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 target_interval_list = target_interval_list,
                 use_parquet_ingest = use_parquet_ingest,
+                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+                parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+                parquet_fail_on_quarantine = parquet_fail_on_quarantine,
         }
 
         if (QuickstartVcfExomeIntegration.used_tighter_gcp_quotas) {
@@ -307,6 +330,10 @@ workflow GvsQuickstartIntegration {
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 target_interval_list = target_interval_list,
                 use_parquet_ingest = use_parquet_ingest,
+                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+                parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+                parquet_fail_on_quarantine = parquet_fail_on_quarantine,
         }
 
         if (QuickstartVcfBgeIntegration.used_tighter_gcp_quotas) {
@@ -360,6 +387,10 @@ workflow GvsQuickstartIntegration {
                 collect_variant_calling_metrics = collect_variant_calling_metrics,
                 use_parquet_ingest = use_parquet_ingest,
                 parquet_output_gcs_dir = parquet_output_gcs_dir,
+                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+                parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+                parquet_fail_on_quarantine = parquet_fail_on_quarantine,
         }
 
         if (!QuickstartBeta.used_tighter_gcp_quotas) {

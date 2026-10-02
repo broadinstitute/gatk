@@ -589,3 +589,108 @@ once merged, which remains a legitimate (and usually serious) finding:
 The distinction is whether the leftover changes what a merged workflow does. If
 it only affects what is visible or runnable on the developer's own branch, leave
 it alone.
+
+# Session Retrospectives
+
+## Offer to capture what a session taught you, every time
+
+When a piece of work reaches a natural end — the review is delivered, the tests
+pass, the image is built and pushed — say plainly that it is done, then tell the
+user you would like to record what the session taught you and ask whether to go
+ahead. Ask every time. Do not skip it because the session felt routine, and do
+not write to the repo or to memory without the user agreeing first.
+
+The standing preference is that this conversation happens, so the question put
+to the user is *what* to write and *where*, not whether retrospection is
+wanted. Keep the ask to a couple of sentences naming the specific lessons you
+have in mind; a vague "shall I record some learnings?" wastes a turn because
+the user cannot answer it without asking you what you mean.
+
+If nothing from the session is worth keeping, say that instead of inventing
+something. A thin retrospective is worse than none, because it dilutes the
+files that later sessions actually read.
+
+## What is worth keeping
+
+Keep a lesson when knowing it at the start would have saved real time, and when
+it will still be true next session. The strongest candidates:
+
+- **Environment facts not derivable from the code.** A required VM shape, a
+  network or IAM constraint, an auth path that works where the documented one
+  does not.
+- **Mistakes with a generalisable root cause.** Not "I mistyped a flag", but
+  "a VM with no external IP looks healthy until the first non-Google download,
+  because Private Google Access keeps gcloud working and masks the problem".
+- **A procedure that took several attempts to get right**, where the working
+  sequence is worth replaying rather than rediscovering.
+- **Corrections the user made to how you work**, together with the reason, so
+  the next session applies the principle rather than just the instance.
+- **Verification techniques that caught something**, such as mutation-testing a
+  new test to prove it fails without the fix.
+
+Skip anything the code, the git history, or this file already records; anything
+that mattered only inside the conversation; and narrative retellings. A lesson
+is a fact plus what to do about it, not a diary entry.
+
+## Where each kind of lesson goes
+
+| Kind of lesson                                                   | Home                          |
+|------------------------------------------------------------------|-------------------------------|
+| Convention any agent working in this repo should follow          | this file                     |
+| Fact about the user, their preferences, or ongoing project state | the agent's memory directory  |
+| Repeatable multi-step procedure worth replaying verbatim         | a skill                       |
+| Detail relevant only to one open ticket                          | the JIRA ticket, not the repo |
+
+Propose the actual edit — a diff, or the exact text and the file it lands in —
+rather than describing it in the abstract. The user is approving specific
+wording in a specific place, and a description is not reviewable.
+
+Remember that anything written to this repo is public: the redaction rules in
+the Data Handling section apply to retrospectives exactly as they do to code.
+
+# Verification Practices
+
+## A new test is not evidence until you have seen it fail
+
+A test that passes against fixed code tells you almost nothing on its own: it
+passes whether it exercises the fix, exercises nothing, or asserts something
+vacuously true. Before reporting that new coverage protects a change, break the
+change and confirm the test fails — and confirm it fails for the stated reason,
+not incidentally.
+
+Temporarily invert or disable the specific line the test is meant to guard,
+re-run, check the failure message names the behaviour in question, then restore
+the source and re-run to confirm you are back to green. Keep the mutation in
+one place at a time; mutating two guards at once cannot tell you whether both
+are covered.
+
+This is worth the extra minutes because it routinely finds hollow tests. In the
+VS-2028 reblocking work it caught a test whose assertion could not distinguish
+the two code paths it was named for — both paths handed the writer the same
+`VariantContext`, so the assertion held either way. The fix was to choose an
+input where the paths genuinely diverge. Nothing but a mutation run would have
+surfaced that, and the test read perfectly well.
+
+Tests guarding a *negative* ("X should not take path Y") deserve particular
+suspicion, since the cheapest way to write one is also the vacuous way.
+
+Where two call sites must agree on a predicate, a single mutation should break
+tests covering both. If it breaks only one, either the coverage is incomplete
+or the predicate is still duplicated.
+
+## Do not trust a completion signal without checking it is fresh
+
+When polling for a marker that means "the long job finished" — a sentinel file,
+a status field, a log line — confirm the marker belongs to the run you are
+watching before believing it. A leftover marker from a previous attempt is
+indistinguishable from success if you only test for existence.
+
+Check a timestamp, or delete the marker before starting and verify the deletion
+actually took effect. During the VS-2028 Docker build a stale `phase1.rc` from
+a failed first attempt was read as a completed second attempt within seconds of
+launching it; the giveaway was that the file's mtime predated the run. The same
+applies to `pgrep -f <script>`, which happily matches the SSH command string
+that contains the script name and reports a process that does not exist.
+
+More generally: when a check returns the answer you were hoping for
+suspiciously early, spend one command confirming it means what you think.
