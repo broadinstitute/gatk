@@ -75,7 +75,13 @@ workflow GvsValidateVcfHeaders {
     if (!ValidateVcfHeaders.validation_passed && fail_on_validation_errors) {
         call Utils.TerminateWorkflow {
             input:
-                message = "VCF header validation failed -- do NOT proceed with data ingest. Report follows:\n" + ValidateVcfHeaders.report_contents,
+                message = "VCF header validation failed -- do NOT proceed with data ingest.\n\n" +
+                    "To re-run without the offending samples, drop them from the input FOFN (or sample set) and submit again; the rest of the cohort is unaffected.\n\n" +
+                    "To re-run after correcting a gVCF and re-ingesting it under the SAME sample name, first delete that sample's header rows. They are already durable, and the header pass skips any sample appearing in the samples_with_header_data view, so the corrected file would otherwise never be re-read. Run BOTH statements: that view is sample_vcf_header UNION the HEADERS_LOADED rows of sample_load_status, and the Write API ingest path writes both (it also skips header writes on its own while the status row survives).\n" +
+                    "  DELETE FROM `~{project_id}.~{dataset_name}.sample_vcf_header` WHERE sample_id IN (SELECT sample_id FROM `~{project_id}.~{dataset_name}.sample_info` WHERE sample_name IN ('<sample_name>'));\n" +
+                    "  DELETE FROM `~{project_id}.~{dataset_name}.sample_load_status` WHERE status = 'HEADERS_LOADED' AND sample_id IN (SELECT sample_id FROM `~{project_id}.~{dataset_name}.sample_info` WHERE sample_name IN ('<sample_name>'));\n" +
+                    "The second is a no-op on a Parquet-ingested dataset -- that path writes no load status rows at all -- so it is safe to run either way. Rows thereby left unreferenced in vcf_header_lines are harmless: it is a dedup pool, and the referential integrity check looks only for sample_vcf_header rows with no matching line.\n\n" +
+                    "Report follows:\n" + ValidateVcfHeaders.report_contents,
                 basic_docker = effective_basic_docker,
         }
     }

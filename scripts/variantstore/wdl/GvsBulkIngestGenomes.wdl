@@ -45,6 +45,12 @@ workflow GvsBulkIngestGenomes {
         String drop_state = "NONE"
 
         Int? load_data_scatter_width
+        # The header and data passes consume different numbers of CreateWriteStream tokens per sample
+        # and run at different per-sample rates, so AoU sets a different scatter width for each (see
+        # scripts/variantstore/docs/aou/AOU_DELIVERABLES.md). Either may be set on its own; each falls
+        # back to load_data_scatter_width, which preserves the single-value behaviour when neither is.
+        Int? header_load_data_scatter_width
+        Int? data_load_data_scatter_width
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
         String? billing_project_id
@@ -94,6 +100,8 @@ workflow GvsBulkIngestGenomes {
         vcf_index_files_column_name: "The column that supplies the path for the GVCF index files to be ingested. If not specified, the workflow will attempt to derive the column name."
         sample_set_name: "The recommended way to load samples; Sample sets must be created by the user. If no sample_set_name is specified, all samples will be loaded into GVS"
         bulk_ingest_fofn: "An explicitly specified FOFN of VCFs to be ingested. If specified, the workflow will not generate a FOFN from the data table. This can be useful for avoiding the scale limitations of Terra data tables. The format is tab delimited with no header: sample_name<tab>gvcf_file_path<tab>gvcf_index_file_path. If this value is specified, none of the data table parameters should be specified."
+        header_load_data_scatter_width: "Scatter width for the headers-only ingest pass that runs when validate_vcf_headers is true. Defaults to load_data_scatter_width, and if that is also unset, to GvsImportGenomes' automatic selection. Separate from data_load_data_scatter_width because the two passes consume different numbers of CreateWriteStream tokens per sample and run at different per-sample rates; AoU sets 400 here and 333 there (see scripts/variantstore/docs/aou/AOU_DELIVERABLES.md)."
+        data_load_data_scatter_width: "Scatter width for the variant and reference data ingest pass. Defaults to load_data_scatter_width, and if that is also unset, to GvsImportGenomes' automatic selection. See header_load_data_scatter_width."
         parquet_vet_duplication_threshold: "VS-1989 post-load verification, forwarded to GvsImportGenomes: ratio-to-callset-median at or above which a vet sample's row count is flagged as a possible duplicate, and (mirrored) at or below median/ratio as a possible truncation. Must be > 1; default 1.6."
         parquet_vet_truncation_threshold: "VS-1989 post-load verification, forwarded to GvsImportGenomes: ratio whose reciprocal sets the low-side floor -- a vet sample at or below median/ratio is flagged as possibly truncated. Must be > 1, or 0 to disable the truncation screen; default 1.6 (i.e. 0.625x). Separate from parquet_vet_duplication_threshold because only the high side has been calibrated."
         parquet_allow_flagged_vet_loads: "VS-1989 post-load verification, forwarded to GvsImportGenomes: when false (default), the Parquet of any sample a vet duplication- or truncation-screen flag names is moved to a quarantine prefix instead of deleted (the load itself still succeeds, and the unflagged samples' Parquet is deleted as normal); when true the screens are waived and everything is deleted despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless."
@@ -137,7 +145,12 @@ workflow GvsBulkIngestGenomes {
     if (!effective_validate_vcf_headers && !load_vcf_headers && !load_vet_and_ref_ranges) {
         call Utils.TerminateWorkflow as MustLoadAtLeastOneThing {
             input:
-                message = "GvsBulkIngestGenomes called with validate_vcf_headers, load_vcf_headers, and load_vet_and_ref_ranges all set to false",
+                # samples_are_controls suppresses validation independently of validate_vcf_headers, so
+                # report the cause rather than the input: a controls run that trips this guard may well
+                # have been submitted with validate_vcf_headers = true.
+                message = if samples_are_controls
+                          then "GvsBulkIngestGenomes called with load_vcf_headers and load_vet_and_ref_ranges both set to false, and pre-ingest header validation suppressed because samples_are_controls is true, leaving nothing to load."
+                          else "GvsBulkIngestGenomes called with validate_vcf_headers, load_vcf_headers, and load_vet_and_ref_ranges all set to false",
                 basic_docker = effective_basic_docker,
         }
     }
@@ -177,6 +190,11 @@ workflow GvsBulkIngestGenomes {
             samples_are_controls = samples_are_controls,
     }
 
+    # Undefined must stay undefined: GvsImportGenomes selects the scatter width automatically when
+    # load_data_scatter_width is not supplied, so these fall through rather than defaulting to a value.
+    Int? effective_header_load_data_scatter_width = if defined(header_load_data_scatter_width) then header_load_data_scatter_width else load_data_scatter_width
+    Int? effective_data_load_data_scatter_width = if defined(data_load_data_scatter_width) then data_load_data_scatter_width else load_data_scatter_width
+
     # Separate scratch Parquet directories for headers and data passes to avoid prefix collisions.
     # The data pass unconditionally uses /data so that recursive listing never picks up residual
     # files from a prior header pass, even if validate_vcf_headers is false.
@@ -199,7 +217,7 @@ workflow GvsBulkIngestGenomes {
                 input_vcf_indexes = SplitBulkImportFofn.vcf_index_file_name_fofn,
                 reference_name = reference_name,
                 interval_list = interval_list,
-                load_data_scatter_width = load_data_scatter_width,
+                load_data_scatter_width = effective_header_load_data_scatter_width,
                 load_data_maxretries_override = load_data_maxretries_override,
                 load_data_preemptible_override = load_data_preemptible_override,
                 basic_docker = effective_basic_docker,
@@ -252,7 +270,7 @@ workflow GvsBulkIngestGenomes {
                 input_vcf_indexes = SplitBulkImportFofn.vcf_index_file_name_fofn,
                 reference_name = reference_name,
                 interval_list = interval_list,
-                load_data_scatter_width = load_data_scatter_width,
+                load_data_scatter_width = effective_data_load_data_scatter_width,
                 load_data_maxretries_override = load_data_maxretries_override,
                 load_data_preemptible_override = load_data_preemptible_override,
                 basic_docker = effective_basic_docker,
