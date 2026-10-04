@@ -737,8 +737,9 @@ task TerminateWorkflow {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    # To avoid issues with special characters within the message, write the message to a file.
-    cat > message.txt <<FIN
+    # To avoid issues with special characters within the message, write the message to a file. The delimiter is
+    # quoted so bash does not treat backticks or `$` in the message as command or parameter substitution.
+    cat > message.txt <<'FIN'
     ~{message}
     FIN
 
