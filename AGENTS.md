@@ -429,6 +429,35 @@ Note that a redacted file and its working counterpart tend to drift apart. Where
 both are needed, keep the redacted one as the file that is edited, and treat any
 real-ID version as a throwaway.
 
+# WDL Conventions
+
+## Forwarding an optional input must preserve its undefinedness
+
+When a wrapper workflow forwards an optional input to a sub-workflow, write the
+fallback so that "nobody set this" survives the hop:
+
+    Int? effective_width = if defined(specific_width) then specific_width
+                           else general_width
+
+Do not reach for `select_first([specific_width, general_width, <sentinel>])`. A
+sentinel tail turns an undefined input into a concrete value, and callees in
+this repo branch on `defined()` to mean something. `GvsImportGenomes` chooses
+its own scatter width when `load_data_scatter_width` is not supplied
+(`GvsImportGenomes.wdl:144-167`), so a `-1` tail would have silently taken
+automatic selection away from every caller that sets neither input — while
+type-checking, validating and reading perfectly well.
+
+Two cheap checks. `womtool inputs <wrapper>.wdl` must still report the
+forwarded input as `Int? (optional)` rather than `Int`. And the result is
+observable at runtime: with the widths left unset, both `GvsImportGenomes`
+passes scatter `GenerateParquetFilesFromInputGVCFs` to the sample count,
+because automatic selection clamps to `num_samples`.
+
+Note that a small cohort hides an explicitly set width — on three samples every
+width of 3 or more yields the same three shards — so to demonstrate that an
+explicit value is honoured rather than ignored, set it *below* the sample
+count.
+
 # Documentation Conventions
 
 ## Markdown tables must be rectangular
