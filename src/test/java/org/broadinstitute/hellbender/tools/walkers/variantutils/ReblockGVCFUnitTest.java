@@ -650,15 +650,17 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
     }
 
     /**
-     * DRAGEN's targeted caller emits records with no <NON_REF> allele, which would otherwise trip the
-     * "not a GVCF" UserException. Flagged targeted records are dropped instead of failing the run.
+     * DRAGEN's targeted caller emits records with no <NON_REF> allele, which would otherwise trip the "not a GVCF"
+     * UserException. The call itself is discarded, but a GQ0 hom-ref block is emitted over its span rather than
+     * dropping the record outright.
      *
-     * This pins the current drop behavior deliberately -- see the CAVEAT comment on the bypass in
-     * ReblockGVCF#apply about dropping not being equivalent to asserting hom-ref. If we later decide to
-     * emit a reference block over these positions instead, this test should be updated, not deleted.
+     * That matters because DRAGEN sometimes emits targeted calls into stretches where it wrote no reference blocks,
+     * leaving the record as the only coverage for its position. Dropping one of those produced a real production
+     * failure -- ValidateVariants reporting a single uncovered locus at chr5:70076654, inside a 275bp block-free
+     * hole. Where an enclosing reference block does exist the emitted block is merely redundant.
      */
     @Test
-    public void testTargetedCallWithoutNonRefIsDropped() {
+    public void testTargetedCallWithoutNonRefBecomesGQ0HomRefBlock() {
         final ReblockGVCF reblocker = new ReblockGVCF();
         final MockVcfWriter mockWriter = attachMockWriter(reblocker);
 
@@ -672,22 +674,61 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         reblocker.apply(targetedNoNonRef, null, null, null);
         reblocker.vcfWriter.close();
 
-        Assert.assertEquals(mockWriter.getEmitted().size(), 0,
-                "a flagged targeted record with no <NON_REF> allele should be dropped, not emitted");
-        Assert.assertEquals(reblocker.droppedTargetedRecordCount, 1,
-                "the dropped record should be counted so closeTool() can report it");
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 1,
+                "a flagged targeted record must still produce output, or its position can be left uncovered and "
+                        + "ValidateVariants --validate-GVCF fails the GVCF");
+
+        final VariantContext block = emitted.get(0);
+        Assert.assertEquals(block.getStart(), 150, "the block must cover the original record's position");
+        Assert.assertEquals(block.getEnd(), 150, "the block must cover the original record's full span");
+        Assert.assertEquals(block.getAlternateAlleles(), Collections.singletonList(Allele.NON_REF_ALLELE),
+                "the targeted call itself should not survive; only <NON_REF> should remain");
+
+        final Genotype blockGenotype = block.getGenotype(0);
+        Assert.assertTrue(blockGenotype.isHomRef(), "the emitted block should assert hom-ref, not the original call");
+        Assert.assertEquals(blockGenotype.getGQ(), 0,
+                "GQ should be 0 -- we are asserting coverage, not confidence in a reference call");
+
+        Assert.assertEquals(reblocker.convertedTargetedRecordCount, 1,
+                "the converted record should be counted so closeTool() can report it");
     }
 
     /**
-     * Dropped targeted records are counted rather than logged individually, so the count has to accumulate across
-     * the traversal. Records that are not dropped must not be counted.
+     * --drop-low-quals must not reintroduce the coverage hole. The targeted conversion exists precisely to keep the
+     * GVCF dense, so it has to outrank the flag that would otherwise discard a GQ0 block.
      */
     @Test
-    public void testDroppedTargetedRecordsAreCounted() {
+    public void testTargetedConversionSurvivesDropLowQuals() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+        reblocker.dropLowQuals = true;
+
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_ALT));
+        gb.GQ(50).PL(new int[]{500, 0, 600}).AD(new int[]{10, 20}).DP(30);
+        final VariantContext targetedNoNonRef = new VariantContextBuilder("test", "chrM", 150, 150,
+                Arrays.asList(CHR_M_REF, CHR_M_ALT))
+                .attribute(GATKVCFConstants.TARGETED_KEY, true)
+                .genotypes(gb.make()).unfiltered().make();
+
+        reblocker.apply(targetedNoNonRef, null, null, null);
+        reblocker.vcfWriter.close();
+
+        Assert.assertEquals(mockWriter.getEmitted().size(), 1,
+                "the position must stay covered even with --drop-low-quals set");
+        Assert.assertEquals(mockWriter.getEmitted().get(0).getStart(), 150);
+    }
+
+    /**
+     * Converted targeted records are counted rather than logged individually, so the count has to accumulate across
+     * the traversal. Records that are not converted must not be counted.
+     */
+    @Test
+    public void testConvertedTargetedRecordsAreCounted() {
         final ReblockGVCF reblocker = new ReblockGVCF();
         attachMockWriter(reblocker);
 
-        Assert.assertEquals(reblocker.droppedTargetedRecordCount, 0, "nothing dropped before any records are seen");
+        Assert.assertEquals(reblocker.convertedTargetedRecordCount, 0, "nothing converted before any records are seen");
 
         final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_ALT));
         gb.GQ(50).PL(new int[]{500, 0, 600}).AD(new int[]{10, 20}).DP(30);
@@ -697,12 +738,12 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
                     .attribute(GATKVCFConstants.TARGETED_KEY, true)
                     .genotypes(gb.make()).unfiltered().make(), null, null, null);
         }
-        Assert.assertEquals(reblocker.droppedTargetedRecordCount, 3, "each dropped record should be counted");
+        Assert.assertEquals(reblocker.convertedTargetedRecordCount, 3, "each converted record should be counted");
 
-        // a targeted record that still has <NON_REF> is processed, not dropped, so it must not be counted
+        // a targeted record that still has <NON_REF> is reblocked normally, not converted, so it must not be counted
         reblocker.apply(new VariantContextBuilder(makeSomaticVariant(73))
                 .attribute(GATKVCFConstants.TARGETED_KEY, true).make(), null, null, null);
-        Assert.assertEquals(reblocker.droppedTargetedRecordCount, 3, "records that are not dropped should not be counted");
+        Assert.assertEquals(reblocker.convertedTargetedRecordCount, 3, "records that are not converted should not be counted");
     }
 
     /**
