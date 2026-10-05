@@ -399,6 +399,39 @@ a nested input should be rejected for supplying an unexpected input. This has
 not been tried here. The quickstart integration workflows and the AoU workflows'
 method configurations are the places to audit.
 
+## Rerunning a quickstart integration test
+
+Each quickstart integration subworkflow starts by creating its own BigQuery
+dataset with `CreateDatasetForTest` in `GvsUtils.wdl`. The dataset name is built
+from the UTC date, the branch, the short HEAD hash and a per-subworkflow suffix,
+for example `quickit_2026_10_02_vs_2029_clinvar_clean_258052a_vat`. The task is
+`volatile`, so it is never call-cached, and its `bq mk` fails if the dataset
+already exists. A rerun of the same commit on the same UTC day therefore fails
+at that step, before any of the work under test runs.
+
+So when a quickstart run fails in `CreateDatasetForTest` with an "already
+exists" error, the cause is a same-day rerun of the same commit, not the change
+under test. When suggesting a rerun, say it needs a new commit or a later UTC
+date. The usual way to get a new commit is an empty one, pushed so the task's
+clone from GitHub picks it up (e.g. `git commit --allow-empty -m "hash bump"`,
+as in VS-2029's `d179c1de6`). The empty commit takes effect as soon as it is
+pushed, because `CreateDatasetForTest` gets its hash from its own `git clone` of
+the branch when the task starts.
+
+A WDL change has a separate timing concern. Terra reads the WDL from GitHub, at
+`raw.githubusercontent.com/<org>/<repo>/<branch>/...`, when the run is
+submitted, not from Dockstore's stored copy. GitHub serves these files with
+`cache-control: max-age=300`, so allow up to 5 minutes after pushing a WDL
+change before submitting. To confirm afterwards what a run executed, compare
+`submittedFiles.workflow` in its metadata against the commit; its `workflowUrl`
+shows where it came from. Its recorded `git_hash` is from the clone, so if the
+two disagree, something was pushed between submission and the clone.
+
+Getting past that step does not mean the run did fresh work. With call caching
+on, later tasks whose inputs have not changed still reuse earlier results.
+Before treating a run as evidence for a change, check the tasks that change
+affects for cache hits.
+
 ## Variant Annotation Table (VAT)
 
 ### Overview
@@ -466,8 +499,17 @@ path, so nothing tests the other one.
 
 Note that `use_reference_disk` is a WDL input, distinct from Terra's "Use
 reference disks" submission option. Unchecking the option does not change the
-input, and since the option is not part of the call-cache hash, an otherwise
-identical rerun simply reuses the reference-disk results.
+input, and the option is not part of the call-cache hash. If a rerun with the
+two mismatched gets past dataset creation (see "Rerunning a quickstart
+integration test" above), what happens depends on call caching. With the option
+unchecked and `use_reference_disk` still `true`, `AnnotateVCF` fails with "Could
+not find reference file 'Homo_sapiens.GRCh38.Nirvana.dat'" (VS-2029,
+`b3226270`). With call caching on, an `AnnotateVCF` whose inputs have not
+changed instead silently reuses the previous run's shards, because the dataset
+name is not one of its inputs (VS-2029, `ab40f7c3`). So when verifying a VAT
+run that was meant to test a reference-disk change, check that the `AnnotateVCF`
+shards were not cache hits. When suggesting such a run, recommend turning call
+caching off for that submission.
 
 ### Comparing VATs after the BigQuery dataset has expired
 
