@@ -477,11 +477,14 @@ output of `MergeVatTSVs`, inside `GvsCreateVATFilesFromBigQuery`; find it by
 walking the run's Cromwell metadata with `expand_sub_workflows=True`. Row order
 is not guaranteed, so `gunzip | LC_ALL=C sort` both TSVs before comparing. If
 `cmp` finds them identical, you are done. Otherwise, diff the columns keyed on
-`(vid, transcript)`, taking column names from
-`scripts/variantstore/scripts/variant_annotation_table/schema/vat_schema.json`.
-That separates ClinVar changes from gnomAD changes. In VS-2029 it showed
-that the flag-on VAT matched the VS-1994 VAT in every ClinVar column, with every
-remaining difference in gnomAD.
+`(vid, transcript)`, taking column names from the TSV's own header line. Do not
+use `scripts/variantstore/scripts/variant_annotation_table/schema/vat_schema.json`
+for this: its column order is not the TSV's, so it silently mislabels every
+column. In VS-2029 it reported ClinVar differences as gnomAD `fin` and `nfe`
+ones. Sorting moves the header out of line 1, so read it from the unsorted
+file. A per-column diff separates ClinVar changes from gnomAD changes. In
+VS-2029 it showed that the flag-on VAT matched the VS-1994 VAT in every ClinVar
+column, with every remaining difference in gnomAD.
 
 # Data Handling
 
