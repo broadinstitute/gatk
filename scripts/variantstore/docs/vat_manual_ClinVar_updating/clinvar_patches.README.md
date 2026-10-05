@@ -1,7 +1,8 @@
 # `clinvar_patches.diff` — what it is and how to use it
 
 Self-contained instructions for rebuilding Nirvana's `SAUtils` with ClinVar support for
-2024-and-later ClinVar releases. Assume no other context.
+ClinVar releases from 2024 through 2025-07, the last release NCBI published in the XML
+format SAUtils reads (see VS-2038). Assume no other context.
 
 ## Why this patch exists
 
