@@ -737,14 +737,11 @@ task TerminateWorkflow {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    # To avoid issues with special characters within the message, write the message to a file. The delimiter is
-    # quoted so bash does not treat backticks or `$` in the message as command or parameter substitution.
-    cat > message.txt <<'FIN'
-    ~{message}
-    FIN
-
+    # Cromwell writes the message to a file verbatim, so bash never parses it. A heredoc does not survive here: a
+    # multi-line message stops Cromwell from stripping the command's indentation, leaving the closing delimiter
+    # indented and unrecognized, and the script then dies with a syntax error before printing anything.
     # cat the file to stderr as this task is going to fail due to the exit 1.
-    cat message.txt >&2
+    cat ~{write_lines([message])} >&2
     exit 1
   >>>
 
