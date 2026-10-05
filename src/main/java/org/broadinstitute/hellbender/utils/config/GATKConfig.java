@@ -172,4 +172,7 @@ public interface GATKConfig extends Mutable, Accessible {
 
     @DefaultValue("true")
     boolean createOutputBamIndex();
+
+    @DefaultValue("3.1")
+    String outputCramVersion();
 }

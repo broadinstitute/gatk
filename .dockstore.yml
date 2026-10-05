@@ -358,6 +358,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - VS-2028
          tags:
              - /.*/
    - name: GvsIngestTieout
