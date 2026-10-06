@@ -524,6 +524,37 @@ extensionless so that the Dockerfile's `COPY *.py /app/` leaves it out of the
 Variants image and out of the rebuild-and-bump obligation. Do not rename it to
 `check_wdl_heredocs.py`.
 
+## Interpolated multi-line text defeats both heredoc conventions
+
+The dedent described above is computed on the command *after* interpolation. A
+`~{...}` whose value spans several lines puts its continuation lines at column
+zero, so nothing is stripped. A terminator indented with the block then stays
+indented, even though the block was written to the first convention. The result
+is the loud failure above, `unexpected end of file`, which here also means the
+task never prints what it was meant to print. `check-wdl-heredocs` cannot see
+this. It stubs interpolations out with a single-line literal, so it passes such a
+block, and it did pass `TerminateWorkflow` while every multi-line abort message
+was being lost this way.
+
+So do not pass interpolated text through a heredoc at all. To get a WDL string
+into a file or onto stderr, let Cromwell write it:
+
+    cat ~{write_lines([message])} >&2
+
+bash never parses that file. A heredoc would also need its delimiter quoted
+(`<<'FIN'`), or bash runs backticks and `$` in the text as substitutions, and GVS
+messages routinely backtick hyphenated table names.
+
+When a task fails with an empty `stderr` in the execution bucket, the shell's own
+errors, including `unexpected end of file`, are in the task's GCP Batch log:
+
+    gcloud logging read 'logName="projects/<terra-project>/logs/batch_task_logs"
+      AND resource.labels.job_id:"job-<first 8 of the sub-workflow id>"' \
+      --project <terra-project> --freshness=2d --format='value(textPayload)'
+
+The Terra project and full job id are in the call's `jobId` in the workflow
+metadata.
+
 # Documentation Conventions
 
 ## Markdown tables must be rectangular
