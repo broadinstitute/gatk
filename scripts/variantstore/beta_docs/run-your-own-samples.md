@@ -39,6 +39,15 @@ _* indicates regularly tested and validated_
 - WARP Whole Genome + GATK 3.5*
 - DRAGEN 3.4.12
 
+### Header validation before ingest
+
+By default, GVS checks the headers of every input GVCF before it loads any variant data, and stops the workflow if a check fails. This catches problems that would otherwise surface only after the most expensive part of the run. The checks are:
+
+- Every GVCF has been reblocked (see below).
+- **The cohort uses a single secondary analysis method.** A cohort that mixes DRAGEN GVCFs with non-DRAGEN GVCFs (for example GATK4) fails, because combining them risks batch effects. A cohort that mixes DRAGEN versions also fails, unless you set `expected_dragen_version` to a range that covers them, such as `"3.4.12-3.7.8"`. Set `expected_dragen_version` to a single version, such as `"3.7.8"`, to require that exact version.
+
+Each method in the list above is supported on its own. If you need to combine methods in one callset, you can turn the checks off by setting `validate_vcf_headers` to `false`. You can also set `fail_on_validation_errors` to `false`, which still writes the validation report but lets the workflow continue. See [Troubleshooting](gvs-troubleshooting.md) for what a failed validation looks like.
+
 ### Reblocked GVCF files
 
 If your GVCF files have not been reblocked, you can reblock them using the [WARP reblocking workflow](https://github.com/broadinstitute/warp/blob/ReblockGVCF_v2.1.12/pipelines/broad/dna_seq/germline/joint_genotyping/reblocking/ReblockGVCF.wdl), which is configured in this workspace for your convenience. You can read instructions on running Reblocking here: [ReblockGVCF Terra workspace](https://app.terra.bio/#workspaces/warp-pipelines/ReblockGVCF). 

@@ -142,15 +142,16 @@ workflow GvsBulkIngestGenomes {
     # (e.g. NA12878) not subject to DRAGEN versioning or ReblockGVCF requirements.
     Boolean effective_validate_vcf_headers = validate_vcf_headers && !samples_are_controls
 
-    if (!effective_validate_vcf_headers && !load_vcf_headers && !load_vet_and_ref_ranges) {
+    # Controls still need their headers loaded even though they are not validated. Once the dataset has a
+    # sample_vcf_header table, samples_with_all_data requires header data, so a control loaded without headers
+    # is never marked is_loaded and silently drops out of prepare. Without a separate header pass, the data
+    # pass loads them.
+    Boolean data_pass_loads_vcf_headers = !effective_validate_vcf_headers && (load_vcf_headers || validate_vcf_headers)
+
+    if (!validate_vcf_headers && !load_vcf_headers && !load_vet_and_ref_ranges) {
         call Utils.TerminateWorkflow as MustLoadAtLeastOneThing {
             input:
-                # samples_are_controls suppresses validation independently of validate_vcf_headers, so
-                # report the cause rather than the input: a controls run that trips this guard may well
-                # have been submitted with validate_vcf_headers = true.
-                message = if samples_are_controls
-                          then "GvsBulkIngestGenomes called with load_vcf_headers and load_vet_and_ref_ranges both set to false, and pre-ingest header validation suppressed because samples_are_controls is true, leaving nothing to load."
-                          else "GvsBulkIngestGenomes called with validate_vcf_headers, load_vcf_headers, and load_vet_and_ref_ranges all set to false",
+                message = "GvsBulkIngestGenomes called with validate_vcf_headers, load_vcf_headers, and load_vet_and_ref_ranges all set to false",
                 basic_docker = effective_basic_docker,
         }
     }
@@ -183,7 +184,7 @@ workflow GvsBulkIngestGenomes {
             dataset_name = dataset_name,
             project_id = project_id,
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
-            load_vcf_headers = (load_vcf_headers || effective_validate_vcf_headers),
+            load_vcf_headers = (load_vcf_headers || validate_vcf_headers),
             load_vet_and_ref_ranges = load_vet_and_ref_ranges,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             use_compressed_references = use_compressed_references,
@@ -254,8 +255,9 @@ workflow GvsBulkIngestGenomes {
     # Data ingest pass:
     # - If validate_vcf_headers is true, gated on ValidateHeaders.done to load vet/ref ranges. If
     #   load_vet_and_ref_ranges is false, this is intentionally skipped (headers-only pass).
-    # - If validate_vcf_headers is false, runs directly gated on AssignIds.done (direct import).
-    Boolean should_run_data_import = if (effective_validate_vcf_headers) then load_vet_and_ref_ranges else (load_vet_and_ref_ranges || load_vcf_headers)
+    # - If validate_vcf_headers is false, or samples_are_controls suppresses validation, runs directly gated on
+    #   AssignIds.done (direct import) and loads headers itself when data_pass_loads_vcf_headers says so.
+    Boolean should_run_data_import = load_vet_and_ref_ranges || data_pass_loads_vcf_headers
     if (should_run_data_import) {
         call ImportGenomes.GvsImportGenomes as ImportGenomesData {
             input:
@@ -282,7 +284,7 @@ workflow GvsBulkIngestGenomes {
                 billing_project_id = billing_project_id,
                 use_compressed_references = use_compressed_references,
                 load_vet_and_ref_ranges = load_vet_and_ref_ranges,
-                load_vcf_headers = if (!effective_validate_vcf_headers) then load_vcf_headers else false,
+                load_vcf_headers = data_pass_loads_vcf_headers,
                 is_rate_limited_beta_customer = tighter_gcp_quotas,
                 use_parquet_ingest = use_parquet_ingest,
                 parquet_output_gcs_dir = data_parquet_output_gcs_dir,
