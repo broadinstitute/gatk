@@ -34,6 +34,17 @@ public abstract class SVClusterLinkage<T extends SVLocatable> {
     public abstract int getMaxClusterableStartingPosition(final T item);
 
     /**
+     * Returns a strict upper bound on the start position of any later item that can link to the given item: for any
+     * item B on the current contig with start(B) > getMaxLinkableStartingPosition(A), areClusterable(A, B) and
+     * areClusterable(B, A) are guaranteed false. Unlike {@link #getMaxClusterableStartingPosition(SVLocatable)},
+     * which only governs when clusters are finalized, this bound is used by {@link SVClusterEngine} to skip pairwise
+     * tests, so it must never be violated or clustering results change. The default disables pruning.
+     */
+    public int getMaxLinkableStartingPosition(final T item) {
+        return Integer.MAX_VALUE;
+    }
+
+    /**
      * Compute max feasible starting position of any other item for all items in the given collection. Note the items
      * must all have the same starting contig.
      */

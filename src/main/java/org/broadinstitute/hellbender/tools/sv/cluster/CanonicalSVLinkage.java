@@ -334,6 +334,53 @@ public class CanonicalSVLinkage<T extends SVCallRecord> extends SVClusterLinkage
         }
     }
 
+    /**
+     * Strict linkage bound for pruning pairwise tests (see {@link SVClusterLinkage#getMaxLinkableStartingPosition}).
+     * Unlike {@link #getMaxClusterableStartingPosition(SVCallRecord)}, it relies on the overlap criterion only where
+     * {@link #areClusterable} actually enforces it on the record's full interval (not for CPX, which tests its
+     * complex intervals instead, and not at a zero overlap threshold), honors the overlap-or-proximity mode, and pads
+     * the overlap bound by one base to absorb floating-point rounding in the reciprocal overlap test. Subclasses may
+     * only tighten {@link #areClusterable}.
+     */
+    @Override
+    public int getMaxLinkableStartingPosition(final SVCallRecord record) {
+        final ClusteringParameters ownParams = record.isDepthOnly() ? depthOnlyParams : evidenceParams;
+        return (int) Math.min(Integer.MAX_VALUE,
+                Math.max(getMaxLinkableStartingPositionWithParams(record, ownParams),
+                        getMaxLinkableStartingPositionWithParams(record, mixedParams)));
+    }
+
+    private static long getMaxLinkableStartingPositionWithParams(final SVCallRecord call,
+                                                                 final ClusteringParameters params) {
+        // CPX records are compared interval by interval, and breakend proximity is only tested once per interval,
+        // so records without complex intervals can link at any distance
+        if (call.getType() == GATKSVVCFConstants.StructuralVariantAnnotationType.CPX) {
+            return call.getComplexEventIntervals().isEmpty() ? Integer.MAX_VALUE
+                    : (long) call.getPositionA() + params.getWindow();
+        }
+        // Breakend proximity: |start(A) - start(B)| <= window
+        final long maxPositionByWindow = (long) call.getPositionA() + params.getWindow();
+        // Reciprocal overlap >= t > 0 requires start(B) <= start(A) + (1 - t) * length(A); records that can link
+        // share contigs, so both are intrachromosomal whenever this record is
+        final boolean overlapEnforced = call.isIntrachromosomal() && params.getReciprocalOverlap() > 0;
+        if (params.requiresOverlapAndProximity()) {
+            if (!overlapEnforced) {
+                return maxPositionByWindow;
+            }
+            return Math.min(getMaxPositionByOverlap(call, params), maxPositionByWindow);
+        } else {
+            if (!overlapEnforced) {
+                return Integer.MAX_VALUE;
+            }
+            return Math.max(getMaxPositionByOverlap(call, params), maxPositionByWindow);
+        }
+    }
+
+    private static long getMaxPositionByOverlap(final SVCallRecord call, final ClusteringParameters params) {
+        final int length = getLength(call, INSERTION_ASSUMED_LENGTH_FOR_OVERLAP);
+        return call.getPositionA() + (long) Math.floor((1.0 - params.getReciprocalOverlap()) * length) + 1;
+    }
+
     public final ClusteringParameters getDepthOnlyParams() {
         return depthOnlyParams;
     }

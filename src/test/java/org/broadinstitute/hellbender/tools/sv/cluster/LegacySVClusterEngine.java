@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.sv.cluster;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.tools.sv.SVCallRecord;
+import org.broadinstitute.hellbender.tools.sv.SVCallRecordUtils;
 import org.broadinstitute.hellbender.tools.sv.SVLocatable;
 import org.broadinstitute.hellbender.utils.Utils;
 
@@ -11,59 +12,30 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
- * <p>Base class for clustering items that possess start/end genomic coordinates. Efficient algorithms are implemented for
- * single-linkage and max-clique clustering that leverage the low dimensionality of position-based clustering criteria.
- * These algorithms are suitable for clustering problems testing for overlapping events in coordinate-sorted order, with
- * additional possible criteria, when the maximum feasible starting position for an item can be easily estimated (e.g.
- * reciprocal overlap, end-point distance).</p>
- *
- * <p>Based on the method from Marschall T, Costa VG, Canzar S, et al. CLEVER: Clique-enumerating variant finder.
- * Bioinformatics. 2012;28(22):2875-2882.</p>
- *
- * <p>NOTE: precise implementation of {@link SVClusterLinkage#getMaxClusterableStartingPosition(SVLocatable)}
- * is important for efficiency because it determines when a cluster can be finalized and omitted from further clustering tests.</p>
- *
- * <p>Per-item work is kept proportional to the number of items that can still link rather than to the number of items
- * held in active clusters, which matters in dense regions where a few large items keep big clusters open:</p>
- * <ul>
- *   <li>Each new item is tested only against "live" items, i.e. those whose own
- *   {@link SVClusterLinkage#getMaxLinkableStartingPosition} has not yet been passed. Items that can no longer link are
- *   dropped from the live list even while their cluster stays active.</li>
- *   <li>For single-linkage, the clusters containing linked items are found through a union-find over item groups
- *   instead of scanning every member of every active cluster.</li>
- *   <li>Items are released by reference count when their last active cluster is finalized.</li>
- * </ul>
- * <p>Cluster emission order and the order of items within each cluster are unchanged, since output variant IDs and
- * collapser tie-breaking depend on them.</p>
+ * Frozen copy of {@link SVClusterEngine} as of commit f97fdd9a6, before the performance rework. Used only by
+ * {@link SVClusterEngineEquivalenceTest} as the reference implementation: the reworked engine must emit the same
+ * clusters, with the same members in the same order, in the same emission order. Do not modify.
  */
-public class SVClusterEngine {
-
-    /**
-     * Available clustering algorithms
-     */
-    public enum CLUSTERING_TYPE {
-        SINGLE_LINKAGE,
-        MAX_CLIQUE
-    }
+public class LegacySVClusterEngine {
 
     private final Function<OutputCluster, SVCallRecord> collapser; // Flattens clusters into a single representative item for output
     private final SVClusterLinkage<SVCallRecord> linkage;
     private Map<Integer, Cluster> idToClusterMap; // Active clusters
-    private final Map<Integer, ActiveItem> idToItemMap; // Active items
-    private final List<ActiveItem> liveItems; // Active items that may still link to a new item, in registration order
-    protected final CLUSTERING_TYPE clusteringType;
+    private final Map<Integer, SVCallRecord> idToItemMap; // Active items
+    protected final SVClusterEngine.CLUSTERING_TYPE clusteringType;
+    private final Comparator<SVCallRecord> itemComparator;
 
     private String currentContig;
     private int nextItemId;
     private int nextClusterId;
     private int lastStart;
+    private Integer minActiveStartingPositionItemId;
 
     /**
      * @param clusteringType algorithm choice
      * @param collapser function that ingests a collection of clustered items and returns a single representative item
-     * @param dictionary sequence dictionary pertaining to clustered items (currently unused)
      */
-    public SVClusterEngine(final CLUSTERING_TYPE clusteringType,
+    public LegacySVClusterEngine(final SVClusterEngine.CLUSTERING_TYPE clusteringType,
                            final Function<OutputCluster, SVCallRecord> collapser,
                            final SVClusterLinkage<SVCallRecord> linkage,
                            final SAMSequenceDictionary dictionary) {
@@ -73,10 +45,11 @@ public class SVClusterEngine {
         idToClusterMap = new HashMap<>();
         currentContig = null;
         idToItemMap = new HashMap<>();
-        liveItems = new ArrayList<>();
+        itemComparator = SVCallRecordUtils.getSVLocatableComparator(dictionary);
         nextItemId = 0;
         nextClusterId = 0;
         lastStart = 0;
+        minActiveStartingPositionItemId = null;
     }
 
     @VisibleForTesting
@@ -87,6 +60,12 @@ public class SVClusterEngine {
     @VisibleForTesting
     public SVClusterLinkage<SVCallRecord> getLinkage() {
         return linkage;
+    }
+
+    public SVCallRecord getMinActiveStartingPositionItem() {
+        Utils.validate(minActiveStartingPositionItemId == null || idToItemMap.containsKey(minActiveStartingPositionItemId),
+                "Unregistered item id " + minActiveStartingPositionItemId);
+        return idToItemMap.get(minActiveStartingPositionItemId);
     }
 
     /**
@@ -106,9 +85,7 @@ public class SVClusterEngine {
             final List<SVCallRecord> result = flush();
             currentContig = item.getContigA();
             lastStart = 0;
-            final int itemId = registerItem(item);
-            seedCluster(itemId);
-            liveItems.add(getActiveItem(itemId));
+            seedCluster(registerItem(item));
             return result;
         } else {
             final int itemId = registerItem(item);
@@ -121,7 +98,10 @@ public class SVClusterEngine {
         Utils.validate(item.getPositionA() >= lastStart, "Items must be added in order of increasing start coordinate");
         lastStart = item.getPositionA();
         final int itemId = nextItemId++;
-        idToItemMap.put(itemId, new ActiveItem(itemId, item, linkage.getMaxLinkableStartingPosition(item)));
+        idToItemMap.put(itemId, item);
+        if (minActiveStartingPositionItemId == null || item.getPositionA() < getMinActiveStartingPositionItem().getPositionA()) {
+            minActiveStartingPositionItemId = itemId;
+        }
         return itemId;
     }
 
@@ -138,24 +118,12 @@ public class SVClusterEngine {
      */
     private final List<Integer> cluster(final Integer itemId) {
         final SVCallRecord item = getItem(itemId);
-        // Find live items that cluster with this item, dropping items that can no longer link to it or any later item
-        final Set<Integer> linkedItems = new HashSet<>();
-        final Set<Integer> linkedClusterIds = new HashSet<>(); // single-linkage only
-        int numLive = 0;
-        for (int i = 0; i < liveItems.size(); i++) {
-            final ActiveItem other = liveItems.get(i);
-            if (other.numClusters == 0 || other.maxLinkableStart < item.getPositionA()) {
-                continue;
-            }
-            liveItems.set(numLive++, other);
-            if (linkage.areClusterable(item, other.item).getResult()) {
-                linkedItems.add(other.id);
-                if (clusteringType.equals(CLUSTERING_TYPE.SINGLE_LINKAGE)) {
-                    linkedClusterIds.add(other.group.getRoot().clusterId);
-                }
-            }
-        }
-        liveItems.subList(numLive, liveItems.size()).clear();
+        // Get list of item IDs from active clusters that cluster with this item
+        final Set<Integer> linkedItems = idToClusterMap.values().stream().map(Cluster::getItemIds)
+                .flatMap(List::stream)
+                .distinct()
+                .filter(other -> !other.equals(itemId) && linkage.areClusterable(item, getItem(other)).getResult())
+                .collect(Collectors.toCollection(LinkedHashSet::new));
 
         // Find clusters to which this item belongs, and which active clusters we're definitely done with
         final List<Integer> clusterIdsToProcess = new ArrayList<>();
@@ -166,11 +134,11 @@ public class SVClusterEngine {
         for (final Map.Entry<Integer, Cluster> entry : idToClusterMap.entrySet()) {
             final Integer clusterIndex = entry.getKey();
             final Cluster cluster = entry.getValue();
+            final List<Integer> clusterItems = cluster.getItemIds();
             if (item.getPositionA() > cluster.getMaxClusterableStart()) {
                 clusterIdsToProcess.add(clusterIndex);  //this cluster is complete -- process it when we're done
             } else {
-                if (clusteringType.equals(CLUSTERING_TYPE.MAX_CLIQUE)) {
-                    final List<Integer> clusterItems = cluster.getItemIds();
+                if (clusteringType.equals(SVClusterEngine.CLUSTERING_TYPE.MAX_CLIQUE)) {
                     final List<Integer> linkedClusterItems = clusterItems.stream().filter(linkedItems::contains).collect(Collectors.toList());
                     final int numLinkedItems = linkedClusterItems.size();
                     if (numLinkedItems == clusterItems.size()) {
@@ -178,8 +146,9 @@ public class SVClusterEngine {
                     } else if (numLinkedItems > 0) {
                         clustersToSeedWith.add(linkedClusterItems);
                     }
-                } else if (clusteringType.equals(CLUSTERING_TYPE.SINGLE_LINKAGE)) {
-                    if (linkedClusterIds.contains(clusterIndex)) {
+                } else if (clusteringType.equals(SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE)) {
+                    final boolean matchesCluster = clusterItems.stream().anyMatch(linkedItems::contains);
+                    if (matchesCluster) {
                         clustersToAugment.add(clusterIndex);
                     }
                 } else {
@@ -218,7 +187,7 @@ public class SVClusterEngine {
         }
 
         // Add to or merge existing clusters
-        if (clusteringType.equals(CLUSTERING_TYPE.SINGLE_LINKAGE)) {
+        if (clusteringType.equals(SVClusterEngine.CLUSTERING_TYPE.SINGLE_LINKAGE)) {
             if (!clustersToAugment.isEmpty()) {
                 combineClusters(clustersToAugment, itemId);
             }
@@ -227,55 +196,32 @@ public class SVClusterEngine {
                 addToCluster(clusterId, itemId);
             }
         }
-
+        
         // If there weren't any matches, create a new singleton cluster
         if (clustersToAugment.isEmpty() && clustersToSeedWith.isEmpty()) {
             seedCluster(itemId);
         }
-        liveItems.add(getActiveItem(itemId));
         return clusterIdsToProcess;
     }
 
     /**
      * Creates a new cluster by agglomerating clusters with the given ids together (and deleting them from the currently
-     * active set), along with an additional item. Single-linkage only, where active clusters are disjoint.
+     * active set), along with an additional item.
      * @param clusterIds ids of clusters to combine
      * @param itemId id of item to add to new cluster
      */
     private final void combineClusters(final Collection<Integer> clusterIds, final Integer itemId) {
         final List<Cluster> clusters = clusterIds.stream().map(this::getCluster).collect(Collectors.toList());
         clusterIds.stream().forEach(idToClusterMap::remove);
-        final ActiveItem item = getActiveItem(itemId);
-        int numItems = 1;
-        // A cluster's max clusterable start is always the max over its items, so merging takes the max of the parts
-        int maxClusterableStart = linkage.getMaxClusterableStartingPosition(item.item);
-        Cluster largest = clusters.get(0);
-        for (final Cluster cluster : clusters) {
-            numItems += cluster.getItemIds().size();
-            maxClusterableStart = Math.max(maxClusterableStart, cluster.getMaxClusterableStart());
-            if (cluster.getItemIds().size() > largest.getItemIds().size()) {
-                largest = cluster;
-            }
-        }
-        final List<Integer> newClusterItems = new ArrayList<>(numItems);
-        for (final Cluster cluster : clusters) {
-            newClusterItems.addAll(cluster.getItemIds());
-        }
+        final List<Integer> clusterItems = clusters.stream()
+                .map(Cluster::getItemIds)
+                .flatMap(List::stream)
+                .distinct()
+                .collect(Collectors.toList());
+        final List<Integer> newClusterItems = new ArrayList<>(clusterItems.size() + 1);
+        newClusterItems.addAll(clusterItems);
         newClusterItems.add(itemId);
-        final int newClusterId = nextClusterId++;
-        // Merge item groups into the largest cluster's group, which now resolves to the new cluster id
-        final ItemGroup group = largest.group;
-        for (final Cluster cluster : clusters) {
-            if (cluster != largest) {
-                cluster.group.parent = group;
-            }
-        }
-        group.clusterId = newClusterId;
-        item.group = group;
-        item.numClusters++;
-        final Cluster newCluster = new Cluster(maxClusterableStart, newClusterItems);
-        newCluster.group = group;
-        idToClusterMap.put(newClusterId, newCluster);
+        idToClusterMap.put(nextClusterId++, new Cluster(getMaxClusterableStartingPositionByIds(newClusterItems), newClusterItems));
     }
 
     /**
@@ -285,16 +231,44 @@ public class SVClusterEngine {
         final Cluster cluster = getCluster(clusterIndex);
         idToClusterMap.remove(clusterIndex);
         final List<Integer> clusterItemIds = cluster.getItemIds();
-        final OutputCluster outputCluster = new OutputCluster(clusterItemIds.stream().map(this::getItem).collect(Collectors.toList()));
+        final OutputCluster outputCluster = new OutputCluster(clusterItemIds.stream().map(idToItemMap::get).collect(Collectors.toList()));
         final SVCallRecord result = collapser.apply(outputCluster);
-        // Release items that are no longer in any active cluster
-        for (final Integer itemId : clusterItemIds) {
-            final ActiveItem item = getActiveItem(itemId);
-            if (--item.numClusters == 0) {
-                idToItemMap.remove(itemId);
+        // Clean up item id map
+        if (clusterItemIds.size() == 1) {
+            // Singletons won't be present in any other clusters
+            idToItemMap.remove(clusterItemIds.get(0));
+        } else {
+            // Need to check that items aren't present in any other clusters
+            final Set<Integer> activeItemIds = idToClusterMap.values().stream()
+                    .map(Cluster::getItemIds)
+                    .flatMap(List::stream)
+                    .collect(Collectors.toSet());
+            final List<Integer> itemsToRemove = idToItemMap.keySet().stream().filter(i -> !activeItemIds.contains(i))
+                    .collect(Collectors.toList());
+            for (final Integer i : itemsToRemove) {
+                idToItemMap.remove(i);
             }
         }
+        // Update min active start position
+        if (clusterItemIds.contains(minActiveStartingPositionItemId)) {
+            findAndSetMinActiveStart();
+        }
         return result;
+    }
+
+    /**
+     * Scans active items for the current min active starting position.
+     */
+    private final void findAndSetMinActiveStart() {
+        minActiveStartingPositionItemId = null;
+        SVCallRecord minActiveStartingPositionItem = null;
+        for (final Integer itemId : idToItemMap.keySet()) {
+            final SVCallRecord item = idToItemMap.get(itemId);
+            if (minActiveStartingPositionItemId == null || itemComparator.compare(item, minActiveStartingPositionItem) < 0) {
+                minActiveStartingPositionItemId = itemId;
+                minActiveStartingPositionItem = idToItemMap.get(itemId);
+            }
+        }
     }
 
     /**
@@ -319,7 +293,7 @@ public class SVClusterEngine {
             result.add(processCluster(clusterId));
         }
         idToItemMap.clear();
-        liveItems.clear();
+        minActiveStartingPositionItemId = null;
         nextItemId = 0;
         nextClusterId = 0;
         return result;
@@ -331,15 +305,7 @@ public class SVClusterEngine {
     private final void seedCluster(final Integer item) {
         final List<Integer> newClusters = new ArrayList<>(1);
         newClusters.add(item);
-        final ActiveItem activeItem = getActiveItem(item);
-        activeItem.numClusters++;
-        final int clusterId = nextClusterId++;
-        final Cluster cluster = new Cluster(linkage.getMaxClusterableStartingPosition(activeItem.item), newClusters);
-        if (clusteringType.equals(CLUSTERING_TYPE.SINGLE_LINKAGE)) {
-            cluster.group = new ItemGroup(clusterId);
-            activeItem.group = cluster.group;
-        }
-        idToClusterMap.put(clusterId, cluster);
+        idToClusterMap.put(nextClusterId++, new Cluster(linkage.getMaxClusterableStartingPosition(getItem(item)), newClusters));
     }
 
     /**
@@ -352,9 +318,6 @@ public class SVClusterEngine {
         final List<Integer> newClusterItems = new ArrayList<>(1 + seedItems.size());
         newClusterItems.addAll(seedItems);
         newClusterItems.add(item);
-        for (final Integer itemId : newClusterItems) {
-            getActiveItem(itemId).numClusters++;
-        }
         idToClusterMap.put(nextClusterId++,
                 new Cluster(getMaxClusterableStartingPositionByIds(newClusterItems), newClusterItems));
     }
@@ -364,13 +327,9 @@ public class SVClusterEngine {
         return idToClusterMap.get(id);
     }
 
-    private final ActiveItem getActiveItem(final int id) {
+    private final SVCallRecord getItem(final int id) {
         Utils.validateArg(idToItemMap.containsKey(id), "Item ID " + id + " does not exist.");
         return idToItemMap.get(id);
-    }
-
-    private final SVCallRecord getItem(final int id) {
-        return getActiveItem(id).item;
     }
 
     /**
@@ -383,9 +342,8 @@ public class SVClusterEngine {
         final Cluster cluster = getCluster(clusterId);
         final List<Integer> clusterItems = cluster.getItemIds();
         clusterItems.add(itemId);
-        final ActiveItem item = getActiveItem(itemId);
-        item.numClusters++;
-        final int itemClusterableStartPosition = linkage.getMaxClusterableStartingPosition(item.item);
+        final SVCallRecord item = getItem(itemId);
+        final int itemClusterableStartPosition = linkage.getMaxClusterableStartingPosition(item);
         cluster.setMaxClusterableStart(Math.max(cluster.getMaxClusterableStart(), itemClusterableStartPosition));
     }
 
@@ -401,57 +359,11 @@ public class SVClusterEngine {
     }
 
     /**
-     * Registered item with its clustering bookkeeping
-     */
-    private static final class ActiveItem {
-        private final int id;
-        private final SVCallRecord item;
-        private final int maxLinkableStart; // no later item starting past this position can link to this one
-        private int numClusters; // number of active clusters containing this item
-        private ItemGroup group; // single-linkage only
-
-        private ActiveItem(final int id, final SVCallRecord item, final int maxLinkableStart) {
-            this.id = id;
-            this.item = item;
-            this.maxLinkableStart = maxLinkableStart;
-        }
-    }
-
-    /**
-     * Union-find node mapping single-linkage items to the id of the active cluster that contains them. Merging
-     * clusters re-points the smaller clusters' groups at the largest one's, so no per-item relabeling is needed.
-     */
-    private static final class ItemGroup {
-        private ItemGroup parent;
-        private int clusterId; // valid at the root only
-
-        private ItemGroup(final int clusterId) {
-            this.clusterId = clusterId;
-        }
-
-        private ItemGroup getRoot() {
-            ItemGroup root = this;
-            while (root.parent != null) {
-                root = root.parent;
-            }
-            // Path compression
-            ItemGroup node = this;
-            while (node.parent != null && node.parent != root) {
-                final ItemGroup next = node.parent;
-                node.parent = root;
-                node = next;
-            }
-            return root;
-        }
-    }
-
-    /**
      * Container class for clustered items
      */
     private static final class Cluster {
         private int maxClusterableStart;
         private final List<Integer> itemIds;
-        private ItemGroup group; // single-linkage only
 
         public Cluster(final int maxClusterableStart, final List<Integer> itemIds) {
             Utils.nonNull(itemIds);
