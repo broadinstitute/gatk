@@ -720,6 +720,118 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
     }
 
     /**
+     * A targeted record with a multi-base reference allele has to produce a block covering its *whole* span, not just
+     * its start. DRAGEN emits these routinely -- `TC -> T` and `ACT -> A` both appear in the sample that motivated
+     * this conversion -- and getting the span wrong would leave part of a deletion's footprint uncovered.
+     *
+     * Note that the emitted block's reference allele is trimmed to a single base, which is what a GVCF reference
+     * block looks like; the span is carried by the END attribute rather than by the allele length.
+     */
+    @Test
+    public void testTargetedMultiBaseRefCoversWholeSpan() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+
+        final Allele longRef = Allele.create("CAC", true);
+        final Allele deletionAlt = Allele.create("C", false);
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(longRef, deletionAlt));
+        gb.GQ(90).PL(new int[]{0, 90, 150}).DP(41);
+        final VariantContext targetedDeletion = new VariantContextBuilder("test", "chrM", 330, 332,
+                Arrays.asList(longRef, deletionAlt))
+                .attribute(GATKVCFConstants.TARGETED_KEY, true)
+                .genotypes(gb.make()).unfiltered().make();
+
+        reblocker.apply(targetedDeletion, null, null, null);
+        reblocker.vcfWriter.close();
+
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 1, "the record should produce exactly one block");
+        final VariantContext block = emitted.get(0);
+        Assert.assertEquals(block.getStart(), 330, "the block must start where the record did");
+        Assert.assertEquals(block.getEnd(), 332,
+                "the block must span all 3 reference bases; covering only the start leaves 331-332 uncovered");
+        Assert.assertEquals(block.getAttributeAsInt(VCFConstants.END_KEY, -1), 332,
+                "the END attribute carries the span for a reference block");
+        Assert.assertEquals(block.getReference().length(), 1,
+                "a reference block's REF is trimmed to one base; the span lives in END");
+        Assert.assertEquals(block.getAlternateAlleles(), Collections.singletonList(Allele.NON_REF_ALLELE));
+    }
+
+    /**
+     * The record that caused the production failure carried a spanning deletion allele (`T -> G,*`), which routes
+     * through a different branch of changeCallToHomRefVersusNonRef than a plain SNP does. Converting it must still
+     * yield a well-formed hom-ref block rather than letting `*` leak into the output.
+     */
+    @Test
+    public void testTargetedRecordWithSpanningDeletionIsConverted() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+
+        final Allele ref = Allele.create("C", true);
+        final Allele alt = Allele.create("A", false);
+        // GT 1/2 over (ALT, SPAN_DEL), as DRAGEN's targeted caller emits at SMN loci
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(alt, Allele.SPAN_DEL));
+        gb.GQ(2).PL(new int[]{120, 0, 3, 3, 0, 150});
+        final VariantContext targetedWithStar = new VariantContextBuilder("test", "chrM", 340, 340,
+                Arrays.asList(ref, alt, Allele.SPAN_DEL))
+                .attribute(GATKVCFConstants.TARGETED_KEY, true)
+                .genotypes(gb.make()).unfiltered().make();
+
+        reblocker.apply(targetedWithStar, null, null, null);
+        reblocker.vcfWriter.close();
+
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 1, "the position must stay covered");
+        final VariantContext block = emitted.get(0);
+        Assert.assertEquals(block.getStart(), 340);
+        Assert.assertEquals(block.getAlternateAlleles(), Collections.singletonList(Allele.NON_REF_ALLELE),
+                "neither the real ALT nor the spanning deletion should survive into the block");
+        Assert.assertFalse(block.getGenotype(0).getAlleles().contains(Allele.SPAN_DEL),
+                "the emitted genotype must not retain the spanning deletion allele");
+        Assert.assertTrue(block.getGenotype(0).isHomRef(), "the emitted block should assert hom-ref");
+        Assert.assertEquals(block.getGenotype(0).getGQ(), 0);
+    }
+
+    /**
+     * Pins how depth is handled for a realistically-shaped targeted record. DRAGEN reports depth on these as JDP/JAD
+     * (the targeted caller's joint fields) and does *not* emit plain DP or AD, while changeCallToHomRefVersusNonRef
+     * sources depth only from INFO DP or genotype AD. The converted block therefore carries no depth at all, where an
+     * ordinary reblocked hom-ref block would.
+     *
+     * This test documents current behavior rather than endorsing it -- see the review note on VS-2023-V2. It exists
+     * so that a future change which starts honouring JDP is a visible, deliberate edit to this assertion rather than
+     * a silent change in output. Tests using a fixture with DP/AD present cannot observe this at all.
+     */
+    @Test
+    public void testTargetedConversionDropsDepthWhenOnlyJointFieldsPresent() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_ALT));
+        // deliberately no DP and no AD -- only the targeted caller's joint equivalents
+        gb.GQ(2).PL(new int[]{120, 0, 3})
+          .attribute("JDP", 59)
+          .attribute("JAD", "10,49");
+        final VariantContext targetedJointDepthOnly = new VariantContextBuilder("test", "chrM", 280, 280,
+                Arrays.asList(CHR_M_REF, CHR_M_ALT))
+                .attribute(GATKVCFConstants.TARGETED_KEY, true)
+                .genotypes(gb.make()).unfiltered().make();
+
+        reblocker.apply(targetedJointDepthOnly, null, null, null);
+        reblocker.vcfWriter.close();
+
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 1, "the position must stay covered");
+        final Genotype blockGenotype = emitted.get(0).getGenotype(0);
+        Assert.assertTrue(blockGenotype.isHomRef());
+        Assert.assertEquals(blockGenotype.getGQ(), 0);
+        Assert.assertFalse(blockGenotype.hasDP(),
+                "current behavior: JDP is not consulted, so the converted block carries no depth");
+        Assert.assertFalse(blockGenotype.hasAnyAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY),
+                "current behavior: no MIN_DP either, for the same reason");
+    }
+
+    /**
      * Converted targeted records are counted rather than logged individually, so the count has to accumulate across
      * the traversal. Records that are not converted must not be counted.
      */
