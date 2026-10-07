@@ -363,6 +363,7 @@ workflows:
              - master
              - ah_var_store
              - ng_vs_1995_header_checks_before_ingest
+             - ng_vs_2040_bounded_header_read
          tags:
              - /.*/
    - name: GvsIngestTieout
