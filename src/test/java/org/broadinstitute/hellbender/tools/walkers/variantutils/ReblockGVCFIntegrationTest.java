@@ -559,6 +559,77 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         Assert.assertFalse(variantG.hasPL(), "PL should not have been added to SQ-only record");
     }
 
+    /**
+     * End-to-end cover for DRAGEN targeted-caller records, which carry no &lt;NON_REF&gt; allele and so cannot be
+     * reblocked as ordinary variants. The call is discarded but a GQ0 hom-ref block is emitted over its span, so that
+     * every position the input covered is still covered in the output.
+     *
+     * The fixture is synthesised from the shapes seen in a real DRAGEN 4.4.6 sample rather than copied from one, and
+     * deliberately contains all four arrangements that behave differently:
+     *
+     *   chrM:280       a targeted SNP alone in a 49bp stretch with no reference blocks around it. This is the case
+     *                  that broke production -- dropping the record left exactly one locus uncovered and
+     *                  `ValidateVariants --validate-GVCF` rejected the output.
+     *   chrM:320       a targeted SNP laid on top of an existing reference block, where dropping it would have been
+     *                  harmless and the emitted block is merely redundant.
+     *   chrM:330-332   a targeted record with a multi-base reference allele, to pin span handling.
+     *   chrM:340       a targeted record carrying a spanning deletion (`*`) allele.
+     *
+     * Targeted records also report depth as JDP/JAD rather than DP/AD, which is why the converted blocks carry no
+     * depth; see testTargetedConversionDropsDepthWhenOnlyJointFieldsPresent in the unit tests.
+     */
+    @Test
+    public void testDragenTargetedRecordsKeepGvcfDense() {
+        final File input = getTestFile("dragenTargeted.g.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(hg38Reference))
+                .add("V", input)
+                .add("L", "chrM")
+                .addOutput(output);
+        runCommandLine(args);
+
+        final List<VariantContext> outVCs =
+                VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
+
+        // Every position the input covered must still be covered. The input's own coverage is
+        // 200-250 (ref block), 280 (lone targeted SNP), and 300-350 (ref block, with targeted records inside it).
+        final Set<Integer> covered = new HashSet<>();
+        for (final VariantContext vc : outVCs) {
+            for (int p = vc.getStart(); p <= vc.getEnd(); p++) {
+                covered.add(p);
+            }
+        }
+        final List<Integer> expected = new ArrayList<>();
+        for (int p = 200; p <= 250; p++) { expected.add(p); }
+        expected.add(280);
+        for (int p = 300; p <= 350; p++) { expected.add(p); }
+        final List<Integer> missing = expected.stream().filter(p -> !covered.contains(p)).collect(Collectors.toList());
+        Assert.assertTrue(missing.isEmpty(),
+                "every position covered by the input must be covered by the output; missing: " + missing);
+
+        // The lone targeted record is the one that actually mattered -- assert it specifically so a regression
+        // reports something more useful than a long list of positions.
+        Assert.assertTrue(covered.contains(280),
+                "chrM:280 is a targeted record with no reference block around it; dropping it is what broke production");
+
+        // No targeted call should survive as a call: every emitted record is a reference block.
+        for (final VariantContext vc : outVCs) {
+            Assert.assertEquals(vc.getAlternateAlleles(), Collections.singletonList(Allele.NON_REF_ALLELE),
+                    "targeted calls must not survive into the output; offending record at " + vc.getContig() + ":" + vc.getStart());
+            Assert.assertTrue(vc.getGenotype(0).isHomRef(),
+                    "every emitted record should be hom-ref at " + vc.getContig() + ":" + vc.getStart());
+        }
+
+        // The converted block standing in for the lone targeted record asserts coverage, not confidence.
+        final VariantContext loneBlock = outVCs.stream()
+                .filter(vc -> vc.getStart() <= 280 && vc.getEnd() >= 280).findFirst().orElse(null);
+        Assert.assertNotNull(loneBlock, "a record covering chrM:280 should exist");
+        Assert.assertEquals(loneBlock.getGenotype(0).getGQ(), 0,
+                "the block standing in for a discarded targeted call should be GQ0");
+    }
+
     @Test
     public void testDragenGvcfs() {
         final File input = getTestFile("dragen.g.vcf");
