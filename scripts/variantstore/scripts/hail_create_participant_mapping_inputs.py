@@ -18,7 +18,9 @@ anchored indels, so the job fails before the expensive write if any key is anyth
 
 Outputs under --output:
   keys_to_normalize.vcf.bgz   sites-only, key in ID, every flagged key whether or not it has carriers
-  pairs.parquet               vds_key STRING, person_id INT64, zygosity STRING (het, hom or hemi)
+  pairs.parquet               vds_key STRING, person_id INT64, zygosity STRING (het, hom or hemi), split by
+                              Spark into needs_normalization=true/ and needs_normalization=false/ so the
+                              few pairs on flagged keys can be loaded without scanning the rest
   summary.json                counts and timings
 
 Zygosity mirrors call_stats: a homozygote needs ploidy 2, so a haploid carrier (male chrX and chrY
@@ -112,8 +114,9 @@ def write_pairs(vd, out):
     vd = vd.annotate_entries(zygosity=hl.or_missing(gt.contains_allele(a), zygosity))
     vd = vd.filter_entries(hl.is_defined(vd.zygosity))
     et = vd.entries().key_by()
-    et.select(vds_key=et.vds_key, person_id=hl.parse_int64(et.s), zygosity=et.zygosity) \
-        .to_spark().write.parquet(f'{out}/pairs.parquet', mode='overwrite')
+    et.select(vds_key=et.vds_key, person_id=hl.parse_int64(et.s), zygosity=et.zygosity,
+              needs_normalization=hl.literal(SHIFTABLE_CLASSES).contains(et.key_class)) \
+        .to_spark().write.partitionBy('needs_normalization').parquet(f'{out}/pairs.parquet', mode='overwrite')
 
 
 def main():

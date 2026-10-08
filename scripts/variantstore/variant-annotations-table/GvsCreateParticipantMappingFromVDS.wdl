@@ -73,9 +73,9 @@ workflow GvsCreateParticipantMappingFromVDS {
         input:
             project_id = project_id,
             dataset_name = dataset_name,
-            fq_vat_table = fq_vat_table,
             participant_mapping_table_name = participant_mapping_table_name,
             pairs_table = LoadMappingInputs.pairs_table,
+            normalized_pairs_table = LoadMappingInputs.normalized_pairs_table,
             key_to_vid_table = LoadMappingInputs.key_to_vid_table,
             variants_docker = effective_variants_docker,
     }
@@ -167,6 +167,7 @@ task LoadMappingInputs {
     }
 
     String pairs_table_name = "~{participant_mapping_table_name}_pairs"
+    String normalized_pairs_table_name = "~{participant_mapping_table_name}_normalized_pairs"
     String key_to_vid_table_name = "~{participant_mapping_table_name}_key_to_vid"
 
     command <<<
@@ -175,9 +176,23 @@ task LoadMappingInputs {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         # Staging tables, replaced on a rerun. Load jobs are free; the pairs are on the order of 2.5e12 rows genome-wide.
-        # The glob skips Spark's _SUCCESS marker.
+        # The glob matches across both needs_normalization= directories and skips Spark's _SUCCESS markers. Without
+        # hive partitioning the flag, which lives only in the directory names, is not loaded.
         bq --apilog=false load --project_id=~{project_id} --replace --source_format=PARQUET \
             ~{dataset_name}.~{pairs_table_name} '~{pairs_parquet_path}/*.parquet'
+
+        # The pairs on keys bcftools norm moved, again, as their own small table: the provenance table reads these
+        # rather than scanning the pairs a second time. Spark writes no directory for a flag value with no rows, which
+        # an interval with no flagged carriers can produce.
+        normalized='~{pairs_parquet_path}/needs_normalization=true'
+        if gcloud storage ls "${normalized}/" > /dev/null 2>&1; then
+            bq --apilog=false load --project_id=~{project_id} --replace --source_format=PARQUET \
+                ~{dataset_name}.~{normalized_pairs_table_name} "${normalized}/*.parquet"
+        else
+            bq --apilog=false rm -f --project_id=~{project_id} ~{dataset_name}.~{normalized_pairs_table_name}
+            bq --apilog=false mk --project_id=~{project_id} --table \
+                ~{dataset_name}.~{normalized_pairs_table_name} vds_key:STRING,person_id:INTEGER,zygosity:STRING
+        fi
 
         bq --apilog=false load --project_id=~{project_id} --replace --source_format=CSV --field_delimiter='\t' \
             ~{dataset_name}.~{key_to_vid_table_name} ~{key_to_vid} vds_key:STRING,vid:STRING
@@ -189,6 +204,7 @@ task LoadMappingInputs {
 
     output {
         String pairs_table = pairs_table_name
+        String normalized_pairs_table = normalized_pairs_table_name
         String key_to_vid_table = key_to_vid_table_name
     }
 }
@@ -197,9 +213,9 @@ task CreateMappingTables {
     input {
         String project_id
         String dataset_name
-        String fq_vat_table
         String participant_mapping_table_name
         String pairs_table
+        String normalized_pairs_table
         String key_to_vid_table
         String variants_docker
     }
@@ -214,8 +230,8 @@ task CreateMappingTables {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         cat > create_mapping_tables.sql <<'SQL'
-        DECLARE non_vat_vids INT64;
-        DECLARE non_vat_examples ARRAY<STRING>;
+        DECLARE unnormalized_keys INT64;
+        DECLARE unnormalized_examples ARRAY<STRING>;
 
         CREATE TEMP FUNCTION vidToLocation(vid STRING)
         RETURNS INT64
@@ -227,35 +243,21 @@ task CreateMappingTables {
             CAST(SPLIT(vid, '-')[OFFSET(1)] AS INT64)
         );
 
-        -- Carrier counts per VDS key, from one scan of the pairs. Everything except the base table reads this rather
-        -- than the pairs. A key is the VID unless bcftools norm gave it another.
-        CREATE TEMP TABLE key_counts AS
-        SELECT p.vds_key,
-               COALESCE(k.vid, p.vds_key) AS vid,
-               p.n_het, p.n_hom, p.n_hemi
-        FROM (
-            SELECT vds_key,
-                   COUNTIF(zygosity = 'het') AS n_het,
-                   COUNTIF(zygosity = 'hom') AS n_hom,
-                   COUNTIF(zygosity = 'hemi') AS n_hemi
-            FROM `~{fq_dataset}.~{pairs_table}`
-            GROUP BY vds_key
-        ) AS p
-        LEFT JOIN `~{fq_dataset}.~{key_to_vid_table}` AS k USING (vds_key);
-
-        -- Every VID a carrier is filed under must be a VAT VID. One that is not means the VDS and the VAT disagree about
-        -- which variants exist, and the mapping would hand out an ID nobody can look up.
-        SET (non_vat_vids, non_vat_examples) = (
-            SELECT AS STRUCT COUNT(*), ARRAY_AGG(c.vid ORDER BY c.vid LIMIT 10)
-            FROM (SELECT DISTINCT vid FROM key_counts) AS c
-            LEFT JOIN (SELECT DISTINCT vid FROM `~{fq_vat_table}`) AS vat USING (vid)
-            WHERE vat.vid IS NULL
+        -- Every flagged key with carriers must have a VID from bcftools norm. One without would be filed under its own,
+        -- non-VAT key. Reads only the small tables, so a mismatched set of inputs fails before the pairs are scanned.
+        SET (unnormalized_keys, unnormalized_examples) = (
+            SELECT AS STRUCT COUNT(*), ARRAY_AGG(n.vds_key ORDER BY n.vds_key LIMIT 10)
+            FROM (SELECT DISTINCT vds_key FROM `~{fq_dataset}.~{normalized_pairs_table}`) AS n
+            LEFT JOIN `~{fq_dataset}.~{key_to_vid_table}` AS k USING (vds_key)
+            WHERE k.vid IS NULL
         );
-        IF non_vat_vids > 0 THEN
-            RAISE USING MESSAGE = FORMAT('%d mapped VIDs are not VAT VIDs, e.g. %s',
-                                         non_vat_vids, ARRAY_TO_STRING(non_vat_examples, ', '));
+        IF unnormalized_keys > 0 THEN
+            RAISE USING MESSAGE = FORMAT('%d keys flagged for normalization have no VID, e.g. %s',
+                                         unnormalized_keys, ARRAY_TO_STRING(unnormalized_examples, ', '));
         END IF;
 
+        -- The one scan of the pairs. Whether every VID here is a VAT VID is checked against the finished table, by
+        -- mapped_not_in_vat in CheckMappingTables.
         -- Clustered at creation: a bq update after the fact does not take. No ORDER BY; see VS-2013.
         CREATE TABLE `~{fq_dataset}.~{base_table_name}`
         CLUSTER BY vid
@@ -286,13 +288,20 @@ task CreateMappingTables {
         CREATE TABLE `~{fq_dataset}.~{provenance_table_name}`
         CLUSTER BY vid
         AS
-        SELECT vid,
-               vidToLocation(vds_key) AS input_location,
-               SPLIT(vds_key, '-')[OFFSET(2)] AS input_ref,
-               SPLIT(vds_key, '-')[OFFSET(3)] AS input_alt,
-               n_het, n_hom, n_hemi
-        FROM key_counts
-        WHERE vid != vds_key;
+        SELECT k.vid,
+               vidToLocation(n.vds_key) AS input_location,
+               SPLIT(n.vds_key, '-')[OFFSET(2)] AS input_ref,
+               SPLIT(n.vds_key, '-')[OFFSET(3)] AS input_alt,
+               n.n_het, n.n_hom, n.n_hemi
+        FROM (
+            SELECT vds_key,
+                   COUNTIF(zygosity = 'het') AS n_het,
+                   COUNTIF(zygosity = 'hom') AS n_hom,
+                   COUNTIF(zygosity = 'hemi') AS n_hemi
+            FROM `~{fq_dataset}.~{normalized_pairs_table}`
+            GROUP BY vds_key
+        ) AS n
+        JOIN `~{fq_dataset}.~{key_to_vid_table}` AS k USING (vds_key);
 
         CREATE VIEW `~{fq_dataset}.~{participant_mapping_table_name}` AS
         SELECT vid, ARRAY_CONCAT(het_ids, hom_ids, hemi_ids) AS person_ids
