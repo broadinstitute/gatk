@@ -537,6 +537,16 @@ workflows:
          - ah_var_store
        tags:
          - /.*/
+   - name: GvsCreateParticipantMappingFromVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsCreateParticipantMappingFromVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1807_variant_search_zygosity
+       tags:
+         - /.*/
    - name: GvsRunHailScript
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsRunHailScript.wdl
