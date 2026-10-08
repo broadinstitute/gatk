@@ -201,6 +201,8 @@ public final class ReblockGVCF extends MultiVariantWalker {
     long droppedTargetedRecordCount = 0;
     // position of the first dropped record, to give the summary somewhere to point
     private String firstDroppedTargetedRecord = null;
+    // whether we have already warned about malformed (negative) qualities; see floorNegativeQualities
+    private boolean warnedAboutNegativeQualities = false;
     // the INFO field annotation key names to remove
     private static final List<String> infoFieldAnnotationKeyNamesToRemove = Arrays.asList(GVCFWriter.GVCF_BLOCK, GATKVCFConstants.HAPLOTYPE_SCORE_KEY,
             GATKVCFConstants.INBREEDING_COEFFICIENT_KEY, GATKVCFConstants.MLE_ALLELE_COUNT_KEY,
@@ -343,7 +345,8 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
     // get VariantContexts from input gVCFs and regenotype
     @Override
-    public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
+    public void apply(VariantContext originalVariant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
+        final VariantContext variant = floorNegativeQualities(originalVariant);
         if (!variant.hasAllele(Allele.NON_REF_ALLELE)) {
             if (variant.getAttributeAsBoolean(GATKVCFConstants.TARGETED_KEY, false)) {
                 // We're currently ignoring targeted sites that don't have a <NON_REF> allele as we're focusing on
@@ -376,6 +379,61 @@ public final class ReblockGVCF extends MultiVariantWalker {
         }
         VariantContext newVC = formatAnnotationsToRemove.size() > 0 ? removeVCFFormatAnnotations(variant) : variant;
         regenotypeVC(newVC);
+    }
+
+    /**
+     * Raise any negative GQ or PL values to zero.
+     *
+     * DELIBERATE WORKAROUND, not a principled fix. PLs are non-negative by definition and GQ is derived from them, so
+     * a negative value is malformed input. DRAGEN 4.4.6 has nonetheless been observed emitting them: in one production
+     * sample a zero-depth reference block straddling the chrY PAR1 boundary (where the caller switches from diploid to
+     * haploid) came out as `GQ -1240` with `PL 0,0,-1240`. GATK's GQ banding only accepts [0, MAX_GENOTYPE_QUAL] --
+     * {@link org.broadinstitute.hellbender.utils.variant.writers.GVCFBlockCombiner#createNewBlock} clamps the top end
+     * but throws on anything below zero -- so a single bad record failed a 22 minute run over an entire genome.
+     *
+     * Flooring at zero is what the block should have carried anyway: zero depth means no confidence, which is what
+     * GQ0 says. The point here is only to let the run finish.
+     *
+     * Two things are deliberately scoped narrowly and should be revisited rather than assumed permanent:
+     *   - This lives in ReblockGVCF rather than in the shared GVCFBlockCombiner, so other GVCF-writing tools keep
+     *     failing loudly on the same input instead of silently accepting it.
+     *   - It keys on the invalid value itself rather than on anything DRAGEN-specific, so there is no vendor
+     *     detection to maintain and nothing to unpick if the caller is fixed upstream.
+     *
+     * The underlying negative PL is the caller's bug and should be reported as such. If these turn out to be
+     * widespread rather than the rare edge case seen so far (one record in a 2.2GB gVCF), this decision is worth
+     * reopening -- quietly rewriting caller output at scale is a different proposition from papering over one record.
+     *
+     * @param vc variant context that may carry malformed qualities
+     * @return the input unchanged when everything is in range, otherwise a copy with negatives raised to zero
+     */
+    @VisibleForTesting
+    VariantContext floorNegativeQualities(final VariantContext vc) {
+        if (!vc.hasGenotypes()) {
+            return vc;
+        }
+        final Genotype genotype = vc.getGenotype(0);
+        final boolean negativeGQ = genotype.hasGQ() && genotype.getGQ() < 0;
+        final boolean negativePL = genotype.hasPL() && Arrays.stream(genotype.getPL()).anyMatch(pl -> pl < 0);
+        if (!negativeGQ && !negativePL) {
+            return vc;
+        }
+
+        if (!warnedAboutNegativeQualities) {
+            warnedAboutNegativeQualities = true;
+            logger.warn("Found a negative GQ or PL at " + vc.getContig() + ":" + vc.getStart() + ", which is not a valid "
+                    + "Phred-scaled quality.  Raising it (and any others in this input) to zero so reblocking can proceed.  "
+                    + "This indicates a bug in the variant caller that produced this GVCF.");
+        }
+
+        final GenotypeBuilder gb = new GenotypeBuilder(genotype);
+        if (negativeGQ) {
+            gb.GQ(0);
+        }
+        if (negativePL) {
+            gb.PL(Arrays.stream(genotype.getPL()).map(pl -> Math.max(0, pl)).toArray());
+        }
+        return new VariantContextBuilder(vc).genotypes(gb.make()).make();
     }
 
     /**

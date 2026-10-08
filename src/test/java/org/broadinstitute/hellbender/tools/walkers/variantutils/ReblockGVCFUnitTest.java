@@ -781,6 +781,86 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         return new GenotypeBuilder(g).AD(ads).make();
     }
 
+    /**
+     * A reference block carrying a negative GQ and PL -- malformed, but DRAGEN 4.4.6 emits them. Reblocking should
+     * raise both to zero rather than failing the run. Before this, such a record reached the GQ banding code and
+     * threw "GQ ... didn't fit into any partition", killing a whole-genome run over a single bad block.
+     *
+     * Values here mirror the real record: a zero-depth block at the chrY PAR1 boundary with GQ -1240 / PL 0,0,-1240.
+     */
+    @Test
+    public void testNegativeGqAndPlAreFlooredToZero() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
+        gb.GQ(-1240).PL(new int[]{0, 0, -1240}).DP(0).AD(new int[]{0, 0});
+        final VariantContext malformedBlock = new VariantContextBuilder("test", "chrM", 100, 148,
+                Arrays.asList(CHR_M_REF, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, 148)
+                .genotypes(gb.make()).unfiltered().make();
+
+        final VariantContext floored = reblocker.floorNegativeQualities(malformedBlock);
+        final Genotype flooredGenotype = floored.getGenotype(0);
+
+        Assert.assertEquals(flooredGenotype.getGQ(), 0, "a negative GQ should be raised to zero");
+        Assert.assertEquals(flooredGenotype.getPL(), new int[]{0, 0, 0}, "negative PLs should be raised to zero");
+        Assert.assertEquals(floored.getStart(), 100, "flooring must not disturb the block's span");
+        Assert.assertEquals(floored.getAttributeAsInt(VCFConstants.END_KEY, -1), 148);
+    }
+
+    /**
+     * The floor must not touch records whose qualities are already valid -- including GQ 0, which is legitimate and
+     * must not be confused with a malformed value. A well-formed record should come back as the same object so the
+     * check costs nothing on the overwhelming majority of records.
+     */
+    @Test
+    public void testValidQualitiesAreLeftAlone() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+
+        final GenotypeBuilder healthy = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
+        healthy.GQ(45).PL(new int[]{0, 45, 450}).DP(12);
+        final VariantContext healthyBlock = new VariantContextBuilder("test", "chrM", 100, 148,
+                Arrays.asList(CHR_M_REF, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, 148)
+                .genotypes(healthy.make()).unfiltered().make();
+        Assert.assertSame(reblocker.floorNegativeQualities(healthyBlock), healthyBlock,
+                "a valid record should be returned untouched, not rebuilt");
+
+        final GenotypeBuilder zeroGq = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
+        zeroGq.GQ(0).PL(new int[]{0, 0, 0}).DP(0);
+        final VariantContext zeroGqBlock = new VariantContextBuilder("test", "chrM", 200, 248,
+                Arrays.asList(CHR_M_REF, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, 248)
+                .genotypes(zeroGq.make()).unfiltered().make();
+        Assert.assertSame(reblocker.floorNegativeQualities(zeroGqBlock), zeroGqBlock,
+                "GQ 0 is valid and must not be treated as malformed");
+    }
+
+    /**
+     * A malformed block must actually survive reblocking end to end, not merely pass the floor in isolation. This is
+     * the behaviour that was broken: GQ banding rejected the negative value and the run died.
+     */
+    @Test
+    public void testBlockWithNegativeQualitiesStillReblocks() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
+        gb.GQ(-1240).PL(new int[]{0, 0, -1240}).DP(0).AD(new int[]{0, 0});
+        final VariantContext malformedBlock = new VariantContextBuilder("test", "chrM", 100, 148,
+                Arrays.asList(CHR_M_REF, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, 148)
+                .genotypes(gb.make()).unfiltered().make();
+
+        reblocker.apply(malformedBlock, null, null, null);
+        reblocker.vcfWriter.close();
+
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 1, "the block should be reblocked and emitted, not rejected");
+        Assert.assertEquals(emitted.get(0).getGenotype(0).getGQ(), 0,
+                "the emitted block should carry the floored GQ");
+    }
+
     private VariantContext addAttributes(final VariantContext vc, final Map<String, Object> attributes) {
         return new VariantContextBuilder(vc).attributes(attributes).make();
     }
