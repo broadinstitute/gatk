@@ -42,8 +42,7 @@ workflow GvsQuickstartHailIntegration {
         # on header loading). Left unset the check only verifies DRAGEN-version consistency.
         String? expected_dragen_version
         String ploidy_table_name = "sample_chromosome_ploidy"
-        # Do not turn on `use_parquet_ingest` without either turning off header loading in this test or implementing
-        # Parquet header loading generally.
+        # Parquet ingest is supported; defaults to false for legacy test compatibility.
         Boolean use_parquet_ingest = false
     }
 

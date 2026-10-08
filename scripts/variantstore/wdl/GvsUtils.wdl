@@ -146,7 +146,7 @@ task GetToolVersions {
     # Must stay in lockstep with `cloud_sdk_docker_decl` above -- 565.0.0 is the last tag whose `-slim`
     # sibling is Debian 12 / Python 3.11. See the note there before bumping.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-10-05-alpine-2e9aebf286b7"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-10-05-alpine-580c3bc83670"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     # The hex suffix on a GATK tag is the Docker image ID that `build_docker_tag.py` was handed, but *which* digest
     # that ID refers to depends on the Docker version of the machine that built it, so do not compare suffixes across
@@ -737,13 +737,11 @@ task TerminateWorkflow {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    # To avoid issues with special characters within the message, write the message to a file.
-    cat > message.txt <<FIN
-    ~{message}
-    FIN
-
+    # Cromwell writes the message to a file verbatim, so bash never parses it. A heredoc does not survive here: a
+    # multi-line message stops Cromwell from stripping the command's indentation, leaving the closing delimiter
+    # indented and unrecognized, and the script then dies with a syntax error before printing anything.
     # cat the file to stderr as this task is going to fail due to the exit 1.
-    cat message.txt >&2
+    cat ~{write_lines([message])} >&2
     exit 1
   >>>
 

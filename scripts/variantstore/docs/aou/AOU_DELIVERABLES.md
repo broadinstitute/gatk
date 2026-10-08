@@ -87,12 +87,17 @@
    - For use with **non-control** samples only! To ingest control samples (required for running `GvsCalculatePrecisionAndSensitivity`), use the`GvsAssignIds` and `GvsImportGenomes` workflows described below.
    - For the `bulk_ingest_fofn` input, specify the FOFN of new-to-Foxtrot samples created in the preceding step.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-   - This workflow will be run twice: first to load only VCF headers for validation purposes, then a second time to load variant and reference data.
-   1. `GvsBulkIngestGenomes` header ingest and validation
-      - Set `load_vcf_headers` to `true` and `load_vet_and_ref_ranges` to `false` to load VCF header data only.
-      - Set a `load_data_scatter_width` of 400. (~10000 CreateWriteRequest tokens / hour) / (1 token / sample * ~20 samples / hour) = 500, drop to 400 to be safe.
-      - Once these headers have been loaded, run the `GvsValidateVcfHeaders` workflow (VS-1966) to validate them before spending any variant/reference ingest compute. Set `expected_dragen_version` to `3.7.8` for AoU callsets. This workflow automates the DRAGEN-version sanity check that was previously run by hand, and additionally verifies that every non-control, non-withdrawn sample has header data, that every sample was reblocked (`ReblockGVCF`), and that the DRAGEN version triplet is consistent across the cohort. With `fail_on_validation_errors` left at its default of `true`, the workflow fails and prints a report if anything is wrong; only proceed to the data ingest below once it passes. (The `validation_report` output describes exactly what failed for any sample.)
-      - As a manual fallback / for reference, the underlying DRAGEN-version query is: ```
+   - This workflow now does header ingest, header validation, and variant/reference data ingest in a single run. `validate_vcf_headers` defaults to `true`, which loads the VCF headers in a headers-only pass, validates them, and halts the run before any variant/reference ingest if validation fails. Do **not** run the workflow twice over the same FOFN, and do not run `GvsValidateVcfHeaders` standalone — that would re-validate headers that have already been checked inline.
+   - Set `expected_dragen_version` to `3.7.8` for AoU callsets. Set it on *this* workflow; it is passed through to the inline validation. Left unset, the check only enforces that the DRAGEN version triplet is consistent across the cohort rather than pinning it to the expected value.
+   - The validation verifies that every non-control, non-withdrawn sample in this run's FOFN has header data (samples ingested by earlier runs are not re-checked), that every sample was reblocked (`ReblockGVCF`), and that the DRAGEN version triplet matches `expected_dragen_version`. With `fail_on_validation_errors` left at its default of `true`, a failure aborts the run before any variant or reference data is ingested, and the `validation_report` output describes exactly what failed for any sample. The abort message also names the recovery steps, including the header-row cleanup required before re-ingesting a corrected gVCF under the same sample name.
+   - Set the scatter widths per pass. The two passes consume different numbers of CreateWriteStream tokens per sample and run at different per-sample rates, so they take different values:
+      - Set `header_load_data_scatter_width` to 400. (~10000 CreateWriteStream tokens / hour) / (1 token / sample * ~20 samples / hour) = 500, drop to 400 to be safe.
+      - Set `data_load_data_scatter_width` to 333. (~10000 CreateWriteStream tokens / hour) / (3 tokens / sample * ~8 samples / hour) = 417, drop to 333 to be safe.
+      - `load_data_scatter_width` is still accepted and applies to both passes; each per-pass input falls back to it when unset. Setting only `load_data_scatter_width` would apply one value to both passes, which is not what AoU wants.
+      - Note: this arithmetic is Write API quota math, and `use_parquet_ingest` now defaults to `true`, where the ingest tasks open no write streams. 400 and 333 are what AoU has run with and nothing indicates they are unsafe, but they may be lower than they need to be; re-deriving them for the Parquet path is tracked in [VS-2037](https://broadworkbench.atlassian.net/browse/VS-2037).
+   - **NOTE** Be sure to set the input `drop_state` to `"ZERO"` (this will have the effect of dropping GQ0 reference blocks) and set `use_compressed_references` to `true` (this will further compress the reference data).
+   - If `parquet_output_gcs_dir` is set, the two passes write scratch Parquet one level deeper than they used to: the header pass under `<parquet_output_gcs_dir>/headers` and the data pass under `<parquet_output_gcs_dir>/data`. Inspecting scratch Parquet by path means looking in those subdirectories.
+   - As a manual fallback / for reference, the underlying DRAGEN-version query is: ```
   SELECT
   REGEXP_EXTRACT(vcf_header_lines, r'SW: [0-9\.]+') AS version,
   COUNT(*)
@@ -103,11 +108,6 @@ WHERE
   AND CONTAINS_SUBSTR(vcf_header_lines, 'DRAGENCommandLine=<ID=dragen,')
 GROUP BY
   version```. The version string here appears to be a mix of hardware and software versions. What matters for us is that the last triplet is `3.7.8`. In the Echo callset this query returns two rows with `version` values of `SW: 05.021.604.3.7.8` and `SW: 07.021.604.3.7.8`, both of which reduce to the `3.7.8` triplet that `GvsValidateVcfHeaders` checks.
-   1. `GvsBulkIngestGenomes` variant and reference data ingest
-      - If and only if the header ingest described above completed successfully, proceed with the loading of variant and reference data.
-      - Set `load_vcf_headers` to `false` and `load_vet_and_ref_ranges` to `true` to load variant and reference data.
-      - Set a `load_data_scatter_width` of 333. (~10000 CreateWriteRequest tokens / hour) / (3 tokens / sample * ~8 samples / hour) = 417, drop to 333 to be safe.
-      - **NOTE** Be sure to set the input `drop_state` to `"ZERO"` (this will have the effect of dropping GQ0 reference blocks) and set `use_compressed_references` to `true` (this will further compress the reference data).
    - Note: In case of mistakenly ingesting a large number of bad samples, instructions for removing them can be found in [this Jira ticket](https://broadworkbench.atlassian.net/browse/VS-1206)
 1. `GvsWithdrawSamples` workflow
    - Run if there are any samples to withdraw. Note that this workflow accepts only a single timestamp, so if there are

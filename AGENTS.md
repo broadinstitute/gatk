@@ -431,6 +431,32 @@ real-ID version as a throwaway.
 
 # WDL Conventions
 
+## Forwarding an optional input must preserve its undefinedness
+
+When a wrapper workflow forwards an optional input to a sub-workflow, write the
+fallback so that "nobody set this" survives the hop:
+
+    Int? effective_width = if defined(specific_width) then specific_width
+                           else general_width
+
+Do not reach for `select_first([specific_width, general_width, <sentinel>])`. A
+sentinel tail turns an undefined input into a concrete value, and callees in
+this repo branch on `defined()` to mean something. `GvsImportGenomes` chooses
+its own scatter width when `load_data_scatter_width` is not supplied
+(`GvsImportGenomes.wdl:144-167`), so a `-1` tail would have silently taken
+automatic selection away from every caller that sets neither input — while
+type-checking, validating and reading perfectly well.
+
+Two cheap checks. `womtool inputs <wrapper>.wdl` must still report the
+forwarded input as `Int? (optional)` rather than `Int`. And the result is
+observable at runtime: with the widths left unset, both `GvsImportGenomes`
+passes scatter `GenerateParquetFilesFromInputGVCFs` to the sample count,
+because automatic selection clamps to `num_samples`.
+
+Note that a small cohort hides an explicitly set width — on three samples every
+width of 3 or more yields the same three shards — so to demonstrate that an
+explicit value is honoured rather than ignored, set it *below* the sample
+count.
 ## Heredocs in command blocks
 
 Cromwell dedents a `command <<< >>>` block by the leading whitespace common to every
@@ -497,6 +523,37 @@ Like `reflow-md` and `check-us-spelling`, this script is deliberately
 extensionless so that the Dockerfile's `COPY *.py /app/` leaves it out of the
 Variants image and out of the rebuild-and-bump obligation. Do not rename it to
 `check_wdl_heredocs.py`.
+
+## Interpolated multi-line text defeats both heredoc conventions
+
+The dedent described above is computed on the command *after* interpolation. A
+`~{...}` whose value spans several lines puts its continuation lines at column
+zero, so nothing is stripped. A terminator indented with the block then stays
+indented, even though the block was written to the first convention. The result
+is the loud failure above, `unexpected end of file`, which here also means the
+task never prints what it was meant to print. `check-wdl-heredocs` cannot see
+this. It stubs interpolations out with a single-line literal, so it passes such a
+block, and it did pass `TerminateWorkflow` while every multi-line abort message
+was being lost this way.
+
+So do not pass interpolated text through a heredoc at all. To get a WDL string
+into a file or onto stderr, let Cromwell write it:
+
+    cat ~{write_lines([message])} >&2
+
+bash never parses that file. A heredoc would also need its delimiter quoted
+(`<<'FIN'`), or bash runs backticks and `$` in the text as substitutions, and GVS
+messages routinely backtick hyphenated table names.
+
+When a task fails with an empty `stderr` in the execution bucket, the shell's own
+errors, including `unexpected end of file`, are in the task's GCP Batch log:
+
+    gcloud logging read 'logName="projects/<terra-project>/logs/batch_task_logs"
+      AND resource.labels.job_id:"job-<first 8 of the sub-workflow id>"' \
+      --project <terra-project> --freshness=2d --format='value(textPayload)'
+
+The Terra project and full job id are in the call's `jobId` in the workflow
+metadata.
 
 # Documentation Conventions
 
@@ -569,10 +626,10 @@ than doing the review inline from the start.
 A forked reviewer also cannot see the context already gathered in the
 conversation — the established base ref, the diff, the surrounding files — so it
 re-derives them, and its supporting claims still have to be checked against the
-repo before they can be reported. In the VS-1983 review its findings were sound,
-but one rested on a partial survey of the repo: it correctly noted that
-`CreateDatasetForTest` in `GvsUtils.wdl` passes no `--location`, while missing
-`run_header_loading_e2e.sh`, which uses `--location=US` and cuts the other way.
+repo before they can be reported. A forked reviewer's findings can be sound
+individually yet rest on a partial survey of the repo — correctly citing one
+call site that does X while missing another that does the opposite and changes
+the conclusion.
 
 Whoever writes the review — inline or otherwise — verify each finding's
 supporting claims against the repo, and reproduce a finding directly where that
@@ -687,6 +744,30 @@ The distinction is whether the leftover changes what a merged workflow does. If
 it only affects what is visible or runnable on the developer's own branch, leave
 it alone.
 
+## Re-reviewing a branch starts with the previous rounds
+
+A second or third review of the same branch is mostly triage, not fresh
+reading. Before looking at the diff, read the earlier write-ups in
+`~/claude-artifacts/<project>/` and classify every action item they raised as
+resolved, partially resolved, or open — checking each against the current tree
+rather than against what the PR body or the commit messages claim.
+
+Most of a later round's value is in that classification. Fixes between rounds
+are often partial: one of two related comments corrected, one recovery path
+closed but not the other, a doc updated in one place but not where operators
+actually read it. "Partially resolved" is frequently the accurate verdict.
+Starting from the diff alone re-derives the open items as if they were new and
+silently drops the half-done ones.
+
+So say which earlier action each finding descends from, and add a
+`## Resolved since round N` section crediting what landed. The author needs to
+see their fixes were noticed, and the next round needs the running tally.
+
+Re-check the findings an earlier round left standing, too: one may have become
+moot rather than fixed — for example, a cost concern about code that turns out
+to be gated off by a default nobody sets. Record a moot finding as moot, or the
+next round raises it again.
+
 # Session Retrospectives
 
 ## Offer to capture what a session taught you, every time
@@ -761,12 +842,12 @@ the source and re-run to confirm you are back to green. Keep the mutation in
 one place at a time; mutating two guards at once cannot tell you whether both
 are covered.
 
-This is worth the extra minutes because it routinely finds hollow tests. In the
-VS-2028 reblocking work it caught a test whose assertion could not distinguish
-the two code paths it was named for — both paths handed the writer the same
-`VariantContext`, so the assertion held either way. The fix was to choose an
-input where the paths genuinely diverge. Nothing but a mutation run would have
-surfaced that, and the test read perfectly well.
+This is worth the extra minutes because it routinely finds hollow tests. A
+typical one has an assertion that cannot distinguish the two code paths it is
+named for — both paths produce the same output for the chosen input, so the
+assertion holds either way. The fix is to choose an input where the paths
+genuinely diverge. Nothing but a mutation run surfaces that, and such a test
+reads perfectly well.
 
 Tests guarding a *negative* ("X should not take path Y") deserve particular
 suspicion, since the cheapest way to write one is also the vacuous way.
@@ -783,11 +864,48 @@ watching before believing it. A leftover marker from a previous attempt is
 indistinguishable from success if you only test for existence.
 
 Check a timestamp, or delete the marker before starting and verify the deletion
-actually took effect. During the VS-2028 Docker build a stale `phase1.rc` from
-a failed first attempt was read as a completed second attempt within seconds of
-launching it; the giveaway was that the file's mtime predated the run. The same
+actually took effect. A stale exit-code file from a failed first attempt is
+easily read as a completed second attempt within seconds of launching it; the
+giveaway is a file mtime that predates the run. The same
 applies to `pgrep -f <script>`, which happily matches the SSH command string
 that contains the script name and reports a process that does not exist.
 
 More generally: when a check returns the answer you were hoping for
 suspiciously early, spend one command confirming it means what you think.
+
+## Quote the revision in `git show <rev>:<path>`
+
+In zsh, `$c:scripts/foo.wdl` is parsed as a parameter expansion with a history
+modifier, not as a revision followed by a path. `git show $c:path/to/file` in a
+loop therefore fails with `(eval):4: bad substitution` for every iteration and
+produces no output at all. Write `git show "${c}":path/to/file`.
+
+This is worth its own note because of how the failure reads: the error names
+`eval` and a line number, not git, and a loop that greps the output prints a
+plausible-looking nothing for each commit. Absence of matches is easy to accept
+as a real answer. When a loop over revisions reports that none of them contain
+something you expect to be there, check the command ran before believing the
+result.
+
+## Prove a rebuilt image carries the code, do not infer it
+
+The Variants-image rebuild rule above has a verification step that costs one
+command, and whoever is reviewing or authoring should run it rather than
+reasoning about dates. Pull the tag named in `GetToolVersions`, extract the
+script, and diff it against the branch:
+
+    CID=$(docker create --platform linux/amd64 <variants_docker_tag>)
+    docker cp "${CID}":/app/<script>.py ./img.py && docker rm "${CID}"
+    git show "<rev>":scripts/variantstore/scripts/<script>.py > ./pr.py
+    diff img.py pr.py
+
+This catches what nothing else does: a tag bumped but built from a different
+tree, or built before the last edit to the script. The "Detect missing Docker
+image tag updates" CI check proves only that the tag string changed when a
+baked-in file changed — not that the image behind the new tag holds that file's
+current contents. Comparing the image's build date against the script's last
+commit date is circumstantial in the same way.
+
+It matters most when a WDL starts passing a new argument to a baked-in script.
+A stale image fails with argparse's `error: unrecognized arguments`, which
+surfaces only at runtime inside a Cromwell task, long after review.
