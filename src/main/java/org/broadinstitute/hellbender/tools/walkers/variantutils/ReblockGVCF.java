@@ -195,12 +195,12 @@ public final class ReblockGVCF extends MultiVariantWalker {
     // the annotation engine
     private VariantAnnotatorEngine annotationEngine;
 
-    // tally of targeted-caller records dropped by apply(), reported once in closeTool() rather than
-    // per-record so that a targeted callset does not flood the log
+    // tally of targeted-caller records converted to GQ0 hom-ref blocks by apply(), reported once in closeTool()
+    // rather than per-record so that a targeted callset does not flood the log
     @VisibleForTesting
-    long droppedTargetedRecordCount = 0;
-    // position of the first dropped record, to give the summary somewhere to point
-    private String firstDroppedTargetedRecord = null;
+    long convertedTargetedRecordCount = 0;
+    // position of the first converted record, to give the summary somewhere to point
+    private String firstConvertedTargetedRecord = null;
     // whether we have already warned about malformed (negative) qualities; see floorNegativeQualities
     private boolean warnedAboutNegativeQualities = false;
     // the INFO field annotation key names to remove
@@ -349,29 +349,39 @@ public final class ReblockGVCF extends MultiVariantWalker {
         final VariantContext variant = floorNegativeQualities(originalVariant);
         if (!variant.hasAllele(Allele.NON_REF_ALLELE)) {
             if (variant.getAttributeAsBoolean(GATKVCFConstants.TARGETED_KEY, false)) {
-                // We're currently ignoring targeted sites that don't have a <NON_REF> allele as we're focusing on
-                // standard SNPs and Indels.  We may handle these differently later.
+                // Targeted-caller records (DRAGEN) carry no <NON_REF> allele, so they cannot be reblocked as ordinary
+                // variants.  We do not want to keep the call itself -- we are focusing on standard SNPs and Indels,
+                // and may handle these differently later -- but we cannot simply discard the record either.
                 //
-                // CAVEAT -- dropping the record is not the same as asserting hom-ref at that position.  A gVCF is
-                // expected to account for every position via either a variant record or an overlapping reference
-                // block, and callers generally split their reference blocks around called positions so the two do
-                // not overlap.  If DRAGEN splits its blocks around targeted calls the same way it does around
-                // ordinary variants, then discarding the record here leaves the position described by nothing at
-                // all, and downstream consumers (GVS ingest in particular) will read that gap as a no-call rather
-                // than as hom-ref -- a different assertion about the sample than "we ignored this call".
+                // Whether dropping the record loses coverage depends on where it sits, and DRAGEN is not consistent
+                // about this.  Usually a targeted call is laid *on top of* a reference block that already spans it
+                // -- around chr6:32005780 the enclosing block runs 32005752-32005826 -- and dropping the record
+                // changes nothing.  But DRAGEN also emits targeted calls into stretches where it wrote no reference
+                // blocks at all.  In one production sample chr5:70076471-70076745 is a 275bp hole whose only record
+                // is a targeted SMN call at chr5:70076654, and dropping it left that single locus described by
+                // nothing.  Since the record is PASS, `VcfToIntervalList` derived from the input still expects
+                // coverage there, so `ValidateVariants --validate-GVCF` failed the reblocked output with
+                // "A GVCF must cover the entire region. Found 1 loci with no VariantContext covering it."
                 //
-                // Whether that actually happens depends on how DRAGEN emits blocks around targeted calls, which has
-                // not been confirmed against real targeted-caller output.  If it turns out these positions are not
-                // covered by a surrounding reference block, the fix is to emit a GQ0 reference block over the
-                // dropped span rather than to drop it outright.  See the coverage in ReblockGVCFUnitTest
-                // (testTargetedCallWithoutNonRefIsDropped and friends), which pins the current drop behavior so
-                // that a deliberate change to it is visible rather than silent.
+                // We cannot tell the two cases apart cheaply from here, and the harmless case stays harmless, so
+                // always emit a GQ0 hom-ref block over the record's span.  Where a block already covers the span the
+                // extra record is redundant and the combiner's overlap handling absorbs it; where it does not, this
+                // is what keeps the GVCF dense.  Either way the output asserts only "no confident call here", which
+                // is what we actually know once we have discarded the call.
+                //
+                // mustCoverPosition=true because --drop-low-quals must not reintroduce the hole; the helper still
+                // returns null when the span is already covered by previously emitted output, which is the one case
+                // where emitting nothing creates no gap.
                 //
                 // Counted rather than logged per-record: a targeted callset can carry a great many of these, and a
                 // line apiece would bury the rest of the log.  The total is reported in closeTool().
-                droppedTargetedRecordCount++;
-                if (firstDroppedTargetedRecord == null) {
-                    firstDroppedTargetedRecord = variant.getContig() + ":" + variant.getStart();
+                convertedTargetedRecordCount++;
+                if (firstConvertedTargetedRecord == null) {
+                    firstConvertedTargetedRecord = variant.getContig() + ":" + variant.getStart();
+                }
+                final VariantContextBuilder homRefBlock = lowQualVariantToGQ0HomRef(variant, true);
+                if (homRefBlock != null) {
+                    vcfWriter.add(homRefBlock.make());
                 }
                 return;
             }
@@ -660,7 +670,25 @@ public final class ReblockGVCF extends MultiVariantWalker {
      */
     @VisibleForTesting
     public VariantContextBuilder lowQualVariantToGQ0HomRef(final VariantContext lowQualityVariant) {
-        if(dropLowQuals && (!isMonomorphicCallWithAlts(lowQualityVariant) || !lowQualityVariant.getGenotype(0).isCalled())) {
+        return lowQualVariantToGQ0HomRef(lowQualityVariant, false);
+    }
+
+    /**
+     * As {@link #lowQualVariantToGQ0HomRef(VariantContext)}, but able to ignore --{@value #DROP_LOW_QUALS_ARG_NAME}.
+     *
+     * @param lowQualityVariant  a variant already determined to be low quality
+     * @param mustCoverPosition  if true, produce a block even when --{@value #DROP_LOW_QUALS_ARG_NAME} would otherwise
+     *                           discard the record. Used for targeted-caller records, which may be the only thing
+     *                           covering their position -- DRAGEN sometimes emits them into stretches with no
+     *                           reference blocks -- so discarding one can leave a hole in the GVCF rather than
+     *                           merely omitting a low quality call. Note that this does not force output
+     *                           unconditionally -- null is still returned when the span is already covered by
+     *                           previously emitted output, which is the one case where dropping creates no gap.
+     * @return a Builder that can be modified later, may be null
+     */
+    @VisibleForTesting
+    public VariantContextBuilder lowQualVariantToGQ0HomRef(final VariantContext lowQualityVariant, final boolean mustCoverPosition) {
+        if(!mustCoverPosition && dropLowQuals && (!isMonomorphicCallWithAlts(lowQualityVariant) || !lowQualityVariant.getGenotype(0).isCalled())) {
             return null;
         }
 
@@ -1187,10 +1215,10 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
     @Override
     public void closeTool() {
-        if (droppedTargetedRecordCount > 0) {
-            logger.warn(droppedTargetedRecordCount + " record(s) from a targeted caller had no <NON_REF> allele and were dropped from the output, "
-                    + "starting at " + firstDroppedTargetedRecord + ".  These positions are not represented in the output GVCF at all, "
-                    + "so downstream tools will treat them as no-calls rather than as hom-ref.");
+        if (convertedTargetedRecordCount > 0) {
+            logger.info(convertedTargetedRecordCount + " record(s) from a targeted caller had no <NON_REF> allele and were converted to "
+                    + "GQ0 hom-ref blocks, starting at " + firstConvertedTargetedRecord + ".  The calls themselves are not carried "
+                    + "through to the output, but the positions remain covered so the GVCF stays dense.");
         }
         if ( vcfWriter != null ) {
             vcfWriter.close();
