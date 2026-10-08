@@ -537,3 +537,13 @@ workflows:
          - ah_var_store
        tags:
          - /.*/
+   - name: GvsRunHailScript
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsRunHailScript.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_1807_variant_search_zygosity
+       tags:
+         - /.*/

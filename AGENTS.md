@@ -53,6 +53,24 @@ VDS. The data within the VDS is used to generate an ancestry file for creating
 the VAT (Variant Annotations Table) and interval lists for the "small callsets"
 described in `AOU_DELIVERABLES.md`.
 
+### AoU artifact version numbers
+
+AoU artifact names carry a three-level version, as in
+`aou_srwgs_short_variants_v9_r2_p1.vds`: `v9` is the major version, which is
+AoU's call; `r2` is the release, which advances when the participant set
+changes; and `p1` is the patch. Within a release the patch counter is **one
+sequence shared across every artifact type**, not a separate counter per
+artifact. In v9 r2, p1 is the VDS, p2 the VAT, and p3 and p4 the participant
+mapping tables (VS-2023).
+
+So artifacts of one release routinely carry different patch numbers, and that
+is not evidence that they are mismatched: the v9 r2 p4 mapping table was built
+from the v9 r2 p1 VDS, and pairing the two is correct. Before reporting a
+version mismatch between artifacts, check the release level first, then
+confirm lineage from the ticket that produced the artifact, or from the inputs
+recorded in the Cromwell metadata of the workflow that built it. A differing
+patch number alone should not be flagged.
+
 ## Key Concepts
 
 ### Hard filtered versus soft filtered variants
