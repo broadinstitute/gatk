@@ -1735,6 +1735,7 @@ task GetHailScripts {
         File gvs_import_ploidy_script = "app/import_gvs_ploidy.py"
         File create_vat_inputs_script = "app/create_vat_inputs.py"
         File hail_create_vat_inputs_script = "app/hail_create_vat_inputs.py"
+        File hail_create_participant_mapping_inputs_script = "app/hail_create_participant_mapping_inputs.py"
         File vds_validation_script = "app/vds_validation.py"
         File remove_samples_from_vds_script = "app/remove_samples_from_vds.py"
         File vds_dropout_scan_script = "app/vds_dropout_scan.py"

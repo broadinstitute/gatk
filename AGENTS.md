@@ -658,6 +658,27 @@ only when the task runs, and neither error message names its cause.
    script using `CREATE TABLE` rather than `CREATE OR REPLACE` then fails on
    rerun until they are dropped. Create the view in a separate `bq query` call.
 
+## A `bq load` wildcard over Spark output also reads `_temporary/`
+
+A `*` in a BigQuery source URI matches across `/`, so `gs://.../out.parquet/*.parquet`
+matches every Parquet file anywhere under the directory, not just its top level.
+For Spark output that includes `_temporary/`. Spark normally deletes that
+directory when the job commits, but an executor lost to preemption can leave
+partial files there afterward, even when the write itself succeeded. The load
+then fails with `Input file is not in Parquet format`, naming a file under
+`_temporary/0/_temporary/attempt_.../`. That file is from an attempt that never
+committed, so the committed output is not at fault. In VS-2041 this broke the
+chrY load after a run that had otherwise succeeded, though the same glob had
+loaded chr21 without trouble.
+
+So never glob a Spark output directory from its root. Name the directories that
+hold committed output, such as each `partitionBy` directory, as a
+comma-separated list of URIs, and leave out any that do not exist, since a URI
+matching nothing fails the load. `LoadMappingInputs` in
+`GvsCreateParticipantMappingFromVDS.wdl` does this. Local readers are exposed in
+the same way: DuckDB pointed at `out.parquet/**/*.parquet` reads the partial file
+too.
+
 # Documentation Conventions
 
 ## Markdown tables must be rectangular

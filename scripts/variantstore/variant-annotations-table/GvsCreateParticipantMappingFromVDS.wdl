@@ -1,50 +1,104 @@
 version 1.0
 
-# Participant mapping built from the VDS (VS-2013). hail_create_participant_mapping_inputs.py writes the carrier pairs
-# and the VDS keys that are not left-aligned; this workflow gives those keys their VAT VIDs and builds, in the given
-# dataset, `<participant_mapping_table_name>_base` (het_ids, hom_ids, hemi_ids per VID), its provenance table
-# `<participant_mapping_table_name>_provenance`, and the view `<participant_mapping_table_name>` with the delivered
-# (vid, person_ids) shape.
+# Participant mapping built from the VDS (VS-2013). hail_create_participant_mapping_inputs.py, on a Dataproc cluster,
+# writes the carrier pairs and the VDS keys that are not left-aligned; this workflow then gives those keys their VAT
+# VIDs and builds, in the given dataset, `<participant_mapping_table_name>_base` (het_ids, hom_ids, hemi_ids per VID),
+# its provenance table `<participant_mapping_table_name>_provenance`, and the view `<participant_mapping_table_name>`
+# with the delivered (vid, person_ids) shape.
 import "../wdl/GvsUtils.wdl" as Utils
 
 workflow GvsCreateParticipantMappingFromVDS {
     input {
+        String vds_path
         String project_id
         String dataset_name
         String fq_vat_table
         String participant_mapping_table_name
-        # The Hail script's --output prefix.
-        String mapping_inputs_path
+        String? interval
+        String? mapping_inputs_path
         String reference_name = "hg38"
 
+        String region = "us-central1"
+        # Compute Engine stockouts are per-zone, and Dataproc's default placement picks one zone and fails rather than
+        # moving on. "auto" tries every zone in the region.
+        String cluster_zones = "auto"
+        Int num_primary_workers = 2
+        # Wider clusters have been unstable.
+        Int max_secondary_workers = 200
+        Int num_local_ssds = 1
+        String worker_machine_type = "n1-highmem-8"
+        String master_machine_type = "n1-highmem-32"
+        Boolean use_tiny_dataproc_cluster = false
+        Int? cluster_max_idle_minutes
+        Int? cluster_max_age_minutes
+        Boolean leave_cluster_running_at_end = false
+        Float? master_memory_fraction
+
         String? git_branch_or_tag
+        String? hail_version
+        File? hail_wheel
         String? basic_docker
         String? variants_docker
+        String? cloud_sdk_slim_docker
+        String? workspace_project
     }
 
     parameter_meta {
+        vds_path: {
+            help: "The VDS the VAT was built from."
+        }
         fq_vat_table: {
             help: "The VAT, as project.dataset.table. Every VID the mapping files a carrier under must appear in it."
         }
+        interval: {
+            help: "Optional single locus interval, e.g. chr21, to restrict the build to it. The acceptance checks restrict the VAT to the contigs the mapping covers, so pass whole contigs."
+        }
         mapping_inputs_path: {
-            help: "GCS prefix passed as --output to hail_create_participant_mapping_inputs.py, holding keys_to_normalize.vcf.bgz and pairs.parquet."
+            help: "GCS prefix for the Hail job's outputs: keys_to_normalize.vcf.bgz, pairs.parquet and summary.json. Defaults to a path in the workspace bucket named for the dataset and the view. A relaunch with the same VDS, interval and prefix resumes from the job's checkpoint."
         }
         participant_mapping_table_name: {
             help: "Name of the delivered view. The base and provenance tables, and the staging tables, take it as a prefix. None may already exist, apart from the staging tables, which are replaced."
         }
+        max_secondary_workers: {
+            help: "Ceiling on the preemptible secondary workers the autoscaling policy may add."
+        }
+        hail_version: {
+            help: "Optional Hail version. Cannot define both this parameter and `hail_wheel`."
+        }
+        hail_wheel: {
+            help: "Optional Hail wheel file. Cannot define both this parameter and `hail_version`."
+        }
     }
 
-    String mapping_inputs = sub(mapping_inputs_path, "/$", "")
-
-    if (!defined(basic_docker) || !defined(variants_docker)) {
-        call Utils.GetToolVersions {
-            input:
-                git_branch_or_tag = git_branch_or_tag,
-        }
+    # Always called: the workspace bucket comes only from here.
+    call Utils.GetToolVersions {
+        input:
+            git_branch_or_tag = git_branch_or_tag,
     }
 
     String effective_basic_docker = select_first([basic_docker, GetToolVersions.basic_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
+    String effective_cloud_sdk_slim_docker = select_first([cloud_sdk_slim_docker, GetToolVersions.cloud_sdk_slim_docker])
+    String effective_google_project = select_first([workspace_project, GetToolVersions.google_project])
+
+    if (defined(hail_version) && defined(hail_wheel)) {
+        call Utils.TerminateWorkflow as BothHailVersionAndHailWheelDefined {
+            input:
+                message = "Cannot define both `hail_version` and `hail_wheel`, exiting.",
+                basic_docker = effective_basic_docker,
+        }
+    }
+
+    String effective_hail_version = select_first([hail_version, GetToolVersions.hail_version])
+
+    # Deterministic, unlike the hex-suffixed paths elsewhere, so that a relaunch finds the Hail job's resume state.
+    String mapping_inputs = sub(select_first([mapping_inputs_path,
+        "~{GetToolVersions.workspace_bucket}/participant_mapping_inputs/~{dataset_name}/~{participant_mapping_table_name}"]), "/$", "")
+
+    call Utils.GetHailScripts {
+        input:
+            variants_docker = effective_variants_docker,
+    }
 
     call Utils.GetReference {
         input:
@@ -52,9 +106,37 @@ workflow GvsCreateParticipantMappingFromVDS {
             basic_docker = effective_basic_docker,
     }
 
+    call CreateMappingInputs {
+        input:
+            vds_path = vds_path,
+            interval = interval,
+            output_path = mapping_inputs,
+            temp_path = "~{GetToolVersions.workspace_bucket}/hail-temp/participant-mapping-inputs",
+            region = region,
+            cluster_zones = cluster_zones,
+            num_primary_workers = num_primary_workers,
+            max_secondary_workers = max_secondary_workers,
+            num_local_ssds = num_local_ssds,
+            worker_machine_type = worker_machine_type,
+            master_machine_type = master_machine_type,
+            use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
+            cluster_max_idle_minutes = cluster_max_idle_minutes,
+            cluster_max_age_minutes = cluster_max_age_minutes,
+            leave_cluster_running_at_end = leave_cluster_running_at_end,
+            master_memory_fraction = master_memory_fraction,
+            hail_version = effective_hail_version,
+            hail_wheel = hail_wheel,
+            run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
+            hail_create_participant_mapping_inputs_script = GetHailScripts.hail_create_participant_mapping_inputs_script,
+            hail_create_vat_inputs_script = GetHailScripts.hail_create_vat_inputs_script,
+            create_vat_inputs_script = GetHailScripts.create_vat_inputs_script,
+            workspace_project = effective_google_project,
+            cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
+    }
+
     call NormalizeKeys {
         input:
-            keys_to_normalize_vcf = "~{mapping_inputs}/keys_to_normalize.vcf.bgz",
+            keys_to_normalize_vcf = CreateMappingInputs.keys_to_normalize_vcf,
             ref = GetReference.reference.reference_fasta,
             variants_docker = effective_variants_docker,
     }
@@ -64,7 +146,7 @@ workflow GvsCreateParticipantMappingFromVDS {
             project_id = project_id,
             dataset_name = dataset_name,
             participant_mapping_table_name = participant_mapping_table_name,
-            pairs_parquet_path = "~{mapping_inputs}/pairs.parquet",
+            pairs_parquet_path = CreateMappingInputs.pairs_parquet_path,
             key_to_vid = NormalizeKeys.key_to_vid,
             variants_docker = effective_variants_docker,
     }
@@ -90,11 +172,120 @@ workflow GvsCreateParticipantMappingFromVDS {
     }
 
     output {
+        File summary = CreateMappingInputs.summary
         File key_to_vid = NormalizeKeys.key_to_vid
         File acceptance_checks = CheckMappingTables.acceptance_checks
         String base_table = CreateMappingTables.base_table
         String provenance_table = CreateMappingTables.provenance_table
         String view = CreateMappingTables.view
+    }
+}
+
+task CreateMappingInputs {
+    input {
+        String vds_path
+        String? interval
+        String output_path
+        String temp_path
+
+        String region
+        String cluster_zones
+        Int num_primary_workers
+        Int max_secondary_workers
+        Int num_local_ssds
+        String worker_machine_type
+        String master_machine_type
+        Boolean use_tiny_dataproc_cluster
+        Int? cluster_max_idle_minutes
+        Int? cluster_max_age_minutes
+        Boolean leave_cluster_running_at_end
+        Float? master_memory_fraction
+
+        String hail_version
+        File? hail_wheel
+        File run_in_hail_cluster_script
+        File hail_create_participant_mapping_inputs_script
+        File hail_create_vat_inputs_script
+        File create_vat_inputs_script
+        String workspace_project
+        String cloud_sdk_slim_docker
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        account_name=$(gcloud config list account --format "value(core.account)")
+
+        apt-get update
+        apt-get install --assume-yes python3.11-venv
+        python3 -m venv ./localvenv
+        . ./localvenv/bin/activate
+
+        pip3 install --upgrade pip
+
+        if [[ ! -z "~{hail_wheel}" ]]
+        then
+            pip3 install ~{hail_wheel}
+        else
+            pip3 install hail~{'==' + hail_version}
+        fi
+
+        pip3 install --upgrade google-cloud-dataproc ijson
+
+        # Generate a UUIDish random hex string of <8 hex chars (4 bytes)>-<4 hex chars (2 bytes)>
+        hex="$(head -c4 < /dev/urandom | od -h -An | tr -d '[:space:]')-$(head -c2 < /dev/urandom | od -h -An | tr -d '[:space:]')"
+        cluster_name="participant-mapping-${hex}"
+
+        # run_in_hail_cluster.py renders each key as `--key value`.
+        cat > script-arguments.json <<FIN
+        {
+            "vds": "~{vds_path}",
+            "output": "~{output_path}",
+            "temp-path": "~{temp_path}"~{', "interval": "' + interval + '"'}
+        }
+        FIN
+        cat script-arguments.json
+
+        python3 ~{run_in_hail_cluster_script} \
+            --script-path ~{hail_create_participant_mapping_inputs_script} \
+            --secondary-script-path-list ~{hail_create_vat_inputs_script} \
+            --secondary-script-path-list ~{create_vat_inputs_script} \
+            --script-arguments-json-path script-arguments.json \
+            --account ${account_name} \
+            ~{true='--use-tiny-dataproc-cluster' false='' use_tiny_dataproc_cluster} \
+            --num-primary-workers ~{num_primary_workers} \
+            --max-secondary-workers ~{max_secondary_workers} \
+            --region ~{region} \
+            --zones ~{cluster_zones} \
+            --num-local-ssds ~{num_local_ssds} \
+            --worker-machine-type ~{worker_machine_type} \
+            --master-machine-type ~{master_machine_type} \
+            --workspace-project ~{workspace_project} \
+            --cluster-name ${cluster_name} \
+            ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
+            ~{'--cluster-max-age-minutes ' + cluster_max_age_minutes} \
+            ~{'--master-memory-fraction ' + master_memory_fraction} \
+            ~{true='--leave-cluster-running-at-end' false='' leave_cluster_running_at_end}
+
+        echo "~{output_path}/keys_to_normalize.vcf.bgz" > keys_to_normalize_vcf.txt
+        echo "~{output_path}/summary.json" > summary.txt
+    >>>
+
+    runtime {
+        memory: "6.5 GB"
+        disks: "local-disk 100 SSD"
+        cpu: 1
+        preemptible: 0
+        docker: cloud_sdk_slim_docker
+        bootDiskSizeGb: 10
+    }
+
+    output {
+        File keys_to_normalize_vcf = read_string("keys_to_normalize_vcf.txt")
+        File summary = read_string("summary.txt")
+        String pairs_parquet_path = "~{output_path}/pairs.parquet"
     }
 }
 
