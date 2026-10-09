@@ -302,14 +302,18 @@ task CreateMappingTables {
             GROUP BY vds_key
         ) AS n
         JOIN `~{fq_dataset}.~{key_to_vid_table}` AS k USING (vds_key);
-
-        CREATE VIEW `~{fq_dataset}.~{participant_mapping_table_name}` AS
-        SELECT vid, ARRAY_CONCAT(het_ids, hom_ids, hemi_ids) AS person_ids
-        FROM `~{fq_dataset}.~{base_table_name}`;
         SQL
 
         # bq query --max_rows check: ok, results go to the new tables
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} "$(cat create_mapping_tables.sql)"
+
+        # A query of its own: BigQuery will not create a view in a script that declares a temporary function, whether
+        # or not the view uses it.
+        # bq query --max_rows check: ok, creates a view
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} \
+            'CREATE VIEW `~{fq_dataset}.~{participant_mapping_table_name}` AS
+             SELECT vid, ARRAY_CONCAT(het_ids, hom_ids, hemi_ids) AS person_ids
+             FROM `~{fq_dataset}.~{base_table_name}`'
     >>>
 
     runtime {
