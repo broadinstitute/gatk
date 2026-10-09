@@ -176,15 +176,22 @@ task LoadMappingInputs {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         # Staging tables, replaced on a rerun. Load jobs are free; the pairs are on the order of 2.5e12 rows genome-wide.
-        # The glob matches across both needs_normalization= directories and skips Spark's _SUCCESS markers. Without
-        # hive partitioning the flag, which lives only in the directory names, is not loaded.
+        # Spark writes no directory for a flag value with no rows, which an interval with no flagged carriers can
+        # produce, so list only the directories that exist. Name them rather than globbing pairs.parquet: a BigQuery
+        # wildcard matches across /, and an executor lost mid-write can leave partial files under _temporary/ after
+        # the job commits. Without hive partitioning the flag, which lives only in the directory names, is not loaded.
+        normalized='~{pairs_parquet_path}/needs_normalization=true'
+        sources=()
+        for dir in '~{pairs_parquet_path}/needs_normalization=false' "${normalized}"; do
+            if gcloud storage ls "${dir}/" > /dev/null 2>&1; then
+                sources+=("${dir}/*.parquet")
+            fi
+        done
         bq --apilog=false load --project_id=~{project_id} --replace --source_format=PARQUET \
-            ~{dataset_name}.~{pairs_table_name} '~{pairs_parquet_path}/*.parquet'
+            ~{dataset_name}.~{pairs_table_name} "$(IFS=,; echo "${sources[*]}")"
 
         # The pairs on keys bcftools norm moved, again, as their own small table: the provenance table reads these
-        # rather than scanning the pairs a second time. Spark writes no directory for a flag value with no rows, which
-        # an interval with no flagged carriers can produce.
-        normalized='~{pairs_parquet_path}/needs_normalization=true'
+        # rather than scanning the pairs a second time.
         if gcloud storage ls "${normalized}/" > /dev/null 2>&1; then
             bq --apilog=false load --project_id=~{project_id} --replace --source_format=PARQUET \
                 ~{dataset_name}.~{normalized_pairs_table_name} "${normalized}/*.parquet"
