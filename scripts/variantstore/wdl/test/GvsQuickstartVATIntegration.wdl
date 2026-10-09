@@ -25,6 +25,7 @@ workflow GvsQuickstartVATIntegration {
         String? variants_docker
         String? variants_nirvana_docker
         String? gatk_docker
+        Boolean use_manual_clinvar_update = false
     }
     String project_id = "gvs-internal"
 
@@ -85,6 +86,7 @@ workflow GvsQuickstartVATIntegration {
             gatk_docker = effective_gatk_docker,
             variants_docker = effective_variants_docker,
             variants_nirvana_docker = effective_variants_nirvana_docker,
+            use_manual_clinvar_update = use_manual_clinvar_update,
     }
 
     # Intentionally unused: runs for its side effect of validating the VAT; its output is not consumed downstream.
@@ -100,7 +102,10 @@ workflow GvsQuickstartVATIntegration {
             variants_docker = effective_variants_docker,
     }
 
-    String expected_prefix = expected_output_prefix + dataset_suffix + "/"
+    # The manually rebuilt ClinVar changes the VAT's ClinVar columns, so it has its own expected outputs alongside the
+    # default ones. Kept out of `dataset_suffix`, which also names the BigQuery dataset.
+    String expected_subdir_suffix = if (use_manual_clinvar_update) then "_manual_clinvar" else ""
+    String expected_prefix = expected_output_prefix + dataset_suffix + expected_subdir_suffix + "/"
     # Intentionally unused: runs for its side effect of asserting test outputs match; its output is not consumed downstream.
     #@ except: UnusedCall
     call AssertIdenticalOutputs {
