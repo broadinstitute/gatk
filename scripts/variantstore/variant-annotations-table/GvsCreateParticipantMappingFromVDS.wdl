@@ -344,10 +344,11 @@ task CheckMappingTables {
         set -o errexit -o nounset -o pipefail -o xtrace
 
         cat > acceptance_checks.sql <<'SQL'
-        -- Only the VAT VIDs on contigs the mapping covers, so a run restricted to whole contigs is checked as a whole.
         WITH contigs AS (
             SELECT DISTINCT SPLIT(vid, '-')[OFFSET(0)] AS contig FROM `~{base_table}`
         ),
+        -- Only the VAT VIDs on contigs the mapping covers, so a run restricted to whole contigs is checked as a whole.
+        -- Not the first line of the query: bq would parse a query starting with -- as a flag.
         vat AS (
             SELECT vid, ANY_VALUE(gvs_all_sc) AS sc
             FROM `~{fq_vat_table}`
