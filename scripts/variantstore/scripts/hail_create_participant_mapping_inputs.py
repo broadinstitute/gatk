@@ -23,6 +23,13 @@ Outputs under --output:
                               few pairs on flagged keys can be loaded without scanning the rest
   summary.json                counts and timings
 
+The pairs are checkpointed as a Hail Table before Spark converts them to Parquet. Spark aborts a whole
+Parquet write if an executor is lost after its task is authorized to commit (OutputCommitCoordinator,
+unconditionally, since a retry could duplicate that task's output), which preemptible workers make
+likely over a long write. Hail's own writes are not subject to this, so the expensive pass over the VDS
+completes once, and only the conversion is retried. A run that fails after the checkpoint resumes from it
+when relaunched with the same arguments; the checkpoint is deleted once the Parquet is written.
+
 Zygosity mirrors call_stats: a homozygote needs ploidy 2, so a haploid carrier (male chrX and chrY
 outside the PARs) is hemi. Per key, n_hom == Hom and n_het + n_hom + n_hemi == AC - Hom (gvs_all_sc).
 
@@ -34,6 +41,7 @@ Run it with GvsRunHailScript.wdl:
 Add "interval": "chr21" to restrict the run to one locus interval.
 """
 import argparse
+import hashlib
 import json
 import sys
 import time
@@ -48,6 +56,7 @@ from hail_create_vat_inputs import (
 
 SHIFTABLE_CLASSES = ['insertion_shiftable', 'deletion_shiftable']
 SUPPORTED_CLASSES = ['snv', 'insertion', 'deletion'] + SHIFTABLE_CLASSES
+PARQUET_WRITE_ATTEMPTS = 3
 
 
 def carrier_entries(vds_path, intervals):
@@ -101,7 +110,7 @@ def write_keys_to_normalize(vd, out):
     return classes
 
 
-def write_pairs(vd, out):
+def carrier_pairs(vd):
     a = vd.a_index
     gt = vd.GT
     # Mirrors call_stats: a homozygote needs ploidy > 1 (CallStatsAggregator.scala:201).
@@ -114,9 +123,21 @@ def write_pairs(vd, out):
     vd = vd.annotate_entries(zygosity=hl.or_missing(gt.contains_allele(a), zygosity))
     vd = vd.filter_entries(hl.is_defined(vd.zygosity))
     et = vd.entries().key_by()
-    et.select(vds_key=et.vds_key, person_id=hl.parse_int64(et.s), zygosity=et.zygosity,
-              needs_normalization=hl.literal(SHIFTABLE_CLASSES).contains(et.key_class)) \
-        .to_spark().write.partitionBy('needs_normalization').parquet(f'{out}/pairs.parquet', mode='overwrite')
+    return et.select(vds_key=et.vds_key, person_id=hl.parse_int64(et.s), zygosity=et.zygosity,
+                     needs_normalization=hl.literal(SHIFTABLE_CLASSES).contains(et.key_class))
+
+
+def write_pairs_parquet(pairs, out):
+    """Convert the checkpointed pairs to Parquet, retrying only the commit-coordination abort. mode='overwrite'
+    clears a failed attempt's partial output first, so a retry cannot leave duplicates behind."""
+    for attempt in range(1, PARQUET_WRITE_ATTEMPTS + 1):
+        try:
+            pairs.to_spark().write.partitionBy('needs_normalization').parquet(f'{out}/pairs.parquet', mode='overwrite')
+            return attempt
+        except Exception as e:
+            if 'Authorized committer' not in str(e) or attempt == PARQUET_WRITE_ATTEMPTS:
+                raise
+            print(f'Parquet write attempt {attempt} lost an authorized committer; retrying', file=sys.stderr)
 
 
 def main():
@@ -142,14 +163,35 @@ def main():
     if unparseable:
         raise ValueError(f'sample names that are not integer person IDs: {unparseable}')
 
+    # Resume state for this run's arguments, deleted on success, so a later run never picks up another's output.
+    run_id = hashlib.sha256(json.dumps([args.vds, args.interval, out]).encode()).hexdigest()[:16]
+    resume_dir = f"{args.temp_path.rstrip('/')}/participant_mapping_inputs_resume/{run_id}"
+    classes_path, checkpoint_path = f'{resume_dir}/key_classes.json', f'{resume_dir}/pairs.ht'
+
     start = time.time()
-    summary['key_classes'] = write_keys_to_normalize(vd, out)
+    if hl.hadoop_exists(classes_path):
+        with hl.hadoop_open(classes_path) as f:
+            summary['key_classes'] = json.load(f)
+        summary['classify_resumed'] = True
+    else:
+        summary['key_classes'] = write_keys_to_normalize(vd, out)
+        with hl.hadoop_open(classes_path, 'w') as f:
+            json.dump(summary['key_classes'], f)
     summary['keys_to_normalize'] = sum(summary['key_classes'].get(c, 0) for c in SHIFTABLE_CLASSES)
     summary['classify_seconds'] = round(time.time() - start, 1)
 
     start = time.time()
-    write_pairs(vd, out)
-    summary['pairs_seconds'] = round(time.time() - start, 1)
+    if hl.hadoop_exists(f'{checkpoint_path}/_SUCCESS'):
+        pairs = hl.read_table(checkpoint_path)
+        summary['pairs_resumed'] = True
+    else:
+        pairs = carrier_pairs(vd).checkpoint(checkpoint_path, overwrite=True)
+    summary['pairs_checkpoint_seconds'] = round(time.time() - start, 1)
+
+    start = time.time()
+    summary['parquet_write_attempts'] = write_pairs_parquet(pairs, out)
+    summary['parquet_seconds'] = round(time.time() - start, 1)
+    hl.current_backend().fs.rmtree(resume_dir)
 
     # Hail's progress bar is left mid-line on stderr; end it so the JSON starts on its own line.
     sys.stderr.write('\n')

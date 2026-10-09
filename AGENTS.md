@@ -516,6 +516,25 @@ extensionless so that the Dockerfile's `COPY *.py /app/` leaves it out of the
 Variants image and out of the rebuild-and-bump obligation. Do not rename it to
 `check_wdl_heredocs.py`.
 
+## `bq query` traps that pass every local check
+
+Two failures in the `bq` CLI are invisible to `womtool validate` and
+`check-wdl-heredocs`, because to both the query is only a string. Each surfaces
+only when the task runs, and neither error message names its cause.
+
+1. **A query string that begins with `-` is parsed as a flag.** That includes a
+   leading `--` SQL comment. absl then tries to suggest a flag name close to the
+   whole query, and its recursive edit-distance function exhausts the stack: a
+   `RecursionError` traceback from `_damerau_levenshtein`, with no mention of
+   the query. Start every query with a statement and put comments after it, or
+   pass the query on stdin rather than as an argument.
+2. **BigQuery will not create a view in a script that declares a temporary
+   function**, whether or not the view uses it: `Creating views with temporary
+   user-defined functions is not supported`. Because the failure comes at the
+   `CREATE VIEW`, every table the script built before it already exists. A
+   script using `CREATE TABLE` rather than `CREATE OR REPLACE` then fails on
+   rerun until they are dropped. Create the view in a separate `bq query` call.
+
 # Documentation Conventions
 
 ## Markdown tables must be rectangular
@@ -809,3 +828,16 @@ that contains the script name and reports a process that does not exist.
 
 More generally: when a check returns the answer you were hoping for
 suspiciously early, spend one command confirming it means what you think.
+
+## Check repository state before reporting it
+
+Before telling the user that work is uncommitted, unpushed, or on some branch,
+run `git status -sb` and `git log` and report what they show. Do not carry the
+claim forward from earlier in the session. The user commits and pushes on their
+own, between turns, and a conversation summary records state as of when it was
+written, so a statement that was true an hour ago reads just as confidently as
+one that is true now.
+
+In the VS-2041 work, "nothing is committed yet" was repeated across several
+hand-offs after the user had committed and pushed every change. One command
+would have caught it.
