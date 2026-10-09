@@ -12,9 +12,12 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.stream.Collectors;
 
 public class ClosestSVFinderTest {
@@ -371,5 +374,71 @@ public class ClosestSVFinderTest {
         Assert.assertEquals(genotypeConcordance, expectedConcordance);
         Assert.assertEquals(state, expectMatch ? ConcordanceState.TRUE_POSITIVE.getAbbreviation() :
                 ConcordanceState.FALSE_POSITIVE.getAbbreviation());
+    }
+
+    /**
+     * Many truth variants tie on breakend distance, so the genotype tiebreaker (whose distances are cached) decides,
+     * for truth variants added both before and after the eval variant. The match must equal a brute-force choice.
+     */
+    @Test
+    public void testGenotypeTiebreakMatchesBruteForce() {
+        final Random random = new Random(7);
+        final List<Allele> alleles = Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL);
+        final List<List<Allele>> genotypeAlleles = Lists.newArrayList(
+                Lists.newArrayList(Allele.REF_N, Allele.REF_N),
+                Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                Lists.newArrayList(Allele.SV_SIMPLE_DEL, Allele.SV_SIMPLE_DEL));
+        for (int trial = 0; trial < 50; trial++) {
+            final SVConcordanceLinkage linkage = new SVConcordanceLinkage(SVTestUtils.hg38Dict);
+            final ClosestSVFinder engine = new ClosestSVFinder(linkage, new SVConcordanceAnnotator()::annotate, SVTestUtils.hg38Dict);
+            final int start = 100000;
+            final SVCallRecord eval = makeDeletion("eval", start, start + 999, alleles, randomGenotypes(random, genotypeAlleles));
+            // Truth variants at the eval start may be added before it (closest search) or after it (closest update)
+            final List<SVCallRecord> before = new ArrayList<>();
+            final List<SVCallRecord> after = new ArrayList<>();
+            for (int i = 0; i < 2 + random.nextInt(10); i++) {
+                // Identical or nearly identical breakends, so distance criteria tie often
+                final int shift = random.nextInt(3) == 0 ? random.nextInt(3) : 0;
+                final SVCallRecord truth = makeDeletion("truth" + i, start + shift, start + 999 + shift,
+                        alleles, randomGenotypes(random, genotypeAlleles));
+                (shift == 0 && random.nextBoolean() ? before : after).add(truth);
+            }
+            after.sort(Comparator.comparingInt(SVCallRecord::getPositionA));
+            long id = 0;
+            for (final SVCallRecord truth : before) {
+                engine.add(truth, id++, true);
+            }
+            engine.add(eval, id++, false);
+            for (final SVCallRecord truth : after) {
+                engine.add(truth, id++, true);
+            }
+            final List<SVCallRecord> truths = new ArrayList<>(before);
+            truths.addAll(after);
+            final List<ClosestSVFinder.LinkageConcordanceRecord> out = engine.flush(true);
+            Assert.assertEquals(out.size(), 1);
+            final SVCallRecord expected = truths.stream()
+                    .filter(truth -> linkage.areClusterable(eval, truth).getResult())
+                    .min(Comparator.<SVCallRecord>comparingInt(truth -> ClosestSVFinder.totalDistance(eval, truth))
+                            .thenComparingInt(truth -> ClosestSVFinder.minDistance(eval, truth))
+                            .thenComparingInt(truth -> ClosestSVFinder.genotypeDistance(eval, truth))
+                            .thenComparing(SVCallRecord::getId))
+                    .orElse(null);
+            assertConcordanceMembers(out.get(0).record(), expected == null ? null : expected.getId());
+        }
+    }
+
+    private static List<GenotypeBuilder> randomGenotypes(final Random random, final List<List<Allele>> genotypeAlleles) {
+        final List<GenotypeBuilder> genotypes = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            genotypes.add(new GenotypeBuilder("sample" + i, genotypeAlleles.get(random.nextInt(genotypeAlleles.size()))));
+        }
+        return genotypes;
+    }
+
+    private static SVCallRecord makeDeletion(final String id, final int start, final int end, final List<Allele> alleles,
+                                             final List<GenotypeBuilder> genotypes) {
+        return SVTestUtils.makeRecord(id, "chr1", start, true, "chr1", end, false,
+                GATKSVVCFConstants.StructuralVariantAnnotationType.DEL, null, SVTestUtils.PESR_ONLY_ALGORITHM_LIST,
+                alleles, genotypes);
     }
 }

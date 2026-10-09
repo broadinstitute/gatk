@@ -13,6 +13,7 @@ import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngineArg
 import org.broadinstitute.hellbender.tools.walkers.sv.SVStratify;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceState;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.*;
@@ -88,6 +89,26 @@ public class StratifiedConcordanceEngine {
         final Collection<VariantContext> result = outputBuffer;
         outputBuffer = new ArrayList<>();
         return result;
+    }
+
+    /**
+     * Lower bounds on the positions of eval variants that have been added but not yet returned by {@link #flush}: the
+     * earliest active eval variant in each group, as a single-base interval. Variants not yet added are not covered.
+     */
+    public List<SimpleInterval> getActiveEvalStarts() {
+        final List<SimpleInterval> starts = new ArrayList<>(clusterEngineMap.size() + 1);
+        for (final ClosestSVFinder engine : clusterEngineMap.values()) {
+            addActiveEvalStart(engine, starts);
+        }
+        addActiveEvalStart(defaultEngine, starts);
+        return starts;
+    }
+
+    private static void addActiveEvalStart(final ClosestSVFinder engine, final List<SimpleInterval> starts) {
+        final Integer start = engine.minActiveStartPosition();
+        if (start != null) {
+            starts.add(new SimpleInterval(engine.getLastItemContig(), start, start));
+        }
     }
 
     /**

@@ -2,10 +2,13 @@ package org.broadinstitute.hellbender.tools.walkers.sv;
 
 import com.google.common.collect.Sets;
 import htsjdk.samtools.SAMSequenceDictionary;
+import htsjdk.samtools.SAMSequenceRecord;
 import htsjdk.samtools.util.SortingCollection;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
+import htsjdk.variant.variantcontext.GenotypesContext;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.*;
 import org.apache.commons.collections4.Predicate;
@@ -37,6 +40,7 @@ import org.broadinstitute.hellbender.tools.sv.stratify.OptionalSVStratificationE
 import org.broadinstitute.hellbender.tools.sv.stratify.SVStratificationEngine;
 import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.utils.SequenceDictionaryUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 import picard.vcf.GenotypeConcordance;
@@ -186,8 +190,17 @@ public final class SVConcordance extends AbstractConcordanceWalker {
 
     protected StratifiedConcordanceEngine engine;
     protected SAMSequenceDictionary dictionary;
-    protected SortingCollection<VariantContext> sortingBuffer;
     protected VariantContextWriter writer;
+
+    // Output records are written in the order of a stable sort by (header contig index, start). When the eval header
+    // orders contigs as the traversal does, records are held in an in-memory reorder buffer and written as soon as no
+    // pending record can precede them; otherwise they all go through an on-disk sorting collection.
+    protected SortingCollection<VariantContext> sortingBuffer;
+    private PriorityQueue<PendingOutput> reorderBuffer;
+    private Map<String, Integer> outputContigIndex;
+    private long numOutputRecords = 0;
+    private String lastAddedContig;
+    private int lastAddedStart;
 
 
     @Override
@@ -211,18 +224,30 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         writer = createVCFWriter(outputFile);
         final VCFHeader header = createHeader(getEvalHeader());
         writer.writeHeader(header);
-        sortingBuffer = SortingCollection.newInstance(
-                VariantContext.class,
-                new VCFRecordCodec(header, true),
-                header.getVCFRecordComparator(),
-                maxRecordsInRam,
-                tmpDir.toPath());
+        outputContigIndex = new HashMap<>();
+        for (final VCFContigHeaderLine contigLine : header.getContigLines()) {
+            outputContigIndex.put(contigLine.getID(), contigLine.getContigIndex());
+        }
+        if (!outputContigIndex.isEmpty() && outputContigOrderMatchesTraversal()) {
+            reorderBuffer = new PriorityQueue<>();
+        } else {
+            sortingBuffer = SortingCollection.newInstance(
+                    VariantContext.class,
+                    new VCFRecordCodec(header, true),
+                    header.getVCFRecordComparator(),
+                    maxRecordsInRam,
+                    tmpDir.toPath());
+        }
 
         // Concordance computations should be done on common samples only
-        final Set<String> commonSamples = Sets.intersection(
+        final Set<String> commonSamples = new HashSet<>(Sets.intersection(
                 new HashSet<>(getEvalHeader().getGenotypeSamples()),
-                new HashSet<>(getTruthHeader().getGenotypeSamples()));
-        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(commonSamples);
+                new HashSet<>(getTruthHeader().getGenotypeSamples())));
+        // Output used to pass through the sorting collection's VCF text round trip, which re-decodes genotypes when the
+        // header's samples are not in sorted order and so drops FORMAT keys that no sample has a value for. Without the
+        // round trip, reproduce that by not emitting the one key the annotator can leave valueless for every sample.
+        final boolean omitUndeterminedCopyNumberEquality = reorderBuffer != null && !header.samplesWereAlreadySorted();
+        final SVConcordanceAnnotator collapser = new SVConcordanceAnnotator(commonSamples, omitUndeterminedCopyNumberEquality);
 
         // Load stratification groups
         if ((stratArgs.configFile == null) ^ (strataClusteringConfigFile == null)) {
@@ -253,18 +278,74 @@ public final class SVConcordance extends AbstractConcordanceWalker {
     }
 
 
+    /**
+     * True if every contig in the output header is indexed in the same relative order as the traversal (sequence
+     * dictionary) order, so that records from contigs not yet traversed can never sort before records already seen.
+     */
+    private boolean outputContigOrderMatchesTraversal() {
+        int lastIndex = -1;
+        for (final SAMSequenceRecord sequence : dictionary.getSequences()) {
+            final Integer index = outputContigIndex.get(sequence.getSequenceName());
+            if (index != null) {
+                if (index <= lastIndex) {
+                    return false;
+                }
+                lastIndex = index;
+            }
+        }
+        return true;
+    }
+
     @Override
     public Object onTraversalSuccess() {
-        for (final VariantContext variant : engine.flush(true)) {
-            sortingBuffer.add(variant);
-        }
+        bufferOutput(engine.flush(true));
         if (!engine.isEmpty()) {
             throw new GATKException("Concordance engine is not empty, but it should be");
         }
-        for (final VariantContext variant : sortingBuffer) {
-            writer.add(variant);
+        if (reorderBuffer != null) {
+            while (!reorderBuffer.isEmpty()) {
+                writer.add(reorderBuffer.poll().variant);
+            }
+        } else {
+            for (final VariantContext variant : sortingBuffer) {
+                writer.add(variant);
+            }
         }
         return super.onTraversalSuccess();
+    }
+
+    private void bufferOutput(final Collection<VariantContext> variants) {
+        for (final VariantContext variant : variants) {
+            if (reorderBuffer != null) {
+                reorderBuffer.add(new PendingOutput(variant, outputContigIndex.get(variant.getContig()), numOutputRecords++));
+            } else {
+                sortingBuffer.add(variant);
+            }
+        }
+    }
+
+    /**
+     * Writes buffered records that sort at or before every record still to come. Records still to come are eval
+     * variants active in the engine and variants not yet added, which start at or after the last added variant.
+     * A pending record that ties with a later one keeps its place because it was produced first, which matches the
+     * stable sort of the sorting collection.
+     */
+    private void writeReadyOutput() {
+        final List<SimpleInterval> bounds = engine.getActiveEvalStarts();
+        bounds.add(new SimpleInterval(lastAddedContig, lastAddedStart, lastAddedStart));
+        while (!reorderBuffer.isEmpty() && precedesAll(reorderBuffer.peek(), bounds)) {
+            writer.add(reorderBuffer.poll().variant);
+        }
+    }
+
+    private boolean precedesAll(final PendingOutput pending, final List<SimpleInterval> bounds) {
+        for (final SimpleInterval bound : bounds) {
+            final int contigCompare = Integer.compare(pending.contigIndex, outputContigIndex.get(bound.getContig()));
+            if (contigCompare > 0 || (contigCompare == 0 && pending.variant.getStart() > bound.getStart())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     @Override
@@ -281,27 +362,22 @@ public final class SVConcordance extends AbstractConcordanceWalker {
     @Override
     public void apply(final TruthVersusEval truthVersusEval, final ReadsContext readsContext, final ReferenceContext refContext) {
         if (truthVersusEval.hasTruth()) {
-            final SVCallRecord record = minimizeTruthFootprint(SVCallRecordUtils.create(truthVersusEval.getTruth(), dictionary));
-            engine.addTruthVariant(record);
+            final VariantContext truth = truthVersusEval.getTruth();
+            final SVCallRecord site = SVCallRecordUtils.create(new VariantContextBuilder(truth).noGenotypes().make(), dictionary);
+            engine.addTruthVariant(new LazyTruthRecord(site, truth, dictionary));
+            lastAddedContig = site.getContigA();
+            lastAddedStart = site.getPositionA();
         }
         if (truthVersusEval.hasEval()) {
             final SVCallRecord record = SVCallRecordUtils.create(truthVersusEval.getEval(), dictionary);
             engine.addEvalVariant(record);
+            lastAddedContig = record.getContigA();
+            lastAddedStart = record.getPositionA();
         }
-        for (final VariantContext variant : engine.flush(false)) {
-            sortingBuffer.add(variant);
+        bufferOutput(engine.flush(false));
+        if (reorderBuffer != null) {
+            writeReadyOutput();
         }
-    }
-
-    /**
-     * Strips unneeded FORMAT fields from a truth variant to save memory.
-     */
-    private SVCallRecord minimizeTruthFootprint(final SVCallRecord item) {
-        final List<Genotype> genotypes = item.getGenotypes().stream().map(SVConcordance::stripTruthGenotype).collect(Collectors.toList());
-        return new SVCallRecord(item.getId(), item.getContigA(), item.getPositionA(),
-                item.getStrandA(), item.getContigB(), item.getPositionB(), item.getStrandB(), item.getType(),
-                item.getComplexSubtype(), item.getComplexEventIntervals(), item.getLength(), item.getEvidence(), item.getAlgorithms(),
-                item.getAlleles(), genotypes, item.getAttributes(), item.getFilters(), item.getLog10PError(), dictionary);
     }
 
     /**
@@ -316,6 +392,61 @@ public final class SVConcordance extends AbstractConcordanceWalker {
             builder.attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, genotype.getExtendedAttribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT));
         }
         return builder.make();
+    }
+
+    /**
+     * Output record waiting in the reorder buffer, ordered by output contig index, start, then production order.
+     */
+    private static final class PendingOutput implements Comparable<PendingOutput> {
+        final VariantContext variant;
+        final int contigIndex;
+        final long order;
+
+        PendingOutput(final VariantContext variant, final int contigIndex, final long order) {
+            this.variant = variant;
+            this.contigIndex = contigIndex;
+            this.order = order;
+        }
+
+        @Override
+        public int compareTo(final PendingOutput other) {
+            int result = Integer.compare(contigIndex, other.contigIndex);
+            if (result == 0) {
+                result = Integer.compare(variant.getStart(), other.variant.getStart());
+            }
+            return result != 0 ? result : Long.compare(order, other.order);
+        }
+    }
+
+    /**
+     * Truth record whose genotypes are decoded only when first needed. Only truth variants chosen as the closest match,
+     * compared in a genotype tie-break, or tested for sample overlap need genotypes; decoding every truth variant's
+     * genotypes, all FORMAT fields included, dominated runtime and memory on large cohorts. On first access the
+     * genotypes are decoded from the source variant and stripped to GT and copy state, as before.
+     */
+    private static final class LazyTruthRecord extends SVCallRecord {
+        private VariantContext source; // released once genotypes are decoded
+        private GenotypesContext genotypes;
+
+        LazyTruthRecord(final SVCallRecord site, final VariantContext source, final SAMSequenceDictionary dictionary) {
+            super(site.getId(), site.getContigA(), site.getPositionA(), site.getStrandA(), site.getContigB(),
+                    site.getPositionB(), site.getStrandB(), site.getType(), site.getComplexSubtype(),
+                    site.getComplexEventIntervals(), site.getLength(), site.getEvidence(), site.getAlgorithms(),
+                    site.getAlleles(), Collections.emptyList(), site.getAttributes(), site.getFilters(),
+                    site.getLog10PError(), dictionary);
+            this.source = source;
+        }
+
+        @Override
+        public GenotypesContext getGenotypes() {
+            if (genotypes == null) {
+                final GenotypesContext stripped = GenotypesContext.create();
+                stripped.addAll(source.getGenotypes().stream().map(SVConcordance::stripTruthGenotype).collect(Collectors.toList()));
+                genotypes = stripped;
+                source = null;
+            }
+            return genotypes;
+        }
     }
 
     @Override

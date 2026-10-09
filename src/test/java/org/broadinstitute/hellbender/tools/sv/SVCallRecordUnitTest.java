@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.sv;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Sets;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.GenotypesContext;
@@ -118,6 +119,30 @@ public class SVCallRecordUnitTest {
         Assert.assertEquals(record.getLog10PError(), Double.valueOf(30));
         Assert.assertEquals(record.getComplexSubtype(), GATKSVVCFConstants.ComplexVariantSubtype.dDUP);
         Assert.assertEquals(record.getComplexEventIntervals(), Lists.newArrayList(SVCallRecord.ComplexEventInterval.decode("DUP_chr1:100-200", SVTestUtils.hg38Dict)));
+    }
+
+    /**
+     * Subclasses may supply genotypes lazily by overriding getGenotypes(), so derived sample accessors must use it.
+     */
+    @Test
+    public void testSampleAccessorsUseGetGenotypes() {
+        final GenotypesContext genotypes = GenotypesContext.create(
+                new GenotypeBuilder("carrier", Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL))
+                        .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make(),
+                new GenotypeBuilder("ref", Lists.newArrayList(Allele.REF_N, Allele.REF_N))
+                        .attribute(GATKSVVCFConstants.EXPECTED_COPY_NUMBER_FORMAT, 2).make());
+        final SVCallRecord record = new SVCallRecord("var1", "chr1", 100, true, "chr1", 200, false, GATKSVVCFConstants.StructuralVariantAnnotationType.DEL,
+                null, Collections.emptyList(), null, Collections.emptyList(), SVTestUtils.PESR_ONLY_ALGORITHM_LIST, Lists.newArrayList(Allele.REF_N, Allele.SV_SIMPLE_DEL),
+                Collections.emptyList(), Collections.emptyMap(), Collections.emptySet(), null, SVTestUtils.hg38Dict) {
+            @Override
+            public GenotypesContext getGenotypes() {
+                return genotypes;
+            }
+        };
+        Assert.assertEquals(record.getAllSamples(), Sets.newLinkedHashSet(Lists.newArrayList("carrier", "ref")));
+        Assert.assertEquals(record.getCarrierSampleSet(), Collections.singleton("carrier"));
+        Assert.assertEquals(record.getCarrierGenotypeList().size(), 1);
+        Assert.assertEquals(record.getCarrierCount(), 1);
     }
 
     @Test

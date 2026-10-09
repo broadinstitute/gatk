@@ -323,7 +323,7 @@ public class SVCallRecord implements SVLocatable {
     }
 
     private Stream<Genotype> getCarrierGenotypeStream() {
-        return genotypes.stream().filter(this::isCarrier);
+        return getGenotypes().stream().filter(this::isCarrier);
     }
 
     public boolean isDepthOnly() {
@@ -412,10 +412,13 @@ public class SVCallRecord implements SVLocatable {
     public Allele getRefAllele() { return refAllele; }
 
     public Set<String> getAllSamples() {
-        return genotypes.stream().map(Genotype::getSampleName)
+        return getGenotypes().stream().map(Genotype::getSampleName)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
+    /**
+     * Subclasses may override to supply genotypes lazily; all genotype access within this class goes through here.
+     */
     public GenotypesContext getGenotypes() {
         return genotypes;
     }

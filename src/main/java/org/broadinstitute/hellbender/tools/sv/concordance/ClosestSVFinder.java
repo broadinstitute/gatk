@@ -117,7 +117,11 @@ public class ClosestSVFinder {
         }
     }
 
-    private Integer minActiveStartPosition() {
+    /**
+     * Start position of the earliest active eval variant on the current contig ({@link #getLastItemContig()}), or
+     * null if there are none
+     */
+    public Integer minActiveStartPosition() {
         return idToClusterMap.isEmpty() ? null : idToClusterMap.values().stream().mapToInt(c -> c.getItem().getPositionA()).min().getAsInt();
     }
 
@@ -177,7 +181,10 @@ public class ClosestSVFinder {
     public LinkageConcordanceRecord getClosestItem(final SVCallRecord evalRecord, final Map<Long, SVCallRecord> candidates) {
         final Comparator<LinkageConcordanceRecord> distanceComparator = Comparator.comparingInt(o -> totalDistance(evalRecord, o.record()));
         final Comparator<LinkageConcordanceRecord> minDistanceComparator = Comparator.comparingInt(o -> minDistance(evalRecord, o.record()));
-        final Comparator<LinkageConcordanceRecord> genotypeDistanceComparator = Comparator.comparingInt(o -> genotypeDistance(evalRecord, o.record()));
+        // Genotype distance is a costly tiebreaker, so compute it at most once per candidate
+        final Map<Long, Integer> genotypeDistances = new HashMap<>();
+        final Comparator<LinkageConcordanceRecord> genotypeDistanceComparator = Comparator.comparingInt(
+                o -> genotypeDistances.computeIfAbsent(o.id(), id -> genotypeDistance(evalRecord, o.record())));
         // For consistency, in case all other criteria are equal
         final Comparator<LinkageConcordanceRecord> idEqualComparator = Comparator.comparing(o -> !o.record().getId().equals(evalRecord.getId()));
         final Comparator<LinkageConcordanceRecord> idOrderComparator = Comparator.comparing(o -> o.record().getId());
@@ -292,6 +299,7 @@ public class ClosestSVFinder {
         final Long itemId;
         final SVCallRecord item;
         LinkageConcordanceRecord closest;
+        Integer closestGenotypeDistance; // genotype distance to closest, if computed
         final int maxClusterableStartingPosition;
 
         ActiveClosestPair(final Long itemId, final SVCallRecord item,
@@ -310,19 +318,37 @@ public class ClosestSVFinder {
             Utils.nonNull(newClosest);
             if (closest == null) {
                 closest = newClosest;
+                closestGenotypeDistance = null;
             }
             final Comparator<LinkageConcordanceRecord> distanceComparator = Comparator.comparingInt(o -> totalDistance(item, o.record()));
             final Comparator<LinkageConcordanceRecord> minDistanceComparator = Comparator.comparingInt(o -> minDistance(item, o.record()));
-            final Comparator<LinkageConcordanceRecord> genotypeDistanceComparator = Comparator.comparingInt(o -> genotypeDistance(item, o.record()));
+            // Genotype distance is a costly tiebreaker: reuse the current closest's, and keep the new one's if it wins
+            final Integer[] newGenotypeDistance = new Integer[1];
+            final Comparator<LinkageConcordanceRecord> genotypeDistanceComparator = Comparator.comparingInt(o -> {
+                if (o == closest) {
+                    if (closestGenotypeDistance == null) {
+                        closestGenotypeDistance = genotypeDistance(item, o.record());
+                    }
+                    return closestGenotypeDistance;
+                }
+                if (newGenotypeDistance[0] == null) {
+                    newGenotypeDistance[0] = genotypeDistance(item, o.record());
+                }
+                return newGenotypeDistance[0];
+            });
             final Comparator<LinkageConcordanceRecord> idEqualComparator = Comparator.comparing(o -> !o.record().getId().equals(item.getId()));
             final Comparator<LinkageConcordanceRecord> idOrderComparator = Comparator.comparing(o -> o.record().getId());
             final List<LinkageConcordanceRecord> candidates = Arrays.asList(closest, newClosest);
-            closest = candidates.stream().min(distanceComparator
+            final LinkageConcordanceRecord winner = candidates.stream().min(distanceComparator
                             .thenComparing(minDistanceComparator)
                             .thenComparing(genotypeDistanceComparator)
                             .thenComparing(idEqualComparator)
                             .thenComparing(idOrderComparator))
                             .get();
+            if (winner != closest) {
+                closest = winner;
+                closestGenotypeDistance = newGenotypeDistance[0];
+            }
         }
 
         Long getItemId() {

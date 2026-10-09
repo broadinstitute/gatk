@@ -192,6 +192,16 @@ public final class SVCallRecordUtils {
                 genotypes, record.getAttributes(), record.getFilters(), record.getLog10PError());
     }
 
+    /**
+     * Creates shallow copy of the given record with genotypes and attributes replaced.
+     */
+    public static SVCallRecord copyCallWithNewGenotypesAndAttributes(final SVCallRecord record, final List<Genotype> genotypes,
+                                                                     final Map<String, Object> attr) {
+        return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(), record.getStrandA(), record.getContigB(),
+                record.getPositionB(), record.getStrandB(), record.getType(), record.getComplexSubtype(), record.getComplexEventIntervals(), record.getLength(), record.getEvidence(), record.getAlgorithms(), record.getAlleles(),
+                genotypes, attr, record.getFilters(), record.getLog10PError());
+    }
+
     public static SVCallRecord copyCallWithNewAttributes(final SVCallRecord record, final Map<String, Object> attr) {
         return new SVCallRecord(record.getId(), record.getContigA(), record.getPositionA(), record.getStrandA(), record.getContigB(),
                 record.getPositionB(), record.getStrandB(), record.getType(), record.getComplexSubtype(), record.getComplexEventIntervals(), record.getLength(), record.getEvidence(), record.getAlgorithms(), record.getAlleles(),
