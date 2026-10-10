@@ -30,6 +30,11 @@ likely over a long write. Hail's own writes are not subject to this, so the expe
 completes once, and only the conversion is retried. A run that fails after the checkpoint resumes from it
 when relaunched with the same arguments; the checkpoint is deleted once the Parquet is written.
 
+The VDS must hold exactly the active samples in --sample-info, an export of sample_info: none withdrawn,
+no controls, none unknown to it, and none missing. The VAT is built from the same VDS, so the mapping's
+checks against it cannot see a wrong sample set. The job fails before its first pass over the entries
+rather than filtering, which would leave the mapping disagreeing with the VAT.
+
 Zygosity mirrors call_stats: a homozygote needs ploidy 2, so a haploid carrier (male chrX and chrY
 outside the PARs) is hemi. Per key, n_hom == Hom and n_het + n_hom + n_hemi == AC - Hom (gvs_all_sc).
 
@@ -136,11 +141,37 @@ def write_pairs_parquet(pairs, out):
             print(f'Parquet write attempt {attempt} lost an authorized committer; retrying', file=sys.stderr)
 
 
+def check_sample_set(vds_samples, sample_info_path, summary):
+    """Fail unless the VDS holds exactly the active samples in sample_info."""
+    # The VDS column key is sample_info.sample_name (import_gvs.py), so the names compare directly.
+    status, is_loaded = {}, {}
+    with hl.hadoop_open(sample_info_path) as f:
+        for line in f:
+            if line.strip():
+                name, status[name], is_loaded[name] = line.rstrip('\n').split('\t')
+    summary['sample_info'] = {s: sum(1 for v in status.values() if v == s) for s in ['active', 'withdrawn', 'control']}
+    active = {name for name, s in status.items() if s == 'active'}
+    # is_loaded explains a missing sample but does not decide what is expected: Parquet callsets once left it unset.
+    problems = {
+        'withdrawn in the VDS': sorted(n for n in vds_samples if status.get(n) == 'withdrawn'),
+        'controls in the VDS': sorted(n for n in vds_samples if status.get(n) == 'control'),
+        'in the VDS but not in sample_info': sorted(vds_samples - status.keys()),
+        'active, is_loaded, missing from the VDS': sorted(n for n in active - vds_samples if is_loaded[n] == 'true'),
+        'active, not is_loaded, missing from the VDS': sorted(n for n in active - vds_samples if is_loaded[n] != 'true'),
+    }
+    problems = {k: v for k, v in problems.items() if v}
+    if problems:
+        raise ValueError('the VDS samples are not the active samples in sample_info: ' +
+                         '; '.join(f'{len(v)} {k}, e.g. {v[:10]}' for k, v in problems.items()))
+
+
 def main():
     parser = argparse.ArgumentParser(allow_abbrev=False)
     parser.add_argument('--vds', required=True)
     parser.add_argument('--output', required=True, help='GCS prefix for the outputs and the summary')
     parser.add_argument('--temp-path', required=True)
+    parser.add_argument('--sample-info', required=True,
+                        help='TSV of sample_name, status (active, withdrawn or control) and is_loaded, without a header')
     parser.add_argument('--interval', action='append', default=None,
                         help='Locus interval, repeatable (default: the whole VDS)')
     args = parser.parse_args()
@@ -158,6 +189,8 @@ def main():
         (hl.agg.count(), hl.agg.filter(hl.is_missing(hl.parse_int64(cols.s)), hl.agg.take(cols.s, 10))))
     if unparseable:
         raise ValueError(f'sample names that are not integer person IDs: {unparseable}')
+
+    check_sample_set(set(cols.s.collect()), args.sample_info, summary)
 
     # Resume state for this run's arguments, deleted on success, so a later run never picks up another's output.
     run_id = hashlib.sha256(json.dumps([args.vds, args.interval, out]).encode()).hexdigest()[:16]

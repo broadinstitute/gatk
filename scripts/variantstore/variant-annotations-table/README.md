@@ -61,6 +61,7 @@ Run `GvsCreateParticipantMappingFromVDS.wdl` to build it. The workflow reads car
 1. `vds_path`: the VDS the VAT was built from.
 1. `project_id`, `dataset_name`: where to create the mapping tables.
 1. `fq_vat_table`: the VAT created above, as `project.dataset.table`.
+1. `fq_sample_table`: the callset's `sample_info`, as `project.dataset.table`. The workflow fails early unless the VDS holds exactly the active samples in it: none withdrawn, no controls, none it does not list, and none missing.
 1. `participant_mapping_table_name`: the name of the delivered view. The workflow creates `<name>_base` (`het_ids`, `hom_ids` and `hemi_ids` per VID), `<name>_provenance` (the VIDs some of whose carriers came from a non-left-aligned representation) and the view `<name>`, with the `vid`, `person_ids` shape the Researcher Workbench expects. None of these may already exist. Its staging tables (`<name>_pairs`, `<name>_normalized_pairs` and `<name>_key_to_vid`) expire after seven days; genome-wide the pairs table is around 77 TB.
 
 The Hail step's outputs default to a path in the workspace bucket named for the dataset and the view; set `mapping_inputs_path` to put them elsewhere. Relaunching with the same VDS and path resumes from the Hail step's checkpoint after a cluster failure. `interval` (e.g. `chr21`) restricts a test build to one contig.

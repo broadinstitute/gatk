@@ -13,6 +13,7 @@ workflow GvsCreateParticipantMappingFromVDS {
         String project_id
         String dataset_name
         String fq_vat_table
+        String fq_sample_table
         String participant_mapping_table_name
         String? interval
         String? mapping_inputs_path
@@ -49,6 +50,9 @@ workflow GvsCreateParticipantMappingFromVDS {
         }
         fq_vat_table: {
             help: "The VAT, as project.dataset.table. Every VID the mapping files a carrier under must appear in it."
+        }
+        fq_sample_table: {
+            help: "The callset's sample_info, as project.dataset.table. The Hail job fails before its first pass over the VDS unless the VDS holds exactly its active samples: none withdrawn, no controls, none it does not list, and none missing."
         }
         interval: {
             help: "Optional single locus interval, e.g. chr21, to restrict the build to it. The acceptance checks restrict the VAT to the contigs the mapping covers, so pass whole contigs."
@@ -106,9 +110,18 @@ workflow GvsCreateParticipantMappingFromVDS {
             basic_docker = effective_basic_docker,
     }
 
+    call GetSampleInfo {
+        input:
+            project_id = project_id,
+            fq_sample_table = fq_sample_table,
+            output_path = mapping_inputs,
+            variants_docker = effective_variants_docker,
+    }
+
     call CreateMappingInputs {
         input:
             vds_path = vds_path,
+            sample_info_path = GetSampleInfo.sample_info_path,
             interval = interval,
             output_path = mapping_inputs,
             temp_path = "~{GetToolVersions.workspace_bucket}/hail-temp/participant-mapping-inputs",
@@ -181,9 +194,50 @@ workflow GvsCreateParticipantMappingFromVDS {
     }
 }
 
+task GetSampleInfo {
+    input {
+        String project_id
+        String fq_sample_table
+        String output_path
+        String variants_docker
+    }
+
+    meta {
+        # Samples are withdrawn after the fact; always read the current table.
+        volatile: true
+    }
+
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # bq query --max_rows check: ok, max_rows above the number of samples in any callset
+        # A withdrawn control counts as withdrawn. --format=csv quotes no field here: sample names are integers.
+        bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} --format=csv --max_rows=10000000 \
+            'SELECT sample_name,
+                    CASE WHEN withdrawn IS NOT NULL THEN "withdrawn" WHEN is_control THEN "control" ELSE "active" END,
+                    IFNULL(is_loaded, false)
+             FROM `~{fq_sample_table}`' |
+            sed 1d | tr ',' '\t' > sample_info.tsv
+        cut -f 2 sample_info.tsv | sort | uniq -c
+
+        gcloud storage cp sample_info.tsv '~{output_path}/sample_info.tsv'
+    >>>
+
+    runtime {
+        docker: variants_docker
+    }
+
+    output {
+        String sample_info_path = "~{output_path}/sample_info.tsv"
+    }
+}
+
 task CreateMappingInputs {
     input {
         String vds_path
+        String sample_info_path
         String? interval
         String output_path
         String temp_path
@@ -243,7 +297,8 @@ task CreateMappingInputs {
         {
             "vds": "~{vds_path}",
             "output": "~{output_path}",
-            "temp-path": "~{temp_path}"~{', "interval": "' + interval + '"'}
+            "temp-path": "~{temp_path}",
+            "sample-info": "~{sample_info_path}"~{', "interval": "' + interval + '"'}
         }
         FIN
         cat script-arguments.json
