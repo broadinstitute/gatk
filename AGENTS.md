@@ -53,6 +53,24 @@ VDS. The data within the VDS is used to generate an ancestry file for creating
 the VAT (Variant Annotations Table) and interval lists for the "small callsets"
 described in `AOU_DELIVERABLES.md`.
 
+### AoU artifact version numbers
+
+AoU artifact names carry a three-level version, as in
+`aou_srwgs_short_variants_v9_r2_p1.vds`: `v9` is the major version, which is
+AoU's call; `r2` is the release, which advances when the participant set
+changes; and `p1` is the patch. Within a release the patch counter is **one
+sequence shared across every artifact type**, not a separate counter per
+artifact. In v9 r2, p1 is the VDS, p2 the VAT, and p3 and p4 the participant
+mapping tables (VS-2023).
+
+So artifacts of one release routinely carry different patch numbers, and that
+is not evidence that they are mismatched: the v9 r2 p4 mapping table was built
+from the v9 r2 p1 VDS, and pairing the two is correct. Before reporting a
+version mismatch between artifacts, check the release level first, then
+confirm lineage from the ticket that produced the artifact, or from the inputs
+recorded in the Cromwell metadata of the workflow that built it. A differing
+patch number alone should not be flagged.
+
 ## Key Concepts
 
 ### Hard filtered versus soft filtered variants
@@ -126,15 +144,14 @@ Four consequences worth knowing before writing anything that joins across these:
 3. Minimizing is not left-aligning. `hl.min_rep` trims shared prefixes and
    suffixes but will not walk an indel through a repeat, so it cannot unify a
    left-aligned vid with a non-left-aligned `alt_allele` row. That needs real
-   normalization against the reference, which is what `GvsMapUnmappedVIDs` and
-   the scripts under
-   `scripts/variantstore/scripts/variant_annotation_table/left_alignment_fixups/`
-   exist to do.
+   normalization against the reference. `GvsCreateParticipantMappingFromVDS`
+   does it by running `bcftools norm` over the VDS keys that are not
+   left-aligned (the `NormalizeKeys` task).
 4. Indel length is invariant under normalization, so it is a safe filter when
    hunting for equivalent representations; position and allele strings are not.
-   The production synonym search keys on it as bcftools `ILEN` over a 200bp
+   The retired synonym search keyed on it as bcftools `ILEN` over a 200bp
    window rightward from the vid's position, left-aligned being the leftmost
-   equivalent form (`generate_bcftools_searches_for_variant_synonyms.py:38-45`).
+   equivalent form.
 
 
 # High-Level Architecture (WDLs, BigQuery, Terra)
@@ -474,11 +491,6 @@ SNP (single nucleotide polymorphism).
 See the documentation in `AOU_DELIVERABLES.md` for information on how to
 generate the VID to Participant ID Mapping Table.
 
-Note that for the past Echo callset there may need to be an additional step to
-patch this table for a set of VIDs that did not have corresponding Participant
-IDs. See the directory `pseudo_vids_only_in_vat` for more information on
-unmatched VIDs that were discovered in the VATs of the Delta and Echo callsets.
-
 ### The VAT's gnomAD version depends on reference disks
 
 `AnnotateVCF` in `GvsCreateVATfromVDS.wdl` reads its Nirvana data sources
@@ -620,6 +632,46 @@ Like `reflow-md` and `check-us-spelling`, this script is deliberately
 extensionless so that the Dockerfile's `COPY *.py /app/` leaves it out of the
 Variants image and out of the rebuild-and-bump obligation. Do not rename it to
 `check_wdl_heredocs.py`.
+
+## `bq query` traps that pass every local check
+
+Two failures in the `bq` CLI are invisible to `womtool validate` and
+`check-wdl-heredocs`, because to both the query is only a string. Each surfaces
+only when the task runs, and neither error message names its cause.
+
+1. **A query string that begins with `-` is parsed as a flag.** That includes a
+   leading `--` SQL comment. absl then tries to suggest a flag name close to the
+   whole query, and its recursive edit-distance function exhausts the stack: a
+   `RecursionError` traceback from `_damerau_levenshtein`, with no mention of
+   the query. Start every query with a statement and put comments after it, or
+   pass the query on stdin rather than as an argument.
+2. **BigQuery will not create a view in a script that declares a temporary
+   function**, whether or not the view uses it: `Creating views with temporary
+   user-defined functions is not supported`. Because the failure comes at the
+   `CREATE VIEW`, every table the script built before it already exists. A
+   script using `CREATE TABLE` rather than `CREATE OR REPLACE` then fails on
+   rerun until they are dropped. Create the view in a separate `bq query` call.
+
+## A `bq load` wildcard over Spark output also reads `_temporary/`
+
+A `*` in a BigQuery source URI matches across `/`, so `gs://.../out.parquet/*.parquet`
+matches every Parquet file anywhere under the directory, not just its top level.
+For Spark output that includes `_temporary/`. Spark normally deletes that
+directory when the job commits, but an executor lost to preemption can leave
+partial files there afterward, even when the write itself succeeded. The load
+then fails with `Input file is not in Parquet format`, naming a file under
+`_temporary/0/_temporary/attempt_.../`. That file is from an attempt that never
+committed, so the committed output is not at fault. In VS-2041 this broke the
+chrY load after a run that had otherwise succeeded, though the same glob had
+loaded chr21 without trouble.
+
+So never glob a Spark output directory from its root. Name the directories that
+hold committed output, such as each `partitionBy` directory, as a
+comma-separated list of URIs, and leave out any that do not exist, since a URI
+matching nothing fails the load. `LoadMappingInputs` in
+`GvsCreateParticipantMappingFromVDS.wdl` does this. Local readers are exposed in
+the same way: DuckDB pointed at `out.parquet/**/*.parquet` reads the partial file
+too.
 
 # Documentation Conventions
 
@@ -936,3 +988,16 @@ that contains the script name and reports a process that does not exist.
 
 More generally: when a check returns the answer you were hoping for
 suspiciously early, spend one command confirming it means what you think.
+
+## Check repository state before reporting it
+
+Before telling the user that work is uncommitted, unpushed, or on some branch,
+run `git status -sb` and `git log` and report what they show. Do not carry the
+claim forward from earlier in the session. The user commits and pushes on their
+own, between turns, and a conversation summary records state as of when it was
+written, so a statement that was true an hour ago reads just as confidently as
+one that is true now.
+
+In the VS-2041 work, "nothing is committed yet" was repeated across several
+hand-offs after the user had committed and pushed every change. One command
+would have caught it.
