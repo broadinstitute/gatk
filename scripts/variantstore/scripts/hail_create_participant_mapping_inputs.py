@@ -33,12 +33,8 @@ when relaunched with the same arguments; the checkpoint is deleted once the Parq
 Zygosity mirrors call_stats: a homozygote needs ploidy 2, so a haploid carrier (male chrX and chrY
 outside the PARs) is hemi. Per key, n_hom == Hom and n_het + n_hom + n_hemi == AC - Hom (gvs_all_sc).
 
-Run it with GvsRunHailScript.wdl:
-  script              this file
-  secondary_scripts   [hail_create_vat_inputs.py, create_vat_inputs.py]
-  script_arguments    {"vds": "gs://.../foxtrot.vds", "output": "gs://.../participant_mapping_inputs",
-                       "temp-path": "gs://.../tmp"}
-Add "interval": "chr21" to restrict the run to one locus interval.
+GvsCreateParticipantMappingFromVDS.wdl runs this on a Dataproc cluster, then builds the mapping tables
+from its outputs. Its interval input, e.g. chr21, restricts the run to one locus interval.
 """
 import argparse
 import hashlib

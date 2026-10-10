@@ -56,26 +56,16 @@ This workflow does not use the Terra Data Entity Model to run, so be sure to sel
 
 Once the VAT has been created, you will need to create a database table mapping the VIDs (Variant IDs) from that table to all the participants in the dataset that share that VID. This table is used by the AoU Researcher Workbench, and will need to be copied over to a location specified by them.
 
-1. First run `GvsCreateParticipantMappingTable.wdl` to create this participant ID mapping table and most of its data.
-   Specify the `project_id`, `dataset` and `vat_table_name` for the VAT created above. Also specify the `participant_mapping_table_name` that
-   will be created to hold the VID to participant mapping information.
-1. Next run `GvsMapUnmappedVIDs.wdl` to recover participant ID mappings for "unmapped VIDs" (a.k.a "pseudo VIDs"). These unmapped VIDs have
-   VAT table entries but no corresponding `alt_allele` entries and correspond to data that appeared in
-   input VCFs only in non-left aligned representations. During the process of creating the VAT these variants were left-aligned and thus
-   disconnected from their `alt_allele` representations. Specify the following parameters:
-   1. `project_id`, `dataset`, `vat_table_name`, `participant_mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
-   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATfromVDS.wdl`.
-   1. `unmapped_vid_mapping_table_name`: the name to use for a table that will hold the mapping information from input
-       position/ref/alt to left-aligned position/ref/alt. This should be a new table.
-1. Finally run `GvsMapDroppedDuplicateVIDs.wdl` to recover all participant ID mappings for VIDs which had multiple variant synonyms with AC != 0. The logic in `GvsCreateVATfromVDS` currently preserves a left-aligned version of the
-   synonym with the highest AC, but before running `GvsMapDroppedDuplicateVIDs.wdl` the actual participant mapping will only contain samples whose input synonym was left-aligned, which do not necessarily correspond to the synonym with highest AC.
-   Specify the following parameters:
-   1. `project_id`, `dataset`, `vat_table_name`, `participant_mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
-   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATfromVDS.wdl`.
-       This should be the same value as specified for the `GvsMapUnmappedVIDs.wdl` step above.
-   1. `filtered_synonyms`: the GCS path to the file of variant synonyms that were filtered as duplicates. This corresponds to the value of the `output_file` output of the `MergeDroppedSynonyms` task in `GvsCreateVATfromVDS.wdl`.
-   1. `duplicate_mapping_table_name`: the name to use for a table that will hold the mapping information from input
-      position/ref/alt to left-aligned position/ref/alt. This should be a new table.
+Run `GvsCreateParticipantMappingFromVDS.wdl` to build it. The workflow reads carriers straight from the VDS the VAT was built from, on a Dataproc cluster, and files each one under the VAT VID of its left-aligned representation, so carriers whose input gVCFs held a non-left-aligned form are mapped along with everyone else. Specify:
+
+1. `vds_path`: the VDS the VAT was built from.
+1. `project_id`, `dataset_name`: where to create the mapping tables.
+1. `fq_vat_table`: the VAT created above, as `project.dataset.table`.
+1. `participant_mapping_table_name`: the name of the delivered view. The workflow creates `<name>_base` (`het_ids`, `hom_ids` and `hemi_ids` per VID), `<name>_provenance` (the VIDs some of whose carriers came from a non-left-aligned representation) and the view `<name>`, with the `vid`, `person_ids` shape the Researcher Workbench expects. None of these may already exist.
+
+The Hail step's outputs default to a path in the workspace bucket named for the dataset and the view; set `mapping_inputs_path` to put them elsewhere. Relaunching with the same VDS and path resumes from the Hail step's checkpoint after a cluster failure. `interval` (e.g. `chr21`) restricts a test build to one contig.
+
+The workflow's last task checks the tables against the VAT and fails if any of `mismatch_outside_provenance`, `below_inside_provenance`, `hom_mismatch_outside_provenance`, `mapped_not_in_vat`, `vat_carriers_without_row`, `provenance_not_mapped` or `vids_with_duplicate_person` is nonzero. The counts are in the `acceptance_checks` output. `above_inside_provenance` is expected to be nonzero: those are the VIDs whose non-left-aligned carriers were added to the VAT's left-aligned count.
 
 ### Delivery Steps
 1. Once the VAT table is created and a TSV is exported, the AoU Researcher Workbench team should be notified of its creation and permission should be granted so that several members of the team have view permission.

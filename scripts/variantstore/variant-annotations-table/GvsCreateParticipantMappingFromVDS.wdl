@@ -548,7 +548,7 @@ task CheckMappingTables {
         -- Only the VAT VIDs on contigs the mapping covers, so a run restricted to whole contigs is checked as a whole.
         -- Not the first line of the query: bq would parse a query starting with -- as a flag.
         vat AS (
-            SELECT vid, ANY_VALUE(gvs_all_sc) AS sc
+            SELECT vid, ANY_VALUE(gvs_all_ac) AS ac, ANY_VALUE(gvs_all_sc) AS sc
             FROM `~{fq_vat_table}`
             WHERE SPLIT(vid, '-')[OFFSET(0)] IN (SELECT contig FROM contigs)
             GROUP BY vid
@@ -556,6 +556,7 @@ task CheckMappingTables {
         mapping AS (
             SELECT vid,
                    ARRAY_LENGTH(het_ids) + ARRAY_LENGTH(hom_ids) + ARRAY_LENGTH(hemi_ids) AS n,
+                   ARRAY_LENGTH(hom_ids) AS n_hom,
                    (SELECT COUNT(DISTINCT person_id)
                     FROM UNNEST(ARRAY_CONCAT(het_ids, hom_ids, hemi_ids)) AS person_id) AS n_distinct
             FROM `~{base_table}`
@@ -567,7 +568,7 @@ task CheckMappingTables {
             SELECT m.vid IS NOT NULL AS in_mapping,
                    v.vid IS NOT NULL AS in_vat,
                    p.vid IS NOT NULL AS in_provenance,
-                   m.n, m.n_distinct, v.sc
+                   m.n, m.n_hom, m.n_distinct, v.ac, v.sc
             FROM mapping AS m
             FULL JOIN vat AS v ON v.vid = m.vid
             LEFT JOIN provenance AS p ON p.vid = COALESCE(m.vid, v.vid)
@@ -581,9 +582,16 @@ task CheckMappingTables {
             COUNTIF(in_mapping AND in_vat AND NOT in_provenance AND n != sc) AS mismatch_outside_provenance,
             COUNTIF(in_provenance AND n > sc) AS above_inside_provenance,
             COUNTIF(in_provenance AND n < sc) AS below_inside_provenance,
+            -- The split. The VAT has no zygosity columns, but a hom carrier adds 2 to gvs_all_ac and a het or hemi
+            -- carrier 1, so hom = ac - sc. With the total exact, that also fixes het + hemi; het and hemi are not
+            -- separable from the VAT. Inside the provenance VIDs a person on two keys keeps the stronger zygosity,
+            -- so there is nothing exact to compare.
+            COUNTIF(in_mapping AND in_vat AND NOT in_provenance AND n_hom != ac - sc) AS hom_mismatch_outside_provenance,
             -- Criterion 2. Every mapped VID is a VAT VID, and every VAT VID with carriers has a mapping row.
             COUNTIF(in_mapping AND NOT in_vat) AS mapped_not_in_vat,
             COUNTIF(in_vat AND NOT in_mapping AND sc > 0) AS vat_carriers_without_row,
+            -- Every provenance VID has a mapping row. Counted from provenance, as j drops a VID in neither table.
+            (SELECT COUNT(*) FROM provenance WHERE vid NOT IN (SELECT vid FROM mapping)) AS provenance_not_mapped,
             -- Criterion 3. No person appears twice for one VID, within an array or across them.
             COUNTIF(n != n_distinct) AS vids_with_duplicate_person
         FROM j
@@ -595,8 +603,9 @@ task CheckMappingTables {
         cat acceptance_checks.json
 
         failures=$(jq -r 'to_entries[]
-            | select(.key | IN("mismatch_outside_provenance", "below_inside_provenance", "mapped_not_in_vat",
-                               "vat_carriers_without_row", "vids_with_duplicate_person"))
+            | select(.key | IN("mismatch_outside_provenance", "below_inside_provenance", "hom_mismatch_outside_provenance",
+                               "mapped_not_in_vat",
+                               "vat_carriers_without_row", "provenance_not_mapped", "vids_with_duplicate_person"))
             | select(.value != 0) | "\(.key)=\(.value)"' acceptance_checks.json)
         if [[ -n "${failures}" ]]
         then

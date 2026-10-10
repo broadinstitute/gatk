@@ -144,15 +144,14 @@ Four consequences worth knowing before writing anything that joins across these:
 3. Minimizing is not left-aligning. `hl.min_rep` trims shared prefixes and
    suffixes but will not walk an indel through a repeat, so it cannot unify a
    left-aligned vid with a non-left-aligned `alt_allele` row. That needs real
-   normalization against the reference, which is what `GvsMapUnmappedVIDs` and
-   the scripts under
-   `scripts/variantstore/scripts/variant_annotation_table/left_alignment_fixups/`
-   exist to do.
+   normalization against the reference. `GvsCreateParticipantMappingFromVDS`
+   does it by running `bcftools norm` over the VDS keys that are not
+   left-aligned (the `NormalizeKeys` task).
 4. Indel length is invariant under normalization, so it is a safe filter when
    hunting for equivalent representations; position and allele strings are not.
-   The production synonym search keys on it as bcftools `ILEN` over a 200bp
+   The retired synonym search keyed on it as bcftools `ILEN` over a 200bp
    window rightward from the vid's position, left-aligned being the leftmost
-   equivalent form (`generate_bcftools_searches_for_variant_synonyms.py:38-45`).
+   equivalent form.
 
 
 # High-Level Architecture (WDLs, BigQuery, Terra)
@@ -491,11 +490,6 @@ SNP (single nucleotide polymorphism).
 
 See the documentation in `AOU_DELIVERABLES.md` for information on how to
 generate the VID to Participant ID Mapping Table.
-
-Note that for the past Echo callset there may need to be an additional step to
-patch this table for a set of VIDs that did not have corresponding Participant
-IDs. See the directory `pseudo_vids_only_in_vat` for more information on
-unmatched VIDs that were discovered in the VATs of the Delta and Echo callsets.
 
 ### The VAT's gnomAD version depends on reference disks
 
