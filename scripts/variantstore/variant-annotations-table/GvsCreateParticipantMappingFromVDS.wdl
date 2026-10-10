@@ -57,7 +57,7 @@ workflow GvsCreateParticipantMappingFromVDS {
             help: "GCS prefix for the Hail job's outputs: keys_to_normalize.vcf.bgz, pairs.parquet and summary.json. Defaults to a path in the workspace bucket named for the dataset and the view. A relaunch with the same VDS, interval and prefix resumes from the job's checkpoint."
         }
         participant_mapping_table_name: {
-            help: "Name of the delivered view. The base and provenance tables, and the staging tables, take it as a prefix. None may already exist, apart from the staging tables, which are replaced."
+            help: "Name of the delivered view. The base and provenance tables, and the staging tables, take it as a prefix. None may already exist, apart from the staging tables, which are replaced and expire after seven days."
         }
         max_secondary_workers: {
             help: "Ceiling on the preemptible secondary workers the autoscaling policy may add."
@@ -366,20 +366,28 @@ task LoadMappingInputs {
         PS4='\D{+%F %T} \w $ '
         set -o errexit -o nounset -o pipefail -o xtrace
 
-        # Staging tables, replaced on a rerun. Load jobs are free; the pairs are on the order of 2.5e12 rows genome-wide.
-        # Spark writes no directory for a flag value with no rows, which an interval with no flagged carriers can
-        # produce, so list only the directories that exist. Name them rather than globbing pairs.parquet: a BigQuery
-        # wildcard matches across /, and an executor lost mid-write can leave partial files under _temporary/ after
-        # the job commits. Without hive partitioning the flag, which lives only in the directory names, is not loaded.
+        # Staging tables, replaced on a rerun and expiring after a week. Load jobs are free; the pairs are on the order
+        # of 2.5e12 rows and 11 TB of Parquet genome-wide, close to the 15 TB a single load job may read, so they load
+        # in batches. Each batch is a set of wildcards over the part files, one per two-digit part-number prefix in
+        # either flag directory: at most 200 URIs, so no batch argument approaches the kernel's per-argument limit,
+        # and Hail writes partitions in locus order, so each batch holds a run of nearby keys. Name the part files
+        # rather than globbing pairs.parquet: a BigQuery wildcard matches across /, and an executor lost mid-write can
+        # leave partial files under _temporary/ after the job commits. Spark writes no directory for a flag value with
+        # no rows, which an interval with no flagged carriers can produce; listing the part files handles that.
+        # Without hive partitioning the flag, which lives only in the directory names, is not loaded.
+        # Clustered on vds_key so CreateMappingTables can read one contig at a time.
+        gcloud storage ls '~{pairs_parquet_path}/needs_normalization=*/part-*.parquet' |
+            sed -E 's#(/part-[0-9]{2})[^/]*$#\1*.parquet#' | sort -u > sources.txt
+        wc -l sources.txt
+
+        replace=--replace
+        while mapfile -t -n 20 batch && (( ${#batch[@]} > 0 )); do
+            bq --apilog=false load --project_id=~{project_id} "${replace}" --source_format=PARQUET \
+                --clustering_fields=vds_key ~{dataset_name}.~{pairs_table_name} "$(IFS=,; echo "${batch[*]}")" < /dev/null
+            replace=--noreplace
+        done < sources.txt
+
         normalized='~{pairs_parquet_path}/needs_normalization=true'
-        sources=()
-        for dir in '~{pairs_parquet_path}/needs_normalization=false' "${normalized}"; do
-            if gcloud storage ls "${dir}/" > /dev/null 2>&1; then
-                sources+=("${dir}/*.parquet")
-            fi
-        done
-        bq --apilog=false load --project_id=~{project_id} --replace --source_format=PARQUET \
-            ~{dataset_name}.~{pairs_table_name} "$(IFS=,; echo "${sources[*]}")"
 
         # The pairs on keys bcftools norm moved, again, as their own small table: the provenance table reads these
         # rather than scanning the pairs a second time.
@@ -394,7 +402,18 @@ task LoadMappingInputs {
 
         bq --apilog=false load --project_id=~{project_id} --replace --source_format=CSV --field_delimiter='\t' \
             ~{dataset_name}.~{key_to_vid_table_name} ~{key_to_vid} vds_key:STRING,vid:STRING
+
+        # Genome-wide the pairs table is around 77 TB, so do not leave it to accrue storage.
+        for table in ~{pairs_table_name} ~{normalized_pairs_table_name} ~{key_to_vid_table_name}; do
+            bq --apilog=false update --project_id=~{project_id} --expiration=604800 ~{dataset_name}."${table}"
+        done
     >>>
+
+    meta {
+        # The tables expire, so a relaunch must reload them rather than reuse a cached result naming tables that may
+        # be gone.
+        volatile: true
+    }
 
     runtime {
         docker: variants_docker
@@ -454,31 +473,15 @@ task CreateMappingTables {
                                          unnormalized_keys, ARRAY_TO_STRING(unnormalized_examples, ', '));
         END IF;
 
-        -- The one scan of the pairs. Whether every VID here is a VAT VID is checked against the finished table, by
-        -- mapped_not_in_vat in CheckMappingTables.
-        -- Clustered at creation: a bq update after the fact does not take. No ORDER BY; see VS-2013.
-        CREATE TABLE `~{fq_dataset}.~{base_table_name}`
-        CLUSTER BY vid
-        AS
-        WITH person_zygosity AS (
-            -- One row per (vid, person). A person appears once per key, so only VIDs that more than one key normalizes
-            -- to can repeat a person here. Such a person keeps the strongest zygosity any of their keys gives them,
-            -- so no person lands in two of the three arrays.
-            SELECT COALESCE(k.vid, p.vds_key) AS vid,
-                   p.person_id,
-                   MAX(CASE p.zygosity WHEN 'het' THEN 1 WHEN 'hemi' THEN 2 WHEN 'hom' THEN 3 END) AS zygosity_rank
-            FROM `~{fq_dataset}.~{pairs_table}` AS p
-            LEFT JOIN `~{fq_dataset}.~{key_to_vid_table}` AS k USING (vds_key)
-            -- By position: an unqualified vid here could resolve to k.vid, which is NULL for nearly every key.
-            GROUP BY 1, 2
+        -- Filled one contig at a time below.
+        CREATE TABLE `~{fq_dataset}.~{base_table_name}` (
+            vid STRING,
+            het_ids ARRAY<INT64>,
+            hom_ids ARRAY<INT64>,
+            hemi_ids ARRAY<INT64>
         )
-        SELECT vid,
-               -- ARRAY_AGG over nothing but NULLs is NULL, and ARRAY_CONCAT with a NULL is NULL.
-               IFNULL(ARRAY_AGG(IF(zygosity_rank = 1, person_id, NULL) IGNORE NULLS), []) AS het_ids,
-               IFNULL(ARRAY_AGG(IF(zygosity_rank = 3, person_id, NULL) IGNORE NULLS), []) AS hom_ids,
-               IFNULL(ARRAY_AGG(IF(zygosity_rank = 2, person_id, NULL) IGNORE NULLS), []) AS hemi_ids
-        FROM person_zygosity
-        GROUP BY vid;
+        -- Clustered at creation: a bq update after the fact does not take. No ORDER BY; see VS-2013.
+        CLUSTER BY vid;
 
         -- One row per normalized key that has carriers. input_location, input_ref and input_alt join to alt_allele on
         -- (location, ref, allele), which explains a participant filed under a VID whose own location has no alt_allele
@@ -504,6 +507,42 @@ task CreateMappingTables {
 
         # bq query --max_rows check: ok, results go to the new tables
         bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} "$(cat create_mapping_tables.sql)"
+
+        # The scan of the pairs, one contig at a time: genome-wide, a single query would group some 2.5e12 rows, near
+        # BigQuery's six-hour limit. The pairs table is clustered on vds_key, so each query reads only its contig's
+        # rows. Normalization never moves a key to another contig, so no VID's carriers span two queries. The list is
+        # every contig GVS can hold: its locations encode only chromosomes 1-22, X and Y. Whether every VID here is a
+        # VAT VID is checked against the finished table, by mapped_not_in_vat in CheckMappingTables.
+        cat > insert_contig.sql <<'SQL'
+        INSERT INTO `~{fq_dataset}.~{base_table_name}` (vid, het_ids, hom_ids, hemi_ids)
+        WITH person_zygosity AS (
+            -- One row per (vid, person). A person appears once per key, so only VIDs that more than one key normalizes
+            -- to can repeat a person here. Such a person keeps the strongest zygosity any of their keys gives them,
+            -- so no person lands in two of the three arrays.
+            SELECT COALESCE(k.vid, p.vds_key) AS vid,
+                   p.person_id,
+                   MAX(CASE p.zygosity WHEN 'het' THEN 1 WHEN 'hemi' THEN 2 WHEN 'hom' THEN 3 END) AS zygosity_rank
+            FROM `~{fq_dataset}.~{pairs_table}` AS p
+            LEFT JOIN `~{fq_dataset}.~{key_to_vid_table}` AS k USING (vds_key)
+            -- '-' sorts just below '.', so this is exactly the keys on CONTIG, and as constants they prune clusters.
+            WHERE p.vds_key >= 'CONTIG-' AND p.vds_key < 'CONTIG.'
+            -- By position: an unqualified vid here could resolve to k.vid, which is NULL for nearly every key.
+            GROUP BY 1, 2
+        )
+        SELECT vid,
+               -- ARRAY_AGG over nothing but NULLs is NULL, and ARRAY_CONCAT with a NULL is NULL.
+               IFNULL(ARRAY_AGG(IF(zygosity_rank = 1, person_id, NULL) IGNORE NULLS), []) AS het_ids,
+               IFNULL(ARRAY_AGG(IF(zygosity_rank = 3, person_id, NULL) IGNORE NULLS), []) AS hom_ids,
+               IFNULL(ARRAY_AGG(IF(zygosity_rank = 2, person_id, NULL) IGNORE NULLS), []) AS hemi_ids
+        FROM person_zygosity
+        GROUP BY vid
+        SQL
+
+        for contig in $(seq 1 22) X Y; do
+            # bq query --max_rows check: ok, results go to the base table
+            bq --apilog=false query --nouse_legacy_sql --project_id=~{project_id} \
+                "$(sed "s/CONTIG/${contig}/g" insert_contig.sql)"
+        done
 
         # A query of its own: BigQuery will not create a view in a script that declares a temporary function, whether
         # or not the view uses it.
