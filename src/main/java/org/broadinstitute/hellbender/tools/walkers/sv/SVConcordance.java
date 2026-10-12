@@ -177,8 +177,8 @@ public final class SVConcordance extends AbstractConcordanceWalker {
     public GATKPath strataClusteringConfigFile;
 
     @Argument(fullName = SVClusterWalker.MAX_RECORDS_IN_RAM_LONG_NAME,
-            doc = "When writing VCF files that need to be sorted, this will specify the number of records stored in " +
-                    "RAM before spilling to disk. Increasing this number reduces the number of file handles needed to sort a " +
+            doc = "Maximum number of output records held in RAM while waiting to be written in sorted order before " +
+                    "spilling to disk. Increasing this number reduces the number of file handles needed to sort a " +
                     "VCF file, and increases the amount of RAM needed.",
             optional=true)
     public int maxRecordsInRam = 1000;
@@ -194,9 +194,14 @@ public final class SVConcordance extends AbstractConcordanceWalker {
 
     // Output records are written in the order of a stable sort by (header contig index, start). When the eval header
     // orders contigs as the traversal does, records are held in an in-memory reorder buffer and written as soon as no
-    // pending record can precede them; otherwise they all go through an on-disk sorting collection.
+    // pending record can precede them; otherwise they all go through an on-disk sorting collection. A large eval
+    // variant can hold back output for a long stretch, so past --max-records-in-ram the reorder buffer moves to an
+    // on-disk spill collection until the hold-up clears.
     protected SortingCollection<VariantContext> sortingBuffer;
     private PriorityQueue<PendingOutput> reorderBuffer;
+    private SortingCollection<VariantContext> spillBuffer;
+    private PendingOutput spillBufferLast; // latest-sorting record in the spill buffer
+    private VCFHeader outputHeader;
     private Map<String, Integer> outputContigIndex;
     private long numOutputRecords = 0;
     private String lastAddedContig;
@@ -224,6 +229,7 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         writer = createVCFWriter(outputFile);
         final VCFHeader header = createHeader(getEvalHeader());
         writer.writeHeader(header);
+        outputHeader = header;
         outputContigIndex = new HashMap<>();
         for (final VCFContigHeaderLine contigLine : header.getContigLines()) {
             outputContigIndex.put(contigLine.getID(), contigLine.getContigIndex());
@@ -303,6 +309,7 @@ public final class SVConcordance extends AbstractConcordanceWalker {
             throw new GATKException("Concordance engine is not empty, but it should be");
         }
         if (reorderBuffer != null) {
+            writeSpillBuffer();
             while (!reorderBuffer.isEmpty()) {
                 writer.add(reorderBuffer.poll().variant);
             }
@@ -316,12 +323,61 @@ public final class SVConcordance extends AbstractConcordanceWalker {
 
     private void bufferOutput(final Collection<VariantContext> variants) {
         for (final VariantContext variant : variants) {
-            if (reorderBuffer != null) {
-                reorderBuffer.add(new PendingOutput(variant, outputContigIndex.get(variant.getContig()), numOutputRecords++));
-            } else {
+            if (reorderBuffer == null) {
                 sortingBuffer.add(variant);
+                continue;
+            }
+            final PendingOutput pending = new PendingOutput(variant, outputContigIndex.get(variant.getContig()), numOutputRecords++);
+            if (spillBuffer != null) {
+                addToSpillBuffer(pending);
+            } else {
+                reorderBuffer.add(pending);
+                if (reorderBuffer.size() > maxRecordsInRam) {
+                    startSpillBuffer();
+                }
             }
         }
+    }
+
+    /**
+     * Moves the reorder buffer to an on-disk spill collection. Records are added in production order, so the
+     * collection's stable sort keeps ties in production order like the reorder buffer does.
+     */
+    private void startSpillBuffer() {
+        spillBuffer = SortingCollection.newInstance(
+                VariantContext.class,
+                new VCFRecordCodec(outputHeader, true),
+                outputHeader.getVCFRecordComparator(),
+                maxRecordsInRam,
+                tmpDir.toPath());
+        final List<PendingOutput> pending = new ArrayList<>(reorderBuffer);
+        reorderBuffer.clear();
+        pending.sort(Comparator.comparingLong(p -> p.order));
+        for (final PendingOutput p : pending) {
+            addToSpillBuffer(p);
+        }
+    }
+
+    private void addToSpillBuffer(final PendingOutput pending) {
+        spillBuffer.add(pending.variant);
+        if (spillBufferLast == null || pending.compareTo(spillBufferLast) > 0) {
+            spillBufferLast = pending;
+        }
+    }
+
+    /**
+     * Writes the spill collection in sorted order and returns to the in-memory reorder buffer.
+     */
+    private void writeSpillBuffer() {
+        if (spillBuffer == null) {
+            return;
+        }
+        for (final VariantContext variant : spillBuffer) {
+            writer.add(variant);
+        }
+        spillBuffer.cleanup();
+        spillBuffer = null;
+        spillBufferLast = null;
     }
 
     /**
@@ -333,6 +389,13 @@ public final class SVConcordance extends AbstractConcordanceWalker {
     private void writeReadyOutput() {
         final List<SimpleInterval> bounds = engine.getActiveEvalStarts();
         bounds.add(new SimpleInterval(lastAddedContig, lastAddedStart, lastAddedStart));
+        if (spillBuffer != null) {
+            // While spilling, all new records go to the spill collection, so it can only be written as a whole
+            if (!precedesAll(spillBufferLast, bounds)) {
+                return;
+            }
+            writeSpillBuffer();
+        }
         while (!reorderBuffer.isEmpty() && precedesAll(reorderBuffer.peek(), bounds)) {
             writer.add(reorderBuffer.poll().variant);
         }
@@ -352,6 +415,9 @@ public final class SVConcordance extends AbstractConcordanceWalker {
     public void closeTool() {
         if (sortingBuffer != null) {
             sortingBuffer.cleanup();
+        }
+        if (spillBuffer != null) {
+            spillBuffer.cleanup();
         }
         if (writer != null) {
             writer.close();
