@@ -100,14 +100,26 @@ def key_class(ref, alt):
 def write_keys_to_normalize(vd, out):
     """Classify every key, fail on any the anchor test does not cover, and export the shiftable ones."""
     rows = vd.rows()
-    classes = rows.aggregate(hl.agg.counter(rows.key_class))
+    # One pass collects the shiftable keys along with the counts; there are about 10^4 genome-wide. Exporting
+    # from the VDS rows instead cost a second full pass (7.4 hours on Foxtrot), then a driver-side merge and
+    # cleanup of one VCF part per partition (2.5 hours for 119,190 parts) while the workers sat idle.
+    result = rows.aggregate(hl.struct(
+        classes=hl.agg.counter(rows.key_class),
+        unsupported_examples=hl.agg.filter(~hl.literal(SUPPORTED_CLASSES).contains(rows.key_class),
+                                           hl.agg.take(rows.vds_key, 10)),
+        to_normalize=hl.agg.filter(hl.literal(SHIFTABLE_CLASSES).contains(rows.key_class),
+                                   hl.agg.collect(hl.struct(locus=rows.locus, alleles=rows.alleles,
+                                                            rsid=rows.vds_key)))))
+    classes = dict(result.classes)
     unsupported = {c: n for c, n in classes.items() if c not in SUPPORTED_CLASSES}
     if unsupported:
-        examples = rows.filter(~hl.literal(SUPPORTED_CLASSES).contains(rows.key_class)).vds_key.take(10)
-        raise ValueError(f'keys the left-alignment test does not cover: {unsupported}, e.g. {examples}')
+        raise ValueError(f'keys the left-alignment test does not cover: {unsupported}, '
+                         f'e.g. {result.unsupported_examples}')
 
-    to_normalize = rows.filter(hl.literal(SHIFTABLE_CLASSES).contains(rows.key_class))
-    hl.export_vcf(to_normalize.select(rsid=to_normalize.vds_key), f'{out}/keys_to_normalize.vcf.bgz')
+    schema = hl.tstruct(locus=hl.tlocus(rows.locus.dtype.reference_genome), alleles=hl.tarray(hl.tstr),
+                        rsid=hl.tstr)
+    to_normalize = hl.Table.parallelize(result.to_normalize, schema, n_partitions=1).key_by('locus', 'alleles')
+    hl.export_vcf(to_normalize, f'{out}/keys_to_normalize.vcf.bgz')
     return classes
 
 
