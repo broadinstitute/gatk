@@ -3,8 +3,8 @@ version 1.0
 # Participant mapping built from the VDS (VS-2013). hail_create_participant_mapping_inputs.py, on a Dataproc cluster,
 # writes the carrier pairs and the VDS keys that are not left-aligned; this workflow then gives those keys their VAT
 # VIDs and builds, in the given dataset, `<participant_mapping_table_name>_base` (het_ids, hom_ids, hemi_ids per VID),
-# its provenance table `<participant_mapping_table_name>_provenance`, and the view `<participant_mapping_table_name>`
-# with the delivered (vid, person_ids) shape.
+# `<participant_mapping_table_name>_realigned_inputs` (the non-left-aligned input forms and the VIDs they were realigned
+# onto), and the view `<participant_mapping_table_name>` with the delivered (vid, person_ids) shape.
 import "../wdl/GvsUtils.wdl" as Utils
 
 workflow GvsCreateParticipantMappingFromVDS {
@@ -61,7 +61,7 @@ workflow GvsCreateParticipantMappingFromVDS {
             help: "GCS prefix for the Hail job's outputs: keys_to_normalize.vcf.bgz, pairs.parquet and summary.json. Defaults to a path in the workspace bucket named for the dataset and the view. A relaunch with the same VDS, interval and prefix resumes from the job's checkpoint."
         }
         participant_mapping_table_name: {
-            help: "Name of the delivered view. The base and provenance tables, and the staging tables, take it as a prefix. None may already exist, apart from the staging tables, which are replaced and expire after seven days."
+            help: "Name of the delivered view. The base and realigned inputs tables, and the staging tables, take it as a prefix. None may already exist, apart from the staging tables, which are replaced and expire after seven days."
         }
         max_secondary_workers: {
             help: "Ceiling on the preemptible secondary workers the autoscaling policy may add."
@@ -180,7 +180,7 @@ workflow GvsCreateParticipantMappingFromVDS {
             project_id = project_id,
             fq_vat_table = fq_vat_table,
             base_table = CreateMappingTables.base_table,
-            provenance_table = CreateMappingTables.provenance_table,
+            realigned_inputs_table = CreateMappingTables.realigned_inputs_table,
             variants_docker = effective_variants_docker,
     }
 
@@ -189,7 +189,7 @@ workflow GvsCreateParticipantMappingFromVDS {
         File key_to_vid = NormalizeKeys.key_to_vid
         File acceptance_checks = CheckMappingTables.acceptance_checks
         String base_table = CreateMappingTables.base_table
-        String provenance_table = CreateMappingTables.provenance_table
+        String realigned_inputs_table = CreateMappingTables.realigned_inputs_table
         String view = CreateMappingTables.view
     }
 }
@@ -444,7 +444,7 @@ task LoadMappingInputs {
 
         normalized='~{pairs_parquet_path}/needs_normalization=true'
 
-        # The pairs on keys bcftools norm moved, again, as their own small table: the provenance table reads these
+        # The pairs on keys bcftools norm moved, again, as their own small table: the realigned inputs table reads these
         # rather than scanning the pairs a second time.
         if gcloud storage ls "${normalized}/" > /dev/null 2>&1; then
             bq --apilog=false load --project_id=~{project_id} --replace --source_format=PARQUET \
@@ -493,7 +493,7 @@ task CreateMappingTables {
     }
 
     String base_table_name = "~{participant_mapping_table_name}_base"
-    String provenance_table_name = "~{participant_mapping_table_name}_provenance"
+    String realigned_inputs_table_name = "~{participant_mapping_table_name}_realigned_inputs"
     String fq_dataset = "~{project_id}.~{dataset_name}"
 
     command <<<
@@ -541,7 +541,7 @@ task CreateMappingTables {
         -- One row per normalized key that has carriers. input_location, input_ref and input_alt join to alt_allele on
         -- (location, ref, allele), which explains a participant filed under a VID whose own location has no alt_allele
         -- row for them.
-        CREATE TABLE `~{fq_dataset}.~{provenance_table_name}`
+        CREATE TABLE `~{fq_dataset}.~{realigned_inputs_table_name}`
         CLUSTER BY vid
         AS
         SELECT k.vid,
@@ -614,7 +614,7 @@ task CreateMappingTables {
 
     output {
         String base_table = "~{fq_dataset}.~{base_table_name}"
-        String provenance_table = "~{fq_dataset}.~{provenance_table_name}"
+        String realigned_inputs_table = "~{fq_dataset}.~{realigned_inputs_table_name}"
         String view = "~{fq_dataset}.~{participant_mapping_table_name}"
     }
 }
@@ -626,7 +626,7 @@ task CheckMappingTables {
         String project_id
         String fq_vat_table
         String base_table
-        String provenance_table
+        String realigned_inputs_table
         String variants_docker
     }
 
@@ -655,37 +655,37 @@ task CheckMappingTables {
                     FROM UNNEST(ARRAY_CONCAT(het_ids, hom_ids, hemi_ids)) AS person_id) AS n_distinct
             FROM `~{base_table}`
         ),
-        provenance AS (
-            SELECT DISTINCT vid FROM `~{provenance_table}`
+        realigned AS (
+            SELECT DISTINCT vid FROM `~{realigned_inputs_table}`
         ),
         j AS (
             SELECT m.vid IS NOT NULL AS in_mapping,
                    v.vid IS NOT NULL AS in_vat,
-                   p.vid IS NOT NULL AS in_provenance,
+                   p.vid IS NOT NULL AS in_realigned,
                    m.n, m.n_hom, m.n_distinct, v.ac, v.sc
             FROM mapping AS m
             FULL JOIN vat AS v ON v.vid = m.vid
-            LEFT JOIN provenance AS p ON p.vid = COALESCE(m.vid, v.vid)
+            LEFT JOIN realigned AS p ON p.vid = COALESCE(m.vid, v.vid)
         )
         SELECT
             COUNTIF(in_mapping) AS mapped_vids,
-            COUNTIF(in_provenance) AS provenance_vids,
-            -- Criterion 1. Outside the provenance VIDs the mapping count is exactly gvs_all_sc; inside, where synonym
+            COUNTIF(in_realigned) AS realigned_vids,
+            -- Criterion 1. Outside the realigned VIDs the mapping count is exactly gvs_all_sc; inside, where synonym
             -- carriers are unioned in, it may exceed it but never fall below.
-            COUNTIF(in_mapping AND in_vat AND NOT in_provenance AND n = sc) AS exact_outside_provenance,
-            COUNTIF(in_mapping AND in_vat AND NOT in_provenance AND n != sc) AS mismatch_outside_provenance,
-            COUNTIF(in_provenance AND n > sc) AS above_inside_provenance,
-            COUNTIF(in_provenance AND n < sc) AS below_inside_provenance,
+            COUNTIF(in_mapping AND in_vat AND NOT in_realigned AND n = sc) AS exact_outside_realigned,
+            COUNTIF(in_mapping AND in_vat AND NOT in_realigned AND n != sc) AS mismatch_outside_realigned,
+            COUNTIF(in_realigned AND n > sc) AS above_inside_realigned,
+            COUNTIF(in_realigned AND n < sc) AS below_inside_realigned,
             -- The split. The VAT has no zygosity columns, but a hom carrier adds 2 to gvs_all_ac and a het or hemi
             -- carrier 1, so hom = ac - sc. With the total exact, that also fixes het + hemi; het and hemi are not
-            -- separable from the VAT. Inside the provenance VIDs a person on two keys keeps the stronger zygosity,
+            -- separable from the VAT. Inside the realigned VIDs a person on two keys keeps the stronger zygosity,
             -- so there is nothing exact to compare.
-            COUNTIF(in_mapping AND in_vat AND NOT in_provenance AND n_hom != ac - sc) AS hom_mismatch_outside_provenance,
+            COUNTIF(in_mapping AND in_vat AND NOT in_realigned AND n_hom != ac - sc) AS hom_mismatch_outside_realigned,
             -- Criterion 2. Every mapped VID is a VAT VID, and every VAT VID with carriers has a mapping row.
             COUNTIF(in_mapping AND NOT in_vat) AS mapped_not_in_vat,
             COUNTIF(in_vat AND NOT in_mapping AND sc > 0) AS vat_carriers_without_row,
-            -- Every provenance VID has a mapping row. Counted from provenance, as j drops a VID in neither table.
-            (SELECT COUNT(*) FROM provenance WHERE vid NOT IN (SELECT vid FROM mapping)) AS provenance_not_mapped,
+            -- Every realigned VID has a mapping row. Counted from realigned, as j drops a VID in neither table.
+            (SELECT COUNT(*) FROM realigned WHERE vid NOT IN (SELECT vid FROM mapping)) AS realigned_not_mapped,
             -- Criterion 3. No person appears twice for one VID, within an array or across them.
             COUNTIF(n != n_distinct) AS vids_with_duplicate_person
         FROM j
@@ -697,9 +697,9 @@ task CheckMappingTables {
         cat acceptance_checks.json
 
         failures=$(jq -r 'to_entries[]
-            | select(.key | IN("mismatch_outside_provenance", "below_inside_provenance", "hom_mismatch_outside_provenance",
+            | select(.key | IN("mismatch_outside_realigned", "below_inside_realigned", "hom_mismatch_outside_realigned",
                                "mapped_not_in_vat",
-                               "vat_carriers_without_row", "provenance_not_mapped", "vids_with_duplicate_person"))
+                               "vat_carriers_without_row", "realigned_not_mapped", "vids_with_duplicate_person"))
             | select(.value != 0) | "\(.key)=\(.value)"' acceptance_checks.json)
         if [[ -n "${failures}" ]]
         then
