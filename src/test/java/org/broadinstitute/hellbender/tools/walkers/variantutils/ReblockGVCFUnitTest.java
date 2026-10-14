@@ -935,11 +935,14 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
     }
 
     /**
-     * A reference block carrying a negative GQ and PL -- malformed, but DRAGEN 4.4.6 emits them. Reblocking should
-     * raise both to zero rather than failing the run. Before this, such a record reached the GQ banding code and
-     * threw "GQ ... didn't fit into any partition", killing a whole-genome run over a single bad block.
+     * floorNegativeQualities applies to any record with a negative GQ or PL -- this test happens to use a reference
+     * block because that is the shape of the real record that exposed the bug, not because the fix is reference-block
+     * specific. Reblocking should raise both to zero rather than failing the run. Before this, such a record reached
+     * the GQ banding code and threw "GQ ... didn't fit into any partition", killing a whole-genome run over a single
+     * bad record.
      *
-     * Values here mirror the real record: a zero-depth block at the chrY PAR1 boundary with GQ -1240 / PL 0,0,-1240.
+     * Values here mirror the real record: a zero-depth reference block at the chrY PAR1 boundary with GQ -1240 /
+     * PL 0,0,-1240.
      */
     @Test
     public void testNegativeGqAndPlAreFlooredToZero() {
@@ -990,8 +993,9 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
     }
 
     /**
-     * A malformed block must actually survive reblocking end to end, not merely pass the floor in isolation. This is
-     * the behaviour that was broken: GQ banding rejected the negative value and the run died.
+     * A malformed record must actually survive reblocking end to end, not merely pass the floor in isolation --
+     * again using a reference block as the realistic shape, not because the fix only covers reference blocks. This
+     * is the behaviour that was broken: GQ banding rejected the negative value and the run died.
      */
     @Test
     public void testBlockWithNegativeQualitiesStillReblocks() {
@@ -1012,6 +1016,39 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
         Assert.assertEquals(emitted.size(), 1, "the block should be reblocked and emitted, not rejected");
         Assert.assertEquals(emitted.get(0).getGenotype(0).getGQ(), 0,
                 "the emitted block should carry the floored GQ");
+        Assert.assertEquals(reblocker.flooredNegativeQualityRecordCount, 1,
+                "the floored record should be counted so closeTool() can report it, the same way targeted conversions are");
+    }
+
+    /**
+     * Floored records are counted rather than logged individually, the same way and for the same reason as converted
+     * targeted records -- see testConvertedTargetedRecordsAreCounted. Records with valid qualities must not be counted.
+     */
+    @Test
+    public void testFlooredNegativeQualityRecordsAreCounted() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        attachMockWriter(reblocker);
+
+        Assert.assertEquals(reblocker.flooredNegativeQualityRecordCount, 0, "nothing floored before any records are seen");
+
+        for (final int position : new int[]{100, 200, 300}) {
+            final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
+            gb.GQ(-1240).PL(new int[]{0, 0, -1240}).DP(0).AD(new int[]{0, 0});
+            reblocker.apply(new VariantContextBuilder("test", "chrM", position, position + 48,
+                    Arrays.asList(CHR_M_REF, Allele.NON_REF_ALLELE))
+                    .attribute(VCFConstants.END_KEY, position + 48)
+                    .genotypes(gb.make()).unfiltered().make(), null, null, null);
+        }
+        Assert.assertEquals(reblocker.flooredNegativeQualityRecordCount, 3, "each floored record should be counted");
+
+        // a record with valid qualities must not be counted
+        final GenotypeBuilder healthy = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
+        healthy.GQ(45).PL(new int[]{0, 45, 450}).DP(12);
+        reblocker.apply(new VariantContextBuilder("test", "chrM", 400, 448,
+                Arrays.asList(CHR_M_REF, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, 448)
+                .genotypes(healthy.make()).unfiltered().make(), null, null, null);
+        Assert.assertEquals(reblocker.flooredNegativeQualityRecordCount, 3, "records with valid qualities should not be counted");
     }
 
     private VariantContext addAttributes(final VariantContext vc, final Map<String, Object> attributes) {
