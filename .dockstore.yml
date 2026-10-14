@@ -513,7 +513,6 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1807_variant_search_zygosity
        tags:
          - /.*/
    - name: GvsRunHailScript
@@ -523,6 +522,5 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_1807_variant_search_zygosity
        tags:
          - /.*/
