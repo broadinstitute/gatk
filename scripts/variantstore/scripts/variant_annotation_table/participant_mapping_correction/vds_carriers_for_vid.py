@@ -75,7 +75,8 @@ def main():
     # VDS are not left-aligned. Left-aligned is the LEFTMOST equivalent form, so an equivalent
     # non-left-aligned representation can only sit at or to the RIGHT of the vid's position.
     # The production synonym search keys on the same asymmetry -- bcftools ILEN over a 200bp
-    # window rightward (`generate_bcftools_searches_for_variant_synonyms.py:38-45`).
+    # window rightward (`generate_bcftools_searches_for_variant_synonyms.py:38-45`, removed; see
+    # https://github.com/broadinstitute/gatk/tree/0227bcdc43b40a2b297a64534185d02253dbdab4/scripts/variantstore/scripts/variant_annotation_table/left_alignment_fixups).
     interval = hl.parse_locus_interval(
         f'{contig}:{pos}-{pos + max(args.window, 0)}', reference_genome=rg)
     vd = hl.filter_intervals(vd, [interval])

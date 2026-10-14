@@ -24,9 +24,7 @@
   - [GvsValidateVdsCompleteness](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsValidateVdsCompleteness) workflow
   - [GvsCreateVATfromVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVATfromVDS) workflow
   - [GvsValidateVat](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsValidateVat) workflow
-  - [GvsCreateParticipantMappingTable](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsCreateParticipantMappingTable) workflow
-  - [GvsMapUnmappedVIDs](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsMapUnmappedVIDs) workflow
-  - [GvsMapDroppedDuplicateVIDs](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsMapDroppedDuplicateVIDs) workflow
+  - [GvsCreateParticipantMappingFromVDS](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsCreateParticipantMappingFromVDS) workflow
 - Once the Foxtrot sample list becomes available, perform some checks:
   - Make sure there are columns for reblocked VCFs and reblocked VCF indexes. The column headers will likely be
     `reblocked_gvcf` and `reblocked_gvcf_index`. Do not be alarmed by the presence of "hard-filtered" in file names,
@@ -213,7 +211,7 @@ The Callset Stats and S&P files can be simply `gsutil cp`'ed to the AoU delivery
 ## Running the VAT pipeline
 To create a BigQuery table of variant annotations, you may follow the instructions here:
 [process to create variant annotations table](../../variant-annotations-table/README.md)
-The pipeline takes in the VDS and outputs a variant annotations table in BigQuery.
+The pipeline takes in the VDS and outputs a variant annotations table in BigQuery. The same instructions cover the VID to participant ID mapping table built from the VAT and the VDS with `GvsCreateParticipantMappingFromVDS`.
 
 ## Additional Deliverables
 
