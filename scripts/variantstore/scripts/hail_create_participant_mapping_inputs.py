@@ -101,8 +101,8 @@ def write_keys_to_normalize(vd, out):
     """Classify every key, fail on any the anchor test does not cover, and export the shiftable ones."""
     rows = vd.rows()
     # One pass collects the shiftable keys along with the counts; there are about 10^4 genome-wide. Exporting
-    # from the VDS rows instead cost a second full pass (7.4 hours on Foxtrot), then a driver-side merge and
-    # cleanup of one VCF part per partition (2.5 hours for 119,190 parts) while the workers sat idle.
+    # from the VDS rows instead cost a second full pass (7.4 hours on Foxtrot), then a merge and cleanup of one VCF
+    # part per partition (2.5 hours for 119,190 parts) on the master while the cluster scaled down.
     result = rows.aggregate(hl.struct(
         classes=hl.agg.counter(rows.key_class),
         unsupported_examples=hl.agg.filter(~hl.literal(SUPPORTED_CLASSES).contains(rows.key_class),

@@ -673,6 +673,37 @@ matching nothing fails the load. `LoadMappingInputs` in
 the same way: DuckDB pointed at `out.parquet/**/*.parquet` reads the partial file
 too.
 
+## A Hail export from a wide table finishes on the master alone
+
+A non-parallel `hl.export_vcf` (or `Table.export`) writes one part file per
+partition, then merges them into a single file on the master. The merge is
+serial and its cost tracks the part count, not the data size, so a tiny
+output from a wide table can add hours of wall-clock time. An autoscaling
+cluster sheds its secondary workers meanwhile, so the cost is mostly time,
+plus scaling back up for the next step. In VS-2041 the genome-wide
+participant mapping exported 14,459 keys from 119,189 partitions. Writing
+them took a full pass over the VDS (7.4 hours at 200 workers). Merging
+119,190 parts totaling 3.7 MB took another 37 minutes on the master, which
+then ran for 1 hour 50 minutes with no log output while the cluster scaled
+down to no secondary workers. On chr20, with 2,576 partitions, none of this
+was visible.
+
+So when the result is small, compute it in an aggregation you already run,
+for example `hl.agg.filter(..., hl.agg.collect(...))` alongside the counts.
+Then write it from a one-partition table built with `hl.Table.parallelize`.
+`write_keys_to_normalize` in `hail_create_participant_mapping_inputs.py`
+does this. On chr21 it halved the classify step (1,136 to 515 seconds) and
+the merge dropped to 2 files, with identical outputs. Two actions on the
+same table also mean two passes over the input, because Hail does not keep
+results between actions. Before adding an export or a `take` after an
+`aggregate`, check whether the aggregate can return what you need.
+
+To tell a driver-bound phase from a worker-bound one, compare the Hail log
+timestamps with the cluster's autoscaler log in Cloud Logging
+(`logName="projects/<project>/logs/dataproc.googleapis.com%2Fautoscaler"`,
+filtered on `resource.labels.cluster_name`). The log survives the cluster's
+deletion for the 30-day retention period.
+
 # Documentation Conventions
 
 ## Markdown tables must be rectangular
