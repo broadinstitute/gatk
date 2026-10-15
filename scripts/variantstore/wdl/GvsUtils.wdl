@@ -126,7 +126,7 @@ task GetToolVersions {
       # The `--branch` parameter to `git clone` actually does work for tags, though for historical reasons GVS
       # versioning is based on branches for now.
       # https://git-scm.com/docs/git-clone#Documentation/git-clone.txt--bltnamegt
-      git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{effective_version} --single-branch
+      GIT_LFS_SKIP_SMUDGE=1  git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{effective_version} --single-branch
       cd gatk
       git rev-parse HEAD > ../git_hash.txt
     fi
@@ -547,7 +547,7 @@ task BuildGATKJar {
     apt-get -qq install --assume-yes temurin-17-jdk
 
     # GATK
-    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
+    GIT_LFS_SKIP_SMUDGE=1  git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
     cd gatk
     ./gradlew shadowJar
 
@@ -605,7 +605,7 @@ task CreateDatasetForTest {
     apk add git
 
     # GATK
-    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
+    GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
     cd gatk
 
     branch=$(git symbolic-ref HEAD 2>/dev/null)
@@ -677,7 +677,7 @@ task BuildGATKJarAndCreateDataset {
     apt-get -qq install --assume-yes temurin-17-jdk
 
     # GATK
-    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
+    GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
     cd gatk
     ./gradlew shadowJar
 

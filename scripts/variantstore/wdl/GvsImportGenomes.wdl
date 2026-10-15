@@ -712,16 +712,36 @@ task ProcessInputGVCFs {
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
       # We always do our own localization.
-      # It seems possible that the Parquet / non-Parquet branches below might be coalesced.
       if [[ "~{use_parquet_ingest}" = 'true' ]]
       then
         updated_input_vcf=input_vcf_${i}_${sample_name}.vcf.gz
+      else
+        updated_input_vcf=input_vcf_$i.vcf.gz
+      fi
+
+      if [[ "~{load_vet_and_ref_ranges}" = 'true' ]]
+      then
         gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf $updated_input_vcf
         gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf_index ${updated_input_vcf}.tbi
       else
-        gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf input_vcf_$i.vcf.gz
-        gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf_index input_vcf_$i.vcf.gz.tbi
-        updated_input_vcf=input_vcf_$i.vcf.gz
+        # Headers-only pass: read just the start of the gVCF instead of localizing all of it. CreateVariantIngestFiles
+        # builds the header rows from the parsed header alone, so a header-only VCF gives the same rows and the
+        # walker traverses zero records. It is indexed so the usual -L invocation still works.
+        #
+        # The `|| true` is required: once sed quits at #CHROM, gunzip dies of SIGPIPE (exit 141), which pipefail
+        # would turn into a failure on every sample. It also fails on the BGZF block cut off at the end of the range.
+        # Swallowing its status hides a corrupt input too, which the #CHROM check below catches instead; the data
+        # pass reads the whole file and would fail on it regardless.
+        header_vcf=${updated_input_vcf%.gz}
+        gcloud storage ~{"--billing-project " + billing_project_id} cat --range=0-16777215 "${gs_input_vcf}" |
+          { gunzip -c 2>/dev/null || true; } | sed '/^#CHROM/q' > "${header_vcf}"
+        if ! grep -q '^#CHROM' "${header_vcf}"
+        then
+          echo "No #CHROM line in the first 16 MiB of ${gs_input_vcf}: the header is longer than that, or the file is corrupt." >&2
+          exit 1
+        fi
+        bgzip -f "${header_vcf}"
+        tabix -f -p vcf "${updated_input_vcf}"
       fi
 
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
