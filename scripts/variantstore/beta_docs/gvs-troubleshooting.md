@@ -15,6 +15,12 @@ Generally, if you have started the GVS workflow and it failed after ingestion, o
 These are issues that occur almost immediately --- often because of mis-named headers or incorrect paths
 Note that if your workflow failed during ingestion, generally, the GvsBeta workflow is restartable and will pick up where it left off.
 
+1. Ingest failure with error message: `VCF header validation failed -- do NOT proceed with data ingest.`
+   1. GVS checked the headers of your GVCFs before loading variant data, and at least one check failed. No variant data has been loaded. The message includes a validation report; each check is marked `[PASS]` or `[FAIL]`, and failing checks list what they found. The report is also available as the `vcf_headers_validation_report` workflow output.
+   1. `[FAIL] reblocking`: some GVCFs were not reblocked. Reblock them (see [Reblocked GVCF files](./run-your-own-samples.md#reblocked-gvcf-files)) and run again.
+   1. `[FAIL] dragen_version`: the cohort mixes secondary analysis methods, or DRAGEN versions, or does not match `expected_dragen_version`. See [Header validation before ingest](./run-your-own-samples.md#header-validation-before-ingest) for the rules and for how to allow a range of DRAGEN versions.
+   1. To continue without the failing samples, delete them from the data table and restart the workflow. The remaining samples are unaffected.
+   1. If you intend to combine secondary analysis methods, set `validate_vcf_headers` to `false` and restart.
 1. GVS is running very slowly!
    1. Confirm your GVCFs are reblocked. If your GVS workflow is running very slowly compared to the example runtimes in the workspace, you may have run GVS on GVCFs that have not been reblocked. 
 1.  `Duplicate sample names error: ERROR: The input file ~{sample_names_file} contains the following duplicate entries:`

@@ -33,6 +33,9 @@ workflow GvsCreateVATfromVDS {
         Int? split_intervals_scatter_count
         Boolean use_reference_disk = true
 
+        Boolean use_manual_clinvar_update = false
+        String manual_clinvar_path_prefix = "gs://gvs_quickstart_storage/Nirvana/ClinVar/ClinVar_2025-07"
+
         String? cloud_sdk_docker
         String? cloud_sdk_slim_docker
         String? gatk_docker
@@ -71,6 +74,12 @@ workflow GvsCreateVATfromVDS {
         vds_path: {
             help: "Optional top-level directory of the GVS VDS to be used to create the VAT. If defined, then 'sites_only_vcf' must NOT be defined"
         }
+        use_manual_clinvar_update: {
+            help: "If true, Nirvana annotates with the manually rebuilt ClinVar database at 'manual_clinvar_path_prefix' in place of the ClinVar that ships in the Nirvana data bundle (ClinVar_20231028). Works with or without reference disks. See scripts/variantstore/docs/vat_manual_ClinVar_updating for how the database was built and validated. Defaults to false."
+        }
+        manual_clinvar_path_prefix: {
+            help: "GCS path prefix of the manually rebuilt ClinVar database, to which '.nsa', '.nsa.idx' and '.nsa.schema' are appended. The file name (not the directory) must start with 'ClinVar_'. Only used if 'use_manual_clinvar_update' is true."
+        }
         sites_to_exclude: {
             help: "An optional file of sites to exclude from the sites-only VCF. It may become necessary to specify this if annotations for a particular position have issues that prevent Nirvana from running successfully, e.g. chr2:20447683 observed in AnVIL 3K data. The format is one bcftools-style region per line, e.g. 'chr2:20447683', no header."
         }
@@ -92,6 +101,14 @@ workflow GvsCreateVATfromVDS {
     # The path is pinned to a dated, immutable copy for reproducibility: the upstream NCBI file is a rolling file that
     # is overwritten continuously, so an undated path could silently change the Entrez annotations between runs.
     File entrez_annotation_file = "gs://gvs_quickstart_storage/Entrez/gene2ensembl_human_2026-07-10.tsv"
+
+    # Declared inside a conditional so that AnnotateVCF receives them as undefined, and localizes nothing, when the
+    # manual ClinVar update is off.
+    if (use_manual_clinvar_update) {
+        File manual_clinvar_nsa = manual_clinvar_path_prefix + ".nsa"
+        File manual_clinvar_nsa_idx = manual_clinvar_path_prefix + ".nsa.idx"
+        File manual_clinvar_nsa_schema = manual_clinvar_path_prefix + ".nsa.schema"
+    }
 
     # Always call `GetToolVersions` to get the git hash for this run as this is a top-level-only WDL (i.e. there are
     # no calling WDLs that might supply `git_hash`).
@@ -343,6 +360,9 @@ workflow GvsCreateVATfromVDS {
                     custom_annotations_file = StripCustomAnnotationsFromSitesOnlyVCF.output_custom_annotations_file,
                     variants_nirvana_docker = effective_variants_nirvana_docker,
                     use_reference_disk = use_reference_disk,
+                    manual_clinvar_nsa = manual_clinvar_nsa,
+                    manual_clinvar_nsa_idx = manual_clinvar_nsa_idx,
+                    manual_clinvar_nsa_schema = manual_clinvar_nsa_schema,
             }
 
             call PrepVtAnnotationJson {
@@ -1203,6 +1223,12 @@ task AnnotateVCF {
         File splice_ai_annotations = "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/SpliceAi_1.3.nsa"
         File splice_ai_annotations_idx = "gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/SupplementaryAnnotation/GRCh38/SpliceAi_1.3.nsa.idx"
         Boolean use_reference_disk
+
+        # A manually rebuilt ClinVar database to use in place of the one in the Nirvana data bundle. Either all three
+        # are defined or none are.
+        File? manual_clinvar_nsa
+        File? manual_clinvar_nsa_idx
+        File? manual_clinvar_nsa_schema
     }
 
     File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
@@ -1289,6 +1315,49 @@ task AnnotateVCF {
             ln ~{splice_ai_annotations_idx} ${DATA_SOURCES_FOLDER}/SupplementaryAnnotation/GRCh38/
         fi
 
+        SUPPLEMENTARY_ANNOTATIONS_FOLDER=${DATA_SOURCES_FOLDER}~{path_supplementary_annotations}
+
+        if [[ "~{defined(manual_clinvar_nsa)}" == "true" ]]
+        then
+            # Replace the bundle's ClinVar database with the manually rebuilt one.
+            #
+            # The bundle's ClinVar .nsa cannot merely be shadowed by adding a second --sd directory: Nirvana collects
+            # every .nsa across all --sd directories into one list and rejects two readers sharing a JSON key, aborting
+            # with "Duplicate variant-level (.nsa or fusion) JSON keys found for: clinvar". Nor can it be deleted in
+            # place, as the reference disk is mounted read-only. So build a writable directory of symlinks to every
+            # supplementary annotation file except the bundle's ClinVar .nsa, and point Nirvana at that instead. This
+            # works the same way whether or not the references came from the reference disk. The links must be
+            # symbolic since the reference disk is a separate filesystem.
+            #
+            # The case pattern deliberately matches only ClinVar_*.nsa*, leaving the bundle's ClinVar .nsi
+            # (structural-variant intervals) in place. SAUtils has no verb that regenerates a ClinVar .nsi, and .nsi
+            # readers are key-checked in a separate namespace from .nsa readers, so an older .nsi coexists with the new
+            # .nsa without conflict. The VAT loader reads per-variant ClinVar annotations only and never looks at
+            # intervals.
+            BUNDLE_SUPPLEMENTARY_ANNOTATIONS_FOLDER=${SUPPLEMENTARY_ANNOTATIONS_FOLDER}
+            SUPPLEMENTARY_ANNOTATIONS_FOLDER="$PWD/supplementary_annotations_dir"
+            mkdir ${SUPPLEMENTARY_ANNOTATIONS_FOLDER}
+
+            for f in ${BUNDLE_SUPPLEMENTARY_ANNOTATIONS_FOLDER}/*
+            do
+                case "$(basename ${f})" in
+                    ClinVar_*.nsa*) echo "Omitting bundled ClinVar file ${f}" ;;
+                    *) ln -s ${f} ${SUPPLEMENTARY_ANNOTATIONS_FOLDER}/ ;;
+                esac
+            done
+            ln -s ~{manual_clinvar_nsa} ~{manual_clinvar_nsa_idx} ~{manual_clinvar_nsa_schema} ${SUPPLEMENTARY_ANNOTATIONS_FOLDER}/
+
+            echo "ClinVar files after replacement:"
+            ls -lL ${SUPPLEMENTARY_ANNOTATIONS_FOLDER}/ClinVar_*
+
+            # Fail loudly here rather than 40 minutes later inside Nirvana if the swap didn't take.
+            if [[ $(ls ${SUPPLEMENTARY_ANNOTATIONS_FOLDER}/ClinVar_*.nsa | wc -l) -ne 1 ]]
+            then
+                >&2 echo "Expected exactly one ClinVar .nsa after the manual update, found the above. Exiting."
+                exit 1
+            fi
+        fi
+
         # =======================================
         echo "Creating custom annotations"
         mkdir customannotations_dir
@@ -1307,7 +1376,7 @@ task AnnotateVCF {
         dotnet ~{nirvana_location} \
             -i ~{input_vcf} \
             -c $DATA_SOURCES_FOLDER~{path} \
-            --sd $DATA_SOURCES_FOLDER~{path_supplementary_annotations} \
+            --sd ${SUPPLEMENTARY_ANNOTATIONS_FOLDER} \
             --sd $CUSTOM_ANNOTATIONS_FOLDER \
             -r $DATA_SOURCES_FOLDER~{path_reference} \
             -o ~{output_annotated_file_name}

@@ -309,6 +309,15 @@ fails a site when `max(score) < threshold` and a genotype when
 lower-is-better, so `ExtractCohortVETSEngine` overrides both and fails a site
 when `min(score) > threshold` and a genotype when `max(score) > threshold`.
 
+### `bq --apilog=false` writes a file named `false`
+
+`--apilog` takes a file path, not a boolean, so `--apilog=false` writes the
+API debug log to a file literally named `false` in the current directory.
+The idiom appears throughout the WDLs, where it is harmless because the file
+lands in the task's working directory and is discarded. Do not copy it into
+commands run locally: there it leaves a log of several hundred KB in the
+repo. Omit the flag instead.
+
 ## Key Workflows
 
 ### GvsJointVariantCalling.wdl
@@ -358,6 +367,71 @@ output files. Output files are partitioned at a minimum by chromosome, but for
 "wide" extracts (callsets with many large numbers of samples), there may be
 hundreds of output files per chromosome.
 
+## Nested inputs, and why a WDL 1.1 upgrade would change them
+
+The GVS WDLs are `version 1.0`. Under 1.0, a call input that the caller leaves
+unset becomes an input of the enclosing workflow, addressed by its
+fully-qualified name. This is true whether the call is to a task or a
+subworkflow. Terra lists these nested inputs in the workflow configuration, so
+you can set them there with no plumbing. For example, `GvsQuickstartIntegration`
+does not pass `use_manual_clinvar_update` to its `GvsQuickstartVATIntegration`
+call, but in VS-2029 the flag could still be set from Terra when running the
+top-level workflow. Terra only exposes one level of this, though: the inputs of
+calls made directly by the workflow being run, not those of calls nested inside
+a subworkflow. In VS-2029, setting `GvsCreateVATfromVDS`'s `use_reference_disk`
+from `GvsQuickstartIntegration` (two levels down) required temporarily adding a
+pass-through input to `GvsQuickstartVATIntegration`. So before adding
+pass-through inputs, check whether the input belongs to a direct child call and
+is therefore already exposed.
+
+WDL 1.1 reverses the default. By default, only the top-level workflow's own
+`input` section is settable. A workflow opts back in to nested inputs with
+`allowNestedInputs: true` in its `meta` section. WDL 1.2 moves that key to the
+workflow `hints` section, and restricts it to inputs that are optional or have
+a default. The only WDL in this repo that sets it today is
+`scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl`, which is not a GVS
+workflow.
+
+An upgrade to 1.1 therefore has to either add `allowNestedInputs` to every
+workflow whose nested inputs are set in Terra, or plumb each of those inputs
+through explicitly. Otherwise, any existing Terra method configuration that sets
+a nested input should be rejected for supplying an unexpected input. This has
+not been tried here. The quickstart integration workflows and the AoU workflows'
+method configurations are the places to audit.
+
+## Rerunning a quickstart integration test
+
+Each quickstart integration subworkflow starts by creating its own BigQuery
+dataset with `CreateDatasetForTest` in `GvsUtils.wdl`. The dataset name is built
+from the UTC date, the branch, the short HEAD hash and a per-subworkflow suffix,
+for example `quickit_2026_10_02_vs_2029_clinvar_clean_258052a_vat`. The task is
+`volatile`, so it is never call-cached, and its `bq mk` fails if the dataset
+already exists. A rerun of the same commit on the same UTC day therefore fails
+at that step, before any of the work under test runs.
+
+So when a quickstart run fails in `CreateDatasetForTest` with an "already
+exists" error, the cause is a same-day rerun of the same commit, not the change
+under test. When suggesting a rerun, say it needs a new commit or a later UTC
+date. The usual way to get a new commit is an empty one, pushed so the task's
+clone from GitHub picks it up (e.g. `git commit --allow-empty -m "hash bump"`,
+as in VS-2029's `d179c1de6`). The empty commit takes effect as soon as it is
+pushed, because `CreateDatasetForTest` gets its hash from its own `git clone` of
+the branch when the task starts.
+
+A WDL change has a separate timing concern. Terra reads the WDL from GitHub, at
+`raw.githubusercontent.com/<org>/<repo>/<branch>/...`, when the run is
+submitted, not from Dockstore's stored copy. GitHub serves these files with
+`cache-control: max-age=300`, so allow up to 5 minutes after pushing a WDL
+change before submitting. To confirm afterwards what a run executed, compare
+`submittedFiles.workflow` in its metadata against the commit; its `workflowUrl`
+shows where it came from. Its recorded `git_hash` is from the clone, so if the
+two disagree, something was pushed between submission and the clone.
+
+Getting past that step does not mean the run did fresh work. With call caching
+on, later tasks whose inputs have not changed still reuse earlier results.
+Before treating a run as evidence for a change, check the tasks that change
+affects for cache hits.
+
 ## Variant Annotation Table (VAT)
 
 ### Overview
@@ -405,6 +479,55 @@ patch this table for a set of VIDs that did not have corresponding Participant
 IDs. See the directory `pseudo_vids_only_in_vat` for more information on
 unmatched VIDs that were discovered in the VATs of the Delta and Echo callsets.
 
+### The VAT's gnomAD version depends on reference disks
+
+`AnnotateVCF` in `GvsCreateVATfromVDS.wdl` reads its Nirvana data sources
+from one of two places, and they do not hold the same data. With
+`use_reference_disk = true` (the default) it reads the Broad bundle
+`gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/`,
+which has gnomAD 3.1.2. With it false, `Nirvana/Downloader.dll` fetches
+whatever Illumina currently serves; in September 2026 that was gnomAD 4.0
+(plus a newer bundled ClinVar). So the two paths produce different gnomAD
+columns in the VAT, and the download path is not pinned to any version.
+
+gnomAD 4.0 is not just newer numbers. It renames the `oth` subpopulation to
+`remaining` and adds `ami` and `mid`, none of which
+`create_vt_bqloadjson_from_annotations.py` knows about. On the download path
+the `gnomad_oth_*` columns therefore come out empty, and `ami`/`mid` are
+silently dropped. The integration truth data comes from the reference-disk
+path, so nothing tests the other one.
+
+Note that `use_reference_disk` is a WDL input, distinct from Terra's "Use
+reference disks" submission option. Unchecking the option does not change the
+input, and the option is not part of the call-cache hash. If a rerun with the
+two mismatched gets past dataset creation (see "Rerunning a quickstart
+integration test" above), what happens depends on call caching. With the option
+unchecked and `use_reference_disk` still `true`, `AnnotateVCF` fails with "Could
+not find reference file 'Homo_sapiens.GRCh38.Nirvana.dat'" (VS-2029,
+`b3226270`). With call caching on, an `AnnotateVCF` whose inputs have not
+changed instead silently reuses the previous run's shards, because the dataset
+name is not one of its inputs (VS-2029, `ab40f7c3`). So when verifying a VAT
+run that was meant to test a reference-disk change, check that the `AnnotateVCF`
+shards were not cache hits. When suggesting such a run, recommend turning call
+caching off for that submission.
+
+### Comparing VATs after the BigQuery dataset has expired
+
+Integration-test VAT datasets expire after 14 days, but the workflow's TSV
+outlives them in the workspace bucket. It is the `vat_complete.bgz.tsv.gz`
+output of `MergeVatTSVs`, inside `GvsCreateVATFilesFromBigQuery`; find it by
+walking the run's Cromwell metadata with `expand_sub_workflows=True`. Row order
+is not guaranteed, so `gunzip | LC_ALL=C sort` both TSVs before comparing. If
+`cmp` finds them identical, you are done. Otherwise, diff the columns keyed on
+`(vid, transcript)`, taking column names from the TSV's own header line. Do not
+use `scripts/variantstore/scripts/variant_annotation_table/schema/vat_schema.json`
+for this: its column order is not the TSV's, so it silently mislabels every
+column. In VS-2029 it reported ClinVar differences as gnomAD `fin` and `nfe`
+ones. Sorting moves the header out of line 1, so read it from the unsorted
+file. A per-column diff separates ClinVar changes from gnomAD changes. In
+VS-2029 it showed that the flag-on VAT matched the VS-1994 VAT in every ClinVar
+column, with every remaining difference in gnomAD.
+
 # Data Handling
 
 ## Redact participant IDs from anything committed to this repo
@@ -431,6 +554,32 @@ real-ID version as a throwaway.
 
 # WDL Conventions
 
+## Forwarding an optional input must preserve its undefinedness
+
+When a wrapper workflow forwards an optional input to a sub-workflow, write the
+fallback so that "nobody set this" survives the hop:
+
+    Int? effective_width = if defined(specific_width) then specific_width
+                           else general_width
+
+Do not reach for `select_first([specific_width, general_width, <sentinel>])`. A
+sentinel tail turns an undefined input into a concrete value, and callees in
+this repo branch on `defined()` to mean something. `GvsImportGenomes` chooses
+its own scatter width when `load_data_scatter_width` is not supplied
+(`GvsImportGenomes.wdl:144-167`), so a `-1` tail would have silently taken
+automatic selection away from every caller that sets neither input — while
+type-checking, validating and reading perfectly well.
+
+Two cheap checks. `womtool inputs <wrapper>.wdl` must still report the
+forwarded input as `Int? (optional)` rather than `Int`. And the result is
+observable at runtime: with the widths left unset, both `GvsImportGenomes`
+passes scatter `GenerateParquetFilesFromInputGVCFs` to the sample count,
+because automatic selection clamps to `num_samples`.
+
+Note that a small cohort hides an explicitly set width — on three samples every
+width of 3 or more yields the same three shards — so to demonstrate that an
+explicit value is honoured rather than ignored, set it *below* the sample
+count.
 ## Heredocs in command blocks
 
 Cromwell dedents a `command <<< >>>` block by the leading whitespace common to every
@@ -498,6 +647,37 @@ extensionless so that the Dockerfile's `COPY *.py /app/` leaves it out of the
 Variants image and out of the rebuild-and-bump obligation. Do not rename it to
 `check_wdl_heredocs.py`.
 
+## Interpolated multi-line text defeats both heredoc conventions
+
+The dedent described above is computed on the command *after* interpolation. A
+`~{...}` whose value spans several lines puts its continuation lines at column
+zero, so nothing is stripped. A terminator indented with the block then stays
+indented, even though the block was written to the first convention. The result
+is the loud failure above, `unexpected end of file`, which here also means the
+task never prints what it was meant to print. `check-wdl-heredocs` cannot see
+this. It stubs interpolations out with a single-line literal, so it passes such a
+block, and it did pass `TerminateWorkflow` while every multi-line abort message
+was being lost this way.
+
+So do not pass interpolated text through a heredoc at all. To get a WDL string
+into a file or onto stderr, let Cromwell write it:
+
+    cat ~{write_lines([message])} >&2
+
+bash never parses that file. A heredoc would also need its delimiter quoted
+(`<<'FIN'`), or bash runs backticks and `$` in the text as substitutions, and GVS
+messages routinely backtick hyphenated table names.
+
+When a task fails with an empty `stderr` in the execution bucket, the shell's own
+errors, including `unexpected end of file`, are in the task's GCP Batch log:
+
+    gcloud logging read 'logName="projects/<terra-project>/logs/batch_task_logs"
+      AND resource.labels.job_id:"job-<first 8 of the sub-workflow id>"' \
+      --project <terra-project> --freshness=2d --format='value(textPayload)'
+
+The Terra project and full job id are in the call's `jobId` in the workflow
+metadata.
+
 # Documentation Conventions
 
 ## Markdown tables must be rectangular
@@ -519,9 +699,31 @@ Add `--check` to report without rewriting (exit status 1 if anything would
 change), and pass a directory to search it recursively. The script is idempotent
 and never touches content inside fenced code blocks.
 
+"Editing a table" includes edits that were not aimed at the table. A
+find-and-replace that changes a word's length — a spelling pass turning
+`behaviour` into `behavior`, a rename — breaks the padding of every table cell
+it touches. In VS-2029 a US-spelling pass over `validation.md` left two
+previously aligned tables ragged. After any bulk text edit, run the formatter
+with `--check` on the files you touched.
+
 Some existing docs predate this and are still ragged. Only format files you are
 already modifying; reformatting untouched docs adds diff noise that obscures the
 actual change.
+
+## Cite a run's results by something that will still resolve
+
+Integration-test BigQuery datasets expire 14 days after creation
+(`table_ttl_seconds` in `GvsUtils.wdl`), so a doc that cites one as evidence
+goes stale within weeks. In VS-2029, `validation.md` named two VAT datasets
+that had expired before the doc was reviewed. The run's outputs last longer.
+Every task's files stay in the workspace bucket under
+`gs://<bucket>/submissions/<submission id>/` for as long as the workspace
+exists, whatever the workflow.
+
+So cite the run itself rather than a dataset it wrote to. A workspace and
+submission ID may be enough. A full `gs://` path to the output file saves the
+reader from walking Cromwell metadata, but it can run to several hundred
+characters. Ask the user which they want.
 
 ## US English spelling
 
@@ -569,10 +771,10 @@ than doing the review inline from the start.
 A forked reviewer also cannot see the context already gathered in the
 conversation — the established base ref, the diff, the surrounding files — so it
 re-derives them, and its supporting claims still have to be checked against the
-repo before they can be reported. In the VS-1983 review its findings were sound,
-but one rested on a partial survey of the repo: it correctly noted that
-`CreateDatasetForTest` in `GvsUtils.wdl` passes no `--location`, while missing
-`run_header_loading_e2e.sh`, which uses `--location=US` and cuts the other way.
+repo before they can be reported. A forked reviewer's findings can be sound
+individually yet rest on a partial survey of the repo — correctly citing one
+call site that does X while missing another that does the opposite and changes
+the conclusion.
 
 Whoever writes the review — inline or otherwise — verify each finding's
 supporting claims against the repo, and reproduce a finding directly where that
@@ -687,6 +889,30 @@ The distinction is whether the leftover changes what a merged workflow does. If
 it only affects what is visible or runnable on the developer's own branch, leave
 it alone.
 
+## Re-reviewing a branch starts with the previous rounds
+
+A second or third review of the same branch is mostly triage, not fresh
+reading. Before looking at the diff, read the earlier write-ups in
+`~/claude-artifacts/<project>/` and classify every action item they raised as
+resolved, partially resolved, or open — checking each against the current tree
+rather than against what the PR body or the commit messages claim.
+
+Most of a later round's value is in that classification. Fixes between rounds
+are often partial: one of two related comments corrected, one recovery path
+closed but not the other, a doc updated in one place but not where operators
+actually read it. "Partially resolved" is frequently the accurate verdict.
+Starting from the diff alone re-derives the open items as if they were new and
+silently drops the half-done ones.
+
+So say which earlier action each finding descends from, and add a
+`## Resolved since round N` section crediting what landed. The author needs to
+see their fixes were noticed, and the next round needs the running tally.
+
+Re-check the findings an earlier round left standing, too: one may have become
+moot rather than fixed — for example, a cost concern about code that turns out
+to be gated off by a default nobody sets. Record a moot finding as moot, or the
+next round raises it again.
+
 # Session Retrospectives
 
 ## Offer to capture what a session taught you, every time
@@ -761,12 +987,12 @@ the source and re-run to confirm you are back to green. Keep the mutation in
 one place at a time; mutating two guards at once cannot tell you whether both
 are covered.
 
-This is worth the extra minutes because it routinely finds hollow tests. In the
-VS-2028 reblocking work it caught a test whose assertion could not distinguish
-the two code paths it was named for — both paths handed the writer the same
-`VariantContext`, so the assertion held either way. The fix was to choose an
-input where the paths genuinely diverge. Nothing but a mutation run would have
-surfaced that, and the test read perfectly well.
+This is worth the extra minutes because it routinely finds hollow tests. A
+typical one has an assertion that cannot distinguish the two code paths it is
+named for — both paths produce the same output for the chosen input, so the
+assertion holds either way. The fix is to choose an input where the paths
+genuinely diverge. Nothing but a mutation run surfaces that, and such a test
+reads perfectly well.
 
 Tests guarding a *negative* ("X should not take path Y") deserve particular
 suspicion, since the cheapest way to write one is also the vacuous way.
@@ -783,11 +1009,48 @@ watching before believing it. A leftover marker from a previous attempt is
 indistinguishable from success if you only test for existence.
 
 Check a timestamp, or delete the marker before starting and verify the deletion
-actually took effect. During the VS-2028 Docker build a stale `phase1.rc` from
-a failed first attempt was read as a completed second attempt within seconds of
-launching it; the giveaway was that the file's mtime predated the run. The same
+actually took effect. A stale exit-code file from a failed first attempt is
+easily read as a completed second attempt within seconds of launching it; the
+giveaway is a file mtime that predates the run. The same
 applies to `pgrep -f <script>`, which happily matches the SSH command string
 that contains the script name and reports a process that does not exist.
 
 More generally: when a check returns the answer you were hoping for
 suspiciously early, spend one command confirming it means what you think.
+
+## Quote the revision in `git show <rev>:<path>`
+
+In zsh, `$c:scripts/foo.wdl` is parsed as a parameter expansion with a history
+modifier, not as a revision followed by a path. `git show $c:path/to/file` in a
+loop therefore fails with `(eval):4: bad substitution` for every iteration and
+produces no output at all. Write `git show "${c}":path/to/file`.
+
+This is worth its own note because of how the failure reads: the error names
+`eval` and a line number, not git, and a loop that greps the output prints a
+plausible-looking nothing for each commit. Absence of matches is easy to accept
+as a real answer. When a loop over revisions reports that none of them contain
+something you expect to be there, check the command ran before believing the
+result.
+
+## Prove a rebuilt image carries the code, do not infer it
+
+The Variants-image rebuild rule above has a verification step that costs one
+command, and whoever is reviewing or authoring should run it rather than
+reasoning about dates. Pull the tag named in `GetToolVersions`, extract the
+script, and diff it against the branch:
+
+    CID=$(docker create --platform linux/amd64 <variants_docker_tag>)
+    docker cp "${CID}":/app/<script>.py ./img.py && docker rm "${CID}"
+    git show "<rev>":scripts/variantstore/scripts/<script>.py > ./pr.py
+    diff img.py pr.py
+
+This catches what nothing else does: a tag bumped but built from a different
+tree, or built before the last edit to the script. The "Detect missing Docker
+image tag updates" CI check proves only that the tag string changed when a
+baked-in file changed — not that the image behind the new tag holds that file's
+current contents. Comparing the image's build date against the script's last
+commit date is circumstantial in the same way.
+
+It matters most when a WDL starts passing a new argument to a baked-in script.
+A stale image fails with argparse's `error: unrecognized arguments`, which
+surfaces only at runtime inside a Cromwell task, long after review.

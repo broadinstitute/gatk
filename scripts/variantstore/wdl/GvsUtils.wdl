@@ -126,7 +126,7 @@ task GetToolVersions {
       # The `--branch` parameter to `git clone` actually does work for tags, though for historical reasons GVS
       # versioning is based on branches for now.
       # https://git-scm.com/docs/git-clone#Documentation/git-clone.txt--bltnamegt
-      git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{effective_version} --single-branch
+      GIT_LFS_SKIP_SMUDGE=1  git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{effective_version} --single-branch
       cd gatk
       git rev-parse HEAD > ../git_hash.txt
     fi
@@ -146,7 +146,7 @@ task GetToolVersions {
     # Must stay in lockstep with `cloud_sdk_docker_decl` above -- 565.0.0 is the last tag whose `-slim`
     # sibling is Debian 12 / Python 3.11. See the note there before bumping.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-10-05-alpine-2e9aebf286b7"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-10-13-alpine-a5729bc09299"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     # The hex suffix on a GATK tag is the Docker image ID that `build_docker_tag.py` was handed, but *which* digest
     # that ID refers to depends on the Docker version of the machine that built it, so do not compare suffixes across
@@ -159,8 +159,8 @@ task GetToolVersions {
     #     attestation manifest (it shows up as an `unknown/unknown` platform entry).
     # Both forms pull correctly under modern Docker and Cromwell. Neither the suffix nor the manifest media type says
     # anything about image contents -- verify a tag by layer count and size, not by the shape of its name.
-    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-10-05-gatkbase-lite-c9420a331abd"
-    String gatk_heavy_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-10-05-gatkbase-0e60f99da296"
+    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-10-14-gatkbase-lite-3b99a1224be1"
+    String gatk_heavy_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-10-14-gatkbase-0ab1c8e37ba9"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
     String plink_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/plink2:2024-04-23-slim-a0a65f52cc0e"
@@ -547,7 +547,7 @@ task BuildGATKJar {
     apt-get -qq install --assume-yes temurin-17-jdk
 
     # GATK
-    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
+    GIT_LFS_SKIP_SMUDGE=1  git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
     cd gatk
     ./gradlew shadowJar
 
@@ -605,7 +605,7 @@ task CreateDatasetForTest {
     apk add git
 
     # GATK
-    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
+    GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
     cd gatk
 
     branch=$(git symbolic-ref HEAD 2>/dev/null)
@@ -677,7 +677,7 @@ task BuildGATKJarAndCreateDataset {
     apt-get -qq install --assume-yes temurin-17-jdk
 
     # GATK
-    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
+    GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
     cd gatk
     ./gradlew shadowJar
 
@@ -737,13 +737,11 @@ task TerminateWorkflow {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    # To avoid issues with special characters within the message, write the message to a file.
-    cat > message.txt <<FIN
-    ~{message}
-    FIN
-
+    # Cromwell writes the message to a file verbatim, so bash never parses it. A heredoc does not survive here: a
+    # multi-line message stops Cromwell from stripping the command's indentation, leaving the closing delimiter
+    # indented and unrecognized, and the script then dies with a syntax error before printing anything.
     # cat the file to stderr as this task is going to fail due to the exit 1.
-    cat message.txt >&2
+    cat ~{write_lines([message])} >&2
     exit 1
   >>>
 
