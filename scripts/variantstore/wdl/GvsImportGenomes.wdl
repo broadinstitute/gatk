@@ -288,9 +288,8 @@ workflow GvsImportGenomes {
     # Parquet belonging to a sample the footer comparison or the vet truncation screen flags is moved
     # under this subdirectory of the output dir instead of being deleted, so it survives for inspection
     # and re-ingest while the rest of the callset's Parquet is deleted normally (VS-1989, VS-2032). Two
-    # tasks have to agree on the name
-    # -- QuarantineFlaggedParquetFiles writes it and DiscoverParquetFiles must not re-discover it -- so
-    # it is declared once here and threaded to both.
+    # tasks have to agree on the name -- QuarantineFlaggedParquetFiles writes it and
+    # DiscoverParquetFiles must not re-discover it -- so it is declared once here and threaded to both.
     #
     # The name is deliberately outside the prefixes ConfigureParquetLifecycle matches (vet/,
     # ref_ranges/, sample_chromosome_ploidy/, vcf_header_lines_scratch/) and outside the directory list
@@ -1647,11 +1646,11 @@ task VerifyParquetLoading {
     Boolean all_loaded = read_json(results_json)["all_loaded"]
     # The bulk deletion gate DeleteParquetFiles is conditioned on: all_loaded, plus every sample the
     # footer comparison or the vet truncation screen flagged having Parquet the quarantine step can
-    # move aside. A flag by itself no longer withholds the delete -- the flagged samples' files are quarantined and the rest
-    # of the callset is deleted -- so on a flagged-but-complete load this reads true alongside
-    # all_loaded. It is still distinct from all_loaded because a flagged sample with no resolvable
-    # Parquet path leaves nothing to quarantine, and deleting then would destroy the very files the
-    # screens asked to keep. Meaningful precisely when the task succeeds, so -- unlike the exact-check
+    # move aside. A flag by itself no longer withholds the delete -- the flagged samples' files are
+    # quarantined and the rest of the callset is deleted -- so on a flagged-but-complete load this
+    # reads true alongside all_loaded. It is still distinct from all_loaded because a flagged sample
+    # with no resolvable Parquet path leaves nothing to quarantine, and deleting then would destroy
+    # the very files the checks asked to keep. Meaningful precisely when the task succeeds, so -- unlike the exact-check
     # components below -- it is safe to publish as a task output.
     Boolean safe_to_delete_parquet = read_json(results_json)["safe_to_delete_parquet"]
     Int total_files = read_json(results_json)["total_files"]
