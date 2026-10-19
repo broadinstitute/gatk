@@ -315,14 +315,19 @@ def assess_footer_row_counts(file_rows, gcs_pairs_to_files, partition_rows, regu
     ``file_rows`` is ``{gcs_uri: num_rows}`` from ``get_parquet_footer_row_counts``. Only files in the
     GCS listing (``gcs_pairs_to_files``) are counted, so a file written under the output dir after
     discovery cannot inflate a sample's sum; such files are reported as ``unlisted_files`` and
-    otherwise ignored. A listed file the footer query did not return cannot be counted, so its sample
-    cannot be cleared: it is reported under ``unread`` and flagged alongside the mismatches.
+    otherwise ignored. A listed file the footer query returned no row for -- unreadable, or a valid
+    file with zero rows, which ``GROUP BY _FILE_NAME`` cannot tell apart -- cannot be counted, so its
+    sample cannot be cleared: it is reported under ``unread`` and flagged alongside the mismatches.
+
+    Ingest writes exactly one file per family per sample, so more than one listed file for a pair is
+    flagged on its own under ``multiple_files``. Summing would otherwise pass a sample loaded once
+    from each of two files, e.g. after a re-run at a different scatter width renamed its file.
 
     A sample with no BigQuery rows at all compares against 0. That is also a completeness failure,
     which fails the load outright; it is reported here too rather than special-cased.
 
-    Returns an overall ``ok``, ``flagged_samples`` (every sample with a mismatch or unread file in any
-    family), and a per-family breakdown.
+    Returns an overall ``ok``, ``flagged_samples`` (every sample with a mismatch, unread file or
+    multiple files in any family), and a per-family breakdown.
     """
     bigquery_rows = {(table_name, sample_id): total_rows or 0
                      for table_name, sample_id, total_rows in partition_rows}
@@ -330,7 +335,8 @@ def assess_footer_row_counts(file_rows, gcs_pairs_to_files, partition_rows, regu
         for sample_id, val in counts.items():
             bigquery_rows[(prefix, sample_id)] = _extract_count_info(val)[0] or 0
 
-    per_family = {fam: {"ok": True, "pairs_checked": 0, "mismatched": [], "unread": []}
+    per_family = {fam: {"ok": True, "pairs_checked": 0, "mismatched": [], "unread": [],
+                        "multiple_files": []}
                   for fam in footer_families}
     listed = set()
     for (table_name, sample_id), files in sorted(gcs_pairs_to_files.items()):
@@ -342,6 +348,9 @@ def assess_footer_row_counts(file_rows, gcs_pairs_to_files, partition_rows, regu
         listed.update(files)
         result = per_family[fam]
         result["pairs_checked"] += 1
+        if len(files) > 1:
+            result["multiple_files"].append({"table": table_name, "sample_id": sample_id,
+                                             "files": sorted(files)})
         unread = sorted(f for f in files if f not in file_rows)
         if unread:
             result["unread"].append({"table": table_name, "sample_id": sample_id, "files": unread})
@@ -354,9 +363,10 @@ def assess_footer_row_counts(file_rows, gcs_pairs_to_files, partition_rows, regu
 
     flagged = set()
     for result in per_family.values():
-        result["ok"] = not result["mismatched"] and not result["unread"]
+        result["ok"] = not result["mismatched"] and not result["unread"] and not result["multiple_files"]
         flagged.update(m["sample_id"] for m in result["mismatched"])
         flagged.update(u["sample_id"] for u in result["unread"])
+        flagged.update(m["sample_id"] for m in result["multiple_files"])
 
     return {
         "ok": not flagged,

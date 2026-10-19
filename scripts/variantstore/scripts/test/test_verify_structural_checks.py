@@ -226,10 +226,23 @@ class TestAssessFooterRowCounts(unittest.TestCase):
                          regular_counts={"sample_chromosome_ploidy": {1: (48, 24)}})
         self.assertEqual(r["per_family"]["sample_chromosome_ploidy"]["mismatched"][0]["bigquery_rows"], 48)
 
-    def test_multiple_files_per_pair_are_summed(self):
+    def test_two_files_for_one_pair_flag_even_when_the_sums_agree(self):
+        # Two files each loaded once read 2N against 2N; only the file count exposes the duplicate.
         files = [_uri("vet_001", 1), _uri("vet_001", 1).replace("input", "input2")]
-        r = self._assess({files[0]: 60, files[1]: 40}, {("vet_001", 1): files}, [("vet_001", 1, 100)])
+        listing = {("vet_001", 1): files, ("vet_001", 2): [_uri("vet_001", 2)]}
+        r = self._assess({files[0]: 100, files[1]: 100, _uri("vet_001", 2): 100}, listing,
+                         [("vet_001", 1, 200), ("vet_001", 2, 100)])
+        self.assertFalse(r["ok"])
+        self.assertEqual(r["flagged_samples"], [1])
+        self.assertEqual(r["per_family"]["vet"]["multiple_files"],
+                         [{"table": "vet_001", "sample_id": 1, "files": sorted(files)}])
+        self.assertEqual(r["per_family"]["vet"]["mismatched"], [])
+
+    def test_one_file_per_pair_reports_no_multiple_files(self):
+        listing = {("vet_001", 1): [_uri("vet_001", 1)]}
+        r = self._assess({_uri("vet_001", 1): 100}, listing, [("vet_001", 1, 100)])
         self.assertTrue(r["ok"])
+        self.assertEqual(r["per_family"]["vet"]["multiple_files"], [])
 
     def test_sample_absent_from_bigquery_compares_against_zero(self):
         listing = {("vet_001", 1): [_uri("vet_001", 1)]}

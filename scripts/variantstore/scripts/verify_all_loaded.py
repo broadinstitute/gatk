@@ -126,7 +126,9 @@ def _log_structural_summary(structural):
             log.warning(
                 f"  [footer] {family}: {len(fam['mismatched'])} (table, sample) pair(s) whose BigQuery "
                 f"row count differs from its Parquet footers, {len(fam['unread'])} with a file the "
-                f"footer query did not read (quarantining their Parquet; not waivable)"
+                f"footer query returned no rows for (unreadable or empty), "
+                f"{len(fam.get('multiple_files', []))} with more than one Parquet file "
+                f"(quarantining their Parquet; not waivable)"
             )
     if footer["unlisted_files"]:
         log.warning(f"  [footer] {len(footer['unlisted_files'])} Parquet file(s) under the output dir "

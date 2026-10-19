@@ -285,9 +285,10 @@ workflow GvsImportGenomes {
       else ["sample_chromosome_ploidy"]
     Array[String] parquet_superpartitioned_prefixes = ["vet", "ref_ranges"]
 
-    # Parquet belonging to a sample the heuristic vet screens flag is moved under this subdirectory of
-    # the output dir instead of being deleted, so it survives for inspection and re-ingest while the
-    # rest of the callset's Parquet is deleted normally (VS-1989). Two tasks have to agree on the name
+    # Parquet belonging to a sample the footer comparison or the vet truncation screen flags is moved
+    # under this subdirectory of the output dir instead of being deleted, so it survives for inspection
+    # and re-ingest while the rest of the callset's Parquet is deleted normally (VS-1989, VS-2032). Two
+    # tasks have to agree on the name
     # -- QuarantineFlaggedParquetFiles writes it and DiscoverParquetFiles must not re-discover it -- so
     # it is declared once here and threaded to both.
     #
@@ -1645,8 +1646,8 @@ task VerifyParquetLoading {
     File results_json = "verification_output/verification_results.json"
     Boolean all_loaded = read_json(results_json)["all_loaded"]
     # The bulk deletion gate DeleteParquetFiles is conditioned on: all_loaded, plus every sample the
-    # heuristic vet screens flagged having Parquet the quarantine step can move aside. A screen flag by
-    # itself no longer withholds the delete -- the flagged samples' files are quarantined and the rest
+    # footer comparison or the vet truncation screen flagged having Parquet the quarantine step can
+    # move aside. A flag by itself no longer withholds the delete -- the flagged samples' files are quarantined and the rest
     # of the callset is deleted -- so on a flagged-but-complete load this reads true alongside
     # all_loaded. It is still distinct from all_loaded because a flagged sample with no resolvable
     # Parquet path leaves nothing to quarantine, and deleting then would destroy the very files the
