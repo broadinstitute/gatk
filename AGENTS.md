@@ -267,8 +267,16 @@ The canonical GVS location encoding and decoding logic lives in
   no alleles.
 - **`filter_set_info`**: Contains filtering information at a position and allele
   level, including the VQSR model and other metadata.
-- **`cost_observability`**: Operation cost tracking, written to by the various
-  tools that comprise the GVS pipeline.
+- **`cost_observability`**: Operation cost tracking, written via
+  `utils.write_job_stats`. Only the post-ingest stages record anything:
+  `CreateAltAlleles`, `GvsCreateFilterSet`, `GvsPrepareRanges`,
+  `GvsExtractCallset`, and the Avro queries. Nothing in the ingest path does.
+  `GvsAssignIds` creates the table but writes no rows, and
+  `GvsBulkIngestGenomes`, `GvsImportGenomes` and `GvsValidateVcfHeaders` all
+  run real queries without recording them. So a cost figure derived from this
+  table is a post-ingest figure, and
+  `scripts/variantstore/utils/workflow_gcp_pricing/bq_cost_report.py` — whose
+  `STAGES` list hardcodes those same five — cannot see ingest spend at all.
 
 ### Filter table gotchas
 
