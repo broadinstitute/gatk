@@ -51,6 +51,7 @@ workflow GvsJointVariantCalling {
 
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
+
         
         Boolean use_parquet_ingest = true
         # Defaults to `extract_output_gcs_dir` + "/parquet" when `use_parquet_ingest` is true.
