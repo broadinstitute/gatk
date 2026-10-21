@@ -678,6 +678,18 @@ errors, including `unexpected end of file`, are in the task's GCP Batch log:
 The Terra project and full job id are in the call's `jobId` in the workflow
 metadata.
 
+## Transient infrastructure failures: use `maxRetries`, not `preemptible`
+
+`preemptible` only covers VM preemption. A task that exits non-zero for any
+other reason, such as a GCS `503 Service Unavailable` surfacing from a GATK tool
+after the client library has used up its own retries, fails on the first attempt
+unless its `runtime` block sets `maxRetries`. The repo's convention is
+`maxRetries: 3` (see `GvsExtractCallset.wdl` and `GvsUtils.wdl`).
+
+`maxRetries` is not specific to 503s: Cromwell reruns the task on any non-zero
+exit, so a genuine failure is also attempted four times before it fails. Retries
+run on fresh VMs, so each one costs the full task.
+
 # Documentation Conventions
 
 ## Markdown tables must be rectangular
