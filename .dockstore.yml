@@ -304,6 +304,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - ng_vs_2032_verify_ref_ranges_parquet_ingest
          tags:
              - /.*/
    - name: GvsBeta
