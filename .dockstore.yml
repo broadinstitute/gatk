@@ -236,6 +236,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - ng_vs_2050_strip_parquet_dir_trailing_slash
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
