@@ -303,7 +303,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - ng_vs_2049_fail_when_samples_ingested_do_not_have_is_loaded
          tags:
              - /.*/
    - name: GvsBeta
@@ -359,7 +358,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - ng_vs_2049_fail_when_samples_ingested_do_not_have_is_loaded
          tags:
              - /.*/
    - name: GvsIngestTieout
