@@ -199,8 +199,9 @@ workflow GvsBulkIngestGenomes {
     # Separate scratch Parquet directories for headers and data passes to avoid prefix collisions.
     # The data pass unconditionally uses /data so that recursive listing never picks up residual
     # files from a prior header pass, even if validate_vcf_headers is false.
-    String? headers_parquet_output_gcs_dir = if (defined(parquet_output_gcs_dir) && effective_validate_vcf_headers) then select_first([parquet_output_gcs_dir]) + "/headers" else none_string
-    String? data_parquet_output_gcs_dir = if defined(parquet_output_gcs_dir) then select_first([parquet_output_gcs_dir]) + "/data" else none_string
+    # Strip trailing slashes before appending, or `gs://b/x/` becomes `gs://b/x//data`.
+    String? headers_parquet_output_gcs_dir = if (defined(parquet_output_gcs_dir) && effective_validate_vcf_headers) then sub(select_first([parquet_output_gcs_dir]), "/+$", "") + "/headers" else none_string
+    String? data_parquet_output_gcs_dir = if defined(parquet_output_gcs_dir) then sub(select_first([parquet_output_gcs_dir]), "/+$", "") + "/data" else none_string
     # VS-1966 / VS-1995: If validate_vcf_headers is true, run an initial headers-only ingest pass,
     # validate the ingested headers, and generate a report. If validation fails, the workflow halts
     # fast before any expensive vet/ref data ingest.
