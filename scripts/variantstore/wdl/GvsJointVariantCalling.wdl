@@ -57,12 +57,12 @@ workflow GvsJointVariantCalling {
         # Defaults to `extract_output_gcs_dir` + "/parquet" when `use_parquet_ingest` is true.
         String? parquet_output_gcs_dir
         # Independent post-load structural checks (VS-1989), forwarded through GvsBulkIngestGenomes to
-        # GvsImportGenomes. Defaults keep the vet screens quarantining a flagged sample's Parquet,
-        # aborting the run when the duplication screen is what flagged it, and ploidy mode-inferred.
+        # GvsImportGenomes. Defaults keep the vet screens quarantining a flagged sample's Parquet
+        # without aborting the run, and ploidy mode-inferred.
         Float parquet_vet_duplication_threshold = 1.6
         Float parquet_vet_truncation_threshold = 1.6
         Boolean parquet_allow_flagged_vet_loads = false
-        Boolean parquet_fail_on_quarantine = true
+        Boolean parquet_fail_on_quarantine = false
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
         String? billing_project_id
 
@@ -128,7 +128,7 @@ workflow GvsJointVariantCalling {
         parquet_vet_duplication_threshold: "VS-1989 post-load verification: ratio-to-callset-median at or above which a vet sample's row count is flagged as a possible duplicate, and (mirrored) at or below median/ratio as a possible truncation. Must be > 1; default 1.6."
         parquet_vet_truncation_threshold: "VS-1989 post-load verification: ratio whose reciprocal sets the low-side floor -- a vet sample at or below median/ratio is flagged as possibly truncated. Must be > 1, or 0 to disable the truncation screen; default 1.6 (i.e. 0.625x). Separate from parquet_vet_duplication_threshold because only the high side has been calibrated."
         parquet_allow_flagged_vet_loads: "VS-1989 post-load verification: when false (default), the Parquet of any sample a vet duplication- or truncation-screen flag names is moved to a quarantine prefix instead of deleted (the load itself still succeeds, and the unflagged samples' Parquet is deleted as normal); when true the screens are waived and everything is deleted despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless."
-        parquet_fail_on_quarantine: "VS-1989 post-load verification: when true (default), a run that quarantined the Parquet of a duplication-flagged sample aborts after the quarantine completes, so the run is not silently green. Set false to leave the quarantine advisory (reported only through the parquet_quarantined_* outputs and the quarantine directory's README). Truncation-only flags never abort, because that threshold is not yet calibrated."
+        parquet_fail_on_quarantine: "VS-1989 post-load verification: when true, a run that quarantined the Parquet of a duplication-flagged sample aborts after the quarantine completes, so the run is not silently green. Defaults to false: duplicated vet / ref_ranges rows do not make results wrong (extract ignores them), so a quarantine is reported only through the parquet_quarantined_* outputs and the quarantine directory's README. Truncation-only flags never abort, because that threshold is not yet calibrated."
     }
 
     # The `call_set_identifier` string is used to name many different things throughout this workflow (BQ tables, vcfs etc).
