@@ -1511,7 +1511,8 @@ public final class AnalyzeSaturationMutagenesis extends GATKTool {
                     } else if ( cigarOperator == CigarOperator.I ) {
                         final byte call = (byte)(readSeq[readIndex] & UPPERCASE_MASK);
                         snvList.add(new SNV(refIndex, NO_CALL, call, readQuals[readIndex]));
-                    } else if ( cigarOperator == CigarOperator.M || cigarOperator == CigarOperator.S ) {
+                    } else if ( cigarOperator == CigarOperator.M || cigarOperator == CigarOperator.EQ ||
+                                cigarOperator == CigarOperator.X || cigarOperator == CigarOperator.S ) {
                         final byte call = (byte)(readSeq[readIndex] & UPPERCASE_MASK);
                         if ( call != refSeq[refIndex] ) {
                             snvList.add(new SNV(refIndex, refSeq[refIndex], call, readQuals[readIndex]));
