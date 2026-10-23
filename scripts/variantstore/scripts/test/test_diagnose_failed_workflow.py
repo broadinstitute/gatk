@@ -1,12 +1,15 @@
 import contextlib
 import importlib.util
 import io
+import os
 from pathlib import Path
 import unittest
 from urllib.error import URLError
 
 
-SCRIPT = Path(__file__).resolve().parents[2] / "utils/diagnose_failed_workflow.py"
+VARIANTSTORE = Path(os.environ.get(
+    "GVS_VARIANTSTORE_DIR", Path(__file__).resolve().parents[2]))
+SCRIPT = VARIANTSTORE / "utils/diagnose_failed_workflow.py"
 SPEC = importlib.util.spec_from_file_location("diagnose_failed_workflow", SCRIPT)
 diagnose = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(diagnose)
