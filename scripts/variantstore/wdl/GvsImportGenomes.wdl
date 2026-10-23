@@ -164,7 +164,7 @@ workflow GvsImportGenomes {
   # Compute batch size using ceiling division to ensure we don't exceed the requested scatter width.
   # Using (x + y - 1) / y implementation of ceil(x/y)
   # Example: 10 samples, scatter_width 6 -> batch_size = ceil(10/6) = 2 -> actual tasks = ceil(10/2) ≈ 5 ≤ 6
-  Int effective_load_data_batch_size = if (defined(requested_scatter_width)) then
+  Int selected_load_data_batch_size = if (defined(requested_scatter_width)) then
                                          (num_samples + effective_scatter_width - 1) / effective_scatter_width
                                        else if num_samples < max_scatter_for_user then 1
                                          else if is_wgs then num_samples / max_scatter_for_user
@@ -172,6 +172,14 @@ workflow GvsImportGenomes {
                                              else if num_samples < 20001 then 100
                                                else if num_samples < 50001 then 500
                                                  else 1000
+
+  # VS-2048: a headers-only pass reads only the gVCF header, so a one-sample shard is almost all VM startup.
+  # Unless the caller set load_data_scatter_width, batch at least 20 samples per shard there. Never fewer
+  # than the selection above, so the header pass never scatters wider than the data pass would.
+  Int headers_only_min_batch_size = 20
+  Int effective_load_data_batch_size = if (!defined(load_data_scatter_width) && !load_vet_and_ref_ranges && selected_load_data_batch_size < headers_only_min_batch_size) then
+                                         headers_only_min_batch_size
+                                       else selected_load_data_batch_size
 
   # Both preemptible and maxretries should be scaled up alongside import batch size since the likelihood of preemptions
   # and retryable random BQ import errors increases with import batch size / job run time.
