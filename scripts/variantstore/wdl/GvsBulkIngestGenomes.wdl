@@ -82,13 +82,13 @@ workflow GvsBulkIngestGenomes {
         # `parquet_output_gcs_dir` must be defined if `use_parquet_ingest` is true.
         String? parquet_output_gcs_dir
         # Independent post-load structural checks (VS-1989), forwarded to GvsImportGenomes; see that
-        # workflow. Defaults keep the vet screens quarantining a flagged sample's Parquet, aborting the
-        # run when the duplication screen is what flagged it, and ploidy mode-inferred, so leaving them
+        # workflow. Defaults keep the vet screens quarantining a flagged sample's Parquet without aborting
+        # the run, and ploidy mode-inferred, so leaving them
         # unset changes nothing.
         Float parquet_vet_duplication_threshold = 1.6
         Float parquet_vet_truncation_threshold = 1.6
         Boolean parquet_allow_flagged_vet_loads = false
-        Boolean parquet_fail_on_quarantine = true
+        Boolean parquet_fail_on_quarantine = false
 
         Boolean use_compressed_references = false
     }
@@ -105,7 +105,7 @@ workflow GvsBulkIngestGenomes {
         parquet_vet_duplication_threshold: "VS-1989 post-load verification, forwarded to GvsImportGenomes: ratio-to-callset-median at or above which a vet sample's row count is flagged as a possible duplicate, and (mirrored) at or below median/ratio as a possible truncation. Must be > 1; default 1.6."
         parquet_vet_truncation_threshold: "VS-1989 post-load verification, forwarded to GvsImportGenomes: ratio whose reciprocal sets the low-side floor -- a vet sample at or below median/ratio is flagged as possibly truncated. Must be > 1, or 0 to disable the truncation screen; default 1.6 (i.e. 0.625x). Separate from parquet_vet_duplication_threshold because only the high side has been calibrated."
         parquet_allow_flagged_vet_loads: "VS-1989 post-load verification, forwarded to GvsImportGenomes: when false (default), the Parquet of any sample a vet duplication- or truncation-screen flag names is moved to a quarantine prefix instead of deleted (the load itself still succeeds, and the unflagged samples' Parquet is deleted as normal); when true the screens are waived and everything is deleted despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless."
-        parquet_fail_on_quarantine: "VS-1989 post-load verification, forwarded to GvsImportGenomes: when true (default), a run that quarantined the Parquet of a duplication-flagged sample aborts after the quarantine completes, so the run is not silently green. Set false to leave the quarantine advisory (reported only through the parquet_quarantined_* outputs and the quarantine directory's README). Truncation-only flags never abort, because that threshold is not yet calibrated."
+        parquet_fail_on_quarantine: "VS-1989 post-load verification, forwarded to GvsImportGenomes: when true, a run that quarantined the Parquet of a duplication-flagged sample aborts after the quarantine completes, so the run is not silently green. Defaults to false: duplicated vet / ref_ranges rows do not make results wrong (extract ignores them), so a quarantine is reported only through the parquet_quarantined_* outputs and the quarantine directory's README. Truncation-only flags never abort, because that threshold is not yet calibrated."
     }
 
     if (!defined(git_hash) ||
@@ -308,9 +308,9 @@ workflow GvsBulkIngestGenomes {
         File? vcf_headers_validation_report = ValidateHeaders.validation_report
         String? vcf_headers_validation_report_contents = ValidateHeaders.validation_report_contents
         # Parquet quarantine observability (VS-1989). A run whose screens flagged a sample sets that
-        # sample's Parquet aside instead of deleting it with the rest. A duplication flag also aborts
-        # the ingest by default (parquet_fail_on_quarantine in GvsImportGenomes), so the run a reader
-        # sees these on is a truncation-only flag or a run with that abort turned off -- either way a
+        # sample's Parquet aside instead of deleting it with the rest. A duplication flag aborts
+        # the ingest only when parquet_fail_on_quarantine is true (off by default; see GvsImportGenomes),
+        # so a reader will normally see these on a green run -- a
         # non-zero parquet_quarantined_samples on a green run means review it.
         # Optional for the same reason as the header outputs above: the Parquet path is conditional.
         Int? parquet_quarantined_samples = ImportGenomesData.parquet_quarantined_samples

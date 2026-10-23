@@ -1,5 +1,46 @@
 # Genomic Variant Store (GVS) Changelog
 
+
+## 0.7.0 - 2026-10-23
+
+### Changed
+
+- **Ingest now uses Parquet by default.** `GvsJointVariantCalling` and `GvsBulkIngestGenomes` set `use_parquet_ingest` to `true`. gVCFs are converted to Parquet files which are then loaded into BigQuery with load jobs rather than streamed in through the BigQuery Storage Write API. This makes sample ingestion substantally faster and cheaper. Set `use_parquet_ingest` to `false` to get the previous behavior.
+- Parquet ingest now defaults to a scatter width of 1000 unless `load_data_scatter_width` is set. Other ingest modes keep automatic scatter width selection.
+- `GvsExtractCallset` now defaults `maximum_alternate_alleles` to 100, down from 1000. `GvsJointVariantCalling` still defaults it to 1000 and passes it through, so Beta callsets are unaffected.
+- Smaller GATK Docker image, with a separate "heavy" image (`gatk_heavy_docker`) for the tasks that need the full toolset.
+- Moved the Google Cloud SDK images from `524.0.0` to `565.0.0` (see 0.6.5 below).
+
+### Added
+
+- `GvsValidateVcfHeaders`, a workflow that checks gVCF headers (including the DRAGEN version and that the gVCFs have been reblocked) before the expensive ingest work is done. Enable it with `validate_vcf_headers` in `GvsJointVariantCalling`, where it defaults to `false`. Related inputs are `expected_dragen_version`, `require_reblocking` and `fail_on_validation_errors`.
+- `GvsExtractCohortFromSampleNames` accepts `validate_sample_names_in_sample_info` to check that every requested sample exists in `sample_info` and is not withdrawn.
+- The PGEN `.pvar` files now carry a variant ID in the ID column, formatted `chr:pos:ref`.
+- Optional gVCF header validation (off by default) to ensure DRAGEN versions all fall within a supplied range.
+
+### Fixed
+
+- Ingest now fails with a single clear message when the target BigQuery dataset does not exist.
+- Ingest now fails loudly when any sample it loaded is not marked `is_loaded`. Previously this showed up only later, at filtering.
+- `GvsExtractCohortFromSampleNames` now respects the withdrawn flag.
+- The headers-only ingest pass now reads only the gVCF header rather than the whole file.
+- Fixed Storage Write API handling of `ALREADY_EXISTS` responses, which could retry the same write indefinitely, and a spurious retry-exhaustion failure.
+- `WeightedSplitIntervals` no longer fails when contigs are missing from the weighted bed file.
+- The VCF merge task now retries after HTTP 503 responses.
+- The PGEN extract uses improved memory presets.
+
+### Removed
+
+- The unused `ImportArrays` and `ImportArrayManifest` workflows.
+
+## 0.6.5 - 2026-09-03
+
+### Fixed
+
+- Moved the Google Cloud SDK images from `524.0.0` to `565.0.0`. Google deletes Cloud SDK images about a year after publication, and the `524.0.0` tags that 0.6.4 pinned are no longer served, which made every workflow using them fail at task startup.
+
+This is a patch release off 0.6.4 containing only the change above. No other 0.6.4 behavior is altered, and the GATK and Variants images it uses are unchanged.
+
 ## 0.6.4 - 2025-07-29
 
 ### Fixed
