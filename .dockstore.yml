@@ -257,6 +257,7 @@ workflows:
              - master
              - ah_var_store
              - fixing_vat_clinvar_update_issues
+             - FoxtrotRelease_20261023
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
