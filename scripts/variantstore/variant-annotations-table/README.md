@@ -25,6 +25,7 @@ with 50002 errors that are caused by this task consuming all the memory on the V
 If and when the workflow fails in this manner, adjust the value in the `memory` runtime attribute of the `GenerateVepAndLofteeAnnotations` task and rerun `GvsCreateVATfromVDS` with call caching enabled.
 Do not change any task inputs or call caching will break, just edit the value of the runtime attribute directly.
 For the Foxtrot dataset, all but around 40 shards were able to complete with the baseline 8 GiB of memory; modifying this task to use 32 GiB of memory and rerunning the workflow enabled those remaining shards to succeed.
+The current runtime request is 16 GB, increased from 8 GB after further VEP worker-process failures. This may reduce memory-related failures but does not guarantee that all shards will complete; the historical 32 GiB rerun remains relevant if failures persist.
 - The `ancestry_file` input is the GCS path of the TSV file that maps samples (by `sample_name`) to subpopulations.
 - You will want to run this workflow with the same `dataset_name`, `project_id`, and `filter_set_name` as `GvsCreateVds.wdl`.
 - For `output_path` use a unique GCS path with a trailing slash (probably in the workspace bucket). This will be used to store the intermediate files for the pipeline.
