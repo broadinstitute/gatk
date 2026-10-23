@@ -1,53 +1,33 @@
 # Genomic Variant Store (GVS) Changelog
 
-## 0.7.0 - 2026-10-23
-
-### Fixed
-
-### Changed
-
-- Sample ingestion now write to parquet ingests to BigQuery using that, making the process faster and cheaper.
-
 
 ## 0.7.0 - 2026-10-23
 
 ### Changed
 
-- **Ingest now uses Parquet by default.** `GvsJointVariantCalling` and `GvsBulkIngestGenomes` set `use_parquet_ingest` to `true`. gVCFs are converted to Parquet files which are then loaded into BigQuery with load jobs rather than streamed in through the BigQuery Storage Write API. Set `use_parquet_ingest` to `false` to get the previous behavior.
-- The Parquet scratch directory no longer has to be supplied: `parquet_output_gcs_dir` now defaults to `<extract_output_gcs_dir>/parquet`.
+- **Ingest now uses Parquet by default.** `GvsJointVariantCalling` and `GvsBulkIngestGenomes` set `use_parquet_ingest` to `true`. gVCFs are converted to Parquet files which are then loaded into BigQuery with load jobs rather than streamed in through the BigQuery Storage Write API. This makes sample ingestion substantally faster and cheaper. Set `use_parquet_ingest` to `false` to get the previous behavior.
 - Parquet ingest now defaults to a scatter width of 1000 unless `load_data_scatter_width` is set. Other ingest modes keep automatic scatter width selection.
-- `GvsBulkIngestGenomes` accepts separate `header_load_data_scatter_width` and `data_load_data_scatter_width` inputs for its headers pass and its data pass. Each falls back to `load_data_scatter_width`, then to automatic selection.
-- Parquet ingest does not reload files that are already loaded, and a Parquet load job that failed permanently is superseded by a new attempt rather than being fetched again on every retry.
-- Parquet ingest no longer uses the `parquet_load_status` table.
-- Samples whose Parquet files look duplicated or truncated are quarantined and reported in the `parquet_quarantined_*` outputs. By default this no longer aborts the run (`parquet_fail_on_quarantine` is `false`), because duplicated rows do not affect extract results. The thresholds are set by `parquet_vet_duplication_threshold` and `parquet_vet_truncation_threshold`.
 - `GvsExtractCallset` now defaults `maximum_alternate_alleles` to 100, down from 1000. `GvsJointVariantCalling` still defaults it to 1000 and passes it through, so Beta callsets are unaffected.
-- `GvsExtractCohortFromSampleNames` now prepares tables with timestamped names to avoid collisions, and does not re-run the extract when the prepared tables already exist.
-- `GvsPrepareRangesCallset` accepts an `interval_list_padding` input to pad the input interval list.
 - Smaller GATK Docker image, with a separate "heavy" image (`gatk_heavy_docker`) for the tasks that need the full toolset.
 - Moved the Google Cloud SDK images from `524.0.0` to `565.0.0` (see 0.6.5 below).
-- Merged in recent GATK `master` branch changes.
 
 ### Added
 
 - `GvsValidateVcfHeaders`, a workflow that checks gVCF headers (including the DRAGEN version and that the gVCFs have been reblocked) before the expensive ingest work is done. Enable it with `validate_vcf_headers` in `GvsJointVariantCalling`, where it defaults to `false`. Related inputs are `expected_dragen_version`, `require_reblocking` and `fail_on_validation_errors`.
-- Ingest header loading is supported on the Parquet path.
-- Independent post-load verification of Parquet ingest (row-count and structural checks), run after the load and separate from the loader itself.
 - `GvsExtractCohortFromSampleNames` accepts `validate_sample_names_in_sample_info` to check that every requested sample exists in `sample_info` and is not withdrawn.
 - The PGEN `.pvar` files now carry a variant ID in the ID column, formatted `chr:pos:ref`.
+- Optional gVCF header validation (off by default) to ensure DRAGEN versions all fall within a supplied range.
 
 ### Fixed
 
 - Ingest now fails with a single clear message when the target BigQuery dataset does not exist.
 - Ingest now fails loudly when any sample it loaded is not marked `is_loaded`. Previously this showed up only later, at filtering.
 - `GvsExtractCohortFromSampleNames` now respects the withdrawn flag.
-- Reblocking no longer fails on gVCFs with a negative GQ or PL. DRAGEN 4.4.6 has been seen to emit these in a zero-depth reference block at the chrY PAR1 boundary. They are now floored to zero.
-- Reblocking no longer fails on DRAGEN targeted-event calls, which are now replaced with GQ 0 `0/0` calls, and passes somatic-looking records (such as DRAGEN 4.3.6 mitochondrial calls) through unmodified.
 - The headers-only ingest pass now reads only the gVCF header rather than the whole file.
 - Fixed Storage Write API handling of `ALREADY_EXISTS` responses, which could retry the same write indefinitely, and a spurious retry-exhaustion failure.
-- Fixed partition filtering that treated `_` as a SQL `LIKE` wildcard, in the Parquet and extract queries.
 - `WeightedSplitIntervals` no longer fails when contigs are missing from the weighted bed file.
 - The VCF merge task now retries after HTTP 503 responses.
-- The PGEN extract uses memory sizes adjusted from Foxtrot experience, with other improvements for exome PGEN extracts.
+- The PGEN extract uses improved memory presets.
 
 ### Removed
 
