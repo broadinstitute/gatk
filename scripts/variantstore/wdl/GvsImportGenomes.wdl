@@ -477,6 +477,7 @@ workflow GvsImportGenomes {
         ]),
         project_id = project_id,
         dataset_name = dataset_name,
+        ingested_sample_ids = GetUningestedSampleIds.gvs_ids,
         cloud_sdk_docker = effective_cloud_sdk_docker,
     }
   }
@@ -870,6 +871,8 @@ task SetIsLoadedColumn {
     # is passed here to prevent this task from running until the upstream task has completed.
     #@ except: UnusedInput
     Array[Boolean] go
+    # The samples this run set out to load, from GetUningestedSampleIds: one sample_id per line, under a header.
+    File ingested_sample_ids
     String cloud_sdk_docker
   }
   meta {
@@ -903,6 +906,63 @@ task SetIsLoadedColumn {
     );
 
     '
+
+    # The UPDATE above succeeds even when it touches no rows, and a sample left without is_loaded is invisible to
+    # everything downstream: e.g. GvsCreateFilterSet reads no samples and will fail much later with an opaque error from
+    # ExtractVariantAnnotations (VS-2049). The usual cause is an empty view feeding samples_with_all_data, e.g. a
+    # dataset reused from an earlier load_vcf_headers=true run that created sample_vcf_header but never filled it.
+    # So fail here if any sample this run loaded is still not marked loaded.
+
+    # Size the fetch below from this count so that --max_rows cannot silently truncate it.
+    # bq query --max_rows check: ok one row
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+
+    SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.sample_info`
+    WHERE is_loaded IS NOT TRUE AND withdrawn IS NULL
+
+    ' > not_loaded_count.csv
+    not_loaded_count=$(tail -1 not_loaded_count.csv)
+
+    tail -n +2 ~{ingested_sample_ids} | sort -u > ingested_sample_ids.txt
+    : > not_loaded_ingested_sample_ids.txt
+    if [[ ${not_loaded_count} -gt 0 ]]
+    then
+      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        --max_rows ${not_loaded_count} '
+
+      SELECT sample_id FROM `~{project_id}.~{dataset_name}.sample_info`
+      WHERE is_loaded IS NOT TRUE AND withdrawn IS NULL
+
+      ' > not_loaded.csv
+      tail -n +2 not_loaded.csv | sort -u > not_loaded_sample_ids.txt
+      comm -12 ingested_sample_ids.txt not_loaded_sample_ids.txt > not_loaded_ingested_sample_ids.txt
+    fi
+
+    num_failed=$(wc -l < not_loaded_ingested_sample_ids.txt | tr -d ' ')
+    if [[ ${num_failed} -gt 0 ]]
+    then
+      set +o xtrace
+      {
+        echo "ERROR: ${num_failed} of the $(wc -l < ingested_sample_ids.txt | tr -d ' ') sample(s) loaded by this run do not have"
+        echo "sample_info.is_loaded = TRUE, so every later stage would silently skip them. The first few sample_ids:"
+        head -10 not_loaded_ingested_sample_ids.txt | paste -sd ' ' -
+        echo "is_loaded is set from samples_with_all_data, which joins the views below; whichever is empty is the cause."
+        echo "An empty samples_with_header_data usually means the dataset was reused from an earlier run with"
+        echo "load_vcf_headers = true whose headers were never loaded. Rerun into a fresh dataset."
+        for view in samples_with_reference_data samples_with_variant_data samples_with_header_data samples_with_all_data
+        do
+          # bq query --max_rows check: ok one row
+          if count=$(bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+                       "SELECT COUNT(DISTINCT sample_id) FROM \`~{project_id}.~{dataset_name}.${view}\`" | tail -1)
+          then
+            echo "  ${view}: ${count} sample(s)"
+          else
+            echo "  ${view}: does not exist"
+          fi
+        done
+      } >&2
+      exit 1
+    fi
   >>>
   runtime {
     docker: cloud_sdk_docker
