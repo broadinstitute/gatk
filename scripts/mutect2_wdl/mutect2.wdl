@@ -622,7 +622,7 @@ task M2 {
 
             if [[ ! -z "~{normal_reads}" ]]; then
                 gatk --java-options "-Xmx~{command_mem}m" CollectAllelicCounts \
-                    -R ~{ref_fasta} -I ~{tumor_reads} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
+                    -R ~{ref_fasta} -I ~{normal_reads} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
                     -L ~{common_hets_for_segmentation} \
                     ~{collect_allelic_counts_extra_args} \
                     -O normal_allelic_counts.tsv \
