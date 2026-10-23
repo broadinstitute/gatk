@@ -39,7 +39,9 @@ workflow GvsJointVariantCalling {
         # workflow proceeds to vet/ref data ingest; if validation fails and fail_on_validation_errors is true,
         # it halts fast before any expensive vet/ref compute is spent. Set to false to bypass pre-ingest
         # header checks.
-        Boolean validate_vcf_headers = true
+        # Changing default to false for next release.  Will do more extensive scale tests later to see if the cost of
+        # this is small enough to make true by default.
+        Boolean validate_vcf_headers = false
         # Exact triplet ('3.7.8', AoU) or a range with optional interval notation ('3.4.12-3.7.8',
         # '[3.7.8-3.8)', '(3.7-3.8)'); see GvsValidateVcfHeaders.
         String? expected_dragen_version
@@ -49,8 +51,10 @@ workflow GvsJointVariantCalling {
 
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
-        # *NOTE* Parquet ingest off here by default until Parquet becomes the default ingest mode for Beta!
-        Boolean use_parquet_ingest = false
+
+        
+        Boolean use_parquet_ingest = true
+        # Defaults to `extract_output_gcs_dir` + "/parquet" when `use_parquet_ingest` is true.
         String? parquet_output_gcs_dir
         # Independent post-load structural checks (VS-1989, VS-2032), forwarded through
         # GvsBulkIngestGenomes to GvsImportGenomes. Defaults keep a flagged sample's Parquet
@@ -131,6 +135,11 @@ workflow GvsJointVariantCalling {
     String effective_extract_table_prefix = select_first([extract_table_prefix, sub(call_set_identifier, "\\s+|_+", "-")])
     String effective_filter_set_name = select_first([filter_set_name, sub(call_set_identifier, "\\s+|_+", "-")])
 
+    # Stays undefined when Parquet ingest is off: downstream workflows branch on `defined(parquet_output_gcs_dir)`.
+    String? effective_parquet_output_gcs_dir = if use_parquet_ingest
+        then select_first([parquet_output_gcs_dir, sub(extract_output_gcs_dir, "/+$", "") + "/parquet"])
+        else parquet_output_gcs_dir
+
     String query_project = project_id
     String destination_project = project_id
     String destination_dataset = dataset_name
@@ -200,7 +209,7 @@ workflow GvsJointVariantCalling {
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_scatter_width = load_data_scatter_width,
             use_parquet_ingest = use_parquet_ingest,
-            parquet_output_gcs_dir = parquet_output_gcs_dir,
+            parquet_output_gcs_dir = effective_parquet_output_gcs_dir,
             parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
             parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
             parquet_fail_on_quarantine = parquet_fail_on_quarantine,

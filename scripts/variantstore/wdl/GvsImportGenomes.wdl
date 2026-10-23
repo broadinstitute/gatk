@@ -142,7 +142,12 @@ workflow GvsImportGenomes {
     }
   }
 
-  if ((num_samples > max_auto_scatter_width) && !(defined(load_data_scatter_width))) {
+  # Parquet ingest scatters to 1000 unless the caller says otherwise; other ingests keep automatic selection.
+  Int? requested_scatter_width = if (defined(load_data_scatter_width)) then load_data_scatter_width
+                                 else if use_parquet_ingest then 1000
+                                 else load_data_scatter_width
+
+  if ((num_samples > max_auto_scatter_width) && !(defined(requested_scatter_width))) {
     call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataScatterWidth {
       input:
         message = "Importing " + num_samples + " samples but 'load_data_scatter_width' is not explicitly specified; the limit for automatic scatter width selection is " + max_auto_scatter_width + " for " + genome_type + " samples.",
@@ -151,14 +156,14 @@ workflow GvsImportGenomes {
   }
 
   # Compute effective scatter width, clamped to not exceed number of samples
-  Int effective_scatter_width = if (defined(load_data_scatter_width)) then
-                                  if select_first([load_data_scatter_width]) < num_samples then select_first([load_data_scatter_width]) else num_samples
+  Int effective_scatter_width = if (defined(requested_scatter_width)) then
+                                  if select_first([requested_scatter_width]) < num_samples then select_first([requested_scatter_width]) else num_samples
                                 else num_samples
 
   # Compute batch size using ceiling division to ensure we don't exceed the requested scatter width.
   # Using (x + y - 1) / y implementation of ceil(x/y)
   # Example: 10 samples, scatter_width 6 -> batch_size = ceil(10/6) = 2 -> actual tasks = ceil(10/2) ≈ 5 ≤ 6
-  Int effective_load_data_batch_size = if (defined(load_data_scatter_width)) then
+  Int effective_load_data_batch_size = if (defined(requested_scatter_width)) then
                                          (num_samples + effective_scatter_width - 1) / effective_scatter_width
                                        else if num_samples < max_scatter_for_user then 1
                                          else if is_wgs then num_samples / max_scatter_for_user
