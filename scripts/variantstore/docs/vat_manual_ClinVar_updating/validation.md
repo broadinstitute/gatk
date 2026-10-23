@@ -73,7 +73,11 @@ Loader: `gatk/scripts/variantstore/scripts/create_vt_bqloadjson_from_annotations
 - **The three RCV arrays are positionally parallel** — `.extend()`ed in lockstep at lines 267-269
   with an explicit length guard at 272-275. Zipping them by `WITH OFFSET` is valid.
 - **An RCV contributes one array entry per significance** (`[id] * len(sigs)`), so a record whose
-  significances are all filtered out contributes *nothing* and disappears silently.
+  significances are all filtered out should contribute nothing. Production subsequently exposed
+  a missing-field case that the earlier integration tests did not cover: Nirvana can omit
+  `significance` for a nonzero-star RCV, causing the original loader to crash instead of excluding
+  it. The loader now explicitly skips absent, null, and empty significance with a warning, before
+  collecting any date or phenotype. See the production edge case in [`summary.md`](summary.md).
 - **`clinvar_classification` is a derived union** (lines 280-288): the deduplicated set of
   significances across all *surviving* RCVs, ordered by `significance_ordering`. A variant loses
   `pathogenic` only if no surviving RCV still carries it.
