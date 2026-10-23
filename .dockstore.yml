@@ -256,6 +256,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - fixing_vat_clinvar_update_issues
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
