@@ -303,6 +303,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - fixing_pre_release_issues
          tags:
              - /.*/
    - name: GvsBeta

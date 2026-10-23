@@ -79,7 +79,9 @@ workflow GvsImportGenomes {
     # run that quietly set some Parquet aside, and the only trace is a workflow output nobody reads.
     # Aborting is safe here because it happens after the files are already quarantined, so it destroys
     # nothing and reverses nothing -- it is purely a notification that the run needs a human.
-    Boolean parquet_fail_on_quarantine = true
+    # Off by default: duplicated vet / ref_ranges rows do not make results wrong (extract ignores them), so
+    # knowing a quarantine happened is enough.
+    Boolean parquet_fail_on_quarantine = false
 
     Boolean is_wgs = true
   }
@@ -90,7 +92,7 @@ workflow GvsImportGenomes {
     parquet_vet_duplication_threshold: "VS-1989 post-load verification: ratio-to-callset-median at or above which a vet sample's row count is flagged as a possible duplicate. Must be > 1; default 1.6, calibrated against Foxtrot."
     parquet_vet_truncation_threshold: "VS-1989 post-load verification: ratio whose reciprocal sets the low-side floor -- a vet sample at or below median/ratio is flagged as possibly truncated. Must be > 1, or 0 to disable the truncation screen; default 1.6 (i.e. 0.625x). Separate from parquet_vet_duplication_threshold because only the high side has been calibrated, so the low side can be retuned or switched off on its own."
     parquet_allow_flagged_vet_loads: "VS-1989 post-load verification: when false (default), the Parquet of any sample a vet duplication- or truncation-screen flag names is moved to a quarantine prefix instead of deleted (the load itself still succeeds, and the unflagged samples' Parquet is deleted as normal); when true the screens are waived and everything is deleted despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless. Supersedes parquet_fail_on_quarantine in practice: waiving the screens leaves nothing quarantined, so that gate has nothing to fire on. Note that it also deletes the flagged sample's Parquet, so prefer parquet_fail_on_quarantine = false when the intent is to finish a flagged run with its Parquet still recoverable."
-    parquet_fail_on_quarantine: "VS-1989 post-load verification: when true (default), a run that quarantined the Parquet of a duplication-flagged sample aborts after the quarantine completes, so the run is not silently green. Set false to leave the quarantine advisory (reported only through the parquet_quarantined_* outputs and the quarantine directory's README). Truncation-only flags never abort, because that threshold is not yet calibrated. Has no effect when parquet_allow_flagged_vet_loads is true, which waives the screens upstream and so leaves nothing to abort on."
+    parquet_fail_on_quarantine: "VS-1989 post-load verification: when true, a run that quarantined the Parquet of a duplication-flagged sample aborts after the quarantine completes, so the run is not silently green. Defaults to false: duplicated vet / ref_ranges rows do not make results wrong (extract ignores them), so a quarantine is reported only through the parquet_quarantined_* outputs and the quarantine directory's README. Truncation-only flags never abort, because that threshold is not yet calibrated. Has no effect when parquet_allow_flagged_vet_loads is true, which waives the screens upstream and so leaves nothing to abort on."
   }
 
   Int max_auto_scatter_width = if is_wgs then 25000 else 100000
@@ -141,7 +143,12 @@ workflow GvsImportGenomes {
     }
   }
 
-  if ((num_samples > max_auto_scatter_width) && !(defined(load_data_scatter_width))) {
+  # Parquet ingest scatters to 1000 unless the caller says otherwise; other ingests keep automatic selection.
+  Int? requested_scatter_width = if (defined(load_data_scatter_width)) then load_data_scatter_width
+                                 else if use_parquet_ingest then 1000
+                                 else load_data_scatter_width
+
+  if ((num_samples > max_auto_scatter_width) && !(defined(requested_scatter_width))) {
     call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataScatterWidth {
       input:
         message = "Importing " + num_samples + " samples but 'load_data_scatter_width' is not explicitly specified; the limit for automatic scatter width selection is " + max_auto_scatter_width + " for " + genome_type + " samples.",
@@ -150,14 +157,14 @@ workflow GvsImportGenomes {
   }
 
   # Compute effective scatter width, clamped to not exceed number of samples
-  Int effective_scatter_width = if (defined(load_data_scatter_width)) then
-                                  if select_first([load_data_scatter_width]) < num_samples then select_first([load_data_scatter_width]) else num_samples
+  Int effective_scatter_width = if (defined(requested_scatter_width)) then
+                                  if select_first([requested_scatter_width]) < num_samples then select_first([requested_scatter_width]) else num_samples
                                 else num_samples
 
   # Compute batch size using ceiling division to ensure we don't exceed the requested scatter width.
   # Using (x + y - 1) / y implementation of ceil(x/y)
   # Example: 10 samples, scatter_width 6 -> batch_size = ceil(10/6) = 2 -> actual tasks = ceil(10/2) ≈ 5 ≤ 6
-  Int effective_load_data_batch_size = if (defined(load_data_scatter_width)) then
+  Int effective_load_data_batch_size = if (defined(requested_scatter_width)) then
                                          (num_samples + effective_scatter_width - 1) / effective_scatter_width
                                        else if num_samples < max_scatter_for_user then 1
                                          else if is_wgs then num_samples / max_scatter_for_user
@@ -497,7 +504,7 @@ workflow GvsImportGenomes {
     # The screen flags and the quarantine counts are surfaced because a flagged run is now a SUCCESSFUL
     # run that quietly set some Parquet aside -- without these outputs nothing above this workflow would
     # say so. parquet_quarantined_samples being non-zero on a green run is the signal to go and look --
-    # green rather than aborted only when parquet_fail_on_quarantine was turned off, or when every
+    # green rather than aborted when parquet_fail_on_quarantine is false (the default), or when every
     # flagged sample was flagged by the truncation screen alone.
     #
     # The family-completeness / ploidy-cardinality components are exact checks that fail the fail-loud

@@ -151,7 +151,7 @@ workflow GvsQuickstartVcfIntegration {
 
     # VS-1989: the quickstart samples are ordinary, so the vet duplication and truncation screens must
     # flag none of them. A duplication flag already aborts inside GvsImportGenomes (parquet_fail_on_quarantine
-    # defaults to true), so what this adds is coverage of a truncation-only flag -- which quarantines but
+    # is true here, though off by default in the production workflows), so what this adds is coverage of a truncation-only flag -- which quarantines but
     # deliberately does not abort, the truncation threshold being uncalibrated -- and of a run that turned
     # that abort off. A screen that starts flagging normal samples is otherwise a silently green regression.
     #
