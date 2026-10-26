@@ -70,9 +70,10 @@ workflow GvsImportGenomes {
     # comparison is exact and is not waivable.
     #
     # The low side is uncalibrated and so must be movable, and switchable off. Foxtrot calibration
-    # measured the high side only (the 1.6x duplication ratio flagged 2 vet samples of 540,545) and
-    # that screen is now retired, superseded by the exact comparison; nothing has been measured below
-    # the median, and a variant-count distribution has no reason to be symmetric -- its upper tail is
+    # covered the high side (the 1.6x duplication ratio flagged 2 vet samples of 540,545), and
+    # that screen is now retired, superseded by the exact comparison. The mirrored floor flagged none
+    # of them, which shows it is quiet on a clean WGS callset but not that it catches a real
+    # truncation. A variant-count distribution has no reason to be symmetric -- its upper tail is
     # bounded by biology while its lower tail absorbs low-coverage samples and more aggressive GQ
     # dropping. Set to 0 to disable the truncation screen entirely.
     Float parquet_vet_truncation_threshold = 1.6
