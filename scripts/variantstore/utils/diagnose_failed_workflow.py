@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Diagnose a failed Terra workflow using expanded Cromwell metadata.
+"""Diagnose a failed or running Terra workflow using expanded Cromwell metadata.
 
 Uses Python's standard library and the active gcloud identity. Does not modify
 the workflow or download inputs/outputs. See diagnose_failed_workflow.md.
@@ -103,8 +103,8 @@ def messages(failures, indent=""):
         yield from messages(failure.get("causedBy", []), indent + "  caused by: ")
 
 
-def collect_failures(metadata, parents=()):
-    """Return final failed calls; retain parent scatter context and retry outcomes."""
+def collect_failures(metadata, parents=(), include_history=False):
+    """Return failed attempts, optionally including those superseded by retries."""
     failures = []
     recovered = 0
     for name, attempts in metadata.get("calls", {}).items():
@@ -113,42 +113,79 @@ def collect_failures(metadata, parents=()):
             shards[attempt.get("shardIndex", -1)].append(attempt)
         for shard, history in shards.items():
             final = max(history, key=lambda call: call.get("attempt", 1))
-            label = f"{name} [shard={shard if shard != -1 else 'unscattered'}, attempt={final.get('attempt', 1)}]"
-            path = parents + (label,)
             recovered += sum(
                 call is not final
                 and call.get("executionStatus") in ("Failed", "RetryableFailure", "Preempted")
                 for call in history
             )
-            child = final.get("subWorkflowMetadata")
-            if child is not None:
-                nested, retries = collect_failures(child, path)
-                failures.extend(nested)
-                recovered += retries
-                if final.get("executionStatus") == "Failed" and not nested:
-                    # Expression/input evaluation can fail without any failed task.
-                    failures.append((path, final, child.get("failures", [])))
-            elif final.get("executionStatus") in ("Failed", "RetryableFailure"):
-                failures.append((path, final, []))
+            selected = sorted(history, key=lambda call: call.get("attempt", 1)) if include_history else [final]
+            for current in selected:
+                label = f"{name} [shard={shard if shard != -1 else 'unscattered'}, attempt={current.get('attempt', 1)}]"
+                path = parents + (label,)
+                child = current.get("subWorkflowMetadata")
+                if child is not None:
+                    nested, retries = collect_failures(child, path, include_history)
+                    failures.extend(nested)
+                    recovered += retries
+                    if current.get("executionStatus") == "Failed" and not nested:
+                        # Expression/input evaluation can fail without any failed task.
+                        failures.append((path, current, child.get("failures", [])))
+                elif current.get("executionStatus") in ("Failed", "RetryableFailure", "Preempted"):
+                    failures.append((path, current, []))
     return failures, recovered
 
 
+def collect_activity(metadata, parents=()):
+    """Inspect latest attempts only; a backend job may still be queued."""
+    active = []
+    unexpanded = []
+    for name, attempts in metadata.get("calls", {}).items():
+        shards = defaultdict(list)
+        for attempt in attempts:
+            shards[attempt.get("shardIndex", -1)].append(attempt)
+        for shard, history in shards.items():
+            latest = max(history, key=lambda call: call.get("attempt", 1))
+            label = f"{name} [shard={shard if shard != -1 else 'unscattered'}, attempt={latest.get('attempt', 1)}]"
+            path = parents + (label,)
+            child = latest.get("subWorkflowMetadata")
+            if child is not None:
+                nested, missing = collect_activity(child, path)
+                active.extend(nested)
+                unexpanded.extend(missing)
+            else:
+                if latest.get("subWorkflowId"):
+                    unexpanded.append(path)
+                status = latest.get("executionStatus")
+                if status not in ("Done", "Failed", "RetryableFailure", "Preempted",
+                                  "Aborted", "Bypassed"):
+                    active.append((path, latest))
+    return active, unexpanded
+
+
 def report(metadata, client=None, tail_bytes=65536, tail_lines=40):
-    if metadata.get("status") != "Failed":
+    status = metadata.get("status")
+    if status not in ("Failed", "Running"):
         raise ValueError(
-            f"Expected a failed workflow, got status {metadata.get('status')!r}. "
-            "This tool deliberately diagnoses failed runs only."
+            f"Expected a Failed or Running workflow, got status {status!r}."
         )
     print(f"Workflow: {metadata.get('workflowName', '(unknown)')} ({metadata.get('id')})")
-    print("Status: Failed")
+    print(f"Status: {status}")
     print(f"Execution directory: {metadata.get('workflowRoot', '(not recorded)')}")
-    print("\nWorkflow failure chain:")
-    for message in messages(metadata.get("failures", [])):
-        print("  " + message)
-    failed, recovered = collect_failures(metadata)
-    print(f"\nFinal failed calls: {len(failed)}")
+    if metadata.get("failures"):
+        print("\nWorkflow failure chain:")
+        for message in messages(metadata["failures"]):
+            print("  " + message)
+    failed, recovered = collect_failures(metadata, include_history=status == "Running")
+    failed.sort(key=lambda failure: failure[1].get("executionStatus") != "Failed")
+    scope = "all recorded attempts" if status == "Running" else "latest attempts"
+    print(f"\nFailed/preempted attempts ({scope}): {len(failed)}")
+    print(f"  Failed: {sum(call.get('executionStatus') == 'Failed' for _, call, _ in failed)}")
+    print(f"  Retryable/preempted: {sum(call.get('executionStatus') != 'Failed' for _, call, _ in failed)}")
     print(f"Earlier failed/preempted attempts superseded by retries: {recovered}")
-    incomplete = False
+    active, unexpanded = collect_activity(metadata)
+    incomplete = bool(unexpanded)
+    for path in unexpanded:
+        print("WARNING: unexpanded subworkflow; diagnosis is incomplete: " + " -> ".join(path))
     for index, (path, call, child_failures) in enumerate(failed, 1):
         print(f"\nFailure {index}: " + " -> ".join(path))
         print(f"  Status: {call.get('executionStatus')}")
@@ -156,7 +193,7 @@ def report(metadata, client=None, tail_bytes=65536, tail_lines=40):
         print(f"  Call directory: {call.get('callRoot', '(not recorded)')}")
         for message in messages(call.get("failures", []) + child_failures):
             print("  " + message)
-        if call.get("subWorkflowId"):
+        if call.get("subWorkflowId") and call.get("subWorkflowMetadata") is None:
             incomplete = True
             print("  WARNING: unexpanded subworkflow; child task diagnosis is incomplete.")
         job = call.get("jobId")
@@ -185,7 +222,19 @@ def report(metadata, client=None, tail_bytes=65536, tail_lines=40):
                     print(f"  Last up to {tail_lines} lines (bounded to {tail_bytes} bytes):")
                     for line in tail.splitlines()[-tail_lines:]:
                         print("    " + line)
-    if not failed:
+    if status == "Running":
+        if not failed and not metadata.get("failures") and not incomplete:
+            print("\nRunning without recorded errors in this metadata snapshot.")
+        print(f"\nCurrent task/subworkflow activity ({len(active)} latest attempts):")
+        for path, call in active:
+            print("  " + " -> ".join(path))
+            print(f"    Status: {call.get('executionStatus', '(not recorded)')}")
+            if call.get("jobId"):
+                print(f"    Backend job: {call['jobId']}")
+        if not active:
+            print("  No in-progress task attempts are visible; the workflow may be between tasks.")
+        print("Activity is inferred from metadata, not a live check of VM execution; queued tasks may not have started.")
+    if not failed and status == "Failed":
         print(
             "\nNo failed task was recorded. Inspect the workflow failure chain above: "
             "workflow evaluation can fail before a task starts."
