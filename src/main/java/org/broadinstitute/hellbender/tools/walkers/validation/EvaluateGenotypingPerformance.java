@@ -744,16 +744,36 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
           public String SAMPLE;
           public double SNP_CORRELATION;
           public double SNP_SITES;
+          public double SNP_SUM_XY;
+          public double SNP_SUM_X;
+          public double SNP_SUM_Y;
+          public double SNP_SUM_X2;
+          public double SNP_SUM_Y2;
           public double INDEL_CORRELATION;
           public double INDEL_SITES;
+          public double INDEL_SUM_XY;
+          public double INDEL_SUM_X;
+          public double INDEL_SUM_Y;
+          public double INDEL_SUM_X2;
+          public double INDEL_SUM_Y2;
 
           AFCorrelationMetric(final AFCorrelationAggregator afCorrelationAggregator) {
               BIN_CENTER = afCorrelationAggregator.binCenter;
               SAMPLE = afCorrelationAggregator.sampleName;
               SNP_CORRELATION = afCorrelationAggregator.snp_pearsonCorrelationAggregator.getCorrelation();
               SNP_SITES = afCorrelationAggregator.snp_pearsonCorrelationAggregator.n;
+              SNP_SUM_XY = afCorrelationAggregator.snp_pearsonCorrelationAggregator.sum_xy;
+              SNP_SUM_X = afCorrelationAggregator.snp_pearsonCorrelationAggregator.sum_x;
+              SNP_SUM_Y = afCorrelationAggregator.snp_pearsonCorrelationAggregator.sum_y;
+              SNP_SUM_X2 = afCorrelationAggregator.snp_pearsonCorrelationAggregator.sum_x2;
+              SNP_SUM_Y2 = afCorrelationAggregator.snp_pearsonCorrelationAggregator.sum_y2;
               INDEL_CORRELATION = afCorrelationAggregator.indel_pearsonCorrelationAggregator.getCorrelation();
               INDEL_SITES = afCorrelationAggregator.indel_pearsonCorrelationAggregator.n;
+              INDEL_SUM_XY = afCorrelationAggregator.indel_pearsonCorrelationAggregator.sum_xy;
+              INDEL_SUM_X = afCorrelationAggregator.indel_pearsonCorrelationAggregator.sum_x;
+              INDEL_SUM_Y = afCorrelationAggregator.indel_pearsonCorrelationAggregator.sum_y;
+              INDEL_SUM_X2 = afCorrelationAggregator.indel_pearsonCorrelationAggregator.sum_x2;
+              INDEL_SUM_Y2 = afCorrelationAggregator.indel_pearsonCorrelationAggregator.sum_y2;
           }
       }
 

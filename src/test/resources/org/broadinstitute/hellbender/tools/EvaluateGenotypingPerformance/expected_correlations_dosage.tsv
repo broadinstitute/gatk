@@ -1,18 +1,19 @@
 ## htsjdk.samtools.metrics.StringHeader
+# EvaluateGenotypingPerformance --dosage-field DS --output /tmp/expected_correlations_dosage.tsv --output-accuracy /tmp/expected_accuracy_dosage.tsv --output-accuracy-af /tmp/expected_accuracy_af_dosage.tsv --af-annotations SAMPLE1:AF1 --af-annotations SAMPLE2:AF2 --nbins 5 --first-bin-right-edge 0.1 --truth src/test/resources/org/broadinstitute/hellbender/tools/EvaluateGenotypingPerformance/truth.vcf --evaluation src/test/resources/org/broadinstitute/hellbender/tools/EvaluateGenotypingPerformance/eval.vcf --max-ac-bin 20 --n-calibration-bins 10 --min-af-for-accuracy-metrics 0.0 --allow-differing-ploidies false --force-compare-single-sample false --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --output-cram-version 3.1 --create-output-variant-index true --create-output-variant-md5 false --max-variants-per-shard 0 --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false
 ## htsjdk.samtools.metrics.StringHeader
-# Started on: June 10, 2021 10:26:36 AM EDT
+# Started on: October 28, 2026 at 2:41:24 PM EDT
 
 ## METRICS CLASS	org.broadinstitute.hellbender.tools.walkers.validation.EvaluateGenotypingPerformance$AFCorrelationMetric
-BIN_CENTER	SAMPLE	SNP_CORRELATION	SNP_SITES	INDEL_CORRELATION	INDEL_SITES
-0.05	SAMPLE1	0.51439	4	?	0
-0.133352	SAMPLE1	?	1	0.881842	3
-0.237137	SAMPLE1	?	1	?	1
-0.421697	SAMPLE1	?	1	?	0
-0.749894	SAMPLE1	?	0	?	0
-0.05	SAMPLE2	0.174053	4	?	1
-0.133352	SAMPLE2	?	1	?	0
-0.237137	SAMPLE2	1	2	?	0
-0.421697	SAMPLE2	?	0	0.999961	3
-0.749894	SAMPLE2	?	0	?	0
+BIN_CENTER	SAMPLE	SNP_CORRELATION	SNP_SITES	SNP_SUM_XY	SNP_SUM_X	SNP_SUM_Y	SNP_SUM_X2	SNP_SUM_Y2	INDEL_CORRELATION	INDEL_SITES	INDEL_SUM_XY	INDEL_SUM_X	INDEL_SUM_Y	INDEL_SUM_X2	INDEL_SUM_Y2
+0.05	SAMPLE1	0.51439	4	0.49475	1.0395	1.5	0.4921	0.75	?	0	0	0	0	0	0
+0.133352	SAMPLE1	?	1	0.9995	0.9995	1	0.999	1	0.881842	3	1.205	1.435	2	1.162225	1.5
+0.237137	SAMPLE1	?	1	0.2425	0.485	0.5	0.235225	0.25	?	1	0	0.01	0	0.0001	0
+0.421697	SAMPLE1	?	1	0.235	0.47	0.5	0.2209	0.25	?	0	0	0	0	0	0
+0.749894	SAMPLE1	?	0	0	0	0	0	0	?	0	0	0	0	0	0
+0.05	SAMPLE2	0.174053	4	0.2525	0.51	1.5	0.24515	1.25	?	1	0.4775	0.955	0.5	0.912025	0.25
+0.133352	SAMPLE2	?	1	0	0	0	0	0	?	0	0	0	0	0	0
+0.237137	SAMPLE2	1	2	1.22475	1.4745	1.5	1.200125	1.25	?	0	0	0	0	0	0
+0.421697	SAMPLE2	?	0	0	0	0	0	0	0.999961	3	2.2225	2.47	2.5	2.19535	2.25
+0.749894	SAMPLE2	?	0	0	0	0	0	0	?	0	0	0	0	0	0
 
 
