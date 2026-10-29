@@ -8,10 +8,10 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.argparser.ExperimentalFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
-import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.AlleleConcordanceWalker;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2Engine;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
@@ -24,7 +24,7 @@ import java.util.stream.Collectors;
         programGroup = VariantEvaluationProgramGroup.class
 )
 @ExperimentalFeature
-public class MergeMutect2CallsWithMC3 extends AbstractConcordanceWalker {
+public class MergeMutect2CallsWithMC3 extends AlleleConcordanceWalker {
 
     @Argument(doc = "Merged vcf.",
             fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
@@ -52,7 +52,7 @@ public class MergeMutect2CallsWithMC3 extends AbstractConcordanceWalker {
     protected Predicate<VariantContext> makeEvalVariantFilter() { return vc -> true; }
 
     @Override
-    protected boolean areVariantsAtSameLocusConcordant(final VariantContext truth, final VariantContext eval) {
+    protected boolean shouldVariantsBeMatched(final VariantContext truth, final VariantContext eval) {
         final boolean sameRefAllele = truth.getReference().equals(eval.getReference());
         // we assume that the truth has a single alternate allele
         final boolean containsAltAllele = eval.getAlternateAlleles().contains(truth.getAlternateAllele(0));
@@ -77,7 +77,7 @@ public class MergeMutect2CallsWithMC3 extends AbstractConcordanceWalker {
     }
 
     @Override
-    protected void apply(final TruthVersusEval truthVersusEval, final ReadsContext readsContext, final ReferenceContext refContext) {
+    protected void apply(final AlleleTruthVersusEval truthVersusEval, final ReadsContext readsContext, final ReferenceContext refContext) {
         final ConcordanceState concordanceState = truthVersusEval.getConcordance();
 
         // get AD from M2 if available, otherwise from NALT and NREF MC3 info fields

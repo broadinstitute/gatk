@@ -1,0 +1,19 @@
+## htsjdk.samtools.metrics.StringHeader
+# EvaluateGenotypingPerformance --resource /Users/jsoto/Documents/repos/gatk/src/test/resources/org/broadinstitute/hellbender/tools/EvaluateGenotypingPerformance/af_resource.vcf --output /tmp/expected_correlations_af_resource.tsv --output-accuracy /tmp/expected_accuracy_af_resource.tsv --output-accuracy-af /tmp/expected_accuracy_af_resource_af.tsv --af-annotations SAMPLE1:AF1 --af-annotations SAMPLE2:AF2 --nbins 5 --first-bin-right-edge 0.1 --truth src/test/resources/org/broadinstitute/hellbender/tools/EvaluateGenotypingPerformance/truth.vcf --evaluation src/test/resources/org/broadinstitute/hellbender/tools/EvaluateGenotypingPerformance/eval.vcf --max-ac-bin 20 --n-calibration-bins 10 --min-af-for-accuracy-metrics 0.0 --allow-differing-ploidies false --force-compare-single-sample false --interval-set-rule UNION --interval-padding 0 --interval-exclusion-padding 0 --interval-merging-rule ALL --read-validation-stringency SILENT --seconds-between-progress-updates 10.0 --disable-sequence-dictionary-validation false --create-output-bam-index true --create-output-bam-md5 false --output-cram-version 3.1 --create-output-variant-index true --create-output-variant-md5 false --max-variants-per-shard 0 --lenient false --add-output-sam-program-record true --add-output-vcf-command-line true --cloud-prefetch-buffer 40 --cloud-index-prefetch-buffer -1 --disable-bam-index-caching false --sites-only-vcf-output false --help false --version false --showHidden false --verbosity INFO --QUIET false --use-jdk-deflater false --use-jdk-inflater false --gcs-max-retries 20 --gcs-project-for-requester-pays  --disable-tool-default-read-filters false
+## htsjdk.samtools.metrics.StringHeader
+# Started on: October 28, 2026 at 2:41:30 PM EDT
+
+## METRICS CLASS	org.broadinstitute.hellbender.tools.walkers.validation.EvaluateGenotypingPerformance$AFCorrelationMetric
+BIN_CENTER	SAMPLE	SNP_CORRELATION	SNP_SITES	SNP_SUM_XY	SNP_SUM_X	SNP_SUM_Y	SNP_SUM_X2	SNP_SUM_Y2	INDEL_CORRELATION	INDEL_SITES	INDEL_SUM_XY	INDEL_SUM_X	INDEL_SUM_Y	INDEL_SUM_X2	INDEL_SUM_Y2
+0.05	SAMPLE1	0.83666	7	2	3	3.5	2	2.25	?	0	0	0	0	0	0
+0.133352	SAMPLE1	?	0	0	0	0	0	0	0.852803	4	1.25	1.5	2	1.25	1.5
+0.237137	SAMPLE1	?	0	0	0	0	0	0	?	0	0	0	0	0	0
+0.421697	SAMPLE1	?	0	0	0	0	0	0	?	0	0	0	0	0	0
+0.749894	SAMPLE1	?	0	0	0	0	0	0	?	0	0	0	0	0	0
+0.05	SAMPLE2	?	0	0	0	0	0	0	?	0	0	0	0	0	0
+0.133352	SAMPLE2	0.605406	7	1.5	2	3	1.5	2.5	?	0	0	0	0	0	0
+0.237137	SAMPLE2	?	0	0	0	0	0	0	?	0	0	0	0	0	0
+0.421697	SAMPLE2	?	0	0	0	0	0	0	0.57735	4	2.75	3.5	3	3.25	2.5
+0.749894	SAMPLE2	?	0	0	0	0	0	0	?	0	0	0	0	0	0
+
+
