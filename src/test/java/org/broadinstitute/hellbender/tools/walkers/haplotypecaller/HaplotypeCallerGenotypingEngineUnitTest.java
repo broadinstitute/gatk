@@ -310,6 +310,39 @@ public final class HaplotypeCallerGenotypingEngineUnitTest extends GATKBaseTest 
     }
 
     @Test
+    public void testRemoveAllelesWithoutHaplotypes(){
+        final Allele ref = Allele.create("ACCC", true);
+        final Allele spanDel = Allele.SPAN_DEL;
+        final Allele del = Allele.create("A", false);
+        final VariantContext originalVC = new VariantContextBuilder("source", "1", 1000000, 1000003, Arrays.asList(ref, spanDel, del)).make();
+
+        // the spanning deletion allele has no haplotypes, as can happen with partially determined haplotypes
+        final Map<Allele, List<Haplotype>> alleleMapper = new LinkedHashMap<>();
+        alleleMapper.put(ref, Collections.singletonList(new Haplotype("ACCC".getBytes(), true)));
+        alleleMapper.put(spanDel, Collections.emptyList());
+        alleleMapper.put(del, Collections.singletonList(new Haplotype("A".getBytes(), false)));
+
+        final VariantContext reducedVC = HaplotypeCallerGenotypingEngine.removeAllelesWithoutHaplotypes(alleleMapper, originalVC);
+
+        Assert.assertEquals(reducedVC.getAlleles(), Arrays.asList(ref, del));
+        Assert.assertEquals(new ArrayList<>(alleleMapper.keySet()), Arrays.asList(ref, del));
+    }
+
+    @Test
+    public void testRemoveAllelesWithoutHaplotypesIsNoOpWhenAllSupported(){
+        final Allele ref = Allele.create("A", true);
+        final Allele alt = Allele.create("T", false);
+        final VariantContext originalVC = new VariantContextBuilder("source", "1", 1000000, 1000000, Arrays.asList(ref, alt)).make();
+
+        final Map<Allele, List<Haplotype>> alleleMapper = new LinkedHashMap<>();
+        alleleMapper.put(ref, Collections.singletonList(new Haplotype("A".getBytes(), true)));
+        alleleMapper.put(alt, Collections.singletonList(new Haplotype("T".getBytes(), false)));
+
+        Assert.assertSame(HaplotypeCallerGenotypingEngine.removeAllelesWithoutHaplotypes(alleleMapper, originalVC), originalVC);
+        Assert.assertEquals(alleleMapper.size(), 2);
+    }
+
+    @Test
     @SuppressWarnings("unchecked")
     public void testMakeAnnotatedCallTrimmingAlleles(){
         List<Allele> alleles = Arrays.asList(Allele.create("AGGGGGGGGG", true), Allele.create("TGGGGGGGGG", false));

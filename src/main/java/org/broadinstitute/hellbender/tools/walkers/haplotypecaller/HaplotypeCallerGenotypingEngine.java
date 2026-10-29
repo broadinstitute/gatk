@@ -417,7 +417,8 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      *  @param ploidy        ploidy of the sample
      * @param alleleMapper  original allele to haplotype map
      */
-    private static VariantContext removeAllelesWithoutHaplotypes(final Map<Allele, List<Haplotype>> alleleMapper, final VariantContext mergedVC) {
+    @VisibleForTesting
+    static VariantContext removeAllelesWithoutHaplotypes(final Map<Allele, List<Haplotype>> alleleMapper, final VariantContext mergedVC) {
         final List<Allele> allelesToKeep = alleleMapper.entrySet().stream()
                 .filter(entry -> entry.getKey().isReference() || !entry.getValue().isEmpty())
                 .map(Map.Entry::getKey)
