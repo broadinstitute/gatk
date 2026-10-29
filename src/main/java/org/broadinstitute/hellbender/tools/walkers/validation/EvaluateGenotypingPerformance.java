@@ -443,7 +443,8 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             final Integer bin = af!=null? getBin(af) : null;
             final Genotype evalGenotype = evalVC.getGenotype(sample);
             final Genotype truthGenotype = truthVC != null? truthVC.getGenotype(mappedSample) : null;
-            if ((truthGenotype != null && truthGenotype.isNoCall()) || (evalGenotype != null && evalGenotype.isNoCall())) {
+            if ((truthGenotype != null && (truthGenotype.isNoCall() || truthGenotype.isMixed()))
+                    || (evalGenotype != null && (evalGenotype.isNoCall() || evalGenotype.isMixed()))) {
                 //not confident in truth, or eval is a noCall, so skip
                 continue;
             }
