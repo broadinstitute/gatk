@@ -582,8 +582,12 @@ public class RampedHaplotypeCallerEngine extends HaplotypeCallerEngine {
                 // output left-flanking non-variant section, then variant-containing section, then right flank
                 context.nonVariantLeftFlankRegion.ifPresent(flank -> result.addAll(referenceModelForNoVariation(flank, false, context.VCpriors)));
 
+                // PDHMM haplotype sets do not contain the reference haplotype, but the reference confidence model requires it
+                final Set<Haplotype> calledHaplotypesWithRef = new HashSet<>(calledHaplotypes.getCalledHaplotypes());
+                calledHaplotypesWithRef.add(context.assemblyResult.getReferenceHaplotype());
+
                 result.addAll(referenceConfidenceModel.calculateRefConfidence(context.assemblyResult.getReferenceHaplotype(),
-                        calledHaplotypes.getCalledHaplotypes(), context.assemblyResult.getPaddedReferenceLoc(), regionForGenotyping,
+                        calledHaplotypesWithRef, context.assemblyResult.getPaddedReferenceLoc(), regionForGenotyping,
                         context.readLikelihoods, localGenotypingEngine.getPloidyModel(), calledHaplotypes.getCalls(), hcArgs.standardArgs.genotypeArgs.supportVariants != null,
                         context.VCpriors));
 
