@@ -353,10 +353,10 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
                         if (matchedTruth == null || truth.getID().equals(eval.getID())) {
                             matchedTruth = truth;
                         }
-                        unmatchedTruth.remove(truth);
                     }
                 }
                 if (matchedTruth != null) {
+                    unmatchedTruth.remove(matchedTruth);
                     queue.add(new TruthVersusEval(matchedTruth, eval));
                 } else {
                     queue.add(TruthVersusEval.evalOnly(eval));
