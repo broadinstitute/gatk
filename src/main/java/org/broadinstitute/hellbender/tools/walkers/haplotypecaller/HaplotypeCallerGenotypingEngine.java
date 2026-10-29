@@ -189,6 +189,13 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
 
             mergedVC = removeAltAllelesIfTooManyGenotypes(ploidy, alleleMapper, mergedVC);
 
+            // With PDHMM only haplotypes determined at this locus are mapped to alleles, so an allele (e.g. a spanning
+            // deletion) can have no haplotypes and an all -Infinity likelihood column. That would drag the median used
+            // for the <NON_REF> likelihood down to -Infinity, so drop such alleles before adding <NON_REF>.
+            if (emitReferenceConfidence) {
+                mergedVC = removeAllelesWithoutHaplotypes(alleleMapper, mergedVC);
+            }
+
             AlleleLikelihoods<GATKRead, Allele> readAlleleLikelihoods = readLikelihoods.marginalize(alleleMapper);
             final SAMSequenceDictionary sequenceDictionary = header.getSequenceDictionary();
             final SimpleInterval variantCallingRelevantOverlap = new SimpleInterval(mergedVC).expandWithinContig(hcArgs.informativeReadOverlapMargin, sequenceDictionary);
@@ -410,6 +417,18 @@ public class HaplotypeCallerGenotypingEngine extends GenotypingEngine<StandardCa
      *  @param ploidy        ploidy of the sample
      * @param alleleMapper  original allele to haplotype map
      */
+    private static VariantContext removeAllelesWithoutHaplotypes(final Map<Allele, List<Haplotype>> alleleMapper, final VariantContext mergedVC) {
+        final List<Allele> allelesToKeep = alleleMapper.entrySet().stream()
+                .filter(entry -> entry.getKey().isReference() || !entry.getValue().isEmpty())
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toList());
+        if (allelesToKeep.size() == alleleMapper.size()) {
+            return mergedVC;
+        }
+        alleleMapper.keySet().retainAll(allelesToKeep);
+        return removeExcessAltAllelesFromVC(mergedVC, allelesToKeep);
+    }
+
     private VariantContext removeAltAllelesIfTooManyGenotypes(final int ploidy, final Map<Allele, List<Haplotype>> alleleMapper, final VariantContext mergedVC) {
 
         final int originalAlleleCount = alleleMapper.size();
