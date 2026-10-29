@@ -9,6 +9,7 @@ import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -149,6 +150,37 @@ public class EvaluateGenotypingPerformanceUnitTests extends GATKBaseTest {
 
         final Map<String, Double> actualMap = EvaluateGenotypingPerformance.buildAFMapForIndex(vc, annotationsMap.keySet(), altAlleleIndex);
         Assert.assertEquals(actualMap, expectedMap);
+    }
+
+    @Test
+    void testBuildAFMapSkipsMissingAnnotations() {
+        final VariantContext vc = new VariantContextBuilder("snp1", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_G, Allele.ALT_C))
+                .attribute("AF", Arrays.asList(".", "0.05"))
+                .make();
+
+        Assert.assertTrue(EvaluateGenotypingPerformance.buildAFMapForIndex(vc, Arrays.asList("AF"), 0).isEmpty());
+        Assert.assertEquals(EvaluateGenotypingPerformance.buildAFMapForIndex(vc, Arrays.asList("AF"), 1), ImmutableMap.of("AF", 0.05));
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    void testRejectsMultiallelicEvaluation() {
+        final VariantContext eval = new VariantContextBuilder("eval", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_G, Allele.ALT_C)).make();
+        EvaluateGenotypingPerformance.validateBiallelicComparison(null, eval);
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    void testRejectsMultiallelicTruth() {
+        final VariantContext truth = new VariantContextBuilder("truth", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_G, Allele.ALT_C)).make();
+        final VariantContext eval = new VariantContextBuilder("eval", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_G)).make();
+        EvaluateGenotypingPerformance.validateBiallelicComparison(truth, eval);
+    }
+
+    @Test
+    void testGetACBin() {
+        Assert.assertNull(EvaluateGenotypingPerformance.getACBin(0, 20));
+        Assert.assertEquals(EvaluateGenotypingPerformance.getACBin(1, 20), Integer.valueOf(0));
+        Assert.assertEquals(EvaluateGenotypingPerformance.getACBin(20, 20), Integer.valueOf(19));
+        Assert.assertEquals(EvaluateGenotypingPerformance.getACBin(21, 20), Integer.valueOf(19));
     }
 
     @DataProvider(name = "getBinDataProvider")

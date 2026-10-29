@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
@@ -10,10 +12,19 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.util.Map;
+import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 
 public class MergeMutect2CallsWithMC3IntegrationTest extends CommandLineProgramTest {
+
+    @Test
+    public void testContainedAltAllelesMatch() {
+        final VariantContext truth = new VariantContextBuilder("truth", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_C)).make();
+        final VariantContext eval = new VariantContextBuilder("eval", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_C, Allele.ALT_G)).make();
+
+        Assert.assertTrue(new MergeMutect2CallsWithMC3().shouldVariantsBeMatched(truth, eval));
+    }
 
     @Test
     public void test() {

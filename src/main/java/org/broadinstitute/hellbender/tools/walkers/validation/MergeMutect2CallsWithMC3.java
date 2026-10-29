@@ -52,6 +52,13 @@ public class MergeMutect2CallsWithMC3 extends AlleleConcordanceWalker {
     protected Predicate<VariantContext> makeEvalVariantFilter() { return vc -> true; }
 
     @Override
+    protected boolean shouldVariantsBeMatched(final VariantContext truth, final VariantContext eval) {
+        return truth.getReference().equals(eval.getReference())
+                && !truth.getAlternateAlleles().isEmpty()
+                && eval.getAlternateAlleles().containsAll(truth.getAlternateAlleles());
+    }
+
+    @Override
     public void onTraversalStart() {
         final Set<VCFHeaderLine> headerLines = new HashSet<>(getTruthHeader().getMetaDataInSortedOrder());
 

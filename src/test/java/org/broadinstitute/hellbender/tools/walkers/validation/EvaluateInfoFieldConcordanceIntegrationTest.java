@@ -1,6 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.validation;
 
+import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.engine.AbstractConcordanceWalker;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
@@ -10,9 +12,18 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.nio.file.Path;
+import java.util.Arrays;
 
 public class EvaluateInfoFieldConcordanceIntegrationTest extends CommandLineProgramTest {
     final double epsilon = 1e-3;
+
+    @Test
+    public void testContainedAltAllelesMatch() {
+        final VariantContext truth = new VariantContextBuilder("truth", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_C)).make();
+        final VariantContext eval = new VariantContextBuilder("eval", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_C, Allele.ALT_G)).make();
+
+        Assert.assertTrue(new EvaluateInfoFieldConcordance().shouldVariantsBeMatched(truth, eval));
+    }
 
     @Test(dataProvider= "infoConcordanceDataProvider")
     public void testInfoConcordanceFromProvider(String inputVcf1, String inputVcf2, String evalKey, String truthKey,

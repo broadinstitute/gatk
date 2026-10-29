@@ -25,9 +25,11 @@ import org.broadinstitute.hellbender.engine.filters.VariantFilter;
 import org.broadinstitute.hellbender.engine.filters.VariantFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.VariantIDsVariantFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -225,7 +227,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             fullName = "first-bin-right-edge",
             optional = true,
             doc = "The right edge of the first bin for binning sites by alt allele frequency for correlation calculation.",
-            minValue = 0,
+            minValue = Double.MIN_VALUE,
             maxValue = 1
     )
     double firstBinRightEdge = 0.0005;
@@ -425,6 +427,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
         final VariantContext evalVC = truthVersusEval.getEval();
 
         final VariantContext truthVC = truthVersusEval.getTruth();
+        validateBiallelicComparison(truthVC, evalVC);
 
         //since multiple samples are likely to share the same afAnnotation, we build a map to store the values for each afAnnotation, instead of extracting the value for each sample
         final Map<String, Double> afMap = buildAFMap(evalVC);
@@ -460,8 +463,8 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                     }
                 }
 
-                if (ac != null) {
-                    final int acBin = ac < maxACBin ? ac - 1 : maxACBin -1;
+                final Integer acBin = getACBin(ac, maxACBin);
+                if (acBin != null) {
                     acSnpMetrics.get(i).get(acBin).incrementMetrics(concordanceState);
                 }
 
@@ -488,8 +491,8 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                     }
                 }
 
-                if (ac != null) {
-                    final int acBin = ac < maxACBin ? ac - 1 : maxACBin -1;
+                final Integer acBin = getACBin(ac, maxACBin);
+                if (acBin != null) {
                     acIndelMetrics.get(i).get(acBin).incrementMetrics(concordanceState);
                 }
 
@@ -508,6 +511,16 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                 }
             }
         }
+    }
+
+    static void validateBiallelicComparison(final VariantContext truth, final VariantContext eval) {
+        if (eval.getAlternateAlleles().size() > 1 || (truth != null && truth.getAlternateAlleles().size() > 1)) {
+            throw new UserException.BadInput("EvaluateGenotypingPerformance does not support multiallelic comparisons.");
+        }
+    }
+
+    static Integer getACBin(final Integer ac, final int maxACBin) {
+        return ac == null || ac == 0 ? null : ac < maxACBin ? ac - 1 : maxACBin - 1;
     }
 
     /**
@@ -563,12 +576,16 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
     static Map<String, Double> buildAFMapForIndex(final VariantContext vc, final Collection<String> annotations, final int index) {
         final Map<String, Double> afMap = new HashMap<>();
         for (final String afAnnotation : annotations) {
-            final List<Double> afList = vc.getAttributeAsDoubleList(afAnnotation, -99);
+            final List<String> afList = vc.getAttributeAsStringList(afAnnotation, ".");
             if (afList.size() < index + 1) {
                 continue;
             }
-            final Double af = afList.get(index);
-            if (af < 0 || af > 1) {
+            final String afValue = afList.get(index);
+            if (afValue == null || afValue.equals(".")) {
+                continue;
+            }
+            final Double af = Double.parseDouble(afValue);
+            if (!Double.isFinite(af) || af < 0 || af > 1) {
                 throw new GATKException("Invalid AF value " + af + " at " + vc.getContig() + ":" + vc.getStart() + " for allele " + vc.getAlternateAllele(index));
             }
             afMap.put(afAnnotation, af);
@@ -663,7 +680,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                  correlationWriter.addMetric(new AFCorrelationMetric(aggregator));
              }
          }
-         correlationWriter.write(outputFile.toPath().toFile());
+         correlationWriter.write(new OutputStreamWriter(outputFile.getOutputStream()));
 
          //write out accuracy results
          final MetricsFile<AccuracyMetrics, Integer> accuracyWriter = getMetricsFile();
@@ -671,7 +688,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
          indelMetrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
          accuracyWriter.addAllMetrics(snpMetrics);
          accuracyWriter.addAllMetrics(indelMetrics);
-         accuracyWriter.write(outputAccuracyFile.toPath().toFile());
+         accuracyWriter.write(new OutputStreamWriter(outputAccuracyFile.getOutputStream()));
 
          final MetricsFile<AFAccuracyMetrics, Integer> afAccuracryWriter = getMetricsFile();
          for (final List<AFAccuracyMetrics> metrics : afSnpMetrics) {
@@ -682,7 +699,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
              metrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
              afAccuracryWriter.addAllMetrics(metrics);
          }
-         afAccuracryWriter.write(outputAccuracyAFFile.toPath().toFile());
+         afAccuracryWriter.write(new OutputStreamWriter(outputAccuracyAFFile.getOutputStream()));
 
          if (outputAccuracyACFile != null) {
              final MetricsFile<ACAccuracyMetrics, Integer> acAccuracyMetricsWriter = getMetricsFile();
@@ -694,7 +711,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                  metrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
                  acAccuracyMetricsWriter.addAllMetrics(metrics);
              }
-             acAccuracyMetricsWriter.write(outputAccuracyACFile.toPath().toFile());
+             acAccuracyMetricsWriter.write(new OutputStreamWriter(outputAccuracyACFile.getOutputStream()));
          }
 
          if (outputCalibrationFile != null) {
@@ -709,7 +726,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                      calibrationMetricsWriter.addAllMetrics(metrics);
                  }
              }
-             calibrationMetricsWriter.write(outputCalibrationFile.toPath().toFile());
+             calibrationMetricsWriter.write(new OutputStreamWriter(outputCalibrationFile.getOutputStream()));
          }
          return null;
      }

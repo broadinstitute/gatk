@@ -92,6 +92,13 @@ public class EvaluateInfoFieldConcordance extends AlleleConcordanceWalker {
     private double indelSumDeltaSquared = 0.0;
 
     @Override
+    protected boolean shouldVariantsBeMatched(final VariantContext truth, final VariantContext eval) {
+        return truth.getReference().equals(eval.getReference())
+                && !truth.getAlternateAlleles().isEmpty()
+                && eval.getAlternateAlleles().containsAll(truth.getAlternateAlleles());
+    }
+
+    @Override
     public void onTraversalStart() {
         if(getEvalHeader().getInfoHeaderLine(evalInfoKey) == null){
             throw new UserException("Missing key:"+evalInfoKey+" in Eval VCF:"+evalVariantsFile);
