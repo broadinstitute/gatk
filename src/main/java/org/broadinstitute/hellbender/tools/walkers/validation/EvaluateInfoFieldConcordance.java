@@ -93,9 +93,9 @@ public class EvaluateInfoFieldConcordance extends AlleleConcordanceWalker {
 
     @Override
     protected boolean shouldVariantsBeMatched(final VariantContext truth, final VariantContext eval) {
-        return truth.getReference().equals(eval.getReference())
-                && !truth.getAlternateAlleles().isEmpty()
-                && eval.getAlternateAlleles().containsAll(truth.getAlternateAlleles());
+        final boolean sameRefAllele = truth.getReference().equals(eval.getReference());
+        final boolean containsAltAllele = eval.getAlternateAlleles().contains(truth.getAlternateAllele(0));
+        return sameRefAllele && containsAltAllele;
     }
 
     @Override

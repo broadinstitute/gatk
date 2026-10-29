@@ -318,25 +318,14 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         return builder.make();
     }
 
+    /**
+     * Truth/eval pairing is done by the {@link StratifiedConcordanceEngine}, which clusters truth and eval records
+     * independently of how the base walker pairs them.  Never pairing records ensures each truth and eval record is
+     * passed to {@link #apply} (and therefore added to the engine) exactly once.
+     */
     @Override
     protected boolean shouldVariantsBeMatched(final VariantContext truth, final VariantContext eval) {
-        final String truthSvType = truth.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
-        final String evalSvType = eval.getAttributeAsString(GATKSVVCFConstants.SVTYPE, null);
-        final String truthContig2 = truth.getAttributeAsString(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, null);
-        final String evalContig2 = eval.getAttributeAsString(GATKSVVCFConstants.CONTIG2_ATTRIBUTE, null);
-        final Integer truthEnd2 = truth.hasAttribute(GATKSVVCFConstants.END2_ATTRIBUTE)
-                ? truth.getAttributeAsInt(GATKSVVCFConstants.END2_ATTRIBUTE, Integer.MIN_VALUE) : null;
-        final Integer evalEnd2 = eval.hasAttribute(GATKSVVCFConstants.END2_ATTRIBUTE)
-                ? eval.getAttributeAsInt(GATKSVVCFConstants.END2_ATTRIBUTE, Integer.MIN_VALUE) : null;
-        final String truthStrands = truth.getAttributeAsString(GATKSVVCFConstants.STRANDS_ATTRIBUTE, null);
-        final String evalStrands = eval.getAttributeAsString(GATKSVVCFConstants.STRANDS_ATTRIBUTE, null);
-        return truth.getContig().equals(eval.getContig())
-                && truth.getStart() == eval.getStart()
-                && truth.getEnd() == eval.getEnd()
-                && Objects.equals(truthSvType, evalSvType)
-                && Objects.equals(truthContig2, evalContig2)
-                && Objects.equals(truthEnd2, evalEnd2)
-                && Objects.equals(truthStrands, evalStrands);
+        return false;
     }
 
     protected VCFHeader createHeader(final VCFHeader header) {

@@ -22,9 +22,8 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
-import java.util.HashSet;
 import java.util.Iterator;
-import java.util.LinkedList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Queue;
 import java.util.Set;
@@ -74,46 +73,6 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
     protected SAMSequenceDictionary dict;
     private VariantContextComparator variantContextComparator;
 
-    // for indices, false -> 0, true -> 1
-    private ConcordanceState[][][][] concordanceStatesTable =
-            {// isFiltered = false
-                {// genotypedAgree = false
-                    {//truth-
-                        //eval- , eval+
-                        {null, ConcordanceState.FALSE_POSITIVE},
-                     //truth+
-                        //eval - , eval +
-                        {ConcordanceState.FALSE_NEGATIVE, ConcordanceState.FALSE_POSITIVE}
-                    },
-                 // genotypesAgree = true
-                    {//truth-
-                        //eval- , eval+
-                        {ConcordanceState.TRUE_NEGATIVE, null},
-                     //truth+
-                        //eval-, eval+
-                        {null, ConcordanceState.TRUE_POSITIVE}
-                    }
-                },
-             // isFiltered = true
-                {// genotypedAgree = false
-                    {//truth-
-                        //eval- , eval+
-                        {ConcordanceState.TRUE_NEGATIVE, ConcordanceState.FILTERED_TRUE_NEGATIVE},
-                    //truth+
-                        //eval - , eval +
-                        {ConcordanceState.FALSE_NEGATIVE, ConcordanceState.FILTERED_FALSE_NEGATIVE}
-                    },
-                // genotypesAgree = true
-                    {//truth-
-                        //eval- , eval+
-                        {ConcordanceState.TRUE_NEGATIVE, null},
-                     //truth+
-                        //eval-, eval+
-                        {null, ConcordanceState.FILTERED_FALSE_NEGATIVE}
-                    }
-                }
-            };
-
     // Overriding the superclass method to favor the truth variants' dictionary
     @Override
     public final SAMSequenceDictionary getBestAvailableSequenceDictionary() {
@@ -140,6 +99,44 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
     protected Predicate<VariantContext> makeEvalVariantFilter() { return vc -> true; }
 
     protected abstract boolean shouldVariantsBeMatched(final VariantContext truth, final VariantContext eval);
+
+    /**
+     * Whether a single truth record may be matched to more than one eval record at the same locus.  By default matching
+     * is one-to-one: once a truth record has been matched to an eval record, it is unavailable to subsequent eval records.
+     * Override to return true if, for example, split multiallelic eval records should each be compared to the same
+     * multiallelic truth record.
+     */
+    protected boolean allowTruthToMatchMultipleEvals() { return false; }
+
+    /**
+     * Match truth and eval records which all start at the same locus.  Each eval record is matched to the first compatible
+     * truth record (as determined by {@link #shouldVariantsBeMatched}), subject to {@link #allowTruthToMatchMultipleEvals}.
+     * Eval records are returned in input order, followed by any unmatched truth records in input order.
+     */
+    protected Queue<TruthVersusEval> matchVariants(final List<VariantContext> truthVariants, final List<VariantContext> evalVariants) {
+        //we expect only a small number of variants in each list, so a loop is fine
+        final Queue<TruthVersusEval> queue = new ArrayDeque<>();
+        final Set<VariantContext> unmatchedTruth = new LinkedHashSet<>(truthVariants);
+        for (final VariantContext eval : evalVariants) {
+            final Collection<VariantContext> candidateTruth = allowTruthToMatchMultipleEvals() ? truthVariants : unmatchedTruth;
+            final VariantContext matchedTruth = candidateTruth.stream()
+                    .filter(truth -> shouldVariantsBeMatched(truth, eval))
+                    .findFirst().orElse(null);
+            if (matchedTruth != null) {
+                unmatchedTruth.remove(matchedTruth);
+                queue.add(new TruthVersusEval(matchedTruth, eval));
+            } else {
+                queue.add(TruthVersusEval.evalOnly(eval));
+            }
+        }
+
+        //deal with unmatched truth
+        for (final VariantContext truth : unmatchedTruth) {
+            queue.add(TruthVersusEval.truthOnly(truth));
+        }
+
+        return queue;
+    }
 
     private Spliterator<TruthVersusEval> getSpliteratorForDrivingVariants() {
         final Iterator<VariantContext> truthIterator = new FilterIterator<>(truthVariants.iterator(), makeTruthVariantFilter());
@@ -339,36 +336,6 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
             }
 
             return variants;
-        }
-
-        protected Queue<TruthVersusEval> matchVariants(final List<VariantContext> truthVariants, final List<VariantContext> evalVariants) {
-                //match based on shouldVariantsBeMatched
-                //we expect only a small number of variants in each list, so a loop is fine
-            final Queue<TruthVersusEval> queue = new ArrayDeque<>();
-            Set<VariantContext> unmatchedTruth  = new HashSet<>(truthVariants);
-            for (final VariantContext eval : evalVariants) {
-                VariantContext matchedTruth = null;
-                for (final VariantContext truth : truthVariants) {
-                    if (shouldVariantsBeMatched(truth, eval)) {
-                        if (matchedTruth == null || truth.getID().equals(eval.getID())) {
-                            matchedTruth = truth;
-                        }
-                    }
-                }
-                if (matchedTruth != null) {
-                    unmatchedTruth.remove(matchedTruth);
-                    queue.add(new TruthVersusEval(matchedTruth, eval));
-                } else {
-                    queue.add(TruthVersusEval.evalOnly(eval));
-                }
-            }
-
-            //deal with unmatched truth
-            for (final VariantContext truth : unmatchedTruth) {
-                queue.add(TruthVersusEval.truthOnly(truth));
-            }
-
-            return queue;
         }
 
         private Spliterator<TruthVersusEval> spliterator() {

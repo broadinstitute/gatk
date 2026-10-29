@@ -53,9 +53,11 @@ public class MergeMutect2CallsWithMC3 extends AlleleConcordanceWalker {
 
     @Override
     protected boolean shouldVariantsBeMatched(final VariantContext truth, final VariantContext eval) {
-        return truth.getReference().equals(eval.getReference())
-                && !truth.getAlternateAlleles().isEmpty()
-                && eval.getAlternateAlleles().containsAll(truth.getAlternateAlleles());
+        final boolean sameRefAllele = truth.getReference().equals(eval.getReference());
+        // we assume that the truth has a single alternate allele
+        final boolean containsAltAllele = eval.getAlternateAlleles().contains(truth.getAlternateAllele(0));
+
+        return sameRefAllele && containsAltAllele;
     }
 
     @Override

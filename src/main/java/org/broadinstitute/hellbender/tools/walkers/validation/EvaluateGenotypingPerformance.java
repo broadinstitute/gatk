@@ -6,6 +6,7 @@ import htsjdk.samtools.util.StringUtil;
 import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
+import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.GenotypeType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
@@ -29,7 +30,9 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
+import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.io.Writer;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -39,6 +42,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Evaluate genotyping accuracy against truth.  Both truth and eval vcfs may be single or multi-sample.  Produces two output files:
@@ -50,14 +54,15 @@ import java.util.Set;
  *
  * <h3>Usage examples</h3>
  *
- * <h4>Sub-population allele frequencies for sample1 are given by --af-annotation.</h4>
+ * <h4>Sub-population allele frequencies for sample1 are given by --af-annotations.</h4>
  * <pre>
  *     gatk EvaluateGenotypingPerformance
  *          -eval eval.vcf
  *          -truth truth.vcf
- *          --af-annotation sample1:af1
+ *          --af-annotations sample1:af1
  *          -O output.correlations.tsv
  *          -OA output.accuracy.tsv
+ *          --output-accuracy-af output.accuracy_af.tsv
  * </pre>
  *
  * <h4>Individuals from different subpopulations should have different annotations containing the sub-population allele frequencies for their ethnicity.</h4>
@@ -65,10 +70,11 @@ import java.util.Set;
  *     gatk EvaluateGenotypingPerformance
  *          -eval eval.vcf
  *          -truth truth.vcf
- *          --af-annotation sample1:af1
- *          --af-annotation sample2:af2
+ *          --af-annotations sample1:af1
+ *          --af-annotations sample2:af2
  *          -O output.correlations.tsv
  *          -OA output.accuracy.tsv
+ *          --output-accuracy-af output.accuracy_af.tsv
  * </pre>
  *
  * <h4>If sample names in eval and truth differ, they can be mapped to one another using --sample-map.</h4>
@@ -76,12 +82,13 @@ import java.util.Set;
  *     gatk EvaluateGenotypingPerformance
  *          -eval eval.vcf
  *          -truth truth.vcf
- *          --af-annotation sample1_eval:af1
- *          --af-annotation sample2_eval:af2
+ *          --af-annotations sample1_eval:af1
+ *          --af-annotations sample2_eval:af2
  *          --sample-map sample1_eval:sample1_truth
  *          --sample-map sample2_eval:sample2_truth
  *          -O output.correlations.tsv
  *          -OA output.accuracy.tsv
+ *          --output-accuracy-af output.accuracy_af.tsv
  * </pre>
  *
  * <h4>If sample names differ, and both truth and eval contain only a single sample, comparison can be forced between the individual samples regardless of name using --force-compare-single-sample</h4>
@@ -89,10 +96,11 @@ import java.util.Set;
  *     gatk EvaluateGenotypingPerformance
  *          -eval eval.vcf
  *          -truth truth.vcf
- *          --af-annotation sample1:af1
+ *          --af-annotations sample1:af1
  *          --force-compare-single-sample
  *          -O output.correlations.tsv
  *          -OA output.accuracy.tsv
+ *          --output-accuracy-af output.accuracy_af.tsv
  * </pre>
  *
  * <h4>Allele fractions can be given in a resource vcf instead of the eval vcf using --resource.</h4>
@@ -100,10 +108,11 @@ import java.util.Set;
  *     gatk EvaluateGenotypingPerformance
  *          -eval eval.vcf
  *          -truth truth.vcf
- *          --af-annotation sample1:af1
+ *          --af-annotations sample1:af1
  *          --resource af_resource.vcf
  *          -O output.correlations.tsv
  *          -OA output.accuracy.tsv
+ *          --output-accuracy-af output.accuracy_af.tsv
  * </pre>
  */
 @CommandLineProgramProperties(
@@ -416,6 +425,14 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
         return new HashSet<>(truth.getAlleles()).containsAll(eval.getAlleles());
     }
 
+    /**
+     * Split multiallelic eval records (e.g. A>C and A>G) should each be compared to the same multiallelic truth record (A>C,G).
+     */
+    @Override
+    protected boolean allowTruthToMatchMultipleEvals() {
+        return true;
+    }
+
     @Override
     protected void apply(final TruthVersusEval truthVersusEval, final ReadsContext readsContext, final ReferenceContext refContext) {
 
@@ -425,9 +442,14 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
         }
 
         final VariantContext evalVC = truthVersusEval.getEval();
+        if (evalVC.getAlternateAlleles().isEmpty()) {
+            //no alt allele to evaluate
+            return;
+        }
+        validateBiallelicEval(evalVC);
+        final Allele evalAltAllele = evalVC.getAlternateAllele(0);
 
         final VariantContext truthVC = truthVersusEval.getTruth();
-        validateBiallelicComparison(truthVC, evalVC);
 
         //since multiple samples are likely to share the same afAnnotation, we build a map to store the values for each afAnnotation, instead of extracting the value for each sample
         final Map<String, Double> afMap = buildAFMap(evalVC);
@@ -451,9 +473,11 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                 //not confident in truth, or eval is a noCall, so skip
                 continue;
             }
-            final double evalDosageFrac = getDosageFrac(evalGenotype, evalVC.getReference(), dosageField);
-            final double truthDosageFrac = getDosageFrac(truthGenotype, truthVC != null ? truthVC.getReference() : null, dosageField);
-            final ConcordanceState concordanceState = getConcordanceState(truthGenotype, evalGenotype, evalVC.isFiltered());
+            final double evalDosageFrac = getDosageFrac(evalGenotype, evalVC, evalAltAllele, dosageField);
+            final double truthDosageFrac = getDosageFrac(truthGenotype, truthVC, evalAltAllele, dosageField);
+            //truth may be multiallelic, so only score the truth genotype on the eval alt allele
+            final Genotype projectedTruthGenotype = projectGenotypeOntoAltAllele(truthGenotype, evalVC.getReference(), evalAltAllele);
+            final ConcordanceState concordanceState = getConcordanceState(projectedTruthGenotype, evalGenotype, evalVC.isFiltered());
             if (evalVC.isSNP()) {
                 if (bin != null) {
                     aggregators.get(i).get(bin).snp_pearsonCorrelationAggregator.addEntry(evalDosageFrac, truthDosageFrac);
@@ -475,7 +499,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                           for (int j=0; j<3; j++) {
                               final double gp = VCFUtils.parseVcfDouble(gpStrings.get(j));
                               final int gp_bin = gp == 1? nCalibrationBins - 1 : (int) (gp * nCalibrationBins);
-                              final GenotypeType truthGenotypeType = truthGenotype == null? GenotypeType.HOM_REF : truthGenotype.getType();
+                              final GenotypeType truthGenotypeType = projectedTruthGenotype == null? GenotypeType.HOM_REF : projectedTruthGenotype.getType();
                               final GenotypeType thisGenotypeType = genotypeTypes.get(j);
                               snpCalibrations.get(i).get(gp_bin).get(j).increment(thisGenotypeType == truthGenotypeType);
                           }
@@ -503,7 +527,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                           for (int j=0; j<3; j++) {
                               final double gp = VCFUtils.parseVcfDouble(gpStrings.get(j));
                               final int gp_bin = gp == 1? nCalibrationBins - 1 : (int) (gp * nCalibrationBins);
-                              final GenotypeType truthGenotypeType = truthGenotype == null? GenotypeType.HOM_REF : truthGenotype.getType();
+                              final GenotypeType truthGenotypeType = projectedTruthGenotype == null? GenotypeType.HOM_REF : projectedTruthGenotype.getType();
                               final GenotypeType thisGenotypeType = genotypeTypes.get(j);
                               indelCalibrations.get(i).get(gp_bin).get(j).increment(thisGenotypeType == truthGenotypeType);
                           }
@@ -513,10 +537,27 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
         }
     }
 
-    static void validateBiallelicComparison(final VariantContext truth, final VariantContext eval) {
-        if (eval.getAlternateAlleles().size() > 1 || (truth != null && truth.getAlternateAlleles().size() > 1)) {
-            throw new UserException.BadInput("EvaluateGenotypingPerformance does not support multiallelic comparisons.");
+    static void validateBiallelicEval(final VariantContext eval) {
+        if (eval.getAlternateAlleles().size() > 1) {
+            throw new UserException.BadInput("EvaluateGenotypingPerformance does not support multiallelic eval records, found one at " +
+                    eval.getContig() + ":" + eval.getStart() + ".  Multiallelic eval records should be split into biallelic records.");
         }
+    }
+
+    /**
+     * Project a (potentially multiallelic) genotype onto a single alt allele, so that it can be compared to a biallelic eval genotype.
+     * Called alleles other than altAllele are replaced with refAllele, so that e.g. a 1/2 truth genotype at A>C,G becomes A/C when
+     * scoring the C allele.
+     * @return the projected genotype, or null if genotype is null
+     */
+    static Genotype projectGenotypeOntoAltAllele(final Genotype genotype, final Allele refAllele, final Allele altAllele) {
+        if (genotype == null) {
+            return null;
+        }
+        final List<Allele> projectedAlleles = genotype.getAlleles().stream()
+                .map(allele -> allele.equals(altAllele) ? allele : refAllele)
+                .collect(Collectors.toList());
+        return new GenotypeBuilder(genotype).alleles(projectedAlleles).make();
     }
 
     static Integer getACBin(final Integer ac, final int maxACBin) {
@@ -596,22 +637,31 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
 
 
     /**
-     * Get the dosage frequency from the given genotype.
+     * Get the dosage frequency of altAllele from the given genotype.  If dosageField is present in the genotype, it is expected to
+     * have one value per alt allele in vc.
      */
-     private double getDosageFrac(final Genotype geno, final Allele refAllele, final String dosageField) {
+     static double getDosageFrac(final Genotype geno, final VariantContext vc, final Allele altAllele, final String dosageField) {
          if (geno == null) {
              return 0;
          }
-         if (dosageField != null) {
-             final String dosageString = (String)geno.getExtendedAttribute(dosageField);
-             return dosageString != null ? VCFUtils.parseVcfDouble(dosageString)/(double)geno.getPloidy() : getDosageFracFromGenotypeCall(geno, refAllele);
+         if (dosageField != null && geno.hasExtendedAttribute(dosageField)) {
+             final Object dosageAttribute = geno.getExtendedAttribute(dosageField);
+             final List<String> dosages = dosageAttribute instanceof List ?
+                     ((List<?>) dosageAttribute).stream().map(String::valueOf).collect(Collectors.toList()) :
+                     ParsingUtils.split(dosageAttribute.toString(), ',');
+             final int altIndex = vc.getAlleleIndex(altAllele) - 1;
+             if (altIndex < 0 || altIndex >= dosages.size()) {
+                 throw new UserException.BadInput("Genotype for sample " + geno.getSampleName() + " at " + vc.getContig() + ":" + vc.getStart() +
+                         " does not have a " + dosageField + " value for allele " + altAllele);
+             }
+             return VCFUtils.parseVcfDouble(dosages.get(altIndex))/(double)geno.getPloidy();
          }
 
-         return getDosageFracFromGenotypeCall(geno, refAllele);
+         return getDosageFracFromGenotypeCall(geno, altAllele);
     }
 
-    private double getDosageFracFromGenotypeCall(final Genotype geno, final Allele refAllele) {
-        return 1d - (double)geno.countAllele(refAllele)/(double)geno.getPloidy();
+    private static double getDosageFracFromGenotypeCall(final Genotype geno, final Allele altAllele) {
+        return (double)geno.countAllele(altAllele)/(double)geno.getPloidy();
     }
 
     @Override
@@ -680,7 +730,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                  correlationWriter.addMetric(new AFCorrelationMetric(aggregator));
              }
          }
-         correlationWriter.write(new OutputStreamWriter(outputFile.getOutputStream()));
+         writeMetricsFile(correlationWriter, outputFile);
 
          //write out accuracy results
          final MetricsFile<AccuracyMetrics, Integer> accuracyWriter = getMetricsFile();
@@ -688,7 +738,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
          indelMetrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
          accuracyWriter.addAllMetrics(snpMetrics);
          accuracyWriter.addAllMetrics(indelMetrics);
-         accuracyWriter.write(new OutputStreamWriter(outputAccuracyFile.getOutputStream()));
+         writeMetricsFile(accuracyWriter, outputAccuracyFile);
 
          final MetricsFile<AFAccuracyMetrics, Integer> afAccuracryWriter = getMetricsFile();
          for (final List<AFAccuracyMetrics> metrics : afSnpMetrics) {
@@ -699,7 +749,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
              metrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
              afAccuracryWriter.addAllMetrics(metrics);
          }
-         afAccuracryWriter.write(new OutputStreamWriter(outputAccuracyAFFile.getOutputStream()));
+         writeMetricsFile(afAccuracryWriter, outputAccuracyAFFile);
 
          if (outputAccuracyACFile != null) {
              final MetricsFile<ACAccuracyMetrics, Integer> acAccuracyMetricsWriter = getMetricsFile();
@@ -711,7 +761,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                  metrics.forEach(AccuracyMetrics::calculateDerivedMetrics);
                  acAccuracyMetricsWriter.addAllMetrics(metrics);
              }
-             acAccuracyMetricsWriter.write(new OutputStreamWriter(outputAccuracyACFile.getOutputStream()));
+             writeMetricsFile(acAccuracyMetricsWriter, outputAccuracyACFile);
          }
 
          if (outputCalibrationFile != null) {
@@ -726,9 +776,17 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                      calibrationMetricsWriter.addAllMetrics(metrics);
                  }
              }
-             calibrationMetricsWriter.write(new OutputStreamWriter(outputCalibrationFile.getOutputStream()));
+             writeMetricsFile(calibrationMetricsWriter, outputCalibrationFile);
          }
          return null;
+     }
+
+     private static void writeMetricsFile(final MetricsFile<?, Integer> metricsFile, final GATKPath path) {
+         try (final Writer writer = new OutputStreamWriter(path.getOutputStream())) {
+             metricsFile.write(writer);
+         } catch (final IOException e) {
+             throw new UserException.CouldNotCreateOutputFile(path, "Failed to write metrics", e);
+         }
      }
 
      /**
