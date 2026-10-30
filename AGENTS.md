@@ -835,6 +835,21 @@ ambiguous between the two sequences, and the reader has no way to tell which is
 meant. Label the write-ups with a `## Findings` heading so the second sequence is
 visibly its own list.
 
+## State the PR's purpose and verdict, and weigh every finding
+
+Before writing findings, be able to say in one or two sentences each what
+problem the PR solves, how it approaches it, and whether it succeeds. Put those
+sentences in a `## Summary` section directly after `## Action items`, in place
+of a longer scope summary. If you cannot write them, you do not understand the
+PR well enough to review it yet.
+
+For each finding, say how likely it is to occur in practice, and whether it
+should be fixed in this PR or tracked in a follow-up ticket at lower priority.
+A real but rare issue introduced by the PR usually belongs in a ticket: list it
+in the separate group after the author's own work, not among the things the
+author must fix before merge. This weighting is what keeps a review from
+sprawling, so do not report every finding at equal weight.
+
 ## One line per paragraph — do not hard-wrap
 
 Code review write-ups get pasted into GitHub PR comments and descriptions, and
