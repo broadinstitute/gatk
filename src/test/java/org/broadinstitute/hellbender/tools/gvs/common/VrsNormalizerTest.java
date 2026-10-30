@@ -54,6 +54,12 @@ public class VrsNormalizerTest extends GATKBaseTest {
             builder.setCharAt(604, 'T');
             builder.setCharAt(605, 'A');
 
+            // For ambiguous deletion test: [700,704) = AAAA
+            builder.setCharAt(700, 'A');
+            builder.setCharAt(701, 'A');
+            builder.setCharAt(702, 'A');
+            builder.setCharAt(703, 'A');
+
             chr20Sequence = builder.toString();
         }
 
@@ -148,8 +154,24 @@ public class VrsNormalizerTest extends GATKBaseTest {
         NormalizedAllele allele = normalize("chr20", 400L, 402L, "C");
 
         Assert.assertNotNull(allele);
+        Assert.assertEquals(allele.start, 401L);
+        Assert.assertEquals(allele.end, 402L);
         Assert.assertEquals(allele.state.type, NormalizedAllele.SequenceState.StateType.REFERENCE_LENGTH_EXPRESSION);
-        Assert.assertEquals(allele.state.length, Integer.valueOf(1));
+        // length is the allele's length over [start, end), not the deleted length: 0 for a full deletion
+        Assert.assertEquals(allele.state.length, Integer.valueOf(0));
+        Assert.assertEquals(allele.state.repeatSubunitLength, Integer.valueOf(1));
+    }
+
+    @Test
+    public void testAmbiguousDeletionExpandsAcrossRepeat() {
+        // Delete one A from AAAA at [700,704); expected values confirmed against vrs-python 2.3.3
+        NormalizedAllele allele = normalize("chr20", 700L, 702L, "A");
+
+        Assert.assertNotNull(allele);
+        Assert.assertEquals(allele.start, 700L);
+        Assert.assertEquals(allele.end, 704L);
+        Assert.assertEquals(allele.state.type, NormalizedAllele.SequenceState.StateType.REFERENCE_LENGTH_EXPRESSION);
+        Assert.assertEquals(allele.state.length, Integer.valueOf(3));
         Assert.assertEquals(allele.state.repeatSubunitLength, Integer.valueOf(1));
     }
 

@@ -214,7 +214,8 @@ public class VrsNormalizer {
 
     private ExpansionResult expandAllele(String contig, TrimResult trimmed, RollBounds bounds, ReferenceContext refContext) {
         String prefix = getRefSequence(contig, bounds.left, trimmed.start, refContext);
-        String suffix = getRefSequence(contig, trimmed.start, bounds.right, refContext);
+        // Start after the deleted bases (a no-op for insertions, where start == end)
+        String suffix = getRefSequence(contig, trimmed.end, bounds.right, refContext);
 
         String expandedRef = prefix + trimmed.ref + suffix;
         String expandedAlt = prefix + trimmed.alt + suffix;
