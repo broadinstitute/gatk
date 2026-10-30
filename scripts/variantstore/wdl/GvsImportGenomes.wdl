@@ -281,7 +281,8 @@ workflow GvsImportGenomes {
   # workflow twice -- once with load_vcf_headers=true/load_vet_and_ref_ranges=false, then the reverse.
   # See the VS-1968 design doc, section 1.5. (No intra-run gate between the two phases is implemented.)
   if (use_parquet_ingest && (load_vet_and_ref_ranges || load_vcf_headers)) {
-    String defined_parquet_output_dir = select_first([parquet_output_gcs_dir])
+    # Strip trailing slashes so the subpaths appended below do not contain `//`.
+    String defined_parquet_output_dir = sub(select_first([parquet_output_gcs_dir]), "/+$", "")
 
     # Table prefixes to discover/load/verify. vcf_header_lines_scratch is included only when headers
     # were generated (its table may not exist otherwise). vet/ref_ranges/ploidy prefixes are harmless
