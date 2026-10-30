@@ -1,11 +1,11 @@
 """
 Unit tests for verify_structural_checks.py -- the independent, row-count-based checks added for
-VS-1989.
+VS-1989, and the footer row count comparison added for VS-2032.
 
 The BigQuery-reading functions are tested by patching verify_structural_checks.bigquery and asserting
 on the generated SQL (mirroring the style in test_parquet_loading.py). The assessment functions are
-pure and are tested directly. run_structural_checks is tested with the two query helpers patched so no
-BigQuery is touched.
+pure and are tested directly. run_structural_checks is tested with the three query helpers patched so
+no BigQuery is touched.
 """
 
 import os
@@ -24,8 +24,10 @@ from verify_structural_checks import (
     assess_family_completeness,
     assess_cross_family_consistency,
     assess_cardinality,
-    assess_duplication_screen,
     assess_truncation_screen,
+    assess_footer_row_counts,
+    footer_source_uri,
+    get_parquet_footer_row_counts,
     run_structural_checks,
     DEFAULT_VET_TRUNCATION_THRESHOLD,
     TRUNCATION_SCREEN_DISABLED,
@@ -38,6 +40,23 @@ def _row(**kwargs):
     for k, val in kwargs.items():
         setattr(row, k, val)
     return row
+
+
+OUTPUT_GCS_DIR = "gs://bucket/out"
+
+
+def _run(expected_by_family, gcs_pairs_to_files=None, **kwargs):
+    """run_structural_checks with the footer comparison's inputs defaulted. An empty GCS listing gives
+    the footer comparison nothing to check, so tests not about it are unaffected by it."""
+    return run_structural_checks("proj", "ds", expected_by_family, gcs_pairs_to_files or {},
+                                 OUTPUT_GCS_DIR, **kwargs)
+
+
+def _uri(table, sample_id):
+    """A GCS URI shaped as GenerateParquetFiles uploads it."""
+    family = table.rsplit("_", 1)[0] if table[-1].isdigit() else table
+    subdir = f"{table.rsplit('_', 1)[1]}/" if table[-1].isdigit() else ""
+    return f"{OUTPUT_GCS_DIR}/{family}/{subdir}{table}_{sample_id}_input.parquet"
 
 
 class TestFamilyForTable(unittest.TestCase):
@@ -98,6 +117,163 @@ class TestGetPartitionRowCounts(unittest.TestCase):
     def test_invalid_prefix_raises(self):
         with self.assertRaises(ValueError):
             get_partition_row_counts("proj", "ds", ["vet; DROP TABLE x--"])
+
+
+class TestFooterSourceUri(unittest.TestCase):
+    def test_scoped_to_the_family_directory_and_parquet_suffix(self):
+        # The family directory keeps quarantine/ and sibling callsets out; the suffix keeps
+        # .parquet.quarantined objects and the diagnostics JSON out.
+        self.assertEqual(footer_source_uri("gs://b/out", "vet"), "gs://b/out/vet/*.parquet")
+
+    def test_trailing_slash_is_not_doubled(self):
+        self.assertEqual(footer_source_uri("gs://b/out/", "ref_ranges"), "gs://b/out/ref_ranges/*.parquet")
+
+    def test_non_gcs_dir_rejected(self):
+        with self.assertRaises(ValueError):
+            footer_source_uri("/local/out", "vet")
+
+
+class TestGetParquetFooterRowCounts(unittest.TestCase):
+    def _client(self, mock_bq, rows_by_call):
+        mock_client = MagicMock()
+        mock_bq.Client.return_value = mock_client
+        jobs = []
+        for rows in rows_by_call:
+            job = MagicMock()
+            job.result.return_value = rows
+            job.total_bytes_billed = 0
+            job.slot_millis = 1
+            jobs.append(job)
+        mock_client.query.side_effect = jobs
+        return mock_client
+
+    @patch("verify_structural_checks.bigquery")
+    def test_one_external_table_query_per_family(self, mock_bq):
+        mock_client = self._client(mock_bq, [[], []])
+        externals = []
+        mock_bq.ExternalConfig.side_effect = lambda fmt: externals.append(MagicMock(format=fmt)) or externals[-1]
+
+        get_parquet_footer_row_counts("proj", "gs://b/out", ["vet", "ref_ranges"])
+
+        self.assertEqual(mock_client.query.call_count, 2)
+        self.assertEqual([e.format for e in externals], ["PARQUET", "PARQUET"])
+        self.assertEqual([e.source_uris for e in externals],
+                         [["gs://b/out/vet/*.parquet"], ["gs://b/out/ref_ranges/*.parquet"]])
+        # The external table is bound to the query job by name, and the query counts per file.
+        table_definitions = mock_bq.QueryJobConfig.call_args_list[0].kwargs["table_definitions"]
+        self.assertIs(table_definitions[vsc.FOOTER_EXTERNAL_TABLE], externals[0])
+        query = mock_client.query.call_args_list[0][0][0]
+        self.assertIn("_FILE_NAME", query)
+        self.assertIn("COUNT(*)", query)
+        self.assertIn(f"FROM {vsc.FOOTER_EXTERNAL_TABLE}", query)
+
+    @patch("verify_structural_checks.bigquery")
+    def test_returns_rows_per_file_across_families(self, mock_bq):
+        self._client(mock_bq, [
+            [_row(file_name="gs://b/out/vet/001/vet_001_1_x.parquet", num_rows=100)],
+            [_row(file_name="gs://b/out/ref_ranges/001/ref_ranges_001_1_x.parquet", num_rows=50)],
+        ])
+        result = get_parquet_footer_row_counts("proj", "gs://b/out", ["vet", "ref_ranges"])
+        self.assertEqual(result, {"gs://b/out/vet/001/vet_001_1_x.parquet": 100,
+                                  "gs://b/out/ref_ranges/001/ref_ranges_001_1_x.parquet": 50})
+
+    @patch("verify_structural_checks.bigquery")
+    def test_no_families_skips_query(self, mock_bq):
+        self.assertEqual(get_parquet_footer_row_counts("proj", "gs://b/out", []), {})
+        mock_bq.Client.assert_not_called()
+
+
+class TestAssessFooterRowCounts(unittest.TestCase):
+    SUPER = ["vet", "ref_ranges"]
+    REGULAR = ["sample_chromosome_ploidy", "vcf_header_lines_scratch"]
+    FAMILIES = ["vet", "ref_ranges", "sample_chromosome_ploidy"]
+
+    def _assess(self, file_rows, listing, partition_rows=(), regular_counts=None):
+        return assess_footer_row_counts(file_rows, listing, list(partition_rows), regular_counts or {},
+                                        self.FAMILIES, self.SUPER, self.REGULAR)
+
+    def test_agreement_passes(self):
+        listing = {("vet_001", 1): [_uri("vet_001", 1)],
+                   ("ref_ranges_001", 1): [_uri("ref_ranges_001", 1)],
+                   ("sample_chromosome_ploidy", 1): [_uri("sample_chromosome_ploidy", 1)]}
+        file_rows = {_uri("vet_001", 1): 100, _uri("ref_ranges_001", 1): 50,
+                     _uri("sample_chromosome_ploidy", 1): 24}
+        r = self._assess(file_rows, listing, [("vet_001", 1, 100), ("ref_ranges_001", 1, 50)],
+                         {"sample_chromosome_ploidy": {1: (24, 24)}})
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["flagged_samples"], [])
+        self.assertEqual({f: v["pairs_checked"] for f, v in r["per_family"].items()},
+                         {"vet": 1, "ref_ranges": 1, "sample_chromosome_ploidy": 1})
+
+    def test_more_rows_in_bigquery_is_flagged(self):
+        listing = {("ref_ranges_001", 1): [_uri("ref_ranges_001", 1)]}
+        r = self._assess({_uri("ref_ranges_001", 1): 50}, listing, [("ref_ranges_001", 1, 100)])
+        self.assertFalse(r["ok"])
+        self.assertEqual(r["flagged_samples"], [1])
+        self.assertEqual(r["per_family"]["ref_ranges"]["mismatched"],
+                         [{"table": "ref_ranges_001", "sample_id": 1, "footer_rows": 50, "bigquery_rows": 100}])
+
+    def test_fewer_rows_in_bigquery_is_flagged(self):
+        listing = {("vet_001", 1): [_uri("vet_001", 1)]}
+        r = self._assess({_uri("vet_001", 1): 100}, listing, [("vet_001", 1, 99)])
+        self.assertEqual(r["flagged_samples"], [1])
+
+    def test_ploidy_compared_against_its_row_count(self):
+        # The ploidy count comes from the regular-table read, which may carry a distinct-chromosome
+        # count alongside; only the row count is compared.
+        listing = {("sample_chromosome_ploidy", 1): [_uri("sample_chromosome_ploidy", 1)]}
+        r = self._assess({_uri("sample_chromosome_ploidy", 1): 24}, listing,
+                         regular_counts={"sample_chromosome_ploidy": {1: (48, 24)}})
+        self.assertEqual(r["per_family"]["sample_chromosome_ploidy"]["mismatched"][0]["bigquery_rows"], 48)
+
+    def test_two_files_for_one_pair_flag_even_when_the_sums_agree(self):
+        # Two files each loaded once read 2N against 2N; only the file count exposes the duplicate.
+        files = [_uri("vet_001", 1), _uri("vet_001", 1).replace("input", "input2")]
+        listing = {("vet_001", 1): files, ("vet_001", 2): [_uri("vet_001", 2)]}
+        r = self._assess({files[0]: 100, files[1]: 100, _uri("vet_001", 2): 100}, listing,
+                         [("vet_001", 1, 200), ("vet_001", 2, 100)])
+        self.assertFalse(r["ok"])
+        self.assertEqual(r["flagged_samples"], [1])
+        self.assertEqual(r["per_family"]["vet"]["multiple_files"],
+                         [{"table": "vet_001", "sample_id": 1, "files": sorted(files)}])
+        self.assertEqual(r["per_family"]["vet"]["mismatched"], [])
+
+    def test_one_file_per_pair_reports_no_multiple_files(self):
+        listing = {("vet_001", 1): [_uri("vet_001", 1)]}
+        r = self._assess({_uri("vet_001", 1): 100}, listing, [("vet_001", 1, 100)])
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["per_family"]["vet"]["multiple_files"], [])
+
+    def test_sample_absent_from_bigquery_compares_against_zero(self):
+        listing = {("vet_001", 1): [_uri("vet_001", 1)]}
+        r = self._assess({_uri("vet_001", 1): 100}, listing)
+        self.assertEqual(r["per_family"]["vet"]["mismatched"][0]["bigquery_rows"], 0)
+
+    def test_listed_file_the_query_did_not_read_flags_its_sample(self):
+        # A sample whose footer could not be counted cannot be cleared.
+        listing = {("vet_001", 1): [_uri("vet_001", 1)], ("vet_001", 2): [_uri("vet_001", 2)]}
+        r = self._assess({_uri("vet_001", 1): 100}, listing, [("vet_001", 1, 100), ("vet_001", 2, 100)])
+        self.assertFalse(r["ok"])
+        self.assertEqual(r["flagged_samples"], [2])
+        self.assertEqual(r["per_family"]["vet"]["unread"],
+                         [{"table": "vet_001", "sample_id": 2, "files": [_uri("vet_001", 2)]}])
+        self.assertEqual(r["per_family"]["vet"]["mismatched"], [])
+
+    def test_unlisted_file_is_reported_but_not_counted(self):
+        # A file that appeared after discovery must not inflate the sample's sum.
+        listing = {("vet_001", 1): [_uri("vet_001", 1)]}
+        stray = _uri("vet_001", 1).replace("input", "late")
+        r = self._assess({_uri("vet_001", 1): 100, stray: 100}, listing, [("vet_001", 1, 100)])
+        self.assertTrue(r["ok"])
+        self.assertEqual(r["unlisted_files"], [stray])
+
+    def test_unchecked_family_is_skipped(self):
+        # vcf_header_lines_scratch is not a footer-checked family; its files are not expected to have
+        # been read, so they must not read as unread.
+        listing = {("vcf_header_lines_scratch", 1): [f"{OUTPUT_GCS_DIR}/vcf_header_lines_scratch/x_1.parquet"]}
+        r = self._assess({}, listing, regular_counts={"vcf_header_lines_scratch": {1: 10}})
+        self.assertTrue(r["ok"])
+        self.assertNotIn("vcf_header_lines_scratch", r["per_family"])
 
 
 class TestGetPloidyRowCounts(unittest.TestCase):
@@ -327,61 +503,12 @@ class TestAssessCrossFamilyConsistency(unittest.TestCase):
         self.assertEqual(r["union_size"], 0)
 
 
-class TestAssessDuplicationScreen(unittest.TestCase):
-    def test_flags_high_outlier(self):
-        part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 220)]
-        r = assess_duplication_screen(part, "vet", set(range(1, 10)), ["vet", "ref_ranges"], 1.6)
-        self.assertEqual(r["median"], 100)
-        self.assertEqual([o["sample_id"] for o in r["outliers"]], [9])
-        self.assertAlmostEqual(r["outliers"][0]["ratio"], 2.2)
-
-    def test_uniform_no_outliers(self):
-        part = [("vet_001", i, 100) for i in range(1, 6)]
-        r = assess_duplication_screen(part, "vet", set(range(1, 6)), ["vet", "ref_ranges"], 1.6)
-        self.assertEqual(r["outliers"], [])
-
-    def test_other_family_not_screened(self):
-        part = [("vet_001", i, 100) for i in range(1, 6)]
-        r = assess_duplication_screen(part, "ref_ranges", set(range(1, 6)), ["vet", "ref_ranges"], 1.6)
-        self.assertEqual(r["samples_screened"], 0)
-        self.assertEqual(r["outliers"], [])
-
-    def test_only_expected_samples_screened(self):
-        part = [("vet_001", i, 100) for i in range(1, 6)] + [("vet_001", 99, 1000)]
-        r = assess_duplication_screen(part, "vet", set(range(1, 6)), ["vet", "ref_ranges"], 1.6)
-        self.assertEqual(r["samples_screened"], 5)
-        self.assertEqual(r["outliers"], [])
-
-    def test_singleton_is_flagged(self):
-        part = [("vet_001", 1, 100)]
-        r = assess_duplication_screen(part, "vet", {1}, ["vet", "ref_ranges"], 1.6)
-        self.assertEqual(r["samples_screened"], 1)
-        self.assertEqual(r["outliers"], [])
-        self.assertTrue(r["singleton_flagged"])
-
-    def test_two_sample_load_with_duplication_flagged(self):
-        # Regression for two-sample median averaging: with row counts 100 and 200, median is 150
-        # which would give ratio 1.333 (< 1.6). Using the lower baseline catches sample 2 at 2.0x.
-        part = [("vet_001", 1, 100), ("vet_001", 2, 200)]
-        r = assess_duplication_screen(part, "vet", {1, 2}, ["vet", "ref_ranges"], 1.6)
-        self.assertEqual(r["samples_screened"], 2)
-        self.assertEqual(r["median"], 150)
-        self.assertEqual(r["baseline"], 100)
-        self.assertEqual([o["sample_id"] for o in r["outliers"]], [2])
-        self.assertAlmostEqual(r["outliers"][0]["ratio"], 2.0)
-
-
 class TestScreensNameFlaggedSamples(unittest.TestCase):
-    """Each screen reports the samples it objects to in flagged_samples, and run_structural_checks
-    unions them. That list is what the workflow quarantines, so it must be exactly the flagged samples
+    """The truncation screen reports the samples it objects to in flagged_samples, and
+    run_structural_checks unions them with the footer comparison's. That list is what the workflow quarantines, so it must be exactly the flagged samples
     -- too few and flagged Parquet is deleted, too many and clean Parquet is needlessly retained."""
 
     PREFIXES = ["vet", "ref_ranges"]
-
-    def test_duplication_outliers_are_named(self):
-        part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 220)]
-        r = assess_duplication_screen(part, "vet", set(range(1, 10)), self.PREFIXES, 1.6)
-        self.assertEqual(r["flagged_samples"], [9])
 
     def test_truncation_outliers_are_named(self):
         part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 1)]
@@ -391,38 +518,34 @@ class TestScreensNameFlaggedSamples(unittest.TestCase):
     def test_clean_screen_names_nothing(self):
         part = [("vet_001", i, 100) for i in range(1, 6)]
         self.assertEqual(
-            assess_duplication_screen(part, "vet", set(range(1, 6)), self.PREFIXES, 1.6)["flagged_samples"], [])
-        self.assertEqual(
             assess_truncation_screen(part, "vet", set(range(1, 6)), self.PREFIXES, 1.6)["flagged_samples"], [])
 
     def test_singleton_names_the_one_sample_it_could_not_clear(self):
         # A singleton load has no peers, so the screen cannot clear its one sample and names it -- there
         # are no outliers to report, but the sample is still what gets quarantined.
         part = [("vet_001", 7, 100)]
-        for screen in (assess_duplication_screen, assess_truncation_screen):
-            r = screen(part, "vet", {7}, self.PREFIXES, 1.6)
-            self.assertTrue(r["singleton_flagged"])
-            self.assertEqual(r["outliers"], [])
-            self.assertEqual(r["flagged_samples"], [7])
+        r = assess_truncation_screen(part, "vet", {7}, self.PREFIXES, 1.6)
+        self.assertTrue(r["singleton_flagged"])
+        self.assertEqual(r["outliers"], [])
+        self.assertEqual(r["flagged_samples"], [7])
 
     def test_unscreened_family_names_nothing(self):
         part = [("vet_001", i, 100) for i in range(1, 6)]
-        r = assess_duplication_screen(part, "ref_ranges", set(range(1, 6)), self.PREFIXES, 1.6)
+        r = assess_truncation_screen(part, "ref_ranges", set(range(1, 6)), self.PREFIXES, 1.6)
         self.assertEqual(r["flagged_samples"], [])
 
     def test_multiple_outliers_are_sorted_by_sample_id(self):
         # outliers themselves are ordered by ratio; flagged_samples is a set to quarantine, so it is
         # ordered by sample_id for stable diffing of the work list.
-        part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 300), ("vet_001", 3, 100)]
-        part = [(t, sid, n) for (t, sid, n) in part if not (sid == 3 and n == 100)]
-        part += [("vet_001", 3, 250)]
-        r = assess_duplication_screen(part, "vet", set(range(1, 10)), self.PREFIXES, 1.6)
+        part = [("vet_001", i, 100) for i in range(1, 9) if i != 3]
+        part += [("vet_001", 9, 10), ("vet_001", 3, 20)]
+        r = assess_truncation_screen(part, "vet", set(range(1, 10)), self.PREFIXES, 1.6)
         self.assertEqual([o["sample_id"] for o in r["outliers"]], [9, 3])
         self.assertEqual(r["flagged_samples"], [3, 9])
 
 
 class TestAssessTruncationScreen(unittest.TestCase):
-    """Low-side mirror of the duplication screen: flags a grossly under-rowed vet partition."""
+    """Flags a grossly under-rowed vet partition."""
 
     def test_flags_low_outlier(self):
         # sample 9 has 1 row where its peers have 100 -- a truncated partition. floor = 100/1.6 = 62.5.
@@ -484,79 +607,120 @@ class TestAssessTruncationScreen(unittest.TestCase):
 
 
 class TestRunStructuralChecks(unittest.TestCase):
-    """run_structural_checks with the two BigQuery helpers patched (no BQ touched)."""
+    """run_structural_checks with the three BigQuery helpers patched (no BQ touched)."""
 
-    def _patch(self, partition_rows, ploidy_counts):
-        p1 = patch("verify_structural_checks.get_partition_row_counts", return_value=partition_rows)
-        p2 = patch("verify_structural_checks.get_ploidy_row_counts", return_value=ploidy_counts)
-        p1.start()
-        p2.start()
-        self.addCleanup(p1.stop)
-        self.addCleanup(p2.stop)
+    def _patch(self, partition_rows, ploidy_counts, file_rows=None):
+        self._patch_regular(partition_rows, {"sample_chromosome_ploidy": ploidy_counts}, file_rows)
 
-    def _patch_regular(self, partition_rows, counts_by_table):
+    def _patch_regular(self, partition_rows, counts_by_table, file_rows=None):
         """Like _patch but returns per-table regular counts, keyed on the table-name argument."""
         p1 = patch("verify_structural_checks.get_partition_row_counts", return_value=partition_rows)
         p2 = patch(
             "verify_structural_checks.get_ploidy_row_counts",
             side_effect=lambda project_id, dataset_name, table: counts_by_table.get(table, {}),
         )
-        p1.start()
-        p2.start()
-        self.addCleanup(p1.stop)
-        self.addCleanup(p2.stop)
+        self.footer_query = MagicMock(return_value=file_rows or {})
+        p3 = patch("verify_structural_checks.get_parquet_footer_row_counts", self.footer_query)
+        for p in (p1, p2, p3):
+            p.start()
+            self.addCleanup(p.stop)
 
     def test_all_good(self):
         part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
         self._patch(part, {1: 24, 2: 24})
         exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
-        r = run_structural_checks("proj", "ds", exp)
+        r = _run(exp)
         self.assertTrue(r["completeness_ok"])
         self.assertTrue(r["cardinality_ok"])
         self.assertTrue(r["cross_family_ok"])
-        self.assertFalse(r["duplication_flagged"])
-        self.assertIn("ref_ranges", r["details"]["duplication_unscreened"]["families"])
-        self.assertNotIn("vet", r["details"]["duplication_unscreened"]["families"])
+        self.assertFalse(r["row_count_mismatch_flagged"])
+        self.assertTrue(r["details"]["footer_row_counts"]["ok"])
         self.assertIn("backfill_caveat", r["details"]["cardinality"]["sample_chromosome_ploidy"])
 
-    def test_flagged_samples_is_the_union_across_screens(self):
-        # Sample 3 duplicated (300 vs a median of 100), sample 4 truncated (1 vs 100). Each screen sees
-        # one of them; the quarantine list must be both.
-        part = ([("vet_001", i, 100) for i in range(1, 3)]
-                + [("vet_001", 3, 300), ("vet_001", 4, 1)]
-                + [("ref_ranges_001", i, 50) for i in range(1, 5)])
-        self._patch(part, {i: 24 for i in range(1, 5)})
-        exp = {"vet": set(range(1, 5)), "ref_ranges": set(range(1, 5)),
-               "sample_chromosome_ploidy": set(range(1, 5))}
-        r = run_structural_checks("proj", "ds", exp)
-        self.assertTrue(r["duplication_flagged"])
+    def _listing(self, samples, ploidy=True):
+        """A GCS listing of one vet, one ref_ranges and (optionally) one ploidy file per sample."""
+        tables = ["vet_001", "ref_ranges_001"] + (["sample_chromosome_ploidy"] if ploidy else [])
+        return {(t, sid): [_uri(t, sid)] for t in tables for sid in samples}
+
+    def test_flagged_samples_is_the_union_of_footer_and_truncation(self):
+        # Sample 3's ref_ranges was loaded twice (footer 50, BigQuery 100); sample 4's vet partition is
+        # truncated (1 against peers of 100, and its footer agrees). Each check sees one of them; the
+        # quarantine list must be both.
+        samples = range(1, 5)
+        part = ([("vet_001", i, 100) for i in (1, 2, 3)] + [("vet_001", 4, 1)]
+                + [("ref_ranges_001", i, 50) for i in (1, 2, 4)] + [("ref_ranges_001", 3, 100)])
+        listing = self._listing(samples)
+        file_rows = {_uri("vet_001", i): (1 if i == 4 else 100) for i in samples}
+        file_rows.update({_uri("ref_ranges_001", i): 50 for i in samples})
+        file_rows.update({_uri("sample_chromosome_ploidy", i): 24 for i in samples})
+        self._patch(part, {i: (24, 24) for i in samples}, file_rows)
+        exp = {"vet": set(samples), "ref_ranges": set(samples),
+               "sample_chromosome_ploidy": set(samples)}
+        r = _run(exp, listing)
+        self.assertTrue(r["row_count_mismatch_flagged"])
         self.assertTrue(r["truncation_flagged"])
         self.assertEqual(r["flagged_samples"], [3, 4])
-        # The duplication subset is what GvsImportGenomes aborts on, so the truncated sample must not
+        # The mismatch subset is what GvsImportGenomes aborts on, so the truncated sample must not
         # appear in it -- the truncation threshold is uncalibrated and must not fail a completed ingest.
-        self.assertEqual(r["duplication_flagged_samples"], [3])
-        # The screens are heuristics, so they leave the exact checks -- and all_loaded -- untouched.
+        self.assertEqual(r["row_count_mismatch_samples"], [3])
+        self.assertEqual(r["truncation_flagged_samples"], [4])
+        # Neither touches the exact checks -- and so all_loaded.
         self.assertTrue(r["completeness_ok"])
+        self.assertTrue(r["cardinality_ok"])
         self.assertTrue(r["cross_family_ok"])
+
+    def test_doubled_ref_ranges_is_flagged(self):
+        # The gap VS-2032 exists to close: a ref_ranges partition loaded twice, with every other family
+        # clean. Nothing but the footer comparison can see it.
+        samples = range(1, 4)
+        part = ([("vet_001", i, 100) for i in samples]
+                + [("ref_ranges_001", 1, 50), ("ref_ranges_001", 2, 7000), ("ref_ranges_001", 3, 14000)])
+        file_rows = {_uri("vet_001", i): 100 for i in samples}
+        file_rows.update({_uri("ref_ranges_001", 1): 50, _uri("ref_ranges_001", 2): 7000,
+                          _uri("ref_ranges_001", 3): 7000})
+        file_rows.update({_uri("sample_chromosome_ploidy", i): 24 for i in samples})
+        self._patch(part, {i: (24, 24) for i in samples}, file_rows)
+        exp = {"vet": set(samples), "ref_ranges": set(samples),
+               "sample_chromosome_ploidy": set(samples)}
+        r = _run(exp, self._listing(samples))
+        self.assertEqual(r["row_count_mismatch_samples"], [3])
+        mismatched = r["details"]["footer_row_counts"]["per_family"]["ref_ranges"]["mismatched"]
+        self.assertEqual(mismatched, [{"table": "ref_ranges_001", "sample_id": 3,
+                                       "footer_rows": 7000, "bigquery_rows": 14000}])
+
+    def test_footer_query_scoped_to_configured_families_with_files(self):
+        # A wildcard URI matching nothing fails the BigQuery query, so a family with no files this run
+        # must not be queried; nor may one this run does not load.
+        part = [("vet_001", 1, 100)]
+        self._patch(part, {})
+        _run({"vet": {1}}, {("vet_001", 1): [_uri("vet_001", 1)]},
+             superpartitioned_table_prefixes=["vet", "ref_ranges"])
+        self.footer_query.assert_called_once_with("proj", OUTPUT_GCS_DIR, ["vet"])
+
+    def test_headers_only_run_queries_no_footers(self):
+        self._patch_regular([], {"vcf_header_lines_scratch": {1: 10}})
+        _run({"vcf_header_lines_scratch": {1}},
+             regular_table_prefixes=["sample_chromosome_ploidy", "vcf_header_lines_scratch"])
+        self.footer_query.assert_called_once_with("proj", OUTPUT_GCS_DIR, [])
 
     def test_clean_run_flags_no_samples(self):
         part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
         self._patch(part, {1: 24, 2: 24})
         exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
-        r = run_structural_checks("proj", "ds", exp)
+        r = _run(exp)
         self.assertEqual(r["flagged_samples"], [])
-        self.assertEqual(r["duplication_flagged_samples"], [])
+        self.assertEqual(r["row_count_mismatch_samples"], [])
 
     def test_waived_screens_still_report_flagged_samples(self):
         # allow_flagged_vet_loads is a policy decision made downstream in compute_quarantine, so the
-        # screens keep reporting what they saw and the log can say what is being waived.
-        part = [("vet_001", i, 100) for i in range(1, 3)] + [("vet_001", 3, 300)]
+        # truncation screen keeps reporting what it saw and the log can say what is being waived.
+        part = [("vet_001", i, 100) for i in range(1, 3)] + [("vet_001", 3, 1)]
         part += [("ref_ranges_001", i, 50) for i in range(1, 4)]
         self._patch(part, {i: 24 for i in range(1, 4)})
         exp = {"vet": {1, 2, 3}, "ref_ranges": {1, 2, 3}, "sample_chromosome_ploidy": {1, 2, 3}}
-        r = run_structural_checks("proj", "ds", exp, allow_flagged_vet_loads=True)
+        r = _run(exp, allow_flagged_vet_loads=True)
         self.assertEqual(r["flagged_samples"], [3])
-        self.assertEqual(r["duplication_flagged_samples"], [3])
+        self.assertEqual(r["truncation_flagged_samples"], [3])
         self.assertTrue(r["allow_flagged_vet_loads"])
 
     def test_cross_family_gap_fails(self):
@@ -566,7 +730,7 @@ class TestRunStructuralChecks(unittest.TestCase):
         part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", 1, 50)]
         self._patch(part, {1: 24, 2: 24})
         exp = {"vet": {1, 2}, "ref_ranges": {1}, "sample_chromosome_ploidy": {1, 2}}
-        r = run_structural_checks("proj", "ds", exp)
+        r = _run(exp)
         self.assertTrue(r["completeness_ok"])
         self.assertFalse(r["cross_family_ok"])
         self.assertEqual(
@@ -581,7 +745,7 @@ class TestRunStructuralChecks(unittest.TestCase):
         part = [("ref_ranges_001", i, 50) for i in (1, 2)]
         self._patch(part, {1: 24, 2: 24})
         exp = {"ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
-        r = run_structural_checks("proj", "ds", exp)
+        r = _run(exp)
         self.assertTrue(r["completeness_ok"])
         self.assertFalse(r["cross_family_ok"])
         self.assertEqual(
@@ -605,8 +769,8 @@ class TestRunStructuralChecks(unittest.TestCase):
             },
         )
         exp = {"vcf_header_lines_scratch": {1, 2, 3}}
-        r = run_structural_checks(
-            "proj", "ds", exp,
+        r = _run(
+            exp,
             superpartitioned_table_prefixes=["vet", "ref_ranges"],
             regular_table_prefixes=["sample_chromosome_ploidy", "vcf_header_lines_scratch"],
         )
@@ -629,8 +793,8 @@ class TestRunStructuralChecks(unittest.TestCase):
         exp = {"vet": {1, 2, 3}, "ref_ranges": {1, 2, 3},
                "sample_chromosome_ploidy": {1, 2, 3}, "vcf_header_lines_scratch": {1, 2}}
 
-        r = run_structural_checks(
-            "proj", "ds", exp,
+        r = _run(
+            exp,
             superpartitioned_table_prefixes=["vet", "ref_ranges"],
             regular_table_prefixes=["sample_chromosome_ploidy", "vcf_header_lines_scratch"],
         )
@@ -644,7 +808,7 @@ class TestRunStructuralChecks(unittest.TestCase):
         part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
         self._patch(part, {1: (24, 24), 2: (23, 23)})  # sample 2's gVCF legitimately covers 23 contigs
         exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
-        r = run_structural_checks("proj", "ds", exp)
+        r = _run(exp)
         self.assertTrue(r["completeness_ok"])
         self.assertTrue(r["cardinality_ok"])
 
@@ -654,7 +818,7 @@ class TestRunStructuralChecks(unittest.TestCase):
         part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
         self._patch(part, {1: (24, 24), 2: (20, 20)})  # sample 2 has 20 contigs, none repeated
         exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
-        r = run_structural_checks("proj", "ds", exp)
+        r = _run(exp)
         self.assertTrue(r["completeness_ok"])
         self.assertTrue(r["cardinality_ok"])
         self.assertEqual(r["details"]["cardinality"]["sample_chromosome_ploidy"]["deviating_samples"], [])
@@ -663,7 +827,7 @@ class TestRunStructuralChecks(unittest.TestCase):
         part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
         self._patch(part, {1: (24, 24), 2: (48, 24)})  # sample 2 duplicated ploidy load (48 rows, 24 chromosomes)
         exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
-        r = run_structural_checks("proj", "ds", exp)
+        r = _run(exp)
         self.assertTrue(r["completeness_ok"])
         self.assertFalse(r["cardinality_ok"])
         self.assertEqual(
@@ -671,36 +835,19 @@ class TestRunStructuralChecks(unittest.TestCase):
             2,
         )
 
-    def test_vet_duplication_flag_warns_not_gates_by_default(self):
-        part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 300)]
-        part += [("ref_ranges_001", i, 50) for i in range(1, 10)]
-        self._patch(part, {i: 24 for i in range(1, 10)})
-        exp = {"vet": set(range(1, 10)), "ref_ranges": set(range(1, 10)),
-               "sample_chromosome_ploidy": set(range(1, 10))}
-
-        r = run_structural_checks("proj", "ds", exp, allow_flagged_vet_loads=False)
-        self.assertTrue(r["duplication_flagged"])
-        # Completeness and cardinality (the exact checks that gate all_loaded) are unaffected by a
-        # screen flag; the screen only bears on safe_to_delete_parquet.
-        self.assertTrue(r["completeness_ok"])
-        self.assertTrue(r["cardinality_ok"])
-        self.assertFalse(r["allow_flagged_vet_loads"])
-
     def test_nonzero_truncated_vet_partition_flagged_not_gated_by_default(self):
         # Regression for the Copilot finding: a vet partition present with a *nonzero* but grossly
-        # truncated row count (1 where peers have 100) passes completeness (it is not empty) and is not
-        # a high-side duplicate, yet the low-side truncation screen surfaces it. The exact checks stay
-        # green (so all_loaded stays true); the flag bears only on safe_to_delete_parquet, which blocks
-        # deletion by default unless --allow-flagged-vet-loads is set.
+        # truncated row count (1 where peers have 100) passes completeness (it is not empty), yet the
+        # truncation screen surfaces it. The exact checks stay green (so all_loaded stays true); the
+        # flag only quarantines the sample, unless --allow-flagged-vet-loads is set.
         part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 1)]
         part += [("ref_ranges_001", i, 50) for i in range(1, 10)]
         self._patch(part, {i: 24 for i in range(1, 10)})
         exp = {"vet": set(range(1, 10)), "ref_ranges": set(range(1, 10)),
                "sample_chromosome_ploidy": set(range(1, 10))}
 
-        r = run_structural_checks("proj", "ds", exp, allow_flagged_vet_loads=False)
+        r = _run(exp, allow_flagged_vet_loads=False)
         self.assertTrue(r["truncation_flagged"])
-        self.assertFalse(r["duplication_flagged"])
         # The hard gates do not see it -- present and non-empty, uniform ploidy.
         self.assertTrue(r["completeness_ok"])
         self.assertTrue(r["cardinality_ok"])
@@ -708,15 +855,14 @@ class TestRunStructuralChecks(unittest.TestCase):
         self.assertEqual([o["sample_id"] for o in truncation["outliers"]], [9])
 
     def test_singleton_is_flagged_by_run_structural_checks(self):
-        # A single-sample load has no cohort consensus. run_structural_checks must flag both screens
-        # so deletion is blocked by default.
+        # A single-sample load has no cohort consensus, so the truncation screen cannot clear it.
         part = [("vet_001", 1, 100), ("ref_ranges_001", 1, 50)]
         self._patch(part, {1: 24})
         exp = {"vet": {1}, "ref_ranges": {1}, "sample_chromosome_ploidy": {1}}
 
-        r = run_structural_checks("proj", "ds", exp, allow_flagged_vet_loads=False)
-        self.assertTrue(r["duplication_flagged"])
+        r = _run(exp, allow_flagged_vet_loads=False)
         self.assertTrue(r["truncation_flagged"])
+        self.assertEqual(r["flagged_samples"], [1])
         # Factual gates remain ok (as long as presence, family completeness, and ploidy cardinality are good)
         self.assertTrue(r["completeness_ok"])
         self.assertTrue(r["cardinality_ok"])
@@ -728,7 +874,7 @@ class TestRunStructuralChecks(unittest.TestCase):
                 + [("ref_ranges_001", 1, 50), ("ref_ranges_001", 2, 1)])
         self._patch(part, {1: 24, 2: 24})
         exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
-        r = run_structural_checks("proj", "ds", exp)
+        r = _run(exp)
         self.assertFalse(r["truncation_flagged"])
         self.assertIn("vet", r["details"]["truncation_screen"])
         self.assertNotIn("ref_ranges", r["details"]["truncation_screen"])
@@ -739,7 +885,7 @@ class TestRunStructuralChecks(unittest.TestCase):
         part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
         self._patch(part, {1: (48, 24), 2: (48, 24)})
         exp = {"vet": {1, 2}, "ref_ranges": {1, 2}, "sample_chromosome_ploidy": {1, 2}}
-        r = run_structural_checks("proj", "ds", exp)
+        r = _run(exp)
         self.assertFalse(r["cardinality_ok"])
         card = r["details"]["cardinality"]["sample_chromosome_ploidy"]
         self.assertEqual([d["sample_id"] for d in card["deviating_samples"]], [1, 2])
@@ -759,8 +905,8 @@ class TestRunStructuralChecks(unittest.TestCase):
         exp = {"vet": {1, 2, 3}, "ref_ranges": {1, 2, 3},
                "sample_chromosome_ploidy": {1, 2, 3}, "vcf_header_lines_scratch": {1, 2, 3}}
 
-        r = run_structural_checks(
-            "proj", "ds", exp,
+        r = _run(
+            exp,
             regular_table_prefixes=["sample_chromosome_ploidy", "vcf_header_lines_scratch"],
         )
 
@@ -785,8 +931,8 @@ class TestRunStructuralChecks(unittest.TestCase):
         exp = {"vet": {1, 2}, "ref_ranges": {1, 2},
                "sample_chromosome_ploidy": {1, 2}, "vcf_header_lines_scratch": {1, 2}}
 
-        r = run_structural_checks(
-            "proj", "ds", exp,
+        r = _run(
+            exp,
             regular_table_prefixes=["sample_chromosome_ploidy", "vcf_header_lines_scratch"],
         )
 
@@ -796,54 +942,17 @@ class TestRunStructuralChecks(unittest.TestCase):
         self.assertTrue(r["cardinality_ok"])  # ploidy still uniform
 
 
-class TestThresholdValidation(unittest.TestCase):
-    """run_structural_checks rejects a nonsensical duplication/truncation ratio before any BigQuery read."""
-
-    def _call(self, threshold):
-        # An invalid threshold must raise before get_partition_row_counts is reached, so no patching is
-        # needed; if the guard were removed the call would instead try to touch BigQuery and error with
-        # a different type, failing these assertRaisesRegex checks.
-        run_structural_checks("proj", "ds", {"vet": {1}}, vet_duplication_threshold=threshold)
-
-    def test_zero_rejected(self):
-        with self.assertRaisesRegex(ValueError, "vet_duplication_threshold"):
-            self._call(0)
-
-    def test_one_rejected(self):
-        with self.assertRaisesRegex(ValueError, "vet_duplication_threshold"):
-            self._call(1)
-
-    def test_below_one_rejected(self):
-        with self.assertRaisesRegex(ValueError, "vet_duplication_threshold"):
-            self._call(0.5)
-
-    def test_infinite_rejected(self):
-        with self.assertRaisesRegex(ValueError, "vet_duplication_threshold"):
-            self._call(float("inf"))
-
-    def test_nan_rejected(self):
-        with self.assertRaisesRegex(ValueError, "vet_duplication_threshold"):
-            self._call(float("nan"))
-
-
-class TestTruncationThresholdIsIndependent(unittest.TestCase):
-    """VS-1989: the truncation floor is its own knob, not a mirror of the duplication ratio.
-
-    Only the high side was calibrated against Foxtrot, so the low side has to be retunable -- and
-    switchable off -- without disturbing the calibrated duplication screen. These tests pin that
-    independence, since the two defaults being equal makes a regression to a shared threshold
-    invisible in every other test in this file.
-    """
+class TestTruncationThreshold(unittest.TestCase):
+    """VS-1989: the truncation floor is uncalibrated, so it has to be retunable and switchable off."""
 
     PREFIXES = ["vet", "ref_ranges"]
 
     def _patch(self, partition_rows, ploidy_counts):
-        p1 = patch("verify_structural_checks.get_partition_row_counts", return_value=partition_rows)
-        p2 = patch("verify_structural_checks.get_ploidy_row_counts", return_value=ploidy_counts)
-        p1.start()
-        p2.start()
-        self.addCleanup(p1.stop)
-        self.addCleanup(p2.stop)
+        for p in (patch("verify_structural_checks.get_partition_row_counts", return_value=partition_rows),
+                  patch("verify_structural_checks.get_ploidy_row_counts", return_value=ploidy_counts),
+                  patch("verify_structural_checks.get_parquet_footer_row_counts", return_value={})):
+            p.start()
+            self.addCleanup(p.stop)
 
     def _truncated_callset(self):
         # Sample 9 at 1 row against peers of 100 is 0.01x: flagged at any sane floor, missed by none.
@@ -853,14 +962,9 @@ class TestTruncationThresholdIsIndependent(unittest.TestCase):
         return {"vet": set(range(1, 10)), "ref_ranges": set(range(1, 10)),
                 "sample_chromosome_ploidy": set(range(1, 10))}
 
-    def test_default_matches_the_duplication_default(self):
-        # The knobs are separate but their defaults agree today, so behaviour is unchanged by the split.
-        self.assertEqual(DEFAULT_VET_TRUNCATION_THRESHOLD, 1.6)
-
     def test_disabled_screen_does_not_flag_a_truncated_sample(self):
         exp = self._truncated_callset()
-        r = run_structural_checks("proj", "ds", exp,
-                                  vet_truncation_threshold=TRUNCATION_SCREEN_DISABLED)
+        r = _run(exp, vet_truncation_threshold=TRUNCATION_SCREEN_DISABLED)
         self.assertFalse(r["truncation_flagged"])
         self.assertEqual(r["flagged_samples"], [])
         # Reported as switched off rather than silently absent, so a green result is not mistaken for
@@ -868,51 +972,20 @@ class TestTruncationThresholdIsIndependent(unittest.TestCase):
         self.assertTrue(r["details"]["truncation_screen"]["vet"]["disabled"])
         self.assertEqual(r["details"]["truncation_screen"]["vet"]["samples_screened"], 0)
 
-    def test_disabling_truncation_leaves_the_duplication_screen_running(self):
-        # The point of the split: the uncalibrated screen can be turned off on its own.
-        part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 300)]
-        part += [("ref_ranges_001", i, 50) for i in range(1, 10)]
-        self._patch(part, {i: 24 for i in range(1, 10)})
-        exp = {"vet": set(range(1, 10)), "ref_ranges": set(range(1, 10)),
-               "sample_chromosome_ploidy": set(range(1, 10))}
-
-        r = run_structural_checks("proj", "ds", exp,
-                                  vet_truncation_threshold=TRUNCATION_SCREEN_DISABLED)
-        self.assertTrue(r["duplication_flagged"])
-        self.assertFalse(r["truncation_flagged"])
-        self.assertEqual(r["duplication_flagged_samples"], [9])
-
     def test_truncation_threshold_moves_the_floor_on_its_own(self):
         # Sample 9 at 70 against a median of 100 is 0.7x: above the default 0.625 floor, below the
-        # 1/1.25 = 0.8 floor a looser truncation threshold sets. The duplication screen is untouched.
+        # 1/1.25 = 0.8 floor a looser truncation threshold sets.
         part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 70)]
         part += [("ref_ranges_001", i, 50) for i in range(1, 10)]
         self._patch(part, {i: 24 for i in range(1, 10)})
         exp = {"vet": set(range(1, 10)), "ref_ranges": set(range(1, 10)),
                "sample_chromosome_ploidy": set(range(1, 10))}
 
-        self.assertFalse(run_structural_checks("proj", "ds", exp)["truncation_flagged"])
+        self.assertFalse(_run(exp)["truncation_flagged"])
 
-        r = run_structural_checks("proj", "ds", exp, vet_truncation_threshold=1.25)
+        r = _run(exp, vet_truncation_threshold=1.25)
         self.assertTrue(r["truncation_flagged"])
-        self.assertFalse(r["duplication_flagged"])
         self.assertEqual(r["flagged_samples"], [9])
-        self.assertEqual(r["duplication_flagged_samples"], [])
-
-    def test_duplication_threshold_no_longer_moves_the_truncation_floor(self):
-        # Before the split, raising the duplication ratio to 2.0 also dropped the floor to 0.5x and
-        # would have cleared this 0.7x sample. It must not any more.
-        part = [("vet_001", i, 100) for i in range(1, 9)] + [("vet_001", 9, 70)]
-        part += [("ref_ranges_001", i, 50) for i in range(1, 10)]
-        self._patch(part, {i: 24 for i in range(1, 10)})
-        exp = {"vet": set(range(1, 10)), "ref_ranges": set(range(1, 10)),
-               "sample_chromosome_ploidy": set(range(1, 10))}
-
-        r = run_structural_checks("proj", "ds", exp, vet_duplication_threshold=2.0,
-                                  vet_truncation_threshold=1.25)
-        self.assertTrue(r["truncation_flagged"])
-        self.assertEqual(r["details"]["truncation_screen"]["vet"]["threshold"], 1.25)
-        self.assertEqual(r["details"]["duplication_screen"]["vet"]["threshold"], 2.0)
 
     def test_screen_helper_reports_disabled_without_reading_partitions(self):
         part = [("vet_001", 1, 100), ("vet_001", 2, 1)]
@@ -923,10 +996,15 @@ class TestTruncationThresholdIsIndependent(unittest.TestCase):
 
 
 class TestTruncationThresholdValidation(unittest.TestCase):
-    """The truncation ratio gets the same guard as the duplication one, plus a disable sentinel."""
+    """run_structural_checks rejects a nonsensical truncation ratio before any BigQuery read, but
+    accepts the disable sentinel.
+
+    An invalid threshold must raise before get_partition_row_counts is reached, so no patching is
+    needed; if the guard were removed the call would instead try to touch BigQuery and error with a
+    different type, failing these assertRaisesRegex checks."""
 
     def _call(self, threshold):
-        run_structural_checks("proj", "ds", {"vet": {1}}, vet_truncation_threshold=threshold)
+        _run({"vet": {1}}, vet_truncation_threshold=threshold)
 
     def test_one_rejected(self):
         with self.assertRaisesRegex(ValueError, "vet_truncation_threshold"):
@@ -949,19 +1027,13 @@ class TestTruncationThresholdValidation(unittest.TestCase):
             self._call(float("inf"))
 
     def test_zero_accepted_as_the_disable_sentinel(self):
-        # Unlike the duplication threshold, 0 is meaningful here: it switches the screen off. It must
-        # therefore get past validation, which is where the two guards deliberately differ.
+        # 0 is meaningful here: it switches the screen off, so it must get past validation.
         with patch("verify_structural_checks.get_partition_row_counts", return_value=[]), \
-             patch("verify_structural_checks.get_ploidy_row_counts", return_value={}):
-            r = run_structural_checks("proj", "ds", {"vet": {1}},
-                                      vet_truncation_threshold=TRUNCATION_SCREEN_DISABLED)
+             patch("verify_structural_checks.get_ploidy_row_counts", return_value={}), \
+             patch("verify_structural_checks.get_parquet_footer_row_counts", return_value={}):
+            r = _run({"vet": {1}}, vet_truncation_threshold=TRUNCATION_SCREEN_DISABLED)
         self.assertFalse(r["truncation_flagged"])
 
-    def test_disable_sentinel_is_not_accepted_for_the_duplication_threshold(self):
-        # The calibrated screen has no off switch; only the uncalibrated one does.
-        with self.assertRaisesRegex(ValueError, "vet_duplication_threshold"):
-            run_structural_checks("proj", "ds", {"vet": {1}},
-                                  vet_duplication_threshold=TRUNCATION_SCREEN_DISABLED)
 
 
 if __name__ == "__main__":
