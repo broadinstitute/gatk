@@ -1,288 +1,112 @@
-# Parquet to BigQuery Loading System
-
-Robust, fault-tolerant system for loading hundreds of thousands of Parquet files from Google Cloud Storage into BigQuery tables.
+# Parquet-Based BigQuery Loading
 
 ## Overview
 
-This implementation loads Parquet files into BigQuery with:
-- **Idempotency**: Safe to run multiple times — already-loaded data is detected by inspecting BigQuery directly
-- **Fault Tolerance**: Survives VM preemptions and failures
-- **Deterministic Job IDs**: Can resume interrupted BigQuery load jobs
-- **Verification**: Confirms all files were successfully loaded by querying BigQuery partition data
+GVS previously ingested data into BigQuery row-by-row via the BigQuery Storage Write API, inside the `LoadData` task. This approach was replaced with a two-phase design:
 
-## Architecture
+1. **`LoadData`** writes variant and reference data to local Parquet files and copies them to a temporary GCS path.
+2. A downstream set of WDL tasks (described below) loads those Parquet files into BigQuery in bulk, using BigQuery's free GCS-to-BQ load jobs rather than the metered Write API.
 
-### Components
+The loading system is idempotent and survives VM preemptions without duplicating data.
 
-1. **`parse_and_group_files.py`**: Discovers Parquet files in GCS, groups by target table, filters already-loaded files by querying `INFORMATION_SCHEMA.PARTITIONS` and the `sample_chromosome_ploidy` table directly
-2. **`load_parquet_to_bq.py`**: Loads Parquet files with deterministic job IDs and preemption recovery
-3. **`verify_all_loaded.py`**: Verifies all files were loaded successfully by comparing GCS-derived `(table_name, sample_id)` pairs against BigQuery partition data
+## WDL Tasks (`GvsImportGenomes.wdl`)
 
-**Note**: All Python scripts are located in `scripts/variantstore/scripts/` and are packaged into the variants Docker image at `/app/`.
+Five tasks coordinate loading, verification, and cleanup after the `LoadData` scatter completes:
 
-### Idempotency via BigQuery Partition Inspection
+| Task                            | Purpose                                                                                                                                                                                                                                                                                                          |
+|---------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `DiscoverParquetFiles`          | Lists all Parquet files in GCS, filters out already-loaded `(table_name, sample_id)` pairs by querying BigQuery directly, and emits one FOFN per target table.                                                                                                                                                   |
+| `LoadParquetFilesToBQ`          | Scattered across all tables; loads each FOFN into its BigQuery table in batches of up to 10,000 files per load job.                                                                                                                                                                                              |
+| `VerifyParquetLoading`          | Re-queries BigQuery after all loads complete, runs exact structural checks (`completeness`, `cardinality`, `cross_family`) to gate `all_loaded`, and evaluates cohort duplication/truncation screens to produce the per-sample quarantine list. Fails the workflow if any expected data is missing or corrupted. |
+| `QuarantineFlaggedParquetFiles` | Moves the Parquet of screen-flagged samples into a `quarantine/` subdirectory, renamed so it survives the bulk delete. Runs unconditionally and is a no-op when nothing was flagged.                                                                                                                             |
+| `DeleteParquetFiles`            | Deletes temporary GCS Parquet files only if `safe_to_delete_parquet` is true, and only after the quarantine step has succeeded.                                                                                                                                                                                  |
 
-Idempotency is determined by querying BigQuery directly rather than maintaining a separate tracking table:
+## Python Scripts (`scripts/variantstore/scripts/`)
 
-- **Superpartitioned tables** (`vet_%`, `ref_ranges_%`): `INFORMATION_SCHEMA.PARTITIONS` is queried for non-empty partitions whose partition ID parses as a valid `sample_id`.
-- **Regular tables** (`sample_chromosome_ploidy`): The table itself is queried for distinct `sample_id` values.
+All scripts are packaged into the variants Docker image at `/app/`.
 
-If a `(table_name, sample_id)` pair is already represented in BigQuery, all Parquet files for that pair are skipped without attempting a reload. This approach is more reliable than a tracking table because it reflects the actual committed state of BigQuery.
+| Script                        | Description                                                                                                                                                                                                                                                                                                                                                    |
+|-------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| `parse_and_group_files.py`    | Discovers Parquet files under a GCS prefix, maps each file to its target BigQuery table and `sample_id`, queries `INFORMATION_SCHEMA.PARTITIONS` (and `sample_chromosome_ploidy` directly) to identify already-loaded pairs, and writes per-table FOFNs for the remaining files.                                                                               |
+| `load_parquet_to_bq.py`       | Loads one FOFN into BigQuery. Generates a deterministic SHA-1 job ID per batch so that a retry VM after preemption re-uses the in-flight BigQuery job rather than re-submitting it. Retries quota and transient errors with exponential backoff (30 s → 60 s → 120 s, up to 3 retries).                                                                        |
+| `verify_all_loaded.py`        | CLI coordinator that confirms every `(table_name, sample_id)` pair is loaded, executes structural verification via `verify_structural_checks.py`, logs detailed diagnostic summaries, writes `verification_results.json`, `missing_files.txt` and `quarantine_files.txt`, and exits non-zero if `all_loaded` is false.                                         |
+| `verify_structural_checks.py` | Independent structural verification engine (VS-1989). Evaluates BigQuery partition and table counts for family completeness (no empty partitions), ploidy cardinality (`COUNT(*)` vs `COUNT(DISTINCT chromosome)` per sample), cross-family consistency across co-produced tables, and cohort-relative duplication and truncation screens on `vet` row counts. |
 
-### GCS Directory Structure
+## Verification and Deletion Gates (VS-1989)
 
-Individual Parquet files are named like
+Verification enforces a two-tier safety contract separating workflow success from data deletion authorization:
 
-```
-<data type>_<superpartition>_<sample id>_<VCF filename>.parquet
-```
+### 1. `all_loaded` (Workflow Gate)
+Determines whether BigQuery ingestion succeeded. Governed exclusively by **exact** checks:
+- **File Presence**: Every `(table_name, sample_id)` pair discovered in GCS must be confirmed present in BigQuery.
+- **Family Completeness**: Every expected sample partition in superpartitioned tables (`vet_%`, `ref_ranges_%`) and every expected sample row in regular tables (`sample_chromosome_ploidy`, `vcf_header_lines_scratch`) must contain $> 0$ rows.
+- **Ploidy Cardinality Consistency**: Detects duplicated loads exactly. Since `SamplePloidyCreator` emits at most one row per chromosome per sample, `COUNT(*) == COUNT(DISTINCT chromosome)` is verified per sample -- a doubled load repeats chromosomes and nothing legitimate does, so the comparison needs no reference count to compare against and holds for a single sample as readily as for a callset. Deliberately, no sample's row count is compared against any other's: those counts legitimately vary -- a chromosome gets a ploidy row only where a non-PAR reference block on it survived `drop_state` (`RefRangesCreator.apply`), so a sample's contig count depends on its data, not just its sex (every gVCF ingested for Foxtrot carries a chrY row, female participants included), chrM is recorded or not, and exome and BGE cover fewer contigs -- which is why the earlier modal ceiling and contig floor were dropped -- the ceiling only ever fired where the exact comparison already had, and the floor read a legitimately smaller contig set as a partial load. The gap that leaves is ploidy rows lost for *some* of a sample's chromosomes with no repeats, which no row count can distinguish from a legitimate karyotype; loss of the whole sample is still caught, by Family Completeness. Two further limits, since this is the only exact duplication check here and it is easy to over-read: it covers the ploidy table's own rows and is **not** a `ref_ranges` duplication detector -- a `ref_ranges` partition loaded twice is detected by nothing today, and closing that gap is VS-2032. And where a sample's ploidy rows came from a later backfill rather than from ingest, the check is satisfied by construction and says nothing about how the data families loaded (`PLOIDY_BACKFILL_CAVEAT`).
+- **Cross-Family Consistency**: A sample present in any co-produced family (`vet`, `ref_ranges`, `sample_chromosome_ploidy`, and conditionally `vcf_header_lines_scratch` when loaded alongside data) must be present in all configured co-produced families.
 
-where `<data type>` is `vet` or `ref_ranges`.
+If any exact check fails, `all_loaded` is `false`, and `VerifyParquetLoading` exits non-zero, immediately aborting the workflow.
 
-Sample GCS directory structure:
+### 2. The heuristic screens and the per-sample quarantine
+The duplication and truncation screens are heuristics, so a flag holds back *that sample's* Parquet rather than blocking deletion for the callset:
+- The duplication screen flags `vet` row counts above a ceiling (`parquet_vet_duplication_threshold`, default $1.6\times$ median, or the lower of the two values for $N=2$); the truncation screen flags those below a floor (`parquet_vet_truncation_threshold`, default $1/1.6 = 0.625\times$).
+- **The two thresholds are separate inputs that happen to share a default.** Only the high side has been calibrated: the Foxtrot pass measured $1.6\times$ flagging 2 `vet` samples out of 540,545, and nothing has been measured below the median. A variant-count distribution has no reason to be symmetric in ratio space — its upper tail is bounded by biology, while its lower tail absorbs low-coverage samples, smaller callable fractions, and more aggressive GQ dropping — so mirroring $1.6$ into the floor is a provisional default, not a derived one. Keeping the knobs apart is what lets the low side be retuned, or switched off with `parquet_vet_truncation_threshold = 0` (`--vet-truncation-threshold 0`), without disturbing the calibrated high side. A disabled screen is logged and reported as disabled rather than as clean. This is also why gate 4 below aborts only on a duplication flag.
+- Singletons ($N=1$) are flagged conservatively, since no cohort consensus baseline exists. The baseline is drawn from the run's own samples, so this is a property of the batch and not of the dataset: a single-sample ingest into a 500k-sample callset has no cohort as far as the screens are concerned. See *Small incremental top-ups into an existing callset* below.
+- A flag never affects `all_loaded`, and never blocks the delete for the callset; whether it aborts the run for attention is a separate decision, made by gate 4 below. `QuarantineFlaggedParquetFiles` moves every Parquet file belonging to a flagged sample — across **all** families, not just the flagging one, since a sample is only re-ingestable from a complete set of its files — into a `quarantine/` subdirectory of the Parquet output directory, appending `.quarantined` to each name. The rest of the callset's Parquet is then deleted as usual.
+- If flagged row counts are verified as legitimate (e.g. high-coverage samples or expected singletons), the screens can be waived with `allow_flagged_vet_loads = true` (`--allow-flagged-vet-loads`), in which case nothing is quarantined and flagged Parquet is deleted with the rest.
 
-```
-gs://bucket/output_dir/
-├── vet/
-│   ├── 001/
-│   │   ├── vet_001_1_sample1.parquet
-│   │   ├── vet_001_2_sample1.parquet
-...
-│   └── 002/
-│       ├── vet_002_4001_sample1.parquet
-...
-└── ref_ranges/
-│   ├── 001/
-│   │   ├── ref_ranges_001_2_sample1.parquet
-...
-```
+Two independent properties keep quarantined files alive, and both matter:
+- **The rename.** `DeleteParquetFiles`' default strategy globs `*.parquet` across the whole output directory, so a quarantined object survives it only because its name no longer ends in `.parquet`. The task asserts that the configured suffix does not itself end in `.parquet`.
+- **The location.** `DeleteParquetFiles`' alternate strategy deletes the four table directories, and the bucket lifecycle rule `ConfigureParquetLifecycle` installs matches those same four prefixes with a 14-day `Delete` action. `quarantine/` is in neither list, so quarantined files are exempt from both. **Nothing removes them**: clean the directory up by hand once the samples have been reviewed. A `README.txt` written alongside them explains how to restore one.
 
-**Mapping**: `vet/001/` → BigQuery table `vet_001`, `ref_ranges/042/` → BigQuery table `ref_ranges_042`
+**Quarantining does not touch BigQuery.** `QuarantineFlaggedParquetFiles` runs `gcloud storage mv` and nothing else; the verification scripts only ever read from BigQuery. A flagged sample is loaded exactly like any other — `all_loaded` is true and `SetIsLoadedColumn` sets its `sample_info.is_loaded` — so a duplication-flagged sample keeps its suspect rows in `vet`. The quarantine preserves the evidence needed to re-ingest; it does not roll the load back.
 
-## Prerequisites
+That makes re-ingesting a quarantined sample a **two-step** operation, and restoring the Parquet alone is a silent no-op: `parse_and_group_files.py` treats a `(table_name, sample_id)` pair as already loaded whenever the rows are there — for `vet_%` and `ref_ranges_%` whenever the partition reports `total_logical_bytes > 0`, which a duplicated partition certainly does, and for the unpartitioned tables whenever the `sample_id` appears in them at all — so the restored file is skipped and the run comes back green having done nothing. Delete the sample's rows from BigQuery first, across every family the sample was quarantined under, then restore and re-run. `DELETE ... WHERE sample_id = <sample_id>` is the form that works everywhere. For `vet_%` and `ref_ranges_%` only, `bq rm -f -t 'project:dataset.vet_00N$<sample_id>'` is equivalent and cheaper, the partition id being the `sample_id` for those step-1 range-partitioned tables; it does not apply to `sample_chromosome_ploidy` or `vcf_header_lines_scratch`, which are created unpartitioned (`GvsAssignIds.wdl`) and reject the partition decorator outright. Row presence is the loader's test for those two, so the `DELETE` is what clears it. The generated `README.txt` spells this out in place.
 
-- Python 3.8+
-- Google Cloud SDK
-- BigQuery API enabled
-- Service account with BigQuery permissions:
-  - `bigquery.tables.create`
-  - `bigquery.tables.get`
-  - `bigquery.tables.getData`
-  - `bigquery.tables.updateData`
-  - `bigquery.jobs.create`
-- GCS read permissions for source buckets
-
-## Docker Image
-
-The scripts are packaged in the **variants Docker image** built from `scripts/variantstore/scripts/Dockerfile`.
+Quarantining per sample rather than withholding the run's delete is what keeps a heuristic out of a callset-wide decision. On Foxtrot the calibration pass flagged 2 `vet` samples out of 540,545; under a run-wide gate that would have retained every sample's Parquet — and only until the 14-day lifecycle rule deleted it anyway, silently, in a green run.
 
-### Building the Image
+### 3. `safe_to_delete_parquet` (Deletion Gate)
+The gate governing whether `DeleteParquetFiles` runs at all:
+- Requires `all_loaded == true`.
+- Requires every flagged sample to have at least one resolvable Parquet path, so the quarantine step has something to move. A flagged sample with no such path blocks deletion, because running it would destroy exactly the files the screens asked to keep.
+- Screen flags alone do **not** block it; see the quarantine above.
+- `DeleteParquetFiles` additionally consumes `QuarantineFlaggedParquetFiles.done`, so a failed quarantine takes the delete down with it. That ordering is structural rather than a boolean, because a failed quarantine followed by a bulk delete is the one unsafe sequence.
 
-```bash
-cd scripts/variantstore/scripts/
-./build_docker.sh
-```
+### 4. `parquet_fail_on_quarantine` (Notification Gate)
+Quarantining makes a flagged run *succeed*, which leaves the opposite problem: a run that may need a human look is green, and the only trace is a workflow output nobody reads. `parquet_fail_on_quarantine` (default `false`, forwarded from `GvsJointVariantCalling` and `GvsBulkIngestGenomes`) lets an operator close that gap by aborting such a run via `Utils.TerminateWorkflow`.
+- **It is off by default because the point is to *know* a flag happened, not to stop the ingest.** Duplicated rows in the `vet` and `ref_ranges` tables do not make results wrong. At worst they modestly over-weight some variants in the filter-model training, which should only matter for variants already near the margin, and extract ignores duplicated rows when it writes the VCF. So by default a flagged run quarantines the Parquet, stays green, and is reported through the workflow outputs described under *Observability on a successful run*.
+- When enabled, the abort is **purely a notification**. It runs after `QuarantineFlaggedParquetFiles`, so the samples are loaded and their Parquet is already safe: nothing is destroyed and nothing is rolled back. Re-running with `parquet_fail_on_quarantine = false` (or `parquet_allow_flagged_vet_loads = true`, once the flag has been reviewed and dismissed) finishes from a fully loaded dataset.
+- It is conditioned on `QuarantineFlaggedParquetFiles.quarantined_files`, not on the equivalent `VerifyParquetLoading` count. The data dependency is what places the abort after the move; terminating off the verification output would let Cromwell kill the workflow while the flagged files were still under the prefixes the 14-day lifecycle rule matches, neither quarantined nor deleted.
+- `DeleteParquetFiles` depends on the same task, so it and the abort are siblings and Cromwell may start the delete first. That race is benign: the delete skips quarantined files by both suffix and location, and deleting the unflagged samples' Parquet is wanted either way.
+- **Only duplication flags abort.** A truncation-only flag still quarantines and still reports, but the truncation threshold has only been measured on its high side, and an uncalibrated heuristic should not be able to fail a completed 500k-sample ingest. `VerifyParquetLoading` reports the duplication subset separately (`quarantine_duplication_sample_count`) for exactly this reason.
+- **`parquet_allow_flagged_vet_loads = true` supersedes this gate, and is not just a louder way of turning it off.** Waiving the screens empties the quarantine work list, so an abort conditioned on `quarantined_files` has nothing left to fire on — the precedence is emergent from that condition rather than a rule written anywhere. The two differ in what survives: `parquet_fail_on_quarantine = false` keeps the flagged sample's Parquet under `quarantine/` with its restore `README.txt`, while `parquet_allow_flagged_vet_loads = true` lets that Parquet be deleted along with the rest and writes no README, leaving only the `parquet_vet_duplication_flagged` / `parquet_vet_truncation_flagged` booleans as a trace. So reach for the first to finish a flagged run with its evidence intact, and the second only once the flag has been reviewed and dismissed.
 
-**Build Process:**
-1. Creates Docker buildx builder for linux/amd64
-2. Builds image with all Python scripts copied to `/app/`
-3. Runs unit tests from `test/test_*.py`
-4. Tags image: `YYYY-MM-DD-alpine-<image-id>`
-5. Pushes to Google Artifact Registry: `us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:<tag>`
+### Small incremental top-ups into an existing callset
 
-**Prerequisites for Building:**
-- Docker configured for GAR: `gcloud auth configure-docker us-central1-docker.pkg.dev`
-- Access to `broad-dsde-methods` GCP project
+Both screens draw their baseline from the samples loaded by the current run, not from the dataset around them — `assess_duplication_screen` and `assess_truncation_screen` filter the partition rows down to the run's expected `sample_id` set before computing a median. That is the right cohort for an ordinary batch, but it degenerates when a run adds only a handful of samples to an already-populated callset, which is what a top-up into a dataset whose bulk arrived earlier looks like (whether that bulk came from Parquet or from the older BQ Storage Write API path):
 
-### Using Pre-built Images
+- $N=1$ has no cohort at all, so the sample is flagged unconditionally, and by default its Parquet is quarantined (and the run aborted by gate 4 if `parquet_fail_on_quarantine` is enabled).
+- $N=2$ takes its baseline from one of the two observed values, so two legitimately dissimilar samples flag each other.
 
-The WDL workflow uses the variants Docker image. Update the `python_bq_docker` input to use your built image:
+Neither is a data problem. `all_loaded` is unaffected, the samples are loaded, and the flagged Parquet is quarantined rather than lost — the abort, if `parquet_fail_on_quarantine` is enabled, is the notification described in gate 4. For a deliberate small top-up the default `parquet_fail_on_quarantine = false` keeps the run green, or set `parquet_allow_flagged_vet_loads = true` to waive the screens outright and let the flagged Parquet be deleted with the rest.
 
-```json
-{
-  "LoadParquetsToBigQuery.python_bq_docker": "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-10-28-alpine-abc123"
-}
-```
+Widening the baseline to the whole callset is tracked in [VS-2027](https://broadworkbench.atlassian.net/browse/VS-2027). It would cost no additional BigQuery read — `get_partition_row_counts` is already unscoped and reads every `vet_%` partition's row count before the screens discard everything outside the run — but it needs a decision on how to treat mixed-assay datasets, so the run-scoped baseline is the current behaviour by choice rather than by oversight.
 
-## Installation
+### Observability on a successful run
+When the abort is off (the default), or when only the truncation screen fired, the run is green and the flags and quarantine counts are published as workflow outputs (`parquet_vet_duplication_flagged`, `parquet_vet_truncation_flagged`, `parquet_quarantined_samples`, `parquet_quarantined_duplication_samples`, `parquet_quarantined_files`, `parquet_quarantine_files_list`), from `GvsImportGenomes` up through `GvsBulkIngestGenomes` and `GvsJointVariantCalling`. A non-zero `parquet_quarantined_samples` on a green run is the signal to go and look.
 
-```bash
-pip install google-cloud-bigquery google-cloud-storage
-```
+`GvsQuickstartVcfIntegration` asserts that count is zero whenever `parquet_fail_on_quarantine` is on (the integration workflows default it to `true`, unlike the production ones). The quickstart callset is ordinary, so a flag there is a screen regression rather than bad input data — and since a truncation-only flag does not abort inside `GvsImportGenomes`, the assertion is what keeps that case from passing CI silently. Turning `parquet_fail_on_quarantine` off suppresses this assertion too, so it means the same thing at both layers: a quarantine does not fail the run. That is what lets a deliberately forced quarantine — a lowered duplication threshold on an ordinary cohort — exercise the whole path and still finish green.
 
-## Usage
+### Diagnostic Persistence
+On verification failure (`rc != 0`), `VerifyParquetLoading` copies `verification_results.json` to `verification_diagnostics_gcs_dir` (if specified) before exiting. This copy is gated on failure so successful retries cannot overwrite the durable failure diagnostics.
 
-### 1. Run Standalone Scripts (Local Testing)
+A green run that quarantined anything gets the same treatment, under distinct names (`verification_results.quarantine.json` and `quarantine_files.txt`). Without it the only record of why those files were set aside would be the Cromwell execution directory, which is exactly what gets cleaned up. The separate names preserve the invariant above: this path does re-run on a successful retry, so it must not be able to overwrite a preserved failure diagnostic.
 
-**Note**: For production use, the scripts should be run from the Docker container. These examples show local execution for testing.
+## Key Design Points
 
-#### Discover and Group Files
+**Idempotency** is based on what BigQuery actually contains, not a secondary tracking table. `parse_and_group_files.py` queries `INFORMATION_SCHEMA.PARTITIONS` for non-empty integer partitions in the `vet_%` and `ref_ranges_%` tables, and queries `sample_chromosome_ploidy` directly for distinct `sample_id` values. Files belonging to already-loaded pairs are silently skipped on every run.
 
-```bash
-# List all Parquet files
-gcloud storage ls --recursive gs://my-bucket/output_dir/ > all_objects.txt
-grep '\.parquet$' all_objects.txt > all_files.txt
+**Preemption recovery** relies on deterministic BigQuery job IDs (a SHA-1 hash of the project, dataset, table name, and sorted batch file list). When a retry VM submits the same batch, BigQuery returns a `Conflict` exception; `load_parquet_to_bq.py` catches this and fetches the pre-existing job to wait on, so no data is written twice and no local state file is required.
 
-# Group by table (already-loaded (table_name, sample_id) pairs are skipped automatically)
-python3 scripts/variantstore/scripts/parse_and_group_files.py \
-  --input all_files.txt \
-  --output-dir grouped_files \
-  --project-id my-project \
-  --dataset my_dataset \
-  --superpartitioned-table-prefixes vet ref_ranges \
-  --regular-table-prefixes sample_chromosome_ploidy
-```
+## Further Reading
 
-#### Load Files for a Table
-
-```bash
-python3 scripts/variantstore/scripts/load_parquet_to_bq.py \
-  --project-id my-project \
-  --dataset-name my_dataset \
-  --table-name vet_001 \
-  --files-fofn grouped_files/vet_001.fofn \
-  --schema-path schemas/vet_001_schema.json \
-  --pending-jobs-path pending_jobs_vet_001.json \
-  --batch-size 1000 \
-  --output-stats stats_vet_001.json
-```
-
-#### Verify All Files Loaded
-
-```bash
-python3 scripts/variantstore/scripts/verify_all_loaded.py \
-  --project-id my-project \
-  --dataset-name my_dataset \
-  --gcs-files-list all_files.txt \
-  --output-dir verification_output
-```
-
-### 3. Run via Cromwell Workflow (Recommended)
-
-Create an inputs JSON file:
-
-```json
-{
-  "LoadParquetsToBigQuery.output_gcs_dir": "gs://my-bucket/output_dir",
-  "LoadParquetsToBigQuery.project_id": "my-project",
-  "LoadParquetsToBigQuery.dataset_name": "my_dataset",
-  "LoadParquetsToBigQuery.table_prefixes": ["vet", "ref_ranges"],
-  "LoadParquetsToBigQuery.batch_size": 10000,
-  "LoadParquetsToBigQuery.python_bq_docker": "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2025-10-28-alpine-abc123"
-}
-```
-
-**Note**: Replace the `python_bq_docker` value with your actual built image tag from the build process.
-
-Run the workflow:
-
-```bash
-cromwell run scripts/variantstore/wdl/LoadParquetsToBigQuery.wdl \
-  -i inputs.json
-```
-
-## Configuration
-
-### Batch Size
-
-- **Default**: 10,000 files per BigQuery load job
-- **Recommend**: 500-1,000 for faster retries on large tables
-- **Max**: 10,000 (BigQuery limit)
-
-### Preemptible VMs
-
-All tasks use preemptible VMs (3-5 attempts) to save ~70% on compute costs. The deterministic job ID system ensures safe resumption after preemptions.
-
-### Parallelization
-
-The workflow loads different tables in parallel. Control concurrency with `max_parallel_loads` (default: 50) to stay within BigQuery's ~100 concurrent load job limit per project.
-
-## Fault Tolerance
-
-### Preemption Recovery
-
-When a VM is preempted during loading:
-
-1. **Job IDs are deterministic**: Hash of table name + batch contents
-2. **State persisted**: `pending_jobs.json` tracks submitted jobs
-3. **On restart**: Call `client.get_job(job_id)` to check status
-4. **Resume or skip**: If job completed, record success; if failed/missing, resubmit
-
-### Idempotency on Workflow Restart
-
-On workflow restart, `parse_and_group_files.py` queries BigQuery (`INFORMATION_SCHEMA.PARTITIONS` for `vet_%`/`ref_ranges_%` tables and `sample_chromosome_ploidy` directly) to determine which `(table_name, sample_id)` pairs are already loaded. Files belonging to already-loaded pairs are skipped. No separate tracking table is consulted or required.
-
-## Monitoring
-
-### Check Load Status
-
-```sql
--- Overall progress per table (via partition metadata)
-SELECT
-  table_name,
-  COUNT(*) as partitions_loaded,
-  SUM(total_logical_bytes) as total_bytes
-FROM `my-project.my_dataset.INFORMATION_SCHEMA.PARTITIONS`
-WHERE REGEXP_CONTAINS(table_name, "^vet_[0-9]+$|^ref_ranges_[0-9]+$")
-  AND total_logical_bytes > 0
-  AND NOT STARTS_WITH(partition_id, '__')
-GROUP BY table_name
-ORDER BY table_name;
-
--- Ploidy samples loaded
-SELECT COUNT(DISTINCT sample_id) as samples_with_ploidy
-FROM `my-project.my_dataset.sample_chromosome_ploidy`;
-```
-
-## Troubleshooting
-
-### No files discovered
-
-- Check GCS path and permissions
-- Verify files match pattern `*.parquet`
-- Confirm table prefixes are correct
-
-### Load job failures
-
-- Check BigQuery quotas (concurrent jobs per project)
-- Verify schema compatibility
-- Review stderr logs for detailed errors
-
-### Verification fails
-
-- Re-run the workflow (idempotent)
-- Check `missing_files.txt` for paths
-- Investigate load failures by querying `INFORMATION_SCHEMA.PARTITIONS`
-
-### Quota exceeded errors
-
-- Reduce `max_parallel_loads`
-- Reduce `batch_size` to spread load over time
-- Request quota increase from Google Cloud
-
-## Performance
-
-### Typical Scale
-
-- **100,000 files across 25 tables**:
-  - Discovery: ~1 minute
-  - Loading: ~10 minutes (parallel)
-  - Verification: ~1 minute
-  - Cost: ~$0.50 (with preemptibles) + BigQuery storage
-
-### Optimization
-
-- **Parallel loading**: Different tables load concurrently
-- **Batching**: 500-10,000 files per BigQuery job
-- **Preemptible VMs**: 70% cost savings
-- **Free BigQuery loads**: Loads from GCS have no API charges
-
-## Design Document
-
-See `docs/parquet_to_bigquery_loading_design.md` for detailed architecture, edge cases, and implementation notes.
-
-## Known Limitations
-
-- BigQuery concurrent load jobs: ~100 per project/region (soft limit)
-- Maximum 10,000 URIs per load job
-- Tables and schemas must be pre-created
+- [BigQuery: Loading Parquet data from Cloud Storage](https://cloud.google.com/bigquery/docs/loading-data-cloud-storage-parquet)
+- [BigQuery quotas and limits — load jobs](https://cloud.google.com/bigquery/quotas#load_jobs)

@@ -11,7 +11,7 @@ The table below describes the GVS ingest variables:
 
 | Input variable name         | Description                                                                                                                                                                | Type |
 |-----------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------| --- |
-| samples_table_name          | (Optional) The name of the data table; This table holds the sample IDs, the GVCFs, and their respective indexes, to be ingested; `sample` is the default.                                                                 | String |
+| data_table_name             | (Optional) The name of the data table; This table holds the sample IDs, the GVCFs, and their respective indexes, to be ingested; `sample` is the default.                                                                 | String |
 | sample_id_column_name       | (Optional) User defined sample id column name; `sample_id` is the recommended name;                                                                                        | String |
 | vcf_files_column_name       | (Optional) Column that contains the GCS paths to the sample GVCF files. Determined by analysis of the available column names if not supplied.                                                     | String |
 | vcf_index_files_column_name | (Optional) Column that contains the GCS paths to the sample GVCF index files. Determined by analysis of the available column names if not supplied.                                               | String |
@@ -21,8 +21,8 @@ The table below describes the GVS ingest variables:
 | call_set_identifier         | Used to track costs and name the filter model, BigQuery extract tables, and final joint VCF shards. Should begin with a letter, valid characters include A-z, 0-9, “.”, “,”, “-“, and “_”. | String |
 
 
-If the user does not supply all 4 optional inputs, GVS uses a mix of default values and heuristics to determine these parameters.
-The first parameter, `samples_table_name`, is the name of the main data table and is usually "sample," which is the default value for the input.
+If the user does not supply all of the optional inputs, GVS uses a mix of default values and heuristics to determine these parameters.
+The first parameter, `data_table_name`, is the name of the main data table and is usually "sample," which is the default value for the input.
 The second parameter, `sample_id_column_name`, corresponds to the `sample_name` value in the GVS database. Some advanced users prefer to use a custom column. This defaults to the value of `data_table_name` + "_id" which is most likely "sample_id".
 
 The next two parameters, `vcf_files_column_name` and `vcf_index_files_column_name`, name the two columns that track the GCP locations of the GVCFs and their corresponding index files.
@@ -48,8 +48,8 @@ In the Beta user workflow, the value examples are as follows:
 
 | Input variable name    | Value                  |
 | ---------------------- |------------------------| 
-| samples_table_name| `sample`               |
-| entity_id_column_name | `sample_id`            |
+| data_table_name| `sample`               |
+| sample_id_column_name | `sample_id`            |
 | vcf_files_column_name | `reblocked_gvcf`       | 
 | vcf_index_files_column_name | `reblocked_gvcf_index` | 
 | sample_set_name | `sample_set`           |

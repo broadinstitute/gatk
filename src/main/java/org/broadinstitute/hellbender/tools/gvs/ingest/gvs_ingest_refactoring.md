@@ -11,22 +11,17 @@ src/main/java/org/broadinstitute/hellbender/tools/gvs/ingest/
 ├── VetWriter.java                    (interface)
 ├── RefRangesWriter.java              (interface)
 ├── SamplePloidyWriter.java           (interface)
-├── avro/
-│   └── RefRangesAvroWriter.java
 ├── bq/
 │   ├── AbstractBQWriter.java         (abstract base)
 │   ├── VetBQWriter.java
 │   ├── RefRangesBQWriter.java
 │   └── SamplePloidyBQWriter.java
-├── parquet/
-│   ├── AbstractParquetFileWriter.java (abstract base)
-│   ├── VetParquetFileWriter.java
-│   ├── RefRangesParquetFileWriter.java
-│   ├── SamplePloidyParquetFileWriter.java
-│   └── HeaderParquetFileWriter.java
-└── tsv/
-    ├── VetTsvWriter.java
-    └── RefRangesTsvWriter.java
+└── parquet/
+    ├── AbstractParquetFileWriter.java (abstract base)
+    ├── VetParquetFileWriter.java
+    ├── RefRangesParquetFileWriter.java
+    ├── SamplePloidyParquetFileWriter.java
+    └── HeaderParquetFileWriter.java
 ```
 
 ## Key Design Elements
@@ -66,13 +61,6 @@ Two abstract base classes provide shared infrastructure for their respective out
 - Extend `AbstractParquetFileWriter` and implement respective interfaces
 - Write data to local Parquet files for later bulk loading
 
-#### TSV (`tsv/`)
-- `VetTsvWriter`, `RefRangesTsvWriter`
-- Direct implementations for tab-separated value output
-
-#### Avro (`avro/`)
-- `RefRangesAvroWriter`
-- Legacy format support
 
 ## Benefits
 

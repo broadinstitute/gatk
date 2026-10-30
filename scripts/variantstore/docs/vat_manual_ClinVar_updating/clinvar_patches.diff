@@ -1,0 +1,168 @@
+diff --git a/SAUtils/InputFileParsers/ClinVar/ClinVarCommon.cs b/SAUtils/InputFileParsers/ClinVar/ClinVarCommon.cs
+index cbc05a7..6ace62d 100644
+--- a/SAUtils/InputFileParsers/ClinVar/ClinVarCommon.cs
++++ b/SAUtils/InputFileParsers/ClinVar/ClinVarCommon.cs
+@@ -1,4 +1,5 @@
+-﻿using System.Collections.Generic;
++﻿using System;
++using System.Collections.Generic;
+ using System.Linq;
+ 
+ namespace SAUtils.InputFileParsers.ClinVar
+@@ -33,7 +34,8 @@ namespace SAUtils.InputFileParsers.ClinVar
+             
+             "conflicting interpretations of pathogenicity", // observed in VCV XML only
+             "established risk allele", // observed in VCV XML only
+-            "likely risk allele"                            // observed in VCV XML only
++            "likely risk allele", // observed in VCV XML only
++            "uncertain risk allele" // third tier of the same ClinGen risk-allele system as the two above; missing from the original list
+         };
+         public enum ReviewStatus
+         {
+@@ -85,16 +87,40 @@ namespace SAUtils.InputFileParsers.ClinVar
+         
+         public static string[] GetSignificances(string description, string explanation)
+         {
+-            if(string.IsNullOrEmpty(explanation)) return description?.ToLower().Split('/', ',', ';').Select(x=>x.Trim()).ToArray();
+-            //<Explanation DataSource="ClinVar" Type="public">Pathogenic(1);Uncertain significance(1)</Explanation>
+-            var significances =new List<string>();
+-            foreach (var significance in explanation.ToLower().Split('/',';'))
++            string[] rawSignificances;
++            if (string.IsNullOrEmpty(explanation))
+             {
+-                var openParenthesisIndex = significance.IndexOf('(');
+-                significances.Add(openParenthesisIndex < 0 ? significance.Trim() : significance.Substring(0, openParenthesisIndex).Trim());
++                rawSignificances = description?.ToLower().Split('/', ',', ';').Select(x => x.Trim()).ToArray();
++            }
++            else
++            {
++                //<Explanation DataSource="ClinVar" Type="public">Pathogenic(1);Uncertain significance(1)</Explanation>
++                var significances = new List<string>();
++                foreach (var significance in explanation.ToLower().Split('/', ';'))
++                {
++                    var openParenthesisIndex = significance.IndexOf('(');
++                    significances.Add(openParenthesisIndex < 0 ? significance.Trim() : significance.Substring(0, openParenthesisIndex).Trim());
++                }
++
++                rawSignificances = significances.ToArray();
++            }
++
++            if (rawSignificances == null) return null;
++
++            // NCBI has, since this parser was last updated, started emitting values that are not actual
++            // clinical significances (e.g. "no classifications from unflagged records", a side effect of
++            // their germline/somatic classification split being collapsed back into this legacy single-field
++            // format). Skip anything we don't recognize instead of throwing and aborting the entire run.
++            var validSignificances = new List<string>();
++            foreach (var significance in rawSignificances)
++            {
++                if (ValidPathogenicity.Contains(significance))
++                    validSignificances.Add(significance);
++                else
++                    Console.Error.WriteLine($"WARNING: skipping unrecognized clinical significance value: '{significance}'");
+             }
+ 
+-            return significances.ToArray();
++            return validSignificances.ToArray();
+         }
+ 
+     }
+diff --git a/SAUtils/InputFileParsers/ClinVar/ClinVarVariationReader.cs b/SAUtils/InputFileParsers/ClinVar/ClinVarVariationReader.cs
+index a82953e..da709de 100644
+--- a/SAUtils/InputFileParsers/ClinVar/ClinVarVariationReader.cs
++++ b/SAUtils/InputFileParsers/ClinVar/ClinVarVariationReader.cs
+@@ -77,20 +77,33 @@ namespace SAUtils.InputFileParsers.ClinVar
+ 
+                 var interpretedReviewStatusString = interpretationRecord.Element(ReviewStatusTag)?.Value;
+                 if(interpretedReviewStatusString ==null) throw new MissingFieldException($"No review status provided for {accession}.{version}");
+-            
+-                var interpretedReviewStatus = ClinVarCommon.ReviewStatusNameMapping[interpretedReviewStatusString];
++
++                var interpretedReviewStatus = ResolveReviewStatus(interpretedReviewStatusString, accession, version);
+                 return new VcvItem(accession, version, date, interpretedReviewStatus, interpretedSignificances);
+             }
+-            
++
+             var includedSignificances = GetSignificances(includedRecord.Element(InterpretationsTag));
+ 
+             var includedReviewStatusString = includedRecord.Element(ReviewStatusTag)?.Value;
+             if(includedReviewStatusString ==null) throw new MissingFieldException($"No review status provided for {accession}.{version}");
+-            
+-            var reviewStatus = ClinVarCommon.ReviewStatusNameMapping[includedReviewStatusString];
++
++            var reviewStatus = ResolveReviewStatus(includedReviewStatusString, accession, version);
+             return new VcvItem(accession, version, date, reviewStatus, includedSignificances);
+         }
+ 
++        // Same fallback convention already used on the RCV side (ClinVarParser.ExtractClinVarItems): NCBI's
++        // germline/somatic classification split can surface placeholder text (e.g. "no classifications from
++        // unflagged records") in the ReviewStatus field too, which isn't a real review status. Fall back to
++        // no_assertion instead of throwing and aborting the whole run.
++        private static ClinVarCommon.ReviewStatus ResolveReviewStatus(string reviewStatusString, string accession, string version)
++        {
++            if (ClinVarCommon.ReviewStatusNameMapping.TryGetValue(reviewStatusString, out var reviewStatus))
++                return reviewStatus;
++
++            Console.Error.WriteLine($"WARNING: unrecognized review status '{reviewStatusString}' for {accession}.{version}, defaulting to no_assertion");
++            return ClinVarCommon.ReviewStatus.no_assertion;
++        }
++
+         
+         private static List<string> GetSignificances(XElement interpretations)
+         {
+diff --git a/SAUtils/NsaWriter.cs b/SAUtils/NsaWriter.cs
+index ec61574..428d424 100644
+--- a/SAUtils/NsaWriter.cs
++++ b/SAUtils/NsaWriter.cs
+@@ -87,6 +87,9 @@ namespace SAUtils
+             _count = 0;
+             var benchmark = new Benchmark();
+ 
++            var itemsSeen = 0;
++            var progressBenchmark = new Benchmark();
++
+             foreach (var saItem in saItems)
+             {
+                 if (chromIndex != saItem.Chromosome.Index)
+@@ -102,9 +105,14 @@ namespace SAUtils
+                     }
+                     chromIndex = saItem.Chromosome.Index;
+                     currentEnsemblName = saItem.Chromosome.EnsemblName;
++                    Console.WriteLine($"PROGRESS: starting chromosome {currentEnsemblName} ({itemsSeen} items processed so far, {Benchmark.ToHumanReadable(progressBenchmark.GetElapsedTime())} elapsed)");
+                     _refProvider.LoadChromosome(saItem.Chromosome);
+                 }
+ 
++                itemsSeen++;
++                if (itemsSeen % 500 == 0)
++                    Console.WriteLine($"PROGRESS: {itemsSeen} items processed, currently at {currentEnsemblName}:{saItem.Position}, heapCount={itemsMinHeap.Count()}, refLen={saItem.RefAllele?.Length}, altLen={saItem.AltAllele?.Length}, {Benchmark.ToHumanReadable(progressBenchmark.GetElapsedTime())} elapsed");
++
+                 if (_completedChromosomes.Contains(saItem.Chromosome.Index))
+                 {
+                     throw new UserErrorException(
+@@ -154,13 +162,26 @@ namespace SAUtils
+             if (position < 1) return;
+             if (itemsHeap.Count() == 0) return;
+             var bufferMin = itemsHeap.GetMin();
++            var startingHeapCount = itemsHeap.Count();
++            var outerIterations = 0;
++            var diagnosticBenchmark = new Benchmark();
+ 
+             while (bufferMin.Position < position)
+             {
++                outerIterations++;
++                if (outerIterations % 10_000 == 0)
++                    Console.WriteLine($"PROGRESS: WriteUptoPosition outer loop iteration {outerIterations}, startingHeapCount={startingHeapCount}, currentHeapCount={itemsHeap.Count()}, bufferMin.Position={bufferMin.Position}, targetPosition={position}, {Benchmark.ToHumanReadable(diagnosticBenchmark.GetElapsedTime())} elapsed in this call");
++
+                 var itemsAtMinPosition = new List<ISupplementaryDataItem>();
+ 
++                var innerIterations = 0;
+                 while (itemsHeap.Count() > 0 && SuppDataUtilities.CompareTo(bufferMin, itemsHeap.GetMin()) == 0)
++                {
+                     itemsAtMinPosition.Add(itemsHeap.ExtractMin());
++                    innerIterations++;
++                    if (innerIterations % 10_000 == 0)
++                        Console.WriteLine($"PROGRESS: WriteUptoPosition inner loop iteration {innerIterations} at position {bufferMin.Position}, currentHeapCount={itemsHeap.Count()}");
++                }
+ 
+                 if (itemsAtMinPosition.Count > 0)
+                 {

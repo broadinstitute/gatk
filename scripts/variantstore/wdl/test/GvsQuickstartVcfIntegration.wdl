@@ -12,7 +12,21 @@ workflow GvsQuickstartVcfIntegration {
         Boolean extract_do_not_filter_override = true
         Boolean use_compressed_references = false
         Boolean load_vcf_headers = false
-        Boolean use_parquet_ingest = false
+        # When true (default), validates VCF headers before vet/ref ingest (VS-1966/VS-1995),
+        # giving header validation real end-to-end coverage on the quickstart samples.
+        Boolean validate_vcf_headers = true
+        # Exact triplet ('3.7.8') or a range with optional interval notation ('3.4.12-3.7.8',
+        # '[3.7.8-3.8)', '(3.7-3.8)'); see GvsValidateVcfHeaders. Left unset for the quickstart
+        # (its samples predate DRAGEN, so the DRAGEN check is informational there).
+        String? expected_dragen_version
+        Boolean use_parquet_ingest = true
+        # VS-1989 independent post-load structural checks, forwarded through GvsJointVariantCalling so an
+        # integration run can exercise them (e.g. set parquet_allow_flagged_vet_loads = true to waive the
+        # screens and let deletion proceed despite a flag).
+        Float parquet_vet_duplication_threshold = 1.6
+        Float parquet_vet_truncation_threshold = 1.6
+        Boolean parquet_allow_flagged_vet_loads = false
+        Boolean parquet_fail_on_quarantine = true
         String drop_state = "FORTY"
         Boolean bgzip_output_vcfs = false
         String dataset_suffix
@@ -127,6 +141,48 @@ workflow GvsQuickstartVcfIntegration {
             extract_output_gcs_dir = extract_output_gcs_dir,
             use_parquet_ingest = use_parquet_ingest,
             parquet_output_gcs_dir = parquet_output_gcs_dir,
+            validate_vcf_headers = validate_vcf_headers,
+            expected_dragen_version = expected_dragen_version,
+            parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+            parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
+            parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+            parquet_fail_on_quarantine = parquet_fail_on_quarantine,
+    }
+
+    # VS-1989: the quickstart samples are ordinary, so the vet duplication and truncation screens must
+    # flag none of them. A duplication flag already aborts inside GvsImportGenomes (parquet_fail_on_quarantine
+    # is true here, though off by default in the production workflows), so what this adds is coverage of a truncation-only flag -- which quarantines but
+    # deliberately does not abort, the truncation threshold being uncalibrated -- and of a run that turned
+    # that abort off. A screen that starts flagging normal samples is otherwise a silently green regression.
+    #
+    # The message reports the thresholds it fired at, because a forced quarantine run is the other way
+    # to reach this assertion: lowering a threshold is how the quarantine path gets exercised on an
+    # ordinary callset, and without the threshold in the text this abort tells that operator to go
+    # hunting for a regression they caused on purpose.
+    #
+    # Gated on parquet_fail_on_quarantine, which means exactly "a quarantine must not fail this run" --
+    # honouring it in GvsImportGenomes and then failing here anyway would make the input a lie. Nothing
+    # is lost at the default of true: a duplication flag aborts inside GvsImportGenomes before reaching
+    # this point, so what this catches is a truncation-only flag, which never aborts there. A run that
+    # turned the input off has declared a quarantine acceptable, and gets a green run reporting one
+    # through parquet_quarantined_samples.
+    if (use_parquet_ingest && parquet_fail_on_quarantine &&
+        select_first([JointVariantCalling.parquet_quarantined_samples, 0]) > 0) {
+        call Utils.TerminateWorkflow as VetScreensFlaggedQuickstartSamples {
+            input:
+                message = "The VS-1989 vet screens quarantined the Parquet of " +
+                          select_first([JointVariantCalling.parquet_quarantined_samples, 0]) +
+                          " quickstart sample(s), of which " +
+                          select_first([JointVariantCalling.parquet_quarantined_duplication_samples, 0]) +
+                          " came from the duplication screen, at a duplication threshold of " +
+                          parquet_vet_duplication_threshold + " and a truncation threshold of " +
+                          parquet_vet_truncation_threshold + ". At the 1.6 defaults the quickstart callset " +
+                          "is ordinary and should flag nothing, so treat this as a screen regression rather " +
+                          "than as bad input data. If a threshold was lowered deliberately to exercise the " +
+                          "quarantine path, set parquet_fail_on_quarantine = false and the run will finish " +
+                          "green, reporting the quarantine through parquet_quarantined_samples.",
+                basic_docker = effective_basic_docker,
+        }
     }
 
     # Only assert identical outputs if we did not filter (filtering is not deterministic) OR if we are using VETS (which is deterministic)
@@ -196,6 +252,9 @@ workflow GvsQuickstartVcfIntegration {
         String recorded_git_hash = effective_git_hash
         Boolean done = true
         Boolean used_tighter_gcp_quotas = JointVariantCalling.used_tighter_gcp_quotas
+        Boolean? vcf_headers_validation_passed = JointVariantCalling.vcf_headers_validation_passed
+        File? vcf_headers_validation_report = JointVariantCalling.vcf_headers_validation_report
+        String? vcf_headers_validation_report_contents = JointVariantCalling.vcf_headers_validation_report_contents
     }
 }
 
@@ -371,6 +430,9 @@ task AssertCostIsTrackedAndExpected {
     }
 
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go = true
         String dataset_name
         String project_id
@@ -480,6 +542,9 @@ task AssertTableSizesAreExpected {
     }
 
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go = true
         String dataset_name
         String project_id
@@ -532,6 +597,9 @@ task AssertTableSizesAreExpected {
 task ValidateVariants {
     input {
         File input_vcf
+        # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+        # tools require the index to be co-located with the data file and will fail if it is absent.
+        #@ except: UnusedInput
         File input_vcf_index
         File ref_fasta
 

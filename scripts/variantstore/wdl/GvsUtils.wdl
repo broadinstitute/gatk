@@ -4,6 +4,8 @@ import "../structs/Reference.wdl" as Reference
 
 task GetReference {
   input {
+    # Someday this task may support other reference genomes, but for now it is hard-coded to hg38.
+    #@ except: UnusedInput
     String reference_name
     String basic_docker
   }
@@ -56,7 +58,20 @@ task GetToolVersions {
   }
 
   File monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh"
-  String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-alpine"
+  # 565.0.0 is a ceiling, not just the last version anyone tested. Google removes Cloud SDK images about a
+  # year after publication, so this tag will need to move again around 2027-04-14 -- but it cannot simply be
+  # bumped to the newest release, for two independent reasons:
+  #   * The `-alpine` images stopped using Alpine's system Python and began bundling Python 3.14 at 568.0.0.
+  #     hail (see `hail_version` below) pins numpy<2, and numpy 1.26.4 publishes musl wheels only through
+  #     cp312, so `pip install hail` in GvsCreateVATfromVDS's `GenerateSitesOnlyVcf` falls back to a source
+  #     build and fails -- the image ships no compiler. Adding one would not help: numpy 1.26.4 does not
+  #     support Python 3.13+ at all.
+  #   * The `-slim` images moved from Debian 12 to Debian 13 at 566.0.0, which drops Python 3.11. The hail
+  #     tasks in GvsCreateVDS, GvsValidateVDS, GvsCountVdsNovelLoci and GvsTieOutVDS all run
+  #     `apt install python3.11-venv`, which fails outright on Debian 13.
+  # Escaping this ceiling means moving those tasks to hail >= 0.2.135 (the release that repins numpy to >=2),
+  # which is a pipeline-wide change requiring VDS revalidation -- not something to fold into an image bump.
+  String cloud_sdk_docker_decl = "gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-alpine"
 
   # For GVS releases, set `version` to match the release branch name, e.g. gvs_<major>.<minor>.<patch>.
   # For non-release, leave the value at "unspecified".
@@ -65,8 +80,6 @@ task GetToolVersions {
   String effective_version = select_first([git_branch_or_tag, version])
 
   String workspace_id_output = "workspace_id.txt"
-  String workspace_name_output = "workspace_name.txt"
-  String workspace_namespace_output = "workspace_namespace.txt"
   String workspace_bucket_output = "workspace_bucket.txt"
   String submission_id_output = "submission_id.txt"
   String workflow_id_output = "workflow_id.txt"
@@ -113,7 +126,7 @@ task GetToolVersions {
       # The `--branch` parameter to `git clone` actually does work for tags, though for historical reasons GVS
       # versioning is based on branches for now.
       # https://git-scm.com/docs/git-clone#Documentation/git-clone.txt--bltnamegt
-      git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{effective_version} --single-branch
+      GIT_LFS_SKIP_SMUDGE=1  git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{effective_version} --single-branch
       cd gatk
       git rev-parse HEAD > ../git_hash.txt
     fi
@@ -130,10 +143,24 @@ task GetToolVersions {
     String cloud_sdk_docker = cloud_sdk_docker_decl #   Defined above as a declaration.
     # GVS generally uses the smallest `alpine` version of the Google Cloud SDK as it suffices for most tasks, but
     # there are a handful of tasks that require the larger GNU libc-based `slim`.
-    String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:524.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-04-02-alpine-7821bbd73cf4"
+    # Must stay in lockstep with `cloud_sdk_docker_decl` above -- 565.0.0 is the last tag whose `-slim`
+    # sibling is Debian 12 / Python 3.11. See the note there before bumping.
+    String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-slim"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-10-30-alpine-f644885d2f99"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
-    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-03-12-gatkbase-093f39140829"
+    # The hex suffix on a GATK tag is the Docker image ID that `build_docker_tag.py` was handed, but *which* digest
+    # that ID refers to depends on the Docker version of the machine that built it, so do not compare suffixes across
+    # tags or assume one is derivable from the other:
+    #   - Classic Docker (graph driver), which the Azure VM in
+    #     `scripts/variantstore/docs/Build Docker from VM/building_gatk_docker_on_a_vm.md` has historically used:
+    #     the image ID is the *config* digest, and the image pushes as a single Docker v2 manifest.
+    #   - Docker 29+ with the containerd image store, which a current Ubuntu 22.04 GCP VM gets by default: the image
+    #     ID is the *manifest* digest, and the image pushes as an OCI image index carrying an extra BuildKit
+    #     attestation manifest (it shows up as an `unknown/unknown` platform entry).
+    # Both forms pull correctly under modern Docker and Cromwell. Neither the suffix nor the manifest media type says
+    # anything about image contents -- verify a tag by layer count and size, not by the shape of its name.
+    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-10-14-gatkbase-lite-3b99a1224be1"
+    String gatk_heavy_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-10-14-gatkbase-0ab1c8e37ba9"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
     String plink_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/plink2:2024-04-23-slim-a0a65f52cc0e"
@@ -197,6 +224,7 @@ task MergeVCFs {
   runtime {
     docker: gatk_docker
     preemptible: select_first([preemptible_tries, 3])
+    maxRetries: 3
     memory: "3 GiB"
     disks: "local-disk ~{disk_size} HDD"
   }
@@ -384,6 +412,9 @@ task SplitIntervalsTarred {
 
 task GetBQTableLastModifiedDatetime {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String project_id
     String fq_table
@@ -420,6 +451,8 @@ task GetBQTableLastModifiedDatetime {
   >>>
 
   output {
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String last_modified_timestamp = read_string(stdout())
     File monitoring_log = "monitoring.log"
   }
@@ -467,6 +500,8 @@ task GetBQTablesMaxLastModifiedTimestamp {
   >>>
 
   output {
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String max_last_modified_timestamp = read_string("max_last_modified_timestamp.txt")
     File monitoring_log = "monitoring.log"
   }
@@ -513,7 +548,7 @@ task BuildGATKJar {
     apt-get -qq install --assume-yes temurin-17-jdk
 
     # GATK
-    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
+    GIT_LFS_SKIP_SMUDGE=1  git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
     cd gatk
     ./gradlew shadowJar
 
@@ -571,7 +606,7 @@ task CreateDatasetForTest {
     apk add git
 
     # GATK
-    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
+    GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
     cd gatk
 
     branch=$(git symbolic-ref HEAD 2>/dev/null)
@@ -643,7 +678,7 @@ task BuildGATKJarAndCreateDataset {
     apt-get -qq install --assume-yes temurin-17-jdk
 
     # GATK
-    git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
+    GIT_LFS_SKIP_SMUDGE=1 git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ~{git_branch_or_tag} --single-branch
     cd gatk
     ./gradlew shadowJar
 
@@ -686,6 +721,9 @@ task BuildGATKJarAndCreateDataset {
 
 task TerminateWorkflow {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String message
     String basic_docker
@@ -700,13 +738,11 @@ task TerminateWorkflow {
     PS4='\D{+%F %T} \w $ '
     set -o errexit -o nounset -o pipefail -o xtrace
 
-    # To avoid issues with special characters within the message, write the message to a file.
-    cat > message.txt <<FIN
-    ~{message}
-    FIN
-
+    # Cromwell writes the message to a file verbatim, so bash never parses it. A heredoc does not survive here: a
+    # multi-line message stops Cromwell from stripping the command's indentation, leaving the closing delimiter
+    # indented and unrecognized, and the script then dies with a syntax error before printing anything.
     # cat the file to stderr as this task is going to fail due to the exit 1.
-    cat message.txt >&2
+    cat ~{write_lines([message])} >&2
     exit 1
   >>>
 
@@ -725,6 +761,9 @@ task TerminateWorkflow {
 
 task ScaleXYBedValues {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go = true
         File interval_weights_bed
         Float x_bed_weight_scaling
@@ -761,7 +800,7 @@ task ScaleXYBedValues {
         maxRetries: 3
         memory: "7 GB"
         preemptible: 3
-        cpu: "2"
+        cpu: 2
         disks: "local-disk 500 HDD"
     }
 }
@@ -770,6 +809,8 @@ task GetNumSamplesLoaded {
   input {
     String fq_sample_table
     String project_id
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String sample_table_timestamp
     Boolean control_samples = false
     String cloud_sdk_docker
@@ -944,6 +985,9 @@ task CountSuperpartitions {
 
 task ValidateFilterSetName {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go = true
         String project_id
         String fq_filter_set_info_table
@@ -1068,6 +1112,8 @@ task IsUsingCompressedReferences {
     String query_project_id
     String dest_project_id
     String dataset_name
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String ref_table_timestamp
     String cloud_sdk_docker
   }
@@ -1504,7 +1550,7 @@ task SummarizeTaskMonitorLogs {
         docker: variants_docker
         memory: "1 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     output {
@@ -1565,7 +1611,7 @@ task PopulateFilterSetInfo {
         -V ~{snp_recal_file} \
         -O ~{filter_set_name}.snps.recal.tsv
 
-    echo "Creating INDELs racalibration file"
+    echo "Creating INDELs recalibration file"
     gatk --java-options "-Xms~{command_mem}m -Xmx~{max_heap}m" \
       CreateFilteringFiles \
         --ref-version 38 \
@@ -1689,6 +1735,9 @@ task GetHailScripts {
         File create_vat_inputs_script = "app/create_vat_inputs.py"
         File hail_create_vat_inputs_script = "app/hail_create_vat_inputs.py"
         File vds_validation_script = "app/vds_validation.py"
+        File remove_samples_from_vds_script = "app/remove_samples_from_vds.py"
+        File vds_dropout_scan_script = "app/vds_dropout_scan.py"
+        File vds_dropout_detect_script = "app/vds_dropout_detect.py"
     }
     runtime {
         docker: variants_docker

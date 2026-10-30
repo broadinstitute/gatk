@@ -260,8 +260,13 @@ def make_annotated_json_row(row_position, row_ref, row_alt, variant_line, transc
                 if clinvar_num_stars == None:
                     raise ValueError(f"Error: Found an unexpected review status in clinvar: {clinvar_obj.get('reviewStatus')}")
                 if clinvar_num_stars != 0:   # we only want to include the ones that are not terrible
-                    sigs = []
-                    sigs.extend([x.lower() for x in clinvar_obj.get("significance")])
+                    significances = clinvar_obj.get("significance")
+                    if significances is None or significances == []:
+                        logging.warning(
+                            "Skipping ClinVar RCV %s for variant %s: no clinical significance",
+                            clinvar_obj.get("id"), variant_line.get("vid"))
+                        continue
+                    sigs = [x.lower() for x in significances]
                     updated_dates.append(clinvar_obj.get("lastUpdatedDate"))
                     phenotypes.extend(clinvar_obj.get("phenotypes"))
                     clinvar_rcv_ids.extend([clinvar_obj.get("id")] * len(sigs))

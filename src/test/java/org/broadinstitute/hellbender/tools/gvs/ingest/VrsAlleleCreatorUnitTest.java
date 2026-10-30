@@ -1,5 +1,10 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.hadoop.ParquetReader;
+import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
@@ -14,6 +19,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -73,25 +79,32 @@ public class VrsAlleleCreatorUnitTest {
                                 outputType, PROJECT_ID, DATASET_NAME, VRS_PARQUET_SCHEMA);
         }
 
-        private File expectedTsvFile() {
-                return new File(outputDir,
-                                "vrs_allele_" + TABLE_NUMBER + "_" + SAMPLE_IDENTIFIER + IngestConstants.FILETYPE);
+        private File expectedParquetFile() {
+                return new File(outputDir, VrsAlleleCreator.getOutputFileName(
+                                TABLE_NUMBER, SAMPLE_ID, SAMPLE_IDENTIFIER, CommonCode.OutputType.PARQUET));
         }
 
-        private List<String> readLines(File file) throws IOException {
-                return Files.readAllLines(file.toPath());
+        private List<Group> readRows(File file) throws IOException {
+                final List<Group> rows = new ArrayList<>();
+                try (ParquetReader<Group> reader = ParquetReader
+                                .builder(new GroupReadSupport(), new Path(file.toURI()))
+                                .withConf(new Configuration())
+                                .build()) {
+                        Group row;
+                        while ((row = reader.read()) != null) {
+                                rows.add(row);
+                        }
+                }
+                return rows;
+        }
+
+        private static boolean hasValue(Group row, String field) {
+                return row.getFieldRepetitionCount(row.getType().getFieldIndex(field)) > 0;
         }
 
     // ------------------------------------------------------------------
     // Output file naming
     // ------------------------------------------------------------------
-
-    @Test
-    public void testTsvOutputFileNaming() {
-        String filename = VrsAlleleCreator.getOutputFileName(
-                TABLE_NUMBER, SAMPLE_ID, SAMPLE_IDENTIFIER, CommonCode.OutputType.TSV);
-        Assert.assertEquals(filename, "vrs_allele_001_100_test.tsv");
-    }
 
     @Test
     public void testParquetOutputFileNaming() {
@@ -113,99 +126,75 @@ public class VrsAlleleCreatorUnitTest {
 
     @Test
     public void testApplyWithNullListIsNoop() throws IOException {
-        VrsAlleleCreator creator = newCreator(CommonCode.OutputType.TSV);
+        VrsAlleleCreator creator = newCreator(CommonCode.OutputType.PARQUET);
         creator.apply(null);  // must not throw
         creator.closeTool();
-        // TSV file is created on construction; it should be empty (header only)
-        File tsvFile = expectedTsvFile();
-        Assert.assertTrue(tsvFile.exists());
-        List<String> lines = readLines(tsvFile);
-        Assert.assertEquals(lines.size(), 1, "Expected only header line when no records written");
+        // The Parquet file is created on construction; it should hold no rows
+        Assert.assertEquals(readRows(expectedParquetFile()).size(), 0, "Expected no rows when no records written");
     }
 
     @Test
     public void testApplyWithEmptyListIsNoop() throws IOException {
-        VrsAlleleCreator creator = newCreator(CommonCode.OutputType.TSV);
+        VrsAlleleCreator creator = newCreator(CommonCode.OutputType.PARQUET);
         creator.apply(Collections.emptyList());  // must not throw
         creator.closeTool();
-        File tsvFile = expectedTsvFile();
-        List<String> lines = readLines(tsvFile);
-        Assert.assertEquals(lines.size(), 1, "Expected only header line when no records written");
+        Assert.assertEquals(readRows(expectedParquetFile()).size(), 0, "Expected no rows when no records written");
     }
 
     // ------------------------------------------------------------------
-    // TSV file creation and content
+    // Parquet content
     // ------------------------------------------------------------------
 
     @Test
-    public void testTsvCreatesFileWithHeader() throws IOException {
-        VrsAlleleCreator creator = newCreator(CommonCode.OutputType.TSV);
+    public void testParquetLiteralRecord() throws IOException {
+        VrsAlleleCreator creator = newCreator(CommonCode.OutputType.PARQUET);
+        creator.apply(List.of(new VrsAlleleRecord(ALLELE_ID, LOCATION_ID, REFGET, 100L, 101L, "T")));
         creator.closeTool();
 
-        File tsvFile = expectedTsvFile();
-        Assert.assertTrue(tsvFile.exists(), "TSV file should be created on construction");
-        String header = readLines(tsvFile).get(0);
-        Assert.assertTrue(header.contains("vrs_allele_id"));
-        Assert.assertTrue(header.contains("vrs_location_id"));
-        Assert.assertTrue(header.contains("refget_accession"));
-        Assert.assertTrue(header.contains("state_type"));
+        List<Group> rows = readRows(expectedParquetFile());
+        Assert.assertEquals(rows.size(), 1);
+        Group row = rows.get(0);
+        Assert.assertEquals(row.getString("vrs_allele_id", 0), ALLELE_ID);
+        Assert.assertEquals(row.getString("vrs_location_id", 0), LOCATION_ID);
+        Assert.assertEquals(row.getString("refget_accession", 0), REFGET);
+        Assert.assertEquals(row.getLong("ref_genome_coord_start", 0), 100L);
+        Assert.assertEquals(row.getLong("ref_genome_coord_end", 0), 101L);
+        Assert.assertEquals(row.getString("state_type", 0), "LiteralSequenceExpression");
+        Assert.assertEquals(row.getString("state_sequence", 0), "T");
+        Assert.assertFalse(hasValue(row, "state_length"));
+        Assert.assertFalse(hasValue(row, "state_repeat_subunit_length"));
     }
 
     @Test
-    public void testTsvLiteralRecord() throws IOException {
-                VrsAlleleCreator creator = newCreator(CommonCode.OutputType.TSV);
-
-        VrsAlleleRecord rec = new VrsAlleleRecord(
-                ALLELE_ID, LOCATION_ID, REFGET, 100L, 101L, "T");
-        creator.apply(List.of(rec));
+    public void testParquetReferenceLengthRecord() throws IOException {
+        VrsAlleleCreator creator = newCreator(CommonCode.OutputType.PARQUET);
+        creator.apply(List.of(new VrsAlleleRecord(ALLELE_ID, LOCATION_ID, REFGET, 200L, 206L, 3, 2)));
         creator.closeTool();
 
-        File tsvFile = expectedTsvFile();
-        List<String> lines = readLines(tsvFile);
-        Assert.assertEquals(lines.size(), 2, "Expected header + 1 data line");
-
-        String dataLine = lines.get(1);
-        Assert.assertTrue(dataLine.contains(ALLELE_ID));
-        Assert.assertTrue(dataLine.contains(LOCATION_ID));
-        Assert.assertTrue(dataLine.contains(REFGET));
-        Assert.assertTrue(dataLine.contains("LiteralSequenceExpression"));
-        Assert.assertTrue(dataLine.contains("T"));
+        List<Group> rows = readRows(expectedParquetFile());
+        Assert.assertEquals(rows.size(), 1);
+        Group row = rows.get(0);
+        Assert.assertEquals(row.getString("vrs_allele_id", 0), ALLELE_ID);
+        Assert.assertEquals(row.getString("state_type", 0), "ReferenceLengthExpression");
+        Assert.assertFalse(hasValue(row, "state_sequence"));
+        Assert.assertEquals(row.getLong("state_length", 0), 3L);
+        Assert.assertEquals(row.getLong("state_repeat_subunit_length", 0), 2L);
     }
 
     @Test
-    public void testTsvRleRecord() throws IOException {
-                VrsAlleleCreator creator = newCreator(CommonCode.OutputType.TSV);
-
-        VrsAlleleRecord rec = new VrsAlleleRecord(
-                ALLELE_ID, LOCATION_ID, REFGET, 200L, 206L, 3, 3);
-        creator.apply(List.of(rec));
-        creator.closeTool();
-
-        File tsvFile = expectedTsvFile();
-        List<String> lines = readLines(tsvFile);
-        Assert.assertEquals(lines.size(), 2, "Expected header + 1 data line");
-
-        String dataLine = lines.get(1);
-        Assert.assertTrue(dataLine.contains(ALLELE_ID));
-        Assert.assertTrue(dataLine.contains("ReferenceLengthExpression"));
-        Assert.assertTrue(dataLine.contains("3"));
-    }
-
-    @Test
-    public void testTsvMultipleRecords() throws IOException {
-                VrsAlleleCreator creator = newCreator(CommonCode.OutputType.TSV);
-
-        List<VrsAlleleRecord> records = Arrays.asList(
+    public void testParquetMultipleRecords() throws IOException {
+        VrsAlleleCreator creator = newCreator(CommonCode.OutputType.PARQUET);
+        creator.apply(Arrays.asList(
                 new VrsAlleleRecord("ga4gh:VA.id1", LOCATION_ID, REFGET, 100L, 101L, "A"),
                 new VrsAlleleRecord("ga4gh:VA.id2", LOCATION_ID, REFGET, 100L, 101L, "T"),
                 new VrsAlleleRecord("ga4gh:VA.id3", LOCATION_ID, REFGET, 100L, 101L, "G")
-        );
-        creator.apply(records);
+        ));
         creator.closeTool();
 
-        File tsvFile = expectedTsvFile();
-        List<String> lines = readLines(tsvFile);
-        Assert.assertEquals(lines.size(), 4, "Expected header + 3 data lines");
+        List<Group> rows = readRows(expectedParquetFile());
+        Assert.assertEquals(rows.size(), 3);
+        Assert.assertEquals(rows.get(0).getString("vrs_allele_id", 0), "ga4gh:VA.id1");
+        Assert.assertEquals(rows.get(2).getString("vrs_allele_id", 0), "ga4gh:VA.id3");
     }
 
     // ------------------------------------------------------------------
@@ -249,7 +238,7 @@ public class VrsAlleleCreatorUnitTest {
 
     @Test
     public void testCommitAndCloseWithNoWrites() throws IOException {
-                VrsAlleleCreator creator = newCreator(CommonCode.OutputType.TSV);
+        VrsAlleleCreator creator = newCreator(CommonCode.OutputType.PARQUET);
         creator.commitData();
         creator.closeTool();  // must not throw
     }

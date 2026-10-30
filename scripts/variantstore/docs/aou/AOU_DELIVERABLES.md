@@ -21,8 +21,12 @@
   - [GvsCalculatePrecisionAndSensitivity](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCalculatePrecisionAndSensitivity) workflow
   - [GvsCallsetCost](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCallsetCost) workflow
   - [GvsCreateVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVDS) workflow
+  - [GvsValidateVdsCompleteness](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsValidateVdsCompleteness) workflow
   - [GvsCreateVATfromVDS](https://dockstore.org/workflows/github.com/broadinstitute/gatk/GvsCreateVATfromVDS) workflow
   - [GvsValidateVat](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsValidateVat) workflow
+  - [GvsCreateParticipantMappingTable](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsCreateParticipantMappingTable) workflow
+  - [GvsMapUnmappedVIDs](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsMapUnmappedVIDs) workflow
+  - [GvsMapDroppedDuplicateVIDs](https://dockstore.org/my-workflows/github.com/broadinstitute/gatk/GvsMapDroppedDuplicateVIDs) workflow
 - Once the Foxtrot sample list becomes available, perform some checks:
   - Make sure there are columns for reblocked VCFs and reblocked VCF indexes. The column headers will likely be
     `reblocked_gvcf` and `reblocked_gvcf_index`. Do not be alarmed by the presence of "hard-filtered" in file names,
@@ -83,11 +87,17 @@
    - For use with **non-control** samples only! To ingest control samples (required for running `GvsCalculatePrecisionAndSensitivity`), use the`GvsAssignIds` and `GvsImportGenomes` workflows described below.
    - For the `bulk_ingest_fofn` input, specify the FOFN of new-to-Foxtrot samples created in the preceding step.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-   - This workflow will be run twice: first to load only VCF headers for validation purposes, then a second time to load variant and reference data.
-   1. `GvsBulkIngestGenomes` header ingest and validation
-      - Set `load_vcf_headers` to `true` and `load_vet_and_ref_ranges` to `false` to load VCF header data only.
-      - Set a `load_data_scatter_width` of 400. (~10000 CreateWriteRequest tokens / hour) / (1 token / sample * ~20 samples / hour) = 500, drop to 400 to be safe.
-      - Once these headers have been loaded, run a sanity checking query on the DRAGEN version ```
+   - This workflow now does header ingest, header validation, and variant/reference data ingest in a single run. `validate_vcf_headers` defaults to `true`, which loads the VCF headers in a headers-only pass, validates them, and halts the run before any variant/reference ingest if validation fails. Do **not** run the workflow twice over the same FOFN, and do not run `GvsValidateVcfHeaders` standalone — that would re-validate headers that have already been checked inline.
+   - Set `expected_dragen_version` to `3.7.8` for AoU callsets. Set it on *this* workflow; it is passed through to the inline validation. Left unset, the check only enforces that the DRAGEN version triplet is consistent across the cohort rather than pinning it to the expected value.
+   - The validation verifies that every non-control, non-withdrawn sample in this run's FOFN has header data (samples ingested by earlier runs are not re-checked), that every sample was reblocked (`ReblockGVCF`), and that the DRAGEN version triplet matches `expected_dragen_version`. With `fail_on_validation_errors` left at its default of `true`, a failure aborts the run before any variant or reference data is ingested, and the `validation_report` output describes exactly what failed for any sample. The abort message also names the recovery steps, including the header-row cleanup required before re-ingesting a corrected gVCF under the same sample name.
+   - Set the scatter widths per pass. The two passes consume different numbers of CreateWriteStream tokens per sample and run at different per-sample rates, so they take different values:
+      - Set `header_load_data_scatter_width` to 400. (~10000 CreateWriteStream tokens / hour) / (1 token / sample * ~20 samples / hour) = 500, drop to 400 to be safe.
+      - Set `data_load_data_scatter_width` to 333. (~10000 CreateWriteStream tokens / hour) / (3 tokens / sample * ~8 samples / hour) = 417, drop to 333 to be safe.
+      - `load_data_scatter_width` is still accepted and applies to both passes; each per-pass input falls back to it when unset. Setting only `load_data_scatter_width` would apply one value to both passes, which is not what AoU wants.
+      - Note: this arithmetic is Write API quota math, and `use_parquet_ingest` now defaults to `true`, where the ingest tasks open no write streams. 400 and 333 are what AoU has run with and nothing indicates they are unsafe, but they may be lower than they need to be; re-deriving them for the Parquet path is tracked in [VS-2037](https://broadworkbench.atlassian.net/browse/VS-2037).
+   - **NOTE** Be sure to set the input `drop_state` to `"ZERO"` (this will have the effect of dropping GQ0 reference blocks) and set `use_compressed_references` to `true` (this will further compress the reference data).
+   - If `parquet_output_gcs_dir` is set, the two passes write scratch Parquet one level deeper than they used to: the header pass under `<parquet_output_gcs_dir>/headers` and the data pass under `<parquet_output_gcs_dir>/data`. Inspecting scratch Parquet by path means looking in those subdirectories.
+   - As a manual fallback / for reference, the underlying DRAGEN-version query is: ```
   SELECT
   REGEXP_EXTRACT(vcf_header_lines, r'SW: [0-9\.]+') AS version,
   COUNT(*)
@@ -97,12 +107,7 @@ WHERE
   header_lines.is_expected_unique = TRUE
   AND CONTAINS_SUBSTR(vcf_header_lines, 'DRAGENCommandLine=<ID=dragen,')
 GROUP BY
-  version```. The version string here appears to be a mix of hardware and software versions. What matters for us is that the last triplet is `3.7.8`. In the Echo callset this query currently returns two rows with `version` values of `SW: 05.021.604.3.7.8` and `SW: 07.021.604.3.7.8`. Assuming this query returns only rows with `3.7.8` as the final triplet, proceed with the second invocation of `GvsBulkIngestGenomes` documented below.
-   1. `GvsBulkIngestGenomes` variant and reference data ingest
-      - If and only if the header ingest described above completed successfully, proceed with the loading of variant and reference data.
-      - Set `load_vcf_headers` to `false` and `load_vet_and_ref_ranges` to `true` to load variant and reference data.
-      - Set a `load_data_scatter_width` of 333. (~10000 CreateWriteRequest tokens / hour) / (3 tokens / sample * ~8 samples / hour) = 417, drop to 333 to be safe.
-      - **NOTE** Be sure to set the input `drop_state` to `"ZERO"` (this will have the effect of dropping GQ0 reference blocks) and set `use_compressed_references` to `true` (this will further compress the reference data).
+  version```. The version string here appears to be a mix of hardware and software versions. What matters for us is that the last triplet is `3.7.8`. In the Echo callset this query returns two rows with `version` values of `SW: 05.021.604.3.7.8` and `SW: 07.021.604.3.7.8`, both of which reduce to the `3.7.8` triplet that `GvsValidateVcfHeaders` checks.
    - Note: In case of mistakenly ingesting a large number of bad samples, instructions for removing them can be found in [this Jira ticket](https://broadworkbench.atlassian.net/browse/VS-1206)
 1. `GvsWithdrawSamples` workflow
    - Run if there are any samples to withdraw. Note that this workflow accepts only a single timestamp, so if there are
@@ -123,7 +128,14 @@ GROUP BY
    - This workflow extracts the data in BigQuery and transforms it into Avro files in a Google bucket, incorporating the VETS filter set data.
    - The extracted Avro files will then be used as an input for `GvsCreateVDS` workflow described below.
    - This workflow needs to be run with the `filter_set_name` from `GvsCreateFilterSet` step.
-   - Set the `new_sample_cutoff` to the maximum sample id for the Echo callset, 414838.
+   - Create a new view based on the `sample_info` table that includes only the samples new to Foxtrot:
+     ```bigquery
+
+     CREATE OR REPLACE VIEW `aou-genomics-curation-prod.foxtrot.sample_info_new_to_foxtrot` AS
+        SELECT * FROM `aou-genomics-curation-prod.foxtrot.sample_info`
+        WHERE sample_id > 414838
+        ```
+   - Specify the *unqualified* (no project or dataset) name of this view as the `sample_table_or_view_name` input to the workflow.
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
 1. `GvsCreateVDS` workflow
    - This step creates a VDS based on the Avro files generated from the `GvsExtractAvroFilesForHail` workflow above.
@@ -132,6 +144,7 @@ GROUP BY
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
    - Once a VDS has been created the Variants team will also generate callset statistics using `GvsCallsetStatistics` as described below. The Variants team then forwards both the path to the VDS and the output callset statistics TSV to Lee to quality check the VDS.
    - If you are debugging a Hail-related issue, you may want to set `leave_hail_cluster_running_at_end` to `true` and refer to [the suggestions for debugging issues with Hail](HAIL_DEBUGGING.md).
+   - Consider running `GvsValidateVdsCompleteness` (described below) against this partial VDS before going on to the merge, but only if the callset adds enough samples for the screen to mean anything -- see that workflow's entry for how to check, and note that a small increment cannot be screened at all. The mandatory run is the one against the merged VDS.
 1. `GvsMergeAndRescoreVDSes.wdl` workflow
    - This step takes as input both the full Echo VDS from the previous AoU callset and the partial Foxtrot VDS generated in the step above, as well as Avro files from the step before that.
    - The `input_echo_vds_path` is the final VDS for Echo; see the private Variants Slack channel for this location.
@@ -141,6 +154,23 @@ GROUP BY
      This file contains all withdrawn sample IDs per Lee's email "Release v9 array and srWGS sample list (aka Foxtrot release)" of July 30 2025 with a `v4_Jul292025_2122_21_tz0000` manifest, *plus* sample id `1624705` as specified in VS-1641.
      If remaking this file for whatever reason, it should be formatted as a single column containing the sample ids to remove from the final output VDS, with a header of `research_id`.
    - `output_merged_and_rescored_foxtrot_vds_path` represents the output path for the final Foxtrot VDS. VDSes should be written under the AoU delivery bucket `gs://prod-drc-broad/`. Ask Lee for the exact path to use for the VDS in the `#dsp-variants` slack channel.
+1. `GvsValidateVdsCompleteness` workflow
+   - A sanity check on the VDS. It screens for "rectangle" dropouts: a contiguous genomic window in which one GVS superpartition has little or no data while every other superpartition has the usual amount. That is the shape a lost or truncated Avro export shard produces, and it is how the two known Foxtrot dropouts were characterized. Those reached a delivered VDS without being noticed, which is the reason this step exists; run it on every AoU callset.
+   - **The run against the final merged VDS from `GvsMergeAndRescoreVDSes` is required.** That VDS spans the whole cohort -- 136 superpartitions for Foxtrot -- so it is always wide enough to screen, it is what ships, and it is the only artifact the merge and rescore have actually written.
+   - An earlier run against the partial VDS from `GvsCreateVDS` is optional, and is worth doing only when the callset adds enough samples for the screen to work. How many that is depends on the callset and must not be assumed: count the superpartitions the increment spans before deciding, using the same sample filter given for the `sample_info` view above.
+     ```bigquery
+     SELECT COUNT(DISTINCT DIV(sample_id - 1, 4000) + 1) AS superpartitions
+     FROM `aou-genomics-curation-prod.foxtrot.sample_info`
+     WHERE sample_id > 414838
+     ```
+     Six or more and the earlier run earns its keep, since it finds an Avro export dropout before the cost of the merge is paid. Below that it does not: at two superpartitions a dropout affecting both reports clean, and at one the detector refuses to run rather than return a meaningless pass. Narrow increments are the expected case, not a corner case -- a rebuild based on an existing merged VDS may add only a couple of superpartitions, and the Golf increment may be similarly small.
+   - Skipping the earlier run costs no coverage. In the merged VDS the newly added samples occupy their own superpartitions and are judged against the whole cohort's peers, which is a stricter test than judging them against the handful of peers the partial VDS contains. What is lost by skipping it is only the chance to have found the problem before paying for the merge.
+   - One action per invocation. Run `action = "scan"` with `mode = "variants"`, then again with `mode = "references"`. Each emits a summary, the findings, and the BigQuery SQL needed to adjudicate them, and there are two kinds of finding in two separate files. `report_<mode>.tsv` holds candidate rectangles. `scale_findings_<mode>.tsv` holds superpartitions depleted across the whole genome, which is the case a rectangle cannot express: the per-bin residual divides by that superpartition's own median, so a uniform depletion takes the baseline down with it and comes back looking normal in every bin. Read both files. `action = "full-depth"` is diagnostic and is only needed for whatever the scans flag.
+   - Supply `bq_project_id` and `bq_dataset_name` and the sample map is generated for you.
+   - The adjudication SQL is deliberately *not* executed by the workflow. Running it against the callset dataset is a separate, deliberate step, and it is what turns a candidate into proof: if BigQuery holds the rows and the VDS does not, the data was lost on the way out rather than never ingested.
+   - **Only meaningful at AoU scale.** The screen judges each superpartition against its peers, so it needs enough of them to have peers at all. Superpartitions hold 4,000 samples, putting the useful floor above 8,000 samples and the recommended width above 20,000. A single-superpartition VDS cannot be screened this way at all -- the baseline would be that superpartition's own rate, so nothing could ever be flagged -- and the detector refuses that case rather than reporting it clean. This is why the step appears here and not in the GVS integration tests, whose VDS has one superpartition.
+   - Runtimes observed on Foxtrot r2 (535,662 samples, 119,189 variant_data partitions) at full autoscaling width: budget about 5.5 hours for a genome-wide variants run and about 10.5 for a references run, end to end. Nearly all of that is the Hail aggregation, measured from cluster provisioning at 5 hours 1 minute for variants and about 10 hours for references; the shard merge adds about 8 minutes at the 10 kb default, and the quick tasks either side of it — tool versions, script staging, sample map, detect — about twenty. Plan an overnight run. `cluster_max_age_minutes` is optional and defaults to unset, and nothing needs it: the workflow deletes its own cluster on success or failure, and tells you how to delete it by hand if that fails. It is a backstop against a cluster orphaned by an aborted submission, so if you set one, set it at "nobody meant to leave this running" rather than at how long you think the run will take -- a 12 hour TTL on 2026-09-22 killed a healthy references run 92% of the way through its merge and discarded ten hours of completed aggregation.
+   - A scan that flags nothing says the data is present at full width, not that it is correct. Scores and AC/AN/AF correctness belong to the VDS tieout and rescoring, which this does not replace.
 1. `GvsCallsetStatistics` workflow
     - You will need to run `GvsPrepareRangesCallset` workflow for callset statistics first, if it has not been run already
        - This workflow transforms the data in the vet tables into a schema optimized for callset stats creation and for calculating sensitivity and precision.
@@ -164,6 +194,7 @@ GROUP BY
 The Variants team currently has the following VDS internal sign-off protocol:
 
 1. Generate a VDS for the candidate callset into the "delivery" bucket.
+1. Run `GvsValidateVdsCompleteness.wdl` over that VDS in both `variants` and `references` mode and confirm that *both* findings files are empty: no rectangles in `report_<mode>.tsv` and no depleted superpartitions in `scale_findings_<mode>.tsv`. Checking only the rectangles would sign off a VDS missing a whole superpartition, since that produces no rectangle. If either file has entries, adjudicate them against BigQuery using the SQL the workflow emits before going any further. See the workflow's entry in the main pipeline above.
 1. Open up the VDS in a [beefy](vds/cluster/AoU%20VDS%20Cluster%20Configuration.md) notebook and confirm the "shape" looks right.
 1. Run `GvsPrepareRangesCallset.wdl` to generate a prepare table of VET data.
 1. Run `GvsCallsetStatistics.wdl` to generate callset statistics for the candidate callset using the prepare VET table created in the preceding step.
@@ -184,13 +215,6 @@ To create a BigQuery table of variant annotations, you may follow the instructio
 [process to create variant annotations table](../../variant-annotations-table/README.md)
 The pipeline takes in the VDS and outputs a variant annotations table in BigQuery.
 
-Once the VAT table is created and a tsv is exported, the AoU research workbench team should be notified of its creation and permission should be granted so that several members of the team have view permission.
-
-- Grant `BigQuery Data Viewer` permission to specific people's PMI-OPS accounts. This will include members of the AoU research workbench team.
-- Copy the tarred and bgzipped export of the VAT into the pre-delivery bucket.
-- Send an email out notifying the AoU research workbench team of the readiness of the VAT. Additionally, a RW Jira ticket will be made by project management to request copying the VAT to pre-prod.
-- A document describing how this information was shared (for previous callsets) is located [here](https://docs.google.com/document/d/1caqgCS1b_dDJXQT4L-tRxjOkLGDgRNkO9eac1xd9ib0/edit)
-
 ## Additional Deliverables
 
 ### Smaller Interval Lists
@@ -205,8 +229,8 @@ Once the VAT table is created and a tsv is exported, the AoU research workbench 
     - Specify the same `call_set_identifier`, `dataset_name`, `project_id`, `extract_table_prefix`, and `interval_list` that were used in the `GvsPrepareRangesCallset` run documented above.
     - Specify the `interval_weights_bed` appropriate for the PGEN / VCF extraction run you are performing. `gs://gvs_quickstart_storage/weights/gvs_full_vet_weights_1kb_padded_orig.bed` is the interval weights BED used for Quickstart.
     - For both `GvsExtractCallset` and `GvsExtractCallsetPgenMerged`, select the workflow option "Retry with more memory" and choose a "Memory retry factor" of 1.5
-    - `GvsExtractCallset` currently defaults to 1000 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped. Specify a `maximum_alternate_alleles` value of 100.
-    - `GvsExtractCallsetPgenMerged` currently defaults to 100 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped. Specify a `max_alt_alleles` value of 100.
+    - `GvsExtractCallset` currently defaults to 100 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped. If a different value is needed, specify it via the `maximum_alternate_alleles` input.
+    - `GvsExtractCallsetPgenMerged` currently defaults to 100 alt alleles maximum, which means that any sites having more than that number of alt alleles will be dropped. If a different value is needed, specify it via the `max_alt_alleles` input.
     - For both `GvsExtractCallset` and `GvsExtractCallsetPgenMerged`, be sure to set the `output_gcs_dir` to the proper path in the AoU delivery bucket so you don't need to copy them there yourself once the workflows have finished.
     - For `GvsExtractCallset`, you will probably (check the requirements to confirm) want to set the input `bgzip_output_vcfs` to `true`.
     - For `GvsExtractCallset`, make sure to set the `ploidy_table_name` to 'sample_chromosome_ploidy' (the default ploidy table name created during ingest)
@@ -248,37 +272,3 @@ You can take advantage of our existing sub-cohort WDL, `GvsExtractCohortFromSamp
     - For `GvsExtractCallsetPgen` (which is called by `GvsExtractCallsetPgenMerged`), if one (or several) of the `PgenExtractTask` shards fail because of angry cloud, you can re-run the workflow with the exact same inputs with call caching turned on; the successful shards will cache and only the failed ones will re-run.
     - If you want to collect the monitoring logs from a large number of `Extract` shards, the `summarize_task_monitor_logs.py` script will not work if the task is scattered too wide.  Use the `summarize_task_monitor_logs_from_file.py` script, instead, which takes a FOFN of GCS paths instead of a space-separated series of localized files.
     - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
-
-
-### VID to Participant ID Mapping Table
-Once the VAT has been created, you will need to create a database table mapping the VIDs (Variant IDs) from that table to all the participants in the dataset that share that VID. This table is used by the AoU Researcher Workbench, and will need to be copied over to a location specified by them. 
-
-1. First run `GvsCreateParticipantMappingTable.wdl` to create this participant ID mapping table and most of its data.
-   Specify the `project_id`, `dataset` and `vat_table_name` for the VAT created above. Also specify the `participant_mapping_table_name` that
-   will be created to hold the VID to participant mapping information.
-1. Next run `GvsMapUnmappedVIDs.wdl` to recover participant ID mappings for "unmapped VIDs" (a.k.a "pseudo VIDs"). These unmapped VIDs have
-   VAT table entries but no corresponding `alt_allele` entries and correspond to data that appeared in
-   input VCFs only in non-left aligned representations. During the process of creating the VAT these variants were left-aligned and thus
-   disconnected from their `alt_allele` representations. Specify the following parameters:
-   1. `project_id`, `dataset`, `vat_table_name`, `participant_mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
-   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATFromVDS.wdl`.
-   1. `unmapped_vid_mapping_table_name`: the name to use for a table that will hold the mapping information from input
-       position/ref/alt to left-aligned position/ref/alt. This should be a new table.
-1. Finally run `GvsMapDroppedDuplicateVIDs.wdl` to recover all participant ID mappings for VIDs which had multiple variant synonyms with AC != 0. The logic in `GvsCreateVATFromVDS` currently preserves a left-aligned version of the
-   synonym with the highest AC, but before running `GvsMapDroppedDuplicateVIDs.wdl` the actual participant mapping will only contain samples whose input synonym was left-aligned, which do not necessarily correspond to the synonym with highest AC.
-   1. `project_id`, `dataset`, `vat_table_name`, `participant_mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
-   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATFromVDS.wdl`.
-       This should be the same value as specified for the `GvsMapUnmappedVIDs.wdl` step above.
-   1. `filtered_synonyms`: the GCS path to the file of variant synonyms that were filtered as duplicates. This corresponds to the value of the `output_file` output of the `MergeDroppedSynonyms` task in `GvsCreateVATFromVDS.wdl`.
-   1. `dropped_duplicate_table_name`: the name to use for a table that will hold the mapping information from input
-      position/ref/alt to left-aligned position/ref/alt. This should be a new table.
-
-#### Delivery Steps
-1. Copy the created mapping table to the dataset specified by the All of Us DRC. I specifically reached out to Justin Cook and Brian Freeman for the dataset to copy to.
-
-1. Note well that there will be a small difference in the number of vids in the VAT and that in the new mapping table that you have just created. For the Echo callset there are 3595 vids in the VAT that don't exist in the new mapping table (use the query below to determine them). The difference occurs because when we generate annotations using Nirvana, Nirvana left align and truncates the indels. For some of these indels, they now are remapped to a slightly different location than we had defined them as in the `alt_allele` table. This is a known issue that will be resolved in a future release.
-
-    ```
-   select distinct vid from `<dataset>.<vat_table_name>` where vid not in (select vid from `<dataset>.<mapping_table_name>`) ;
-    ```
-   Instructions for adding these "unmapped VIDs" into the participant mapping table are forthcoming.

@@ -104,6 +104,9 @@ public final class GATKVCFConstants {
     //DRAGEN mitochondria
     public static final String SOMATIC_QUALITY_KEY =              "SQ";
 
+    //DRAGEN targeted caller
+    public static final String TARGETED_KEY =                     "TARGETED";
+
     // Mutect2-specific INFO keys
     public static final String TUMOR_LOG_10_ODDS_KEY =              "TLOD";
     public static final String NORMAL_LOG_10_ODDS_KEY =             "NLOD";

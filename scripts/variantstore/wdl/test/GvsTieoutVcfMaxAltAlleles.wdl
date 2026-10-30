@@ -6,7 +6,6 @@ workflow GvsTieoutVcfMaxAltAlleles {
     input {
         String unfiltered_output_gcs_path
         String filtered_output_gcs_path
-        Int max_alt_alleles
         String? variants_docker
     }
 
@@ -16,11 +15,12 @@ workflow GvsTieoutVcfMaxAltAlleles {
 
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
 
+    # Intentionally unused: runs for its side effect of validating VCF tieout; its output is not consumed downstream.
+    #@ except: UnusedCall
     call Tieout {
         input:
             unfiltered_output_gcs_path = unfiltered_output_gcs_path,
             filtered_output_gcs_path = filtered_output_gcs_path,
-            max_alt_alleles = max_alt_alleles,
             variants_docker = effective_variants_docker,
     }
 }
@@ -29,7 +29,6 @@ task Tieout {
     input {
         String unfiltered_output_gcs_path
         String filtered_output_gcs_path
-        Int max_alt_alleles
         String variants_docker
     }
     command <<<

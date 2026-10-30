@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFHeader;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public final class MockVcfWriter implements VariantContextWriter {
@@ -38,5 +39,13 @@ public final class MockVcfWriter implements VariantContextWriter {
     @Override
     public void setHeader(VCFHeader header) {
         headerSet = true;
+    }
+
+    /**
+     * The records this writer has been handed, in the order they were added.
+     * Exposed for tests outside this package that need to assert on what was emitted.
+     */
+    public List<VariantContext> getEmitted() {
+        return Collections.unmodifiableList(emitted);
     }
 }

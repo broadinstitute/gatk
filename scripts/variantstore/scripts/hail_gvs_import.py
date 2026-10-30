@@ -7,7 +7,7 @@ Convenience script to wrap `import_gvs.py` for creating a VDS from a collection 
 import argparse
 import os
 
-from hail_gvs_util import *
+from hail_gvs_util import determine_arguments_function, remove_trailing_slashes
 from vds_validation import validate
 
 

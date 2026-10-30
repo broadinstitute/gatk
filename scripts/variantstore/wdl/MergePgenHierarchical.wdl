@@ -173,7 +173,7 @@ task MergePgen {
         memory: "12 GB"
         disks: "local-disk ${disk_in_gb} HDD"
         bootDiskSizeGb: 15
-        cpu: "${cpu}"
+        cpu: cpu
     }
 }
 

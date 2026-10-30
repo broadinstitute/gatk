@@ -194,6 +194,19 @@ public final class ReblockGVCF extends MultiVariantWalker {
     private HaplotypeCallerGenotypingEngine genotypingEngine;
     // the annotation engine
     private VariantAnnotatorEngine annotationEngine;
+
+    // tally of targeted-caller records converted to GQ0 hom-ref blocks by apply(), reported once in closeTool()
+    // rather than per-record so that a targeted callset does not flood the log
+    @VisibleForTesting
+    long convertedTargetedRecordCount = 0;
+    // position of the first converted record, to give the summary somewhere to point
+    private String firstConvertedTargetedRecord = null;
+    // tally of records with a malformed (negative) GQ or PL floored to zero by floorNegativeQualities, reported once
+    // in closeTool() rather than per-record, for the same reason and in the same way as the targeted-record count above
+    @VisibleForTesting
+    long flooredNegativeQualityRecordCount = 0;
+    // position of the first floored record, to give the summary somewhere to point
+    private String firstFlooredNegativeQualityRecord = null;
     // the INFO field annotation key names to remove
     private static final List<String> infoFieldAnnotationKeyNamesToRemove = Arrays.asList(GVCFWriter.GVCF_BLOCK, GATKVCFConstants.HAPLOTYPE_SCORE_KEY,
             GATKVCFConstants.INBREEDING_COEFFICIENT_KEY, GATKVCFConstants.MLE_ALLELE_COUNT_KEY,
@@ -336,12 +349,118 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
     // get VariantContexts from input gVCFs and regenotype
     @Override
-    public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
+    public void apply(VariantContext originalVariant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
+        // Applies to every record regardless of what kind it is -- reference block, hom-ref call, targeted call, or
+        // ordinary variant call -- which is why it runs before any of the branching below that distinguishes them.
+        final VariantContext variant = floorNegativeQualities(originalVariant);
         if (!variant.hasAllele(Allele.NON_REF_ALLELE)) {
+            if (variant.getAttributeAsBoolean(GATKVCFConstants.TARGETED_KEY, false)) {
+                // Targeted-caller records (DRAGEN) carry no <NON_REF> allele, so they cannot be reblocked as ordinary
+                // variants.  We do not want to keep the call itself -- we are focusing on standard SNPs and Indels,
+                // and may handle these differently later -- but we cannot simply discard the record either.
+                //
+                // Whether dropping the record loses coverage depends on where it sits, and DRAGEN is not consistent
+                // about this.  Usually a targeted call is laid *on top of* a reference block that already spans it
+                // -- around chr6:32005780 the enclosing block runs 32005752-32005826 -- and dropping the record
+                // changes nothing.  But DRAGEN also emits targeted calls into stretches where it wrote no reference
+                // blocks at all.  In one production sample chr5:70076471-70076745 is a 275bp hole whose only record
+                // is a targeted SMN call at chr5:70076654, and dropping it left that single locus described by
+                // nothing.  Since the record is PASS, `VcfToIntervalList` derived from the input still expects
+                // coverage there, so `ValidateVariants --validate-GVCF` failed the reblocked output with
+                // "A GVCF must cover the entire region. Found 1 loci with no VariantContext covering it."
+                //
+                // We cannot tell the two cases apart cheaply from here, and the harmless case stays harmless, so
+                // always emit a GQ0 hom-ref block over the record's span.  Where a block already covers the span the
+                // extra record is redundant and the combiner's overlap handling absorbs it; where it does not, this
+                // is what keeps the GVCF dense.  Either way the output asserts only "no confident call here", which
+                // is what we actually know once we have discarded the call.
+                //
+                // mustCoverPosition=true because --drop-low-quals must not reintroduce the hole; the helper still
+                // returns null when the span is already covered by previously emitted output, which is the one case
+                // where emitting nothing creates no gap.
+                //
+                // Counted rather than logged per-record: a targeted callset can carry a great many of these, and a
+                // line apiece would bury the rest of the log.  The total is reported in closeTool().
+                convertedTargetedRecordCount++;
+                if (firstConvertedTargetedRecord == null) {
+                    firstConvertedTargetedRecord = variant.getContig() + ":" + variant.getStart();
+                }
+                final VariantContextBuilder homRefBlock = lowQualVariantToGQ0HomRef(variant, true);
+                if (homRefBlock != null) {
+                    vcfWriter.add(homRefBlock.make());
+                }
+                return;
+            }
             throw new UserException("Variant Context at " + variant.getContig() + ":" + variant.getStart() + " does not contain a <NON-REF> allele. This tool is only intended for use with GVCFs.");
         }
         VariantContext newVC = formatAnnotationsToRemove.size() > 0 ? removeVCFFormatAnnotations(variant) : variant;
         regenotypeVC(newVC);
+    }
+
+    /**
+     * Raise any negative GQ or PL values to zero, for ANY record -- a reference block, a hom-ref call, a targeted
+     * call, or an ordinary variant call with real ALT alleles. This method makes no distinction between them, and
+     * neither should callers of it: it is invoked once in {@link #apply} before any branching on record type, so
+     * every record this tool sees is covered, not only the reference-block case that exposed the need for it.
+     *
+     * DELIBERATE WORKAROUND, not a principled fix. PLs are non-negative by definition and GQ is derived from them, so
+     * a negative value is malformed input regardless of what kind of record carries it. DRAGEN 4.4.6 has nonetheless
+     * been observed emitting one: in one production sample a zero-depth reference block straddling the chrY PAR1
+     * boundary (where the caller switches from diploid to haploid) came out as `GQ -1240` with `PL 0,0,-1240`. That
+     * is the case that was actually observed and the one described below, but it is an example of the failure mode,
+     * not the extent of it -- a real variant call carrying the same malformed values would be just as invalid, and
+     * would corrupt whatever in this tool compares GQ against a threshold ({@code --rgq-threshold}, GQ banding,
+     * QUAL approximation) rather than merely crashing, which is arguably worse for going unnoticed.
+     *
+     * In the observed case, GATK's GQ banding only accepts [0, MAX_GENOTYPE_QUAL] --
+     * {@link org.broadinstitute.hellbender.utils.variant.writers.GVCFBlockCombiner#createNewBlock} clamps the top end
+     * but throws on anything below zero -- so a single bad record failed a 22 minute run over an entire genome.
+     *
+     * Flooring at zero is what the record should have carried anyway: a quality this tool cannot make sense of is
+     * the least confident value representable, which is what GQ0 means. The point here is only to let the run finish.
+     *
+     * Two things are deliberately scoped narrowly and should be revisited rather than assumed permanent:
+     *   - This lives in ReblockGVCF rather than in the shared GVCFBlockCombiner, so other GVCF-writing tools keep
+     *     failing loudly on the same input instead of silently accepting it.
+     *   - It keys on the invalid value itself rather than on anything DRAGEN-specific, so there is no vendor
+     *     detection to maintain and nothing to unpick if the caller is fixed upstream.
+     *
+     * The underlying negative PL is the caller's bug and should be reported as such. If these turn out to be
+     * widespread rather than the rare edge case seen so far (one record in a 2.2GB gVCF), this decision is worth
+     * reopening -- quietly rewriting caller output at scale is a different proposition from papering over one record.
+     *
+     * Counted rather than logged per-record, the same way and for the same reason as the targeted-record conversion
+     * above: an affected callset could carry many of these, and a line apiece would bury the rest of the log. The
+     * total and the first affected position are reported once in {@link #closeTool}.
+     *
+     * @param vc any variant context this tool processes; may carry malformed qualities regardless of its type
+     * @return the input unchanged when everything is in range, otherwise a copy with negatives raised to zero
+     */
+    @VisibleForTesting
+    VariantContext floorNegativeQualities(final VariantContext vc) {
+        if (!vc.hasGenotypes()) {
+            return vc;
+        }
+        final Genotype genotype = vc.getGenotype(0);
+        final boolean negativeGQ = genotype.hasGQ() && genotype.getGQ() < 0;
+        final boolean negativePL = genotype.hasPL() && Arrays.stream(genotype.getPL()).anyMatch(pl -> pl < 0);
+        if (!negativeGQ && !negativePL) {
+            return vc;
+        }
+
+        flooredNegativeQualityRecordCount++;
+        if (firstFlooredNegativeQualityRecord == null) {
+            firstFlooredNegativeQualityRecord = vc.getContig() + ":" + vc.getStart();
+        }
+
+        final GenotypeBuilder gb = new GenotypeBuilder(genotype);
+        if (negativeGQ) {
+            gb.GQ(0);
+        }
+        if (negativePL) {
+            gb.PL(Arrays.stream(genotype.getPL()).map(pl -> Math.max(0, pl)).toArray());
+        }
+        return new VariantContextBuilder(vc).genotypes(gb.make()).make();
     }
 
     /**
@@ -371,7 +490,16 @@ public final class ReblockGVCF extends MultiVariantWalker {
      *
      * @param originalVC     the combined genomic VC
      */
-    private void regenotypeVC(final VariantContext originalVC) {
+    @VisibleForTesting
+    void regenotypeVC(final VariantContext originalVC) {
+
+        // Somatic-style records (e.g. DRAGEN mitochondrial output) do not provide diploid GQ/PL data,
+        // so pass them through untouched instead of applying reblocking logic.
+        final Genotype inputGenotype = originalVC.getGenotype(0);
+        if (isSomaticStyleGenotype(inputGenotype)) {
+            vcfWriter.add(originalVC);
+            return;
+        }
 
         //Pass back ref-conf homRef sites/blocks to be combined by the GVCFWriter
         if (isHomRefBlock(originalVC)) {
@@ -478,6 +606,25 @@ public final class ReblockGVCF extends MultiVariantWalker {
     }
 
     /**
+     * Determine whether a genotype is somatic-style, i.e. carries a somatic quality (SQ) in place of the diploid
+     * GQ/PL pair that reblocking is built around.  DRAGEN emits these for mitochondrial calls.
+     *
+     * Such records can be neither reblocked nor banded -- there is no GQ to threshold or partition on -- so they are
+     * passed through to the output untouched.  That decision is taken twice on the way out, once in
+     * {@link #regenotypeVC} before any reblocking logic runs, and again in
+     * {@link org.broadinstitute.hellbender.utils.variant.writers.ReblockingGVCFBlockCombiner#addHomRefSite} before
+     * the record would be merged into a block.  Both gates must agree: if only the first treats a record as somatic
+     * the combiner fails it for having no GQ or PL, and if only the second does, a record that has already been
+     * reblocked escapes banding and is emitted unmerged.  Hence one definition, called from both places.
+     *
+     * @param g genotype to test
+     * @return true if the genotype has SQ and neither GQ nor PL
+     */
+    public static boolean isSomaticStyleGenotype(final Genotype g) {
+        return g.hasExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY) && !g.hasGQ() && !g.hasPL();
+    }
+
+    /**
      * determine if VC is a homRef "call", i.e. an annotated variant with non-symbolic alt alleles and homRef genotypes
      * we treat these differently from het/homVar calls or homRef blocks
      * @param result VariantContext to process
@@ -540,7 +687,25 @@ public final class ReblockGVCF extends MultiVariantWalker {
      */
     @VisibleForTesting
     public VariantContextBuilder lowQualVariantToGQ0HomRef(final VariantContext lowQualityVariant) {
-        if(dropLowQuals && (!isMonomorphicCallWithAlts(lowQualityVariant) || !lowQualityVariant.getGenotype(0).isCalled())) {
+        return lowQualVariantToGQ0HomRef(lowQualityVariant, false);
+    }
+
+    /**
+     * As {@link #lowQualVariantToGQ0HomRef(VariantContext)}, but able to ignore --{@value #DROP_LOW_QUALS_ARG_NAME}.
+     *
+     * @param lowQualityVariant  a variant already determined to be low quality
+     * @param mustCoverPosition  if true, produce a block even when --{@value #DROP_LOW_QUALS_ARG_NAME} would otherwise
+     *                           discard the record. Used for targeted-caller records, which may be the only thing
+     *                           covering their position -- DRAGEN sometimes emits them into stretches with no
+     *                           reference blocks -- so discarding one can leave a hole in the GVCF rather than
+     *                           merely omitting a low quality call. Note that this does not force output
+     *                           unconditionally -- null is still returned when the span is already covered by
+     *                           previously emitted output, which is the one case where dropping creates no gap.
+     * @return a Builder that can be modified later, may be null
+     */
+    @VisibleForTesting
+    public VariantContextBuilder lowQualVariantToGQ0HomRef(final VariantContext lowQualityVariant, final boolean mustCoverPosition) {
+        if(!mustCoverPosition && dropLowQuals && (!isMonomorphicCallWithAlts(lowQualityVariant) || !lowQualityVariant.getGenotype(0).isCalled())) {
             return null;
         }
 
@@ -1067,6 +1232,16 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
     @Override
     public void closeTool() {
+        if (convertedTargetedRecordCount > 0) {
+            logger.info(convertedTargetedRecordCount + " record(s) from a targeted caller had no <NON_REF> allele and were converted to "
+                    + "GQ0 hom-ref blocks, starting at " + firstConvertedTargetedRecord + ".  The calls themselves are not carried "
+                    + "through to the output, but the positions remain covered so the GVCF stays dense.");
+        }
+        if (flooredNegativeQualityRecordCount > 0) {
+            logger.warn(flooredNegativeQualityRecordCount + " record(s) had a negative GQ or PL, which is not a valid "
+                    + "Phred-scaled quality, starting at " + firstFlooredNegativeQualityRecord + ".  Each was raised to "
+                    + "zero so reblocking could proceed.  This indicates a bug in the variant caller that produced this GVCF.");
+        }
         if ( vcfWriter != null ) {
             vcfWriter.close();
         }

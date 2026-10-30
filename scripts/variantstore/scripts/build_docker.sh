@@ -49,24 +49,38 @@ BASE_REPO="broad-dsde-methods/gvs"
 REPO_WITH_TAG="${BASE_REPO}/variants:${TAG}"
 docker tag "${IMAGE_ID}" "${REPO_WITH_TAG}"
 
-# Run unit tests before pushing.
+# Run the Python unit tests (including the BigQuery-emulator-backed header-load integration test)
+# inside the freshly built image before pushing. The runner also manages the emulator lifecycle and
+# is shared with CI (see run_python_unit_tests.sh); errexit aborts the build here if any test fails.
+./run_python_unit_tests.sh "${REPO_WITH_TAG}"
+
+# VS-1990: validate that the gcloud pinned in THIS image still classifies an empty vs. a failed GCS
+# listing the way GvsImportGenomes.wdl's DiscoverParquetFiles expects ("One or more URLs matched
+# no objects" == empty directory; anything else fails fast). A cloud-sdk bump is the only thing that
+# can reword that message, and a cloud-sdk bump forces this rebuild and the canary tests for changed
+# messages from gcloud.
+# The canary must run INSIDE the freshly built image to exercise the pinned gcloud (not the host's)
+# and needs GCS credentials.
+GCLOUD_CONFIG_DIR="${CLOUDSDK_CONFIG:-${HOME}/.config/gcloud}"
+CANARY_DIR="$(pwd)/test/gcs_listing_canary"
 set +o errexit
-fail=0
-for test in test/test_*.py
-do
-    docker run --platform linux/amd64 --rm -v "$PWD":/in -t "${REPO_WITH_TAG}" bash -c "cd /in; python3 -m unittest $test"
-    if [ $? -ne 0 ]; then
-        fail=1
-        echo "$test has failed"
-    fi
-done
-
-if [ $fail -ne 0 ]; then
-    echo "One or more unit tests have failed, exiting."
-    exit $fail
-fi
-
+docker run --platform linux/amd64 --rm \
+    -v "${GCLOUD_CONFIG_DIR}":/gcloud-config-ro:ro \
+    -v "${CANARY_DIR}":/canary:ro \
+    -t "${REPO_WITH_TAG}" \
+    bash -c 'cp -r /gcloud-config-ro /tmp/gcloud-config && export CLOUDSDK_CONFIG=/tmp/gcloud-config && /canary/run_gcs_listing_canary.sh'
+CANARY_RC=$?
 set -o errexit
+case "${CANARY_RC}" in
+    0)  echo "GCS-listing canary passed against the pinned gcloud." ;;
+    77) echo "WARNING: GCS-listing canary SKIPPED -- no gcloud credentials or GCS unreachable in the" >&2
+        echo "build environment. The pinned gcloud's empty-vs-error listing wording was NOT validated" >&2
+        echo "for this image. Re-run build_docker.sh authenticated to validate it." >&2 ;;
+    *)  echo "ERROR: GCS-listing canary FAILED -- the pinned gcloud's listing wording has drifted." >&2
+        echo "Update the grep in GvsImportGenomes.wdl (DiscoverParquetFiles) and the SENTINEL in" >&2
+        echo "test/gcs_listing_canary/run_gcs_listing_canary.sh, then rebuild." >&2
+        exit "${CANARY_RC}" ;;
+esac
 
 GAR_TAG="us-central1-docker.pkg.dev/${REPO_WITH_TAG}"
 docker tag "${REPO_WITH_TAG}" "${GAR_TAG}"

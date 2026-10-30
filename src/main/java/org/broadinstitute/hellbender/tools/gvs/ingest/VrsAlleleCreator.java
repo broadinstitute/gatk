@@ -5,11 +5,9 @@ import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
-import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.VrsAlleleRecord;
 import org.broadinstitute.hellbender.tools.gvs.ingest.bq.VrsAlleleBQWriter;
 import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.VrsAlleleParquetFileWriter;
-import org.broadinstitute.hellbender.tools.gvs.ingest.tsv.VrsAlleleTsvWriter;
 
 import java.io.File;
 import java.io.IOException;
@@ -32,7 +30,7 @@ public class VrsAlleleCreator {
     private static final String VRS_ALLELE_FILETYPE_PREFIX = "vrs_allele_";
     private static final String PREFIX_SEPARATOR = "_";
 
-    public VrsAlleleCreator(String sampleIdentifierForOutputFileName,
+    public VrsAlleleCreator(String inputVcfFileName,
                             Long sampleId,
                             String tableNumber,
                             File outputDirectory,
@@ -49,22 +47,12 @@ public class VrsAlleleCreator {
                     // All samples write to a single vrs_allele table (no sharding needed)
                     vrsAlleleWriter = new VrsAlleleBQWriter(projectId, datasetName, "vrs_allele");
                     break;
-                case TSV:
-                    final File tsvOutputFile = new File(outputDirectory,
-                            VRS_ALLELE_FILETYPE_PREFIX + tableNumber
-                            + PREFIX_SEPARATOR + sampleIdentifierForOutputFileName
-                            + IngestConstants.FILETYPE);
-                    vrsAlleleWriter = new VrsAlleleTsvWriter(tsvOutputFile);
-                    break;
                 case PARQUET:
                     final String filename = getOutputFileName(tableNumber, sampleId,
-                            sampleIdentifierForOutputFileName, outputType);
+                            inputVcfFileName, outputType);
                     final File parquetOutputFile = new File(outputDirectory, filename);
                     vrsAlleleWriter = new VrsAlleleParquetFileWriter(
                             new Path(parquetOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
-                    break;
-                default:
-                    // Other output types not supported; writer stays null
                     break;
             }
         } catch (final IOException e) {
@@ -88,9 +76,9 @@ public class VrsAlleleCreator {
     }
 
     public static String getOutputFileName(String tableNumber, Long sampleId,
-                                           String sampleIdentifierForOutputFileName,
+                                           String inputVcfFileName,
                                            CommonCode.OutputType outputType) {
-        String[] components = {tableNumber, sampleId.toString(), sampleIdentifierForOutputFileName};
+        String[] components = {tableNumber, sampleId.toString(), inputVcfFileName};
         return VRS_ALLELE_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, components)
                 + "." + outputType.toString().toLowerCase();
     }

@@ -3,9 +3,22 @@ import json
 
 
 from get_columns_for_import import get_column_values
+from get_columns_for_import import _import_terra_table
 
 
 class TestBulkIngestGenomes(unittest.TestCase):
+
+    def test_import_terra_table(self):
+        try:
+            import terra_notebook_utils  # pyright: ignore[reportMissingImports]  # noqa: F401
+        except ModuleNotFoundError:
+            with self.assertRaises(ModuleNotFoundError) as cm:
+                _import_terra_table("test")
+            self.assertIn("test", str(cm.exception))
+        else:
+            # Should not raise when terra_notebook_utils is installed.
+            import terra_notebook_utils as tnu  # pyright: ignore[reportMissingImports]  # noqa: F401
+            self.assertIs(_import_terra_table("test"), tnu.table)
 
     def test_get_column_values(self):
         numSamples = 5
@@ -78,5 +91,3 @@ class TestBulkIngestGenomes(unittest.TestCase):
             expected = ('gvcf','gvcf_index')
             actual = get_column_values(columnSamplesExpected, numSamples, None, None)
             self.assertEqual(actual, expected)
-
-

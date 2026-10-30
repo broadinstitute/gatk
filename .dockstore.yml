@@ -166,6 +166,24 @@ workflows:
          - ah_var_store
        tags:
          - /.*/
+   - name: GvsValidateVcfHeaders
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsValidateVcfHeaders.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+       tags:
+         - /.*/
+   - name: GvsValidateVdsCompleteness
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsValidateVdsCompleteness.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+       tags:
+         - /.*/
    - name: GvsMergeAndRescoreVDSes
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsMergeAndRescoreVDSes.wdl
@@ -219,16 +237,7 @@ workflows:
          - master
          - ah_var_store
          - VS-1808
-       tags:
-         - /.*/
-   - name: ParquetIngest1829AuRevoirParquetLoadStatus
-     subclass: WDL
-     primaryDescriptorPath: /scripts/variantstore/wdl/GvsBulkIngestGenomes.wdl
-     filters:
-       branches:
-         - master
-         - ah_var_store
-         - vs_1829_au_revoir_parquet_load_status
+         - ng_vs_1808_vrs_ids
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
@@ -296,6 +305,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - fixing_pre_release_issues
          tags:
              - /.*/
    - name: GvsBeta
@@ -351,7 +361,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_1864_underscore_is_a_sql_metachar
+             - ng_vs_1808_vrs_ids
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -515,6 +525,15 @@ workflows:
    - name: GvsMapDroppedDuplicateVIDs
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsMapDroppedDuplicateVIDs.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+       tags:
+         - /.*/
+   - name: GvsRemoveSamplesFromVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsRemoveSamplesFromVDS.wdl
      filters:
        branches:
          - master

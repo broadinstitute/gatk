@@ -12,7 +12,6 @@ workflow CreateBQTables {
     Int max_table_id
     Boolean use_compressed_references = false
 
-    Int? preemptible_tries
     String? cloud_sdk_docker
   }
 
@@ -73,6 +72,9 @@ task CreateTables {
   input {
     String project_id
     String dataset_name
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go
     String datatype
     Int max_table_id

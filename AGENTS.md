@@ -1,0 +1,1068 @@
+# Overview of the Genomic Variant Store (GVS)
+
+The Genomic Variant Store (GVS) is a scalable cloud-based platform designed to
+efficiently store, manage, and process large-scale genomic variant data. GVS
+enables joint calling across hundreds of thousands of samples and provides fast
+cohort extraction capabilities for population genomics studies. For a high level
+overview see `gvs-product-sheet.pdf`.
+
+GVS was created as a branch of the Genome Analysis Toolkit (GATK). The principal
+GVS branch in git is called `ah_var_store`. While this GVS branch has been
+updated from GATK `master` periodically, it is not clear if GVS will ever be
+merged back into the main GATK branch. While GVS does build upon some of the
+GATK codebase, the majority of the code in the GATK repository (even on the
+`ah_var_store` branch) is not related to GVS.
+
+## Key Features
+
+- **Scalable Storage**: Leverages Google BigQuery for petabyte-scale genomic
+  data storage with high availability
+- **Joint Calling**: Performs population-scale joint genotyping across large
+  cohorts
+- **Cohort Extraction**: Rapid extraction of variant subsets for specific sample
+  cohorts
+- **Cloud-Native**: Designed for Terra platform with WDL-based workflows
+
+## Usage Scenarios
+
+GVS supports two primary usage scenarios as described below:
+
+### GVS Beta Callsets
+
+GVS Beta is intended for end users to be able to run their own joint calling
+using the `GvsJointVariantCalling.wdl` as a top-level workflow. See the
+documentation in the `beta_docs` directory for more information on GVS Beta
+usage.
+
+### AoU Callsets
+
+GVS is used to produce joint callsets for the All of Us Research Program at the
+scale of 400,000+ samples. AoU callsets push the scale limits of GVS and are not
+suited for the `GvsJointVariantCalling.wdl` workflow. For AoU, more narrowly
+scoped GVS workflows are run by the engineers of the Variants team following an
+AoU-specific protocol as described in `AOU_DELIVERABLES.md`. Rather than the
+collection of VCF files produced from GVS Beta, the core deliverable of an AoU
+callset is a Hail VDS (Variant Dataset). More AoU-specific documentation can be
+found under `scripts/variantstore/docs/aou`.
+
+Conceptually an AoU callset is similar to a GVS Beta callset up to the point of
+extraction. While a Beta callset would run `GvsPrepareCallset.wdl` and then
+`GvsExtractCallset.wdl` to extract a set of VCF files, an AoU callset will run
+`GvsExtractAvroFilesForHail.wdl` and then `GvsCreateVDS.wdl` to generate a Hail
+VDS. The data within the VDS is used to generate an ancestry file for creating
+the VAT (Variant Annotations Table) and interval lists for the "small callsets"
+described in `AOU_DELIVERABLES.md`.
+
+## Key Concepts
+
+### Hard filtered versus soft filtered variants
+
+During the GVS joint calling process variants are evaluated for quality at both
+the site and allele level. By default GVS evaluates variant quality scores using
+a machine learning model called VETS (Variant Extract-Train-Score). GVS formerly
+used a machine learning model called VQSR (Variant Quality Score Recalibration)
+for this purpose. While still supported in GVS, VQSR is rarely used in making
+GVS callsets today. See
+`scripts/variantstore/docs/release_notes/VETS_Release.pdf` for more information
+on VETS and the transition away from VQSR.
+
+GVS stores all variants and their associated quality scores in its BigQuery
+schema, regardless of whether these variants pass or fail quality filters. GVS
+artifacts (VCF, PGEN, VDS, etc), are classified as being either "hard filtered"
+or "soft filtered" depending on how they treat variants with failing quality
+scores. "Hard filtered" artifacts completely exclude variants with failing
+quality scores, while "soft filtered" artifacts include all variants along with
+their quality scores, leaving it to the user's discretion how to handle these
+variants in downstream analysis.
+
+### Split versus unsplit multi-allelics
+
+A multi-allelic site is a genomic location where more than one alternate allele
+is observed. For example, at a given position the reference allele might be "A",
+and there could be two alternate alleles "C" and "G". In an unsplit
+multi-allelic representation, this would be represented as a single conceptual
+row with the alternate alleles listed together (e.g., A -> C,G). In a split
+multi-allelic representation, this would be represented as two separate rows
+(e.g., A -> C and A -> G).
+
+GVS contains examples of both split and unsplit multi-allelic representations.
+Knowing which representation is used where is critical for a correct
+understanding of the data and for writing code that interacts with GVS. For
+example, the `alt_allele` table uses a split multi-allelic representation to
+support efficient querying and filtering, while the `vet_%` tables use an
+unsplit multi-allelic representation like the input gVCFs from which they are
+derived. While Hail VDSes in general can use either split or unsplit
+multi-allelic representations, the VDSes created, read, and modified by GVS are
+exclusively unsplit.
+
+Some of the GVS code in this repo does interact with split multi-allelic non-VDS
+Hail artifacts; see `AOU_MARKETING_STATISTICS.md` for an example that takes a
+split Exome MatrixTable as input.
+
+### Allele representations across GVS artifacts
+
+The same variant is written differently in different GVS artifacts. The
+differences are systematic rather than incidental, and comparing alleles across
+artifacts without accounting for them is a recurring source of bugs.
+
+- **`vet_%` and `alt_allele`** hold minimized (trimmed) alleles that are *not*
+  left-aligned. An indel stays wherever the caller placed it.
+- **The VDS** holds unsplit multi-allelic rows in a common per-site reference
+  context. `alleles[0]` must be long enough to span the longest deletion at the
+  site, and every ALT is expressed relative to it. A VDS allele string is
+  therefore a property of the site's allele set, not of the variant: the same
+  variant is written differently at a site with different neighbours.
+- **The VAT, and therefore vids,** hold alleles that are minimized *and*
+  left-aligned, via `bcftools norm -f` in `GvsCreateVATFromVDS.wdl:731`.
+
+Four consequences worth knowing before writing anything that joins across these:
+
+1. Minimize before comparing. `hl.min_rep`, or trimming by hand, reduces a VDS
+   allele to the intrinsic form that `alt_allele` stores.
+2. Compare the REF/ALT **pair**, never the ALT alone. One string can be the raw
+   ALT of one variant and the minimized ALT of an unrelated one. At
+   chr13:32368001 in Foxtrot, `CTT` is both: the raw ALT of a 24bp deletion
+   against a 27bp REF, and the minimized ALT of a 2bp insertion.
+3. Minimizing is not left-aligning. `hl.min_rep` trims shared prefixes and
+   suffixes but will not walk an indel through a repeat, so it cannot unify a
+   left-aligned vid with a non-left-aligned `alt_allele` row. That needs real
+   normalization against the reference, which is what `GvsMapUnmappedVIDs` and
+   the scripts under
+   `scripts/variantstore/scripts/variant_annotation_table/left_alignment_fixups/`
+   exist to do.
+4. Indel length is invariant under normalization, so it is a safe filter when
+   hunting for equivalent representations; position and allele strings are not.
+   The production synonym search keys on it as bcftools `ILEN` over a 200bp
+   window rightward from the vid's position, left-aligned being the leftmost
+   equivalent form (`generate_bcftools_searches_for_variant_synonyms.py:38-45`).
+
+
+# High-Level Architecture (WDLs, BigQuery, Terra)
+
+## Java Artifacts
+
+GVS is written in a mixture of Java, Python, WDL (Workflow Description
+Language), and shell scripts. The Java code can be built from the repository
+root using the `./gradlew clean shadowJar` command. This compilation requires a
+JDK of at least version 17. For local compilation, if
+[SDKMAN!](https://sdkman.io/) is available, one of the Java 17 versions can be
+used (most GATK builds seem to use Temurin).
+
+## Docker Versioning
+
+The `GvsUtils.wdl` workflow's `GetToolVersions` task is used to retrieve the
+version of various Docker images used by GVS. This task is usually run at the
+start of a GVS workflow to ensure that the correct versions of tools are being
+used.
+
+## Reference Versioning
+
+The `GvsUtils.wdl` workflow's `GetReference` task is used to retrieve the
+canonical paths to references used by GVS. This task is usually run at the start
+of a GVS workflow to ensure that the correct references are being used.
+
+## Docker artifacts
+
+GVS uses multiple Docker images to run its workflows. Some of these are specific
+to GVS as documented below.
+
+### GATK Docker Image
+
+This builds a GATK Docker image based on the GVS branch of the GATK codebase.
+Instructions for building this image can be found in the
+`scripts/variantstore/docs/Build Docker from VM/building_gatk_docker_on_a_vm.md`
+file. An x86 cloud-based VM is used to build this x86 Docker image, which is
+then pushed to the Broad's GAR (Google Artifact Registry) repository.
+
+### Variants Docker Image
+
+This is a Google Cloud SDK Alpine-based Docker image to which many useful tools,
+Python packages, and scripts have been added. This can be built on a developer's
+local machine using the `scripts/variantstore/scripts/build_docker.sh` script.
+
+The Python scripts under `scripts/variantstore/scripts/` are baked into this image at `/app/`, and
+WDL tasks that set `docker: variants_docker` invoke them as `python3 /app/<script>.py`. **Editing or
+adding such a script has no effect on a running workflow until the image is rebuilt and the new tag
+is wired in** — a common trap (the WDL keeps using the old image). So whenever you change anything
+baked into the image (a script, an added tool, or a Python package):
+
+1. Run `scripts/variantstore/scripts/build_docker.sh`. It builds the alpine-based image, runs the
+   unit tests, and pushes it to GAR with a tag of the form `<ISO-8601 date>-alpine-<12-char image
+   id>`, e.g. `us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-06-30-alpine-766e78c05289`.
+2. Update the `variants_docker` value in the `GetToolVersions` task of `GvsUtils.wdl` to that new
+   tag. Workflows resolve the image through `GetToolVersions`, so this step is what makes the rebuilt
+   image actually take effect.
+
+### Nirvana Docker Image
+
+This is an Illumina Nirvana-based Docker image build from
+`scripts/variantstore/variant-annotations-table/build_docker.sh`. Since Nirvana
+is no longer being updated this image hopefully will also not need to be updated
+in the future.
+
+## "location" versus "position"
+
+GVS leverages BigQuery partitioning and clustering to optimize query performance
+and cost. The core tables are either partitioned by sample ID or location,
+depending on the access pattern for which they are optimized. GVS uses the term
+"location" in a very specific way: the chromosome number is multiplied by
+1,000,000,000,000 and then the position on the chromosome is added. For example,
+chromosome 1 position 1000 becomes `1000000000000 + 1000 = 1000000001000`. GVS
+locations use a chromosome number of 23 for the X chromosome and 24 for the Y
+chromosome. This location encoding allows for efficient storage and querying in
+BigQuery using a single partitionable value. GVS references to "position"
+usually refer to position on a given chromosome and do not mean the same thing
+as "location".
+
+The canonical GVS location encoding and decoding logic lives in
+`SchemaUtils.java`. Of particular interest are the following methods:
+
+- `encodeLocation` encodes a chromosome and position into a single location
+  value.
+- `decodeContig`, `decodeChromosomeIndex` and `decodePosition` decode a location
+  value to obtain contig, chromosome index or position respectively.
+
+## Core BigQuery Tables
+
+- **`sample_info`**: Holds sample name, control / non-control status, and a
+  withdrawal date if applicable.
+- **`sample_load_status`**: (deprecated, used for Storage Write API-based ingest
+  only). This table tracks which data has been loaded for each sample. As
+  described in the LoadStatusValue enum in LoadStatus.java, the values currently
+  used include REFERENCES_LOADED, VARIANTS_LOADED, HEADERS_LOADED. For
+  historical reasons some legacy values are also recognized.
+- **`sample_chromosome_ploidy`**: This table contains a per-sample,
+  per-chromosome of the ploidy observed in its input GVCF file.
+- **`vet_%`**: Primary variant information (sample id, location, alleles,
+  annotations). These tables are partitioned by sample id. Due to BigQuery's
+  4000 partition limit there can be many `vet_%` tables in a GVS dataset, named
+  `vet_001`, `vet_002`, etc. Schema information for vet tables can be found in
+  the `GvsCreateTables.wdl` workflow in the variable `vet_schema_json`.
+- **`ref_ranges_%`**: Reference genome locations, lengths, and qualities.
+  Similar to vet, this table is partitioned by sample id and can hold at most
+  4000 samples, so there will be multiple `ref_ranges_%` for larger datasets.
+
+  Note that `ref_ranges_%` tables have two alternate schemas, compressed and
+  uncompressed, to accommodate different data storage needs. Both schemas are
+  described in the `GvsCreateTables.wdl` workflow. The canonical implementation
+  of reference compression can be found in
+  `SchemaUtils#encodeCompressedRefBlock`. Implementations of reference
+  decompression can be found in `create_ranges_cohort_extract_data_table.py` and
+  `GvsExtractAvroFilesForHail.wdl`, both relying on a BigQuery temporary
+  function called `UnpackRefRangeInfo`.
+
+- **`vcf_header_lines`**: Contains all unique VCF header seen while ingesting
+  all samples.
+- **`sample_vcf_header`**: Contains header information on a per-sample basis,
+  referencing entries in the `vcf_header_lines` table.
+- **`vcf_header_lines_scratch`**: Scratch table for temporary storage of VCF
+  header lines during ingestion. This table is used to avoid duplicate entries
+  in the `vcf_header_lines` table.
+- **`alt_allele`**: This table contains allele information similar to that in
+  the `vet_%` tables, but is partitioned by location to support creation of a
+  filter model in joint calling. The `alt_allele` table also splits
+  multi-allelic (aka "hetvar" or "1/2") genotypes into separate rows for each
+  allele.
+- **`filter_set_sites`**: Contains filtering information at a site level only,
+  no alleles.
+- **`filter_set_info`**: Contains filtering information at a position and allele
+  level, including the VQSR model and other metadata.
+- **`cost_observability`**: Operation cost tracking, written to by the various
+  tools that comprise the GVS pipeline.
+
+### Filter table gotchas
+
+**`yng_status` is only ever `G` or `Y`.** `N` is recognized by the extract code
+but is never written by the filter model; on Foxtrot the distribution across
+`filter_set_info` was `G` 1,724,533,270 and `Y` 29,333,911. Any check keyed on
+`yng_status = 'N'` is therefore vacuous, returning zero rows whether or not the
+condition it tests for occurs. `Y` comes from `POSITIVE_TRAIN_SITE`
+(`CreateFilteringFiles.java`), assigned by matching against left-aligned truth
+resources, so input data that is not left aligned cannot be rescued by a `Y` and
+is judged on calibration sensitivity alone.
+
+**`filter_set_sites` records only sites that have filters, and does not cover
+the filter model.** There is no PASS or null row; absence from the table means
+the site was not filtered. On Foxtrot it held 71,032,776 rows across
+`EXCESS_ALLELES`, `ExcessHet`, `LowQual`, `NO_HQ_GENOTYPES` and combinations.
+Calibration sensitivity failures are *not* among them: VETS and VQSR site
+failures are computed at extract time from `filter_set_info` scores, never
+stored here. So this table records which sites carry site-level filter values.
+Whether carrying one actually excludes the variant depends on the artifact: per
+"Hard filtered versus soft filtered variants" above, the VAT is hard filtered and
+drops them, while the VCF, VDS and PGEN artifacts are soft filtered and emit
+every variant with its filter information attached.
+`filter_set_info` answers a different question again: keyed by
+`(location, ref, alt)`, it gives the calibration sensitivity score and
+`yng_status` of an individual *allele*. Whether a *site* passes the filter model
+is derived from its alleles by the max-over-class rule below and is not recorded
+in either table.
+
+**The filter model is applied per site and per genotype, with opposite senses.**
+A site is judged by its *best* allele of a class, so a poor allele at a site
+whose best allele passes is not excluded; a genotype is judged by its *worst*
+non-ref allele, so a `1/2` call is filtered if either allele fails. Note that
+which arithmetic expresses "best" depends on the model, and the two are
+inverted. For VQSR, `vqslod` is higher-is-better, so `ExtractCohortEngine`
+fails a site when `max(score) < threshold` and a genotype when
+`min(score) < threshold`. For VETS — the default — `calibration_sensitivity` is
+lower-is-better, so `ExtractCohortVETSEngine` overrides both and fails a site
+when `min(score) > threshold` and a genotype when `max(score) > threshold`.
+
+### `bq --apilog=false` writes a file named `false`
+
+`--apilog` takes a file path, not a boolean, so `--apilog=false` writes the
+API debug log to a file literally named `false` in the current directory.
+The idiom appears throughout the WDLs, where it is harmless because the file
+lands in the task's working directory and is discarded. Do not copy it into
+commands run locally: there it leaves a log of several hundred KB in the
+repo. Omit the flag instead.
+
+## Key Workflows
+
+### GvsJointVariantCalling.wdl
+
+This is the top-level workflow for GVS Beta joint calling. It orchestrates the
+joint calling process, including sample ingestion, variant calling, and
+filtering. The workflow is designed to be run on the Terra platform and can be
+customized for specific datasets. This workflow is _not_ used for AoU callsets,
+which use a different set of workflows as described in `AOU_DELIVERABLES.md`.
+
+### GvsBulkIngest.wdl
+
+This workflow is used to ingest large sets of samples into GVS and is
+extensively documented in `gvs-bulk-ingest-details.md`. This workflow is called
+by `GvsJointVariantCalling.wdl` for Beta callsets and is called directly for AoU
+callsets. One significant change for the Foxtrot callset is that this workflow
+will now be directly supplied with a "FOFN" (File of File Names) TSV rather than
+reading from Terra data tables. This change was motivated by hitting the scale
+limits of Terra data tables and being unable to read AoU-sized sample sets, but
+providing this workflow with a FOFN TSV directly is also much simpler than the
+previous TSV to Terra data table to TSV approach.
+
+### GvsPopulateAltAllele.wdl
+
+This workflow populates the `alt_allele` table with allele information from the
+`vet_%` tables. This table will enable the creation of a filter model in joint
+calling in subsequent steps. The `alt_allele` table is partitioned by location
+with split multi-allelics to support efficient querying and filtering.
+
+### GvsCreateFilterSet.wdl
+
+This workflow reads the `alt_allele` tables, scattering widely over locations to
+generate a filter model and populate the `filter_set_sites` and
+`filter_set_info` tables.
+
+### GvsPrepareCallset.wdl
+
+This workflow prepares a GVS callset for VCF or PGEN extraction. Sample,
+reference, and variant data is copied to a set of "prepare tables" that are read
+by GVS extract tools.
+
+### GvsExtractCallset.wdl / GvsExtractCallsetPgenMerged.wdl
+
+These workflows extract a GVS callset into VCF or PGEN files. They read the
+prepare tables created by `GvsPrepareCallset.wdl` and generate the requested
+output files. Output files are partitioned at a minimum by chromosome, but for
+"wide" extracts (callsets with many large numbers of samples), there may be
+hundreds of output files per chromosome.
+
+## Nested inputs, and why a WDL 1.1 upgrade would change them
+
+The GVS WDLs are `version 1.0`. Under 1.0, a call input that the caller leaves
+unset becomes an input of the enclosing workflow, addressed by its
+fully-qualified name. This is true whether the call is to a task or a
+subworkflow. Terra lists these nested inputs in the workflow configuration, so
+you can set them there with no plumbing. For example, `GvsQuickstartIntegration`
+does not pass `use_manual_clinvar_update` to its `GvsQuickstartVATIntegration`
+call, but in VS-2029 the flag could still be set from Terra when running the
+top-level workflow. Terra only exposes one level of this, though: the inputs of
+calls made directly by the workflow being run, not those of calls nested inside
+a subworkflow. In VS-2029, setting `GvsCreateVATfromVDS`'s `use_reference_disk`
+from `GvsQuickstartIntegration` (two levels down) required temporarily adding a
+pass-through input to `GvsQuickstartVATIntegration`. So before adding
+pass-through inputs, check whether the input belongs to a direct child call and
+is therefore already exposed.
+
+WDL 1.1 reverses the default. By default, only the top-level workflow's own
+`input` section is settable. A workflow opts back in to nested inputs with
+`allowNestedInputs: true` in its `meta` section. WDL 1.2 moves that key to the
+workflow `hints` section, and restricts it to inputs that are optional or have
+a default. The only WDL in this repo that sets it today is
+`scripts/mitochondria_m2_wdl/MitochondriaPipeline.wdl`, which is not a GVS
+workflow.
+
+An upgrade to 1.1 therefore has to either add `allowNestedInputs` to every
+workflow whose nested inputs are set in Terra, or plumb each of those inputs
+through explicitly. Otherwise, any existing Terra method configuration that sets
+a nested input should be rejected for supplying an unexpected input. This has
+not been tried here. The quickstart integration workflows and the AoU workflows'
+method configurations are the places to audit.
+
+## Rerunning a quickstart integration test
+
+Each quickstart integration subworkflow starts by creating its own BigQuery
+dataset with `CreateDatasetForTest` in `GvsUtils.wdl`. The dataset name is built
+from the UTC date, the branch, the short HEAD hash and a per-subworkflow suffix,
+for example `quickit_2026_10_02_vs_2029_clinvar_clean_258052a_vat`. The task is
+`volatile`, so it is never call-cached, and its `bq mk` fails if the dataset
+already exists. A rerun of the same commit on the same UTC day therefore fails
+at that step, before any of the work under test runs.
+
+So when a quickstart run fails in `CreateDatasetForTest` with an "already
+exists" error, the cause is a same-day rerun of the same commit, not the change
+under test. When suggesting a rerun, say it needs a new commit or a later UTC
+date. The usual way to get a new commit is an empty one, pushed so the task's
+clone from GitHub picks it up (e.g. `git commit --allow-empty -m "hash bump"`,
+as in VS-2029's `d179c1de6`). The empty commit takes effect as soon as it is
+pushed, because `CreateDatasetForTest` gets its hash from its own `git clone` of
+the branch when the task starts.
+
+A WDL change has a separate timing concern. Terra reads the WDL from GitHub, at
+`raw.githubusercontent.com/<org>/<repo>/<branch>/...`, when the run is
+submitted, not from Dockstore's stored copy. GitHub serves these files with
+`cache-control: max-age=300`, so allow up to 5 minutes after pushing a WDL
+change before submitting. To confirm afterwards what a run executed, compare
+`submittedFiles.workflow` in its metadata against the commit; its `workflowUrl`
+shows where it came from. Its recorded `git_hash` is from the clone, so if the
+two disagree, something was pushed between submission and the clone.
+
+Getting past that step does not mean the run did fresh work. With call caching
+on, later tasks whose inputs have not changed still reuse earlier results.
+Before treating a run as evidence for a change, check the tasks that change
+affects for cache hits.
+
+## Variant Annotation Table (VAT)
+
+### Overview
+
+The Variant Annotation Table (VAT) is an artifact that is currently only
+delivered as part of AoU callsets. See the documentation in
+`scripts/variantstore/variant-annotations-table/README.md` for more information
+on the VAT. The core workflow for generating the VAT is
+`GvsCreateVATFromVDS.wdl`, which is run after the AoU callset has been created.
+
+### VIDs
+
+VIDs, or “Variant IDs” are the primary key of the VAT table. Here are three
+example VIDs:
+
+1. 1-668638-G-GA
+2. 16-88461103-AGGCCCTGGTGAGGACCCAGGGATGGGGCGGGAGACCTGGTGAGGACCGAGG-A
+3. Y-56694638-G-A
+
+A VID consists of four components separated by dashes. From left to right these
+are chromosome, position, reference allele, and variant allele.
+
+In the first example above, the variant described by the VID is on chromosome 1
+(chr1 in hg38 terms), position 668638, with a reference allele of G and a
+variant allele of GA. Because the variant allele is longer than the reference
+allele, this variant represents an insertion.
+
+In the second example the variant is on chromosome 16 (chr16) at position
+88461103 with a reference allele of
+AGGCCCTGGTGAGGACCCAGGGATGGGGCGGGAGACCTGGTGAGGACCGAGG and a variant allele of A.
+Because the variant allele is shorter than the reference allele, this represents
+a deletion.
+
+In the third example, the variant is on chromosome Y (chrY) at position 56694638
+with a reference allele of G and a variant allele of A. This VID represents a
+SNP (single nucleotide polymorphism).
+
+### VID to Participant ID Mapping Table.
+
+See the documentation in `AOU_DELIVERABLES.md` for information on how to
+generate the VID to Participant ID Mapping Table.
+
+Note that for the past Echo callset there may need to be an additional step to
+patch this table for a set of VIDs that did not have corresponding Participant
+IDs. See the directory `pseudo_vids_only_in_vat` for more information on
+unmatched VIDs that were discovered in the VATs of the Delta and Echo callsets.
+
+### The VAT's gnomAD version depends on reference disks
+
+`AnnotateVCF` in `GvsCreateVATfromVDS.wdl` reads its Nirvana data sources
+from one of two places, and they do not hold the same data. With
+`use_reference_disk = true` (the default) it reads the Broad bundle
+`gs://gcp-public-data--broad-references/hg38/v0/Nirvana/3.18.1_2024-03-06/`,
+which has gnomAD 3.1.2. With it false, `Nirvana/Downloader.dll` fetches
+whatever Illumina currently serves; in September 2026 that was gnomAD 4.0
+(plus a newer bundled ClinVar). So the two paths produce different gnomAD
+columns in the VAT, and the download path is not pinned to any version.
+
+gnomAD 4.0 is not just newer numbers. It renames the `oth` subpopulation to
+`remaining` and adds `ami` and `mid`, none of which
+`create_vt_bqloadjson_from_annotations.py` knows about. On the download path
+the `gnomad_oth_*` columns therefore come out empty, and `ami`/`mid` are
+silently dropped. The integration truth data comes from the reference-disk
+path, so nothing tests the other one.
+
+Note that `use_reference_disk` is a WDL input, distinct from Terra's "Use
+reference disks" submission option. Unchecking the option does not change the
+input, and the option is not part of the call-cache hash. If a rerun with the
+two mismatched gets past dataset creation (see "Rerunning a quickstart
+integration test" above), what happens depends on call caching. With the option
+unchecked and `use_reference_disk` still `true`, `AnnotateVCF` fails with "Could
+not find reference file 'Homo_sapiens.GRCh38.Nirvana.dat'" (VS-2029,
+`b3226270`). With call caching on, an `AnnotateVCF` whose inputs have not
+changed instead silently reuses the previous run's shards, because the dataset
+name is not one of its inputs (VS-2029, `ab40f7c3`). So when verifying a VAT
+run that was meant to test a reference-disk change, check that the `AnnotateVCF`
+shards were not cache hits. When suggesting such a run, recommend turning call
+caching off for that submission.
+
+### Comparing VATs after the BigQuery dataset has expired
+
+Integration-test VAT datasets expire after 14 days, but the workflow's TSV
+outlives them in the workspace bucket. It is the `vat_complete.bgz.tsv.gz`
+output of `MergeVatTSVs`, inside `GvsCreateVATFilesFromBigQuery`; find it by
+walking the run's Cromwell metadata with `expand_sub_workflows=True`. Row order
+is not guaranteed, so `gunzip | LC_ALL=C sort` both TSVs before comparing. If
+`cmp` finds them identical, you are done. Otherwise, diff the columns keyed on
+`(vid, transcript)`, taking column names from the TSV's own header line. Do not
+use `scripts/variantstore/scripts/variant_annotation_table/schema/vat_schema.json`
+for this: its column order is not the TSV's, so it silently mislabels every
+column. In VS-2029 it reported ClinVar differences as gnomAD `fin` and `nfe`
+ones. Sorting moves the header out of line 1, so read it from the unsorted
+file. A per-column diff separates ClinVar changes from gnomAD changes. In
+VS-2029 it showed that the flag-on VAT matched the VS-1994 VAT in every ClinVar
+column, with every remaining difference in gnomAD.
+
+# Data Handling
+
+## Redact participant IDs from anything committed to this repo
+
+The GATK repository is public, and AoU is highly sensitive about participant
+data appearing in public places. Any AoU participant ID must be redacted before
+a file containing it is committed, replaced with a placeholder such as
+`<PERSON_A>`. This applies everywhere, not just to data files: SQL scripts with
+real IDs in an `IN` list, Python fixtures, pasted query output in a Markdown
+write-up, an example invocation in a docstring, and a commit message all count.
+
+Attach the unredacted data to the JIRA ticket for the work instead, and refer to
+it from the repo by ticket number.
+
+Redact before committing rather than afterwards. A commit is not undone by a
+later one — the ID stays reachable in the history, so a slip has to be fixed by
+rewriting history, which is disruptive and easy to do incompletely. Prefer
+placeholders in the working file from the outset, so there is no version of it
+that can be committed by accident.
+
+Note that a redacted file and its working counterpart tend to drift apart. Where
+both are needed, keep the redacted one as the file that is edited, and treat any
+real-ID version as a throwaway.
+
+# WDL Conventions
+
+## Forwarding an optional input must preserve its undefinedness
+
+When a wrapper workflow forwards an optional input to a sub-workflow, write the
+fallback so that "nobody set this" survives the hop:
+
+    Int? effective_width = if defined(specific_width) then specific_width
+                           else general_width
+
+Do not reach for `select_first([specific_width, general_width, <sentinel>])`. A
+sentinel tail turns an undefined input into a concrete value, and callees in
+this repo branch on `defined()` to mean something. `GvsImportGenomes` chooses
+its own scatter width when `load_data_scatter_width` is not supplied
+(`GvsImportGenomes.wdl:144-167`), so a `-1` tail would have silently taken
+automatic selection away from every caller that sets neither input — while
+type-checking, validating and reading perfectly well.
+
+Two cheap checks. `womtool inputs <wrapper>.wdl` must still report the
+forwarded input as `Int? (optional)` rather than `Int`. And the result is
+observable at runtime: with the widths left unset, both `GvsImportGenomes`
+passes scatter `GenerateParquetFilesFromInputGVCFs` to the sample count,
+because automatic selection clamps to `num_samples`.
+
+Note that a small cohort hides an explicitly set width — on three samples every
+width of 3 or more yields the same three shards — so to demonstrate that an
+explicit value is honoured rather than ignored, set it *below* the sample
+count.
+## Heredocs in command blocks
+
+Cromwell dedents a `command <<< >>>` block by the leading whitespace common to every
+non-blank line in it. So a single line at column zero -- a wrapped string, a
+pasted comment -- drops that common prefix to nothing, nothing is stripped, and
+the indentation the block was written with reaches bash intact.
+
+Two things have to survive that dedent:
+
+1. the terminator must land at column zero, or bash reads to end of file. This
+   holds for every heredoc, whatever it feeds;
+2. where the heredoc feeds an interpreter that rejects leading whitespace on its
+   input -- in this repo that means inline Python -- the body must land at
+   column zero too, or that interpreter is handed input indented by whatever the
+   dedent failed to strip. A heredoc feeding `cat`, SQL, R or `yq` gets its body
+   as data and does not care what column it arrives at, so only the first rule
+   applies to those.
+
+The first case fails loudly at task execution: `unexpected end of file`
+reported at the generated script's last line, nowhere near the cause, and only
+once the task runs in the cloud. `womtool validate` passes throughout, because a
+command block is just a string to it.
+
+The second case is quieter, and it is what the obvious repair for the first produces
+-- outdent the terminator so bash is satisfied, leave the body alone. `bash -n`
+then passes, since the terminator really is where bash wants it, so the script
+runs and the inline Python fails on its own input instead: `IndentationError:
+unexpected indent` at `"<stdin>", line 1`. The interpreter is reading the
+heredoc on stdin and counts from the first line of it, so that report names
+neither the WDL, nor the task, nor the real line.
+
+Two conventions reach column zero and both are fine: indent the terminator with
+the rest of the block and let the dedent strip it, or write it at column zero and
+accept that the block is then never dedented at all. What fails is mixing them.
+The choice is not free for a whitespace-sensitive body, though, because that body
+has to agree with its own terminator -- which is why the second convention forces
+inline Python against the left margin wherever this repo uses it.
+
+Check before handing over a WDL:
+
+```shell
+scripts/variantstore/scripts/check-wdl-heredocs              # the variantstore tree
+scripts/variantstore/scripts/check-wdl-heredocs FILE...      # just these
+scripts/variantstore/scripts/check-wdl-heredocs --strict     # fail on FRAGILE too
+```
+
+The script does two things, and the second is not implied by its name. It flags
+heredocs that will not survive the dedent, and it compiles the body of any
+heredoc feeding a Python interpreter. Nothing else in the toolchain parses that
+code: CI runs the Python unit tests and no linter, and a linter would not reach
+this body in any case, since it is a string inside a `.wdl`. `womtool validate`
+treats the command block as exactly that. So a missing colon in an embedded
+script is otherwise found by running it on a cluster. WDL interpolations are stubbed out before
+compiling, which makes the check structural -- it will not catch a `~{...}` that
+interpolates to something Python cannot parse. It exits non-zero on a broken
+block. `test/test_check_wdl_heredocs.py` runs it over every WDL under
+`scripts/variantstore` as part of the Python unit tests, so CI enforces this.
+
+"FRAGILE" means only that a block is never dedented, so it works today but breaks
+the moment a heredoc whose terminator is indented with the block is added next to
+it. Two blocks in the tree are in that state deliberately and need no action.
+
+Like `reflow-md` and `check-us-spelling`, this script is deliberately
+extensionless so that the Dockerfile's `COPY *.py /app/` leaves it out of the
+Variants image and out of the rebuild-and-bump obligation. Do not rename it to
+`check_wdl_heredocs.py`.
+
+## Interpolated multi-line text defeats both heredoc conventions
+
+The dedent described above is computed on the command *after* interpolation. A
+`~{...}` whose value spans several lines puts its continuation lines at column
+zero, so nothing is stripped. A terminator indented with the block then stays
+indented, even though the block was written to the first convention. The result
+is the loud failure above, `unexpected end of file`, which here also means the
+task never prints what it was meant to print. `check-wdl-heredocs` cannot see
+this. It stubs interpolations out with a single-line literal, so it passes such a
+block, and it did pass `TerminateWorkflow` while every multi-line abort message
+was being lost this way.
+
+So do not pass interpolated text through a heredoc at all. To get a WDL string
+into a file or onto stderr, let Cromwell write it:
+
+    cat ~{write_lines([message])} >&2
+
+bash never parses that file. A heredoc would also need its delimiter quoted
+(`<<'FIN'`), or bash runs backticks and `$` in the text as substitutions, and GVS
+messages routinely backtick hyphenated table names.
+
+When a task fails with an empty `stderr` in the execution bucket, the shell's own
+errors, including `unexpected end of file`, are in the task's GCP Batch log:
+
+    gcloud logging read 'logName="projects/<terra-project>/logs/batch_task_logs"
+      AND resource.labels.job_id:"job-<first 8 of the sub-workflow id>"' \
+      --project <terra-project> --freshness=2d --format='value(textPayload)'
+
+The Terra project and full job id are in the call's `jobId` in the workflow
+metadata.
+
+## Transient infrastructure failures: use `maxRetries`, not `preemptible`
+
+`preemptible` only covers VM preemption. A task that exits non-zero for any
+other reason, such as a GCS `503 Service Unavailable` surfacing from a GATK tool
+after the client library has used up its own retries, fails on the first attempt
+unless its `runtime` block sets `maxRetries`. The repo's convention is
+`maxRetries: 3` (see `GvsExtractCallset.wdl` and `GvsUtils.wdl`).
+
+`maxRetries` is not specific to 503s: Cromwell reruns the task on any non-zero
+exit, so a genuine failure is also attempted four times before it fails. Retries
+run on fresh VMs, so each one costs the full task.
+
+# Documentation Conventions
+
+## Markdown tables must be rectangular
+
+IntelliJ wants Markdown tables to be rectangular (cell padded to its column's
+widest content). A table left ragged therefore reappears as a spurious
+whitespace-only diff the next time anyone opens the file in IntelliJ, and the IDE
+flags it. A single cell one character wider than its column is enough to cause
+this, which is nearly invisible in review — and editing one cell of an
+already-aligned table is the usual way it happens.
+
+After adding or editing a table, run:
+
+```shell
+python3 scripts/variantstore/utils/format_markdown_tables.py <file.md>
+```
+
+Add `--check` to report without rewriting (exit status 1 if anything would
+change), and pass a directory to search it recursively. The script is idempotent
+and never touches content inside fenced code blocks.
+
+"Editing a table" includes edits that were not aimed at the table. A
+find-and-replace that changes a word's length — a spelling pass turning
+`behaviour` into `behavior`, a rename — breaks the padding of every table cell
+it touches. In VS-2029 a US-spelling pass over `validation.md` left two
+previously aligned tables ragged. After any bulk text edit, run the formatter
+with `--check` on the files you touched.
+
+Some existing docs predate this and are still ragged. Only format files you are
+already modifying; reformatting untouched docs adds diff noise that obscures the
+actual change.
+
+## Cite a run's results by something that will still resolve
+
+Integration-test BigQuery datasets expire 14 days after creation
+(`table_ttl_seconds` in `GvsUtils.wdl`), so a doc that cites one as evidence
+goes stale within weeks. In VS-2029, `validation.md` named two VAT datasets
+that had expired before the doc was reviewed. The run's outputs last longer.
+Every task's files stay in the workspace bucket under
+`gs://<bucket>/submissions/<submission id>/` for as long as the workspace
+exists, whatever the workflow.
+
+So cite the run itself rather than a dataset it wrote to. A workspace and
+submission ID may be enough. A full `gs://` path to the output file saves the
+reader from walking Cromwell metadata, but it can run to several hundred
+characters. Ask the user which they want.
+
+## US English spelling
+
+This codebase is US English. British forms slip in easily and are invisible in
+review, since nothing is functionally wrong. Check before handing over prose:
+
+```shell
+scripts/variantstore/scripts/check-us-spelling <file-or-dir>...   # report; exit 1 if found
+scripts/variantstore/scripts/check-us-spelling --fix <file>...    # rewrite in place
+```
+
+It uses an explicit word list rather than an `-ise` suffix rule, because "analysis",
+"optimistic", "premise" and "exercise" are all correct US English and a checker that flags
+them gets ignored. Only the verb shifts: `analyse` becomes `analyze` while `analysis` stays
+put. Adding a word is a one-line edit to the tables in the script.
+
+Files that legitimately contain British spellings — the word list itself, its test
+fixtures, a document quoting them — opt out with `check-us-spelling: disable` anywhere in
+the file, or `check-us-spelling: ok` on a single line. Both are honored by `--fix`, so an
+exempt file is never rewritten.
+
+Identifiers are deliberately out of scope: word boundaries treat underscore as a word
+character, so `n_behaviour_flags` is not reported. Renaming an identifier here but not at
+its definition elsewhere would turn a spelling nit into broken code.
+
+Like `reflow-md`, this script is deliberately extensionless so that the Dockerfile's
+`COPY *.py /app/` leaves it out of the Variants image and out of the rebuild-and-bump
+obligation. Do not rename it to `check_us_spelling.py`.
+
+# Code Review Conventions
+
+## Do the review inline — do not use the `code-review` skill
+
+When asked to review a branch, PR, or diff, read the diff and write the review
+directly in the conversation, following the conventions in this section. Do not
+invoke the `code-review` skill, and do not otherwise fork the review into a
+subagent.
+
+The skill is packaged to run forked, and what comes back does not follow the
+conventions below: it leads with findings instead of an `## Action items`
+section, and it does not produce the durable write-up under
+`~/claude-artifacts/<project>/`. Restructuring its output afterwards costs more
+than doing the review inline from the start.
+
+A forked reviewer also cannot see the context already gathered in the
+conversation — the established base ref, the diff, the surrounding files — so it
+re-derives them, and its supporting claims still have to be checked against the
+repo before they can be reported. A forked reviewer's findings can be sound
+individually yet rest on a partial survey of the repo — correctly citing one
+call site that does X while missing another that does the opposite and changes
+the conclusion.
+
+Whoever writes the review — inline or otherwise — verify each finding's
+supporting claims against the repo, and reproduce a finding directly where that
+is cheap, before reporting it.
+
+## Lead with action items
+
+A code review write-up opens with an `## Action items` section, before the scope
+summary and before the findings themselves. It lists what should actually be
+done, each entry pointing at the numbered finding that justifies it.
+
+Order that list by what the PR's author can act on directly, not by strict
+execution order. Their own work comes first, with the discretionary line closing
+that group. Anything the branch merely runs into — pre-existing debt, a problem
+in files the PR does not touch, something needing a team decision or
+coordination with another branch — goes in a separate group afterward, under a
+heading that says so, introduced by a sentence establishing provenance: that it
+was not introduced by this branch and has not come up before, so it is something
+for the team to discuss. Frame that as a shared next step, not as a limit on the
+author's authority — "so we should discuss these as a team" rather than "this is
+not the author's to decide".
+
+Write those cross-cutting entries to be comprehensible cold. The author has not
+been part of the conversation that produced them, so lead with the symptom and
+arrive at the proposed remedy; an entry that opens with the remedy reads as an
+unexplained directive. "The validation only runs on the non-Parquet ingest path,
+which is not what production uses" works where "relocate the non-Parquet
+coverage" does not.
+
+When one action genuinely gates another, say so inline in the entries affected
+rather than reordering the list to express it — ordering for the reader and
+recording a dependency are separate jobs, and the dependency note costs a
+clause.
+
+Every finding must be accounted for in that list, including the ones needing no
+work — group those into a short "discretionary" line rather than dropping them,
+so nothing looks accidentally omitted.
+
+The rationale, evidence, and reproduction detail stay in the numbered findings
+below. Do not put a duplicate ordered list at the end of the document.
+
+Both lists are numbered, so keep the two vocabularies distinct: the entries in
+`## Action items` are "action N" and the write-ups below are "finding N". Never
+call either one "item N" — a reference like "(item 4)" inside action item 1 is
+ambiguous between the two sequences, and the reader has no way to tell which is
+meant. Label the write-ups with a `## Findings` heading so the second sequence is
+visibly its own list.
+
+## One line per paragraph — do not hard-wrap
+
+Code review write-ups get pasted into GitHub PR comments and descriptions, and
+GitHub renders a newline inside a paragraph as a hard line break regardless of
+how much horizontal space is available. A source document wrapped at 100 columns
+therefore renders as a ragged column on GitHub rather than as flowing text.
+
+So in a generated code review document, write each paragraph and each list item
+as a single unwrapped line, however long it ends up. Headings, table rows, and
+fenced code blocks are unaffected — those are already one line each by
+construction, and their line breaks are significant.
+
+Author these documents unwrapped from the start where you can. To convert a
+draft that is already wrapped, use the `reflow-md` helper checked into this
+repo:
+
+```
+scripts/variantstore/scripts/reflow-md FILE...            # rewrite in place
+scripts/variantstore/scripts/reflow-md --dry-run FILE...  # report only
+```
+
+It folds paragraphs and list-item continuations onto single lines while leaving
+headings, table rows, blank lines, and fenced-block contents alone. It compares
+the whitespace-delimited token stream before and after and refuses to write if
+anything other than wrapping changed, and it is idempotent — a second run
+reports `already unwrapped`. Prefer it to joining lines by hand, which is easy
+to get wrong around list indentation and fences, where a mistake corrupts
+content rather than merely rewrapping it.
+
+The script is deliberately named without a `.py` extension: the Dockerfile in
+that directory does `COPY *.py /app/`, so an extensionless name keeps this
+dev-only helper out of the Variants image and out of the rebuild-and-bump
+obligation described in the Variants Docker Image section above. It is a
+dependency-free Python 3 script; do not rename it to `reflow_md.py`.
+
+JIRA hard-breaks intra-paragraph newlines the same way, so the same rule applies
+to anything destined for a JIRA description or comment.
+
+## Development scaffolding is not a review finding
+
+Do not report temporary "point this at my feature branch so I can test it"
+changes as code review findings. The most common example is adding a feature
+branch name to the `branches:` filters in `.dockstore.yml` — Dockstore will not
+expose a workflow for a branch that is not registered, so this edit is a
+prerequisite for testing any WDL change on a branch, not an oversight.
+Developers are reliable about removing these before merge, and a leftover
+registration is harmless: it makes a stale branch visible in Dockstore and
+nothing more.
+
+This exclusion covers branch- and tag-registration scaffolding only. It does
+**not** extend to a reference that will actually break or mislead at runtime
+once merged, which remains a legitimate (and usually serious) finding:
+
+- a Docker image tag — `variants_docker`, `gatk_docker`, etc. in `GvsUtils.wdl`'s
+  `GetToolVersions` — left pointing at a personal, unpublished, or stale image
+  (see the Variants Docker Image section above: a new or edited script under
+  `scripts/variantstore/scripts/` does not reach a running workflow until the
+  image is rebuilt and the tag is updated);
+- a hardcoded project, dataset, or GCS path pointing at a developer's scratch
+  resources in a code path that production runs;
+- a `git_branch_or_tag` default left set to the feature branch.
+
+The distinction is whether the leftover changes what a merged workflow does. If
+it only affects what is visible or runnable on the developer's own branch, leave
+it alone.
+
+## Re-reviewing a branch starts with the previous rounds
+
+A second or third review of the same branch is mostly triage, not fresh
+reading. Before looking at the diff, read the earlier write-ups in
+`~/claude-artifacts/<project>/` and classify every action item they raised as
+resolved, partially resolved, or open — checking each against the current tree
+rather than against what the PR body or the commit messages claim.
+
+Most of a later round's value is in that classification. Fixes between rounds
+are often partial: one of two related comments corrected, one recovery path
+closed but not the other, a doc updated in one place but not where operators
+actually read it. "Partially resolved" is frequently the accurate verdict.
+Starting from the diff alone re-derives the open items as if they were new and
+silently drops the half-done ones.
+
+So say which earlier action each finding descends from, and add a
+`## Resolved since round N` section crediting what landed. The author needs to
+see their fixes were noticed, and the next round needs the running tally.
+
+Re-check the findings an earlier round left standing, too: one may have become
+moot rather than fixed — for example, a cost concern about code that turns out
+to be gated off by a default nobody sets. Record a moot finding as moot, or the
+next round raises it again.
+
+# Session Retrospectives
+
+## Offer to capture what a session taught you, every time
+
+When a piece of work reaches a natural end — the review is delivered, the tests
+pass, the image is built and pushed — say plainly that it is done, then tell the
+user you would like to record what the session taught you and ask whether to go
+ahead. Ask every time. Do not skip it because the session felt routine, and do
+not write to the repo or to memory without the user agreeing first.
+
+The standing preference is that this conversation happens, so the question put
+to the user is *what* to write and *where*, not whether retrospection is
+wanted. Keep the ask to a couple of sentences naming the specific lessons you
+have in mind; a vague "shall I record some learnings?" wastes a turn because
+the user cannot answer it without asking you what you mean.
+
+If nothing from the session is worth keeping, say that instead of inventing
+something. A thin retrospective is worse than none, because it dilutes the
+files that later sessions actually read.
+
+## What is worth keeping
+
+Keep a lesson when knowing it at the start would have saved real time, and when
+it will still be true next session. The strongest candidates:
+
+- **Environment facts not derivable from the code.** A required VM shape, a
+  network or IAM constraint, an auth path that works where the documented one
+  does not.
+- **Mistakes with a generalisable root cause.** Not "I mistyped a flag", but
+  "a VM with no external IP looks healthy until the first non-Google download,
+  because Private Google Access keeps gcloud working and masks the problem".
+- **A procedure that took several attempts to get right**, where the working
+  sequence is worth replaying rather than rediscovering.
+- **Corrections the user made to how you work**, together with the reason, so
+  the next session applies the principle rather than just the instance.
+- **Verification techniques that caught something**, such as mutation-testing a
+  new test to prove it fails without the fix.
+
+Skip anything the code, the git history, or this file already records; anything
+that mattered only inside the conversation; and narrative retellings. A lesson
+is a fact plus what to do about it, not a diary entry.
+
+## Where each kind of lesson goes
+
+| Kind of lesson                                                   | Home                          |
+|------------------------------------------------------------------|-------------------------------|
+| Convention any agent working in this repo should follow          | this file                     |
+| Fact about the user, their preferences, or ongoing project state | the agent's memory directory  |
+| Repeatable multi-step procedure worth replaying verbatim         | a skill                       |
+| Detail relevant only to one open ticket                          | the JIRA ticket, not the repo |
+
+Propose the actual edit — a diff, or the exact text and the file it lands in —
+rather than describing it in the abstract. The user is approving specific
+wording in a specific place, and a description is not reviewable.
+
+Remember that anything written to this repo is public: the redaction rules in
+the Data Handling section apply to retrospectives exactly as they do to code.
+
+# Verification Practices
+
+## A new test is not evidence until you have seen it fail
+
+A test that passes against fixed code tells you almost nothing on its own: it
+passes whether it exercises the fix, exercises nothing, or asserts something
+vacuously true. Before reporting that new coverage protects a change, break the
+change and confirm the test fails — and confirm it fails for the stated reason,
+not incidentally.
+
+Temporarily invert or disable the specific line the test is meant to guard,
+re-run, check the failure message names the behaviour in question, then restore
+the source and re-run to confirm you are back to green. Keep the mutation in
+one place at a time; mutating two guards at once cannot tell you whether both
+are covered.
+
+This is worth the extra minutes because it routinely finds hollow tests. A
+typical one has an assertion that cannot distinguish the two code paths it is
+named for — both paths produce the same output for the chosen input, so the
+assertion holds either way. The fix is to choose an input where the paths
+genuinely diverge. Nothing but a mutation run surfaces that, and such a test
+reads perfectly well.
+
+Tests guarding a *negative* ("X should not take path Y") deserve particular
+suspicion, since the cheapest way to write one is also the vacuous way.
+
+Where two call sites must agree on a predicate, a single mutation should break
+tests covering both. If it breaks only one, either the coverage is incomplete
+or the predicate is still duplicated.
+
+## Do not trust a completion signal without checking it is fresh
+
+When polling for a marker that means "the long job finished" — a sentinel file,
+a status field, a log line — confirm the marker belongs to the run you are
+watching before believing it. A leftover marker from a previous attempt is
+indistinguishable from success if you only test for existence.
+
+Check a timestamp, or delete the marker before starting and verify the deletion
+actually took effect. A stale exit-code file from a failed first attempt is
+easily read as a completed second attempt within seconds of launching it; the
+giveaway is a file mtime that predates the run. The same
+applies to `pgrep -f <script>`, which happily matches the SSH command string
+that contains the script name and reports a process that does not exist.
+
+More generally: when a check returns the answer you were hoping for
+suspiciously early, spend one command confirming it means what you think.
+
+## Quote the revision in `git show <rev>:<path>`
+
+In zsh, `$c:scripts/foo.wdl` is parsed as a parameter expansion with a history
+modifier, not as a revision followed by a path. `git show $c:path/to/file` in a
+loop therefore fails with `(eval):4: bad substitution` for every iteration and
+produces no output at all. Write `git show "${c}":path/to/file`.
+
+This is worth its own note because of how the failure reads: the error names
+`eval` and a line number, not git, and a loop that greps the output prints a
+plausible-looking nothing for each commit. Absence of matches is easy to accept
+as a real answer. When a loop over revisions reports that none of them contain
+something you expect to be there, check the command ran before believing the
+result.
+
+## Prove a rebuilt image carries the code, do not infer it
+
+The Variants-image rebuild rule above has a verification step that costs one
+command, and whoever is reviewing or authoring should run it rather than
+reasoning about dates. Pull the tag named in `GetToolVersions`, extract the
+script, and diff it against the branch:
+
+    CID=$(docker create --platform linux/amd64 <variants_docker_tag>)
+    docker cp "${CID}":/app/<script>.py ./img.py && docker rm "${CID}"
+    git show "<rev>":scripts/variantstore/scripts/<script>.py > ./pr.py
+    diff img.py pr.py
+
+This catches what nothing else does: a tag bumped but built from a different
+tree, or built before the last edit to the script. The "Detect missing Docker
+image tag updates" CI check proves only that the tag string changed when a
+baked-in file changed — not that the image behind the new tag holds that file's
+current contents. Comparing the image's build date against the script's last
+commit date is circumstantial in the same way.
+
+It matters most when a WDL starts passing a new argument to a baked-in script.
+A stale image fails with argparse's `error: unrecognized arguments`, which
+surfaces only at runtime inside a Cromwell task, long after review.

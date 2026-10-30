@@ -9,6 +9,9 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsJointVariantCalling {
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go = true
         String call_set_identifier
         String dataset_name
@@ -29,10 +32,37 @@ workflow GvsJointVariantCalling {
         Boolean use_compressed_references = false
         Boolean load_vet_and_ref_ranges = true
         Boolean load_vcf_headers = false
+
+        # Begin GvsValidateVcfHeaders (VS-1966 / VS-1995)
+        # When true (default), validate the VCF headers before vet/ref data ingest. An initial headers-only
+        # ingest pass populates header tables and runs GvsValidateVcfHeaders. If validation passes, the
+        # workflow proceeds to vet/ref data ingest; if validation fails and fail_on_validation_errors is true,
+        # it halts fast before any expensive vet/ref compute is spent. Set to false to bypass pre-ingest
+        # header checks.
+        # Changing default to false for next release.  Will do more extensive scale tests later to see if the cost of
+        # this is small enough to make true by default.
+        Boolean validate_vcf_headers = false
+        # Exact triplet ('3.7.8', AoU) or a range with optional interval notation ('3.4.12-3.7.8',
+        # '[3.7.8-3.8)', '(3.7-3.8)'); see GvsValidateVcfHeaders.
+        String? expected_dragen_version
+        Boolean require_reblocking = true
+        Boolean fail_on_validation_errors = true
+        # End GvsValidateVcfHeaders
+
         # Beta users have accounts with tighter quotas, and we must work around that
         Boolean tighter_gcp_quotas = true
-        Boolean use_parquet_ingest = false
+
+        
+        Boolean use_parquet_ingest = true
+        # Defaults to `extract_output_gcs_dir` + "/parquet" when `use_parquet_ingest` is true.
         String? parquet_output_gcs_dir
+        # Independent post-load structural checks (VS-1989), forwarded through GvsBulkIngestGenomes to
+        # GvsImportGenomes. Defaults keep the vet screens quarantining a flagged sample's Parquet
+        # without aborting the run, and ploidy mode-inferred.
+        Float parquet_vet_duplication_threshold = 1.6
+        Float parquet_vet_truncation_threshold = 1.6
+        Boolean parquet_allow_flagged_vet_loads = false
+        Boolean parquet_fail_on_quarantine = false
         String? sample_set_name ## NOTE: currently we only allow the loading of one sample set at a time
         String? billing_project_id
 
@@ -46,6 +76,7 @@ workflow GvsJointVariantCalling {
         String? cloud_sdk_docker
         String? variants_docker
         String? gatk_docker
+        String? gatk_heavy_docker
 
         String? workspace_bucket
         String? workspace_id
@@ -90,11 +121,26 @@ workflow GvsJointVariantCalling {
         Int? split_intervals_mem_override
     }
 
+    parameter_meta {
+        # VS-1989 independent post-load structural checks, forwarded through GvsBulkIngestGenomes to
+        # GvsImportGenomes; documented so these verification controls are discoverable (womtool inputs,
+        # Terra, integration tests).
+        parquet_vet_duplication_threshold: "VS-1989 post-load verification: ratio-to-callset-median at or above which a vet sample's row count is flagged as a possible duplicate, and (mirrored) at or below median/ratio as a possible truncation. Must be > 1; default 1.6."
+        parquet_vet_truncation_threshold: "VS-1989 post-load verification: ratio whose reciprocal sets the low-side floor -- a vet sample at or below median/ratio is flagged as possibly truncated. Must be > 1, or 0 to disable the truncation screen; default 1.6 (i.e. 0.625x). Separate from parquet_vet_duplication_threshold because only the high side has been calibrated."
+        parquet_allow_flagged_vet_loads: "VS-1989 post-load verification: when false (default), the Parquet of any sample a vet duplication- or truncation-screen flag names is moved to a quarantine prefix instead of deleted (the load itself still succeeds, and the unflagged samples' Parquet is deleted as normal); when true the screens are waived and everything is deleted despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless."
+        parquet_fail_on_quarantine: "VS-1989 post-load verification: when true, a run that quarantined the Parquet of a duplication-flagged sample aborts after the quarantine completes, so the run is not silently green. Defaults to false: duplicated vet / ref_ranges rows do not make results wrong (extract ignores them), so a quarantine is reported only through the parquet_quarantined_* outputs and the quarantine directory's README. Truncation-only flags never abort, because that threshold is not yet calibrated."
+    }
+
     # The `call_set_identifier` string is used to name many different things throughout this workflow (BQ tables, vcfs etc).
     # To make sure nothing is broken by creative users we replace spaces and underscores with hyphens.
-    String effective_extract_output_file_base_name = select_first([extract_output_file_base_name, sub(call_set_identifier, "\\s+|\_+", "-")])
-    String effective_extract_table_prefix = select_first([extract_table_prefix, sub(call_set_identifier, "\\s+|\_+", "-")])
-    String effective_filter_set_name = select_first([filter_set_name, sub(call_set_identifier, "\\s+|\_+", "-")])
+    String effective_extract_output_file_base_name = select_first([extract_output_file_base_name, sub(call_set_identifier, "\\s+|_+", "-")])
+    String effective_extract_table_prefix = select_first([extract_table_prefix, sub(call_set_identifier, "\\s+|_+", "-")])
+    String effective_filter_set_name = select_first([filter_set_name, sub(call_set_identifier, "\\s+|_+", "-")])
+
+    # Stays undefined when Parquet ingest is off: downstream workflows branch on `defined(parquet_output_gcs_dir)`.
+    String? effective_parquet_output_gcs_dir = if use_parquet_ingest
+        then select_first([parquet_output_gcs_dir, sub(extract_output_gcs_dir, "/+$", "") + "/parquet"])
+        else parquet_output_gcs_dir
 
     String query_project = project_id
     String destination_project = project_id
@@ -102,7 +148,7 @@ workflow GvsJointVariantCalling {
     String fq_temp_table_dataset = "~{destination_project}.~{destination_dataset}"
 
     if (!defined(git_hash) ||
-        !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker) ||
+        !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker) || !defined(gatk_heavy_docker) ||
         !defined(workspace_bucket) || !defined(submission_id)) {
         call Utils.GetToolVersions {
             input:
@@ -114,6 +160,7 @@ workflow GvsJointVariantCalling {
     String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
     String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
     String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+    String effective_gatk_heavy_docker = select_first([gatk_heavy_docker, GetToolVersions.gatk_heavy_docker])
     String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
@@ -152,6 +199,10 @@ workflow GvsJointVariantCalling {
             use_compressed_references = use_compressed_references,
             load_vcf_headers = load_vcf_headers,
             load_vet_and_ref_ranges = load_vet_and_ref_ranges,
+            validate_vcf_headers = validate_vcf_headers,
+            expected_dragen_version = expected_dragen_version,
+            require_reblocking = require_reblocking,
+            fail_on_validation_errors = fail_on_validation_errors,
             workspace_bucket = effective_workspace_bucket,
             workspace_id = effective_workspace_id,
             tighter_gcp_quotas = tighter_gcp_quotas,
@@ -160,7 +211,11 @@ workflow GvsJointVariantCalling {
             load_data_maxretries_override = load_data_maxretries_override,
             load_data_scatter_width = load_data_scatter_width,
             use_parquet_ingest = use_parquet_ingest,
-            parquet_output_gcs_dir = parquet_output_gcs_dir,
+            parquet_output_gcs_dir = effective_parquet_output_gcs_dir,
+            parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+            parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
+            parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+            parquet_fail_on_quarantine = parquet_fail_on_quarantine,
     }
 
     call PopulateAltAllele.GvsPopulateAltAllele {
@@ -190,6 +245,7 @@ workflow GvsJointVariantCalling {
             interval_list = interval_list_to_use,
             variants_docker = effective_variants_docker,
             gatk_docker = effective_gatk_docker,
+            gatk_heavy_docker = effective_gatk_heavy_docker,
             gatk_override = gatk_override,
             INDEL_VQSR_max_gaussians_override = INDEL_VQSR_max_gaussians_override,
             INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
@@ -267,5 +323,16 @@ workflow GvsJointVariantCalling {
         String recorded_git_hash = effective_git_hash
         Boolean done = true
         Boolean used_tighter_gcp_quotas = BulkIngestGenomes.used_tighter_gcp_quotas
+        Boolean? vcf_headers_validation_passed = BulkIngestGenomes.vcf_headers_validation_passed
+        File? vcf_headers_validation_report = BulkIngestGenomes.vcf_headers_validation_report
+        String? vcf_headers_validation_report_contents = BulkIngestGenomes.vcf_headers_validation_report_contents
+        # VS-1989 Parquet quarantine counts, surfaced so a caller (notably the quickstart integration
+        # test) can assert that the vet screens flagged nothing. A duplication flag aborts the run by
+        # default, so these are non-zero on a green run only for a truncation-only flag or with that
+        # abort turned off. Optional because the Parquet ingest path is conditional.
+        Int? parquet_quarantined_samples = BulkIngestGenomes.parquet_quarantined_samples
+        Int? parquet_quarantined_duplication_samples = BulkIngestGenomes.parquet_quarantined_duplication_samples
+        Int? parquet_quarantined_files = BulkIngestGenomes.parquet_quarantined_files
+        File? parquet_quarantine_files_list = BulkIngestGenomes.parquet_quarantine_files_list
     }
 }

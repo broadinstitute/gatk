@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 """
 Load Parquet files from GCS to BigQuery with fault tolerance and idempotency.
-Uses deterministic job IDs and job state persistence to handle preemptions.
+Uses deterministic job IDs to handle preemptions; no local state file is needed.
+A job that fails permanently is superseded by a fresh generation of its job ID so
+that a task retry is not stuck re-fetching the same dead job (see
+_submit_resumable_load_job).
 """
 
 import argparse
@@ -19,7 +22,6 @@ def load_table_from_parquet_files(
     table_name,
     files_fofn,
     schema_path,
-    pending_jobs_path,
     location=None,
     batch_size=10000,
 ):
@@ -32,7 +34,6 @@ def load_table_from_parquet_files(
         table_name: Target table name (e.g., 'vet_001'). If None, extracted from files_fofn filename.
         files_fofn: Path to file containing GCS URIs to load
         schema_path: Path to JSON schema file (optional, can be None for schema autodetection)
-        pending_jobs_path: Path to persist in-flight job state
         location: BigQuery location (auto-detected if None)
         batch_size: Number of files per load job
     
@@ -71,9 +72,6 @@ def load_table_from_parquet_files(
         print(f"ERROR: Table {table_id} does not exist. Tables must be pre-created.")
         sys.exit(1)
     
-    # Load pending jobs state
-    pending_jobs = _load_pending_jobs(pending_jobs_path)
-    
     # Read files to load
     with open(files_fofn) as f:
         files = [line.strip() for line in f if line.strip()]
@@ -111,33 +109,13 @@ def load_table_from_parquet_files(
 
         job_id = None  # ensure it is always defined for the except handler
         try:
-            job_id = _make_job_id(project_id, dataset_name, table_name, batch)
-            
-            if job_id in pending_jobs:
-                # Job was previously submitted; check its status
-                print(f"  Checking status of existing job {job_id}")
-                try:
-                    load_job = client.get_job(job_id=job_id, location=location)
-                    print(f"  Resumed job in state: {load_job.state}")
-                except exceptions.NotFound:
-                    # Job never started or was cleaned up - resubmit with retry
-                    print(f"  Job not found, will resubmit")
-                    load_job = _submit_load_job_with_retry(
-                        client, batch, table_id, job_config, job_id, location
-                    )
-            else:
-                # New job - submit it with retry logic
-                print(f"  Submitting new job {job_id}")
-                load_job = _submit_load_job_with_retry(
-                    client, batch, table_id, job_config, job_id, location
-                )
-                pending_jobs[job_id] = {
-                    "files": batch,
-                    "location": location,
-                    "table_name": table_name,
-                }
-                _store_pending_jobs(pending_jobs_path, pending_jobs)
-            
+            # Submit the job, resuming an in-flight or already-succeeded job on a
+            # deterministic job-ID collision and superseding a permanently-failed one.
+            load_job, job_id = _submit_resumable_load_job(
+                client, project_id, dataset_name, table_name, batch,
+                table_id, job_config, location,
+            )
+
             # Wait for completion with retry logic
             load_job = _wait_for_job_with_retry(load_job)
             
@@ -150,8 +128,6 @@ def load_table_from_parquet_files(
                 for error in load_job.errors:
                     print(f"    {error}")
                 _log_batch_result(batch, table_name, load_job.job_id, error=error_msg)
-                pending_jobs.pop(job_id, None)
-                _store_pending_jobs(pending_jobs_path, pending_jobs)
                 failed_batches += 1
                 continue
             
@@ -162,10 +138,6 @@ def load_table_from_parquet_files(
             successful_batches += 1
             successful_files_count += len(batch)
             _log_batch_result(batch, table_name, load_job.job_id)
-
-            # Remove from pending jobs
-            pending_jobs.pop(job_id, None)
-            _store_pending_jobs(pending_jobs_path, pending_jobs)
             
         except Exception as exc:
             print(f"  ERROR: Exception loading batch: {exc}")
@@ -193,31 +165,23 @@ def load_table_from_parquet_files(
 
 
 
-def _make_job_id(project_id, dataset_name, table_name, batch):
-    """Create deterministic job ID from project, dataset, table name and batch contents."""
+def _make_job_id(project_id, dataset_name, table_name, batch, generation=0):
+    """Create deterministic job ID from project, dataset, table name and batch contents.
+
+    The optional generation lets a permanently-failed job be superseded by a fresh
+    job ID on a later task attempt (see _submit_resumable_load_job).  Generation 0
+    (the default) is unsuffixed so IDs minted before this parameter existed still
+    resolve identically; generation N>=1 appends an "_rN" suffix.
+    """
     digest = hashlib.sha1(
         "\n".join([project_id, dataset_name] + sorted(batch)).encode("utf-8")
     ).hexdigest()[:16]
-    return f"load_{table_name}_{digest}"
+    job_id = f"load_{table_name}_{digest}"
+    if generation:
+        job_id = f"{job_id}_r{generation}"
+    return job_id
 
 
-def _load_pending_jobs(pending_jobs_path):
-    """Load pending jobs state from disk."""
-    path = Path(pending_jobs_path)
-    if path.exists():
-        try:
-            return json.loads(path.read_text())
-        except Exception as e:
-            print(f"Warning: Could not load pending jobs: {e}")
-            return {}
-    return {}
-
-
-def _store_pending_jobs(pending_jobs_path, pending_jobs):
-    """Store pending jobs state to disk."""
-    path = Path(pending_jobs_path)
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(pending_jobs, indent=2))
 
 
 def _extract_sample_id_from_file_path(file_path, table_name):
@@ -257,6 +221,72 @@ def _log_batch_result(files, table_name, job_id, error=None):
         print(f"{sample_id_str}\t{file_path}")
 
 
+def _is_permanently_failed_job(load_job):
+    """
+    True if load_job is an existing job that finished in DONE state with an
+    error_result.
+
+    A BigQuery load job is atomic: one that terminates with an error_result loaded
+    zero rows, so it is safe to supersede with a fresh job ID rather than re-fetching
+    it. This predicate only classifies terminal job state; the caller must separately
+    verify that the job was fetched after a Conflict before superseding it.
+    """
+    return load_job.state == "DONE" and load_job.error_result is not None
+
+
+def _submit_resumable_load_job(
+    client, project_id, dataset_name, table_name, batch,
+    table_id, job_config, location, max_generations=100,
+):
+    """
+    Submit a load job for a batch, resuming on a deterministic job-ID collision and
+    superseding a pre-existing permanently-failed job (one we collide with) with a
+    fresh generation of the ID.
+
+    A BigQuery job ID cannot be reused, so once a job reaches DONE with an
+    error_result (a malformed Parquet file, a schema mismatch) its ID is burned:
+    re-submitting the same ID only re-fetches the dead job, whose result() re-raises
+    the original error.  Because the base ID is a pure function of the batch
+    contents, no task retry could otherwise make the batch succeed.  Walking a
+    generation suffix mints a genuinely new ID on the next attempt while still
+    resuming a job that is merely PENDING/RUNNING or already succeeded -- which must
+    never be duplicated, since the load is WRITE_APPEND.
+
+    Returns:
+        (load_job, job_id) for the generation that is in flight, already succeeded,
+        or freshly submitted.
+
+    Raises:
+        Exception: if the job submission fails for a non-Conflict reason, or if every
+        generation up to max_generations is an existing permanently-failed job.
+    """
+    for generation in range(max_generations):
+        job_id = _make_job_id(project_id, dataset_name, table_name, batch, generation)
+        print(f"  Submitting job {job_id}")
+        load_job, resumed_existing = _submit_load_job_with_retry(
+            client, batch, table_id, job_config, job_id, location
+        )
+        # Only supersede a job we *collided with*: a pre-existing job that reached DONE
+        # with an error_result loaded zero rows and its ID is burned.  A job we just
+        # submitted is returned as-is even if it fast-failed (e.g. a schema rejection
+        # already terminal in the insert response), so the caller records the batch
+        # failure and a later task attempt supersedes it.  Superseding a fresh failure
+        # here would burn every generation in a single attempt, since each new
+        # generation fast-fails identically -- leaving all later retries exhausted.
+        if resumed_existing and _is_permanently_failed_job(load_job):
+            print(
+                f"  Job {job_id} already exists and failed permanently "
+                f"({load_job.error_result}); superseding it with a fresh job ID"
+            )
+            continue
+        return load_job, job_id
+
+    raise Exception(
+        f"Exhausted {max_generations} job-ID generations for table {table_name}; "
+        f"every generation is an existing permanently-failed job"
+    )
+
+
 def _submit_load_job_with_retry(client, batch, table_id, job_config, job_id, location, max_retries=3):
     """
     Submit a BigQuery load job with exponential backoff for quota/rate limit errors.
@@ -269,17 +299,22 @@ def _submit_load_job_with_retry(client, batch, table_id, job_config, job_id, loc
         job_id: Deterministic job ID
         location: BigQuery location
         max_retries: Maximum number of retry attempts (default: 3)
-    
+
     Returns:
-        LoadJob object
-    
+        (load_job, resumed_existing).  resumed_existing is True only when the job ID
+        already existed and the job was fetched via get_job() (a Conflict); it is
+        False for a job we freshly submitted.  Callers use this to distinguish a
+        pre-existing job -- which may be safely superseded if it failed permanently --
+        from one we just created, which must be returned as-is even if it is already
+        terminal (see _submit_resumable_load_job).
+
     Raises:
         Exception: If all retries are exhausted or a non-retryable error occurs
     """
     from google.api_core import exceptions
 
     retry_delays = [30, 60, 120]  # Exponential backoff: 30s, 60s, 120s
-    
+
     for attempt in range(max_retries + 1):
         try:
             load_job = client.load_table_from_uri(
@@ -289,8 +324,8 @@ def _submit_load_job_with_retry(client, batch, table_id, job_config, job_id, loc
                 job_id=job_id,
                 location=location,
             )
-            return load_job
-            
+            return load_job, False
+
         except (exceptions.TooManyRequests, 
                 exceptions.ServiceUnavailable,
                 exceptions.InternalServerError) as e:
@@ -305,10 +340,11 @@ def _submit_load_job_with_retry(client, batch, table_id, job_config, job_id, loc
                 raise
         
         except exceptions.Conflict as e:
-            # Job ID already exists and is running - this is actually OK
-            # We can fetch it instead of treating it as an error
+            # Job ID already exists - this is actually OK.  Fetch the existing job
+            # rather than treating it as an error, and flag it as pre-existing so the
+            # caller may supersede it if it turns out to have failed permanently.
             print(f"  Job {job_id} already exists, fetching existing job")
-            return client.get_job(job_id=job_id, location=location)
+            return client.get_job(job_id=job_id, location=location), True
         
         except Exception as e:
             # Non-retryable error, fail immediately
@@ -423,11 +459,6 @@ def main():
     parser.add_argument("--table-name", help="Target table name (if not provided, extracted from FOFN filename)")
     parser.add_argument("--files-fofn", required=True, help="File listing Parquet URIs to load")
     parser.add_argument("--schema-path", help="Path to JSON schema file (optional, autodetect if not provided)")
-    parser.add_argument(
-        "--pending-jobs-path",
-        required=True,
-        help="Path to persist pending job state"
-    )
     parser.add_argument("--location", help="BigQuery location (auto-detected if not specified)")
     parser.add_argument(
         "--batch-size",
@@ -445,7 +476,6 @@ def main():
         table_name=args.table_name,
         files_fofn=args.files_fofn,
         schema_path=args.schema_path,
-        pending_jobs_path=args.pending_jobs_path,
         location=args.location,
         batch_size=args.batch_size,
     )

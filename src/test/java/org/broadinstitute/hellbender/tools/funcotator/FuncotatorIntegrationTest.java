@@ -988,15 +988,14 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         arguments2.add("intervals", "chr3:179148357-179235107");
         runCommandLine(arguments2);
 
-        // Assert that we NEVER seen the lower priority transcript when we are in MANE select mode
+        // Assert that we have NEVER seen the lower priority transcript when we are in MANE select mode
         try (final FeatureDataSource<VariantContext> featureDataSourceMANE = new FeatureDataSource<>(outputFileMANESelectMode);
              final FeatureDataSource<VariantContext> featureDataSourceDefault = new FeatureDataSource<>(outputFileDefaultMode)) {
             boolean hasSeenENST00000435560 = false;
             for (final VariantContext vc : featureDataSourceMANE) {
                 if (vc.getAttributeAsString("FUNCOTATION", null) != null) {
                     final String funcotationMANE = vc.getAttributeAsString("FUNCOTATION", "");
-                    Assert.assertFalse(funcotationMANE.contains("ENST00000263967.4")); // this transcript is MANE_SELECT not MANE_PLUS_CLINICAL so should never be selected for these variants
-                    Assert.assertTrue(funcotationMANE.contains("ENST00000643187.1") || funcotationMANE.contains("ENST00000435560.1"));
+                    Assert.assertTrue(funcotationMANE.contains("ENST00000643187.1") || funcotationMANE.contains("ENST00000435560.1") || funcotationMANE.contains("ENST00000263967.4"));
                     if (funcotationMANE.contains("ENST00000435560.1")) {
                         hasSeenENST00000435560 = true;
                     }

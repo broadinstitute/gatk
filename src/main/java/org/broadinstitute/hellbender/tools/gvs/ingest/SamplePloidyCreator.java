@@ -28,7 +28,7 @@ public class SamplePloidyCreator {
 
     private final Long sampleId;
 
-    public SamplePloidyCreator(String sampleIdentifierForOutputFileName, Long sampleId, String projectId, String datasetName, File outputDirectory, MessageType schema, final CommonCode.OutputType outputType) {
+    public SamplePloidyCreator(String inputVcfFileName, Long sampleId, String projectId, String datasetName, File outputDirectory, MessageType schema, final CommonCode.OutputType outputType) {
         try {
             this.sampleId = sampleId;
 
@@ -44,7 +44,7 @@ public class SamplePloidyCreator {
                         throw new UserException("Must specify outputDirectory and schema when writing ploidy data to Parquet.");
                     }
 
-                    String[] sampleComponents = {sampleId.toString(), sampleIdentifierForOutputFileName};
+                    String[] sampleComponents = {sampleId.toString(), inputVcfFileName};
                     String filename = SAMPLE_CHROMOSOME_PLOIDY_FILETYPE_PREFIX + String.join(PREFIX_SEPARATOR, sampleComponents) +
                             "." + outputType.toString().toLowerCase();
 
@@ -53,8 +53,7 @@ public class SamplePloidyCreator {
                     samplePloidyWriter = new SamplePloidyParquetFileWriter(new Path(sampleChromosomePloidyOutputFile.toURI()), schema, CompressionCodecName.SNAPPY);
                     break;
                 default:
-                    logger.warn("Not creating sample ploidy writer for unsupported output type " + outputType);
-                    break;
+                    throw new IllegalArgumentException("Unsupported output type for SamplePloidyCreator: " + outputType);
             }
         } catch (Exception e) {
             throw new UserException("Could not create Sample Ploidy Table Writer", e);

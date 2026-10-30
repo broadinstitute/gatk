@@ -4,6 +4,9 @@ import "GvsUtils.wdl" as Utils
 
 workflow GvsExtractCallset {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String dataset_name
     String project_id
@@ -73,7 +76,6 @@ workflow GvsExtractCallset {
   String fq_filter_set_site_table = "~{fq_gvs_dataset}.filter_set_sites"
   String fq_filter_set_tranches_table = "~{fq_gvs_dataset}.filter_set_tranches"
   String fq_sample_table = "~{fq_gvs_dataset}.sample_info"
-  String fq_cohort_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__DATA"
   String fq_ranges_cohort_ref_extract_table = "~{fq_cohort_dataset}.~{full_extract_prefix}__REF_DATA"
   String fq_ranges_cohort_vet_extract_table_name = "~{full_extract_prefix}__VET_DATA"
   String fq_ranges_cohort_vet_extract_table = "~{fq_cohort_dataset}.~{fq_ranges_cohort_vet_extract_table_name}"
@@ -170,6 +172,7 @@ workflow GvsExtractCallset {
       gatk_override = gatk_override,
   }
 
+  # TODO: FilterSetInfoTimestamp.last_modified_timestamp is never wired to any downstream task - see VS-1954.
   call Utils.GetBQTableLastModifiedDatetime as FilterSetInfoTimestamp {
     input:
       project_id = project_id,
@@ -246,7 +249,6 @@ workflow GvsExtractCallset {
         fq_samples_to_extract_table           = fq_samples_to_extract_table,
         interval_index                        = i,
         intervals                             = SplitIntervals.interval_files[i],
-        fq_cohort_extract_table               = fq_cohort_extract_table,
         fq_ranges_cohort_ref_extract_table    = fq_ranges_cohort_ref_extract_table,
         fq_ranges_cohort_vet_extract_table    = fq_ranges_cohort_vet_extract_table,
         vet_extract_table_version             = GetExtractVetTableVersion.version,
@@ -363,6 +365,9 @@ workflow GvsExtractCallset {
 
 task ExtractTask {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go
 
     String dataset_name
@@ -378,7 +383,6 @@ task ExtractTask {
     File intervals
     String drop_state
 
-    String fq_cohort_extract_table
     String fq_ranges_cohort_ref_extract_table
     String fq_ranges_cohort_vet_extract_table
     String? fq_ploidy_mapping_table
@@ -414,6 +418,8 @@ task ExtractTask {
     File? target_interval_list
 
     # for call-caching -- check if DB tables haven't been updated since the last run
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String max_last_modified_timestamp
   }
   meta {
@@ -523,8 +529,8 @@ task ExtractTask {
     memory: memory_gib + " GB"
     disks: "local-disk " + select_first([disk_override, 150]) + " HDD"
     bootDiskSizeGb: 15
-    preemptible: select_first([extract_preemptible_override, "2"])
-    maxRetries: select_first([extract_maxretries_override, "3"])
+    preemptible: select_first([extract_preemptible_override, 2])
+    maxRetries: select_first([extract_maxretries_override, 3])
     cpu: 2
     noAddress: true
   }
@@ -660,6 +666,8 @@ task SumBytes {
 task GenerateSampleListFile {
   input {
     String fq_samples_to_extract_table
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String samples_to_extract_table_timestamp
     String query_project
 
@@ -707,8 +715,14 @@ task GenerateSampleListFile {
 task CollectVariantCallingMetrics {
   input {
     File input_vcf
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File input_vcf_index
     File dbsnp_vcf
+    # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+    # tools require the index to be co-located with the data file and will fail if it is absent.
+    #@ except: UnusedInput
     File dbsnp_vcf_index
     File interval_list
     File ref_dict

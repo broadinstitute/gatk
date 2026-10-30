@@ -71,6 +71,7 @@ task FullCosts {
         Float vet_size
         Float ref_size
         File cost_observability_json
+        # TODO: workflow_cost_json is unused; this workflow may be dead code - see VS-1956.
         File workflow_cost_json
         Float storage_api_cost
         Float query_cost

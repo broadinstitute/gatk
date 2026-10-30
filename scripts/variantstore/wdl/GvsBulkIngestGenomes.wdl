@@ -3,6 +3,7 @@ version 1.0
 import "GvsUtils.wdl" as Utils
 import "GvsAssignIds.wdl" as AssignIds
 import "GvsImportGenomes.wdl" as ImportGenomes
+import "GvsValidateVcfHeaders.wdl" as ValidateVcfHeaders
 
 workflow GvsBulkIngestGenomes {
     input {
@@ -47,19 +48,51 @@ workflow GvsBulkIngestGenomes {
         String drop_state = "NONE"
 
         Int? load_data_scatter_width
+        # The header and data passes consume different numbers of CreateWriteStream tokens per sample
+        # and run at different per-sample rates, so AoU sets a different scatter width for each (see
+        # scripts/variantstore/docs/aou/AOU_DELIVERABLES.md). Either may be set on its own; each falls
+        # back to load_data_scatter_width, which preserves the single-value behaviour when neither is.
+        Int? header_load_data_scatter_width
+        Int? data_load_data_scatter_width
         Int? load_data_preemptible_override
         Int? load_data_maxretries_override
         String? billing_project_id
         Boolean load_vet_and_ref_ranges = true
+        # Controls whether VCF headers are loaded during data ingest when validate_vcf_headers is false.
+        # Note: when validate_vcf_headers is true (default), VCF headers are automatically loaded during
+        # the initial validation pass regardless of this setting. Set this to true only when bypassing
+        # validation (validate_vcf_headers=false) while still wanting headers loaded in a single direct pass.
         Boolean load_vcf_headers = false
         Boolean enable_vrs_ids = false
         Boolean tighter_gcp_quotas = false
         Boolean is_wgs = true
         # End GvsImportGenomes
 
-        Boolean use_parquet_ingest = false
-        # Dump these parquet files to a bucket already
+        # Begin GvsValidateVcfHeaders (VS-1966 / VS-1995)
+        # When true (default), validate the VCF headers before vet/ref data ingest. An initial headers-only
+        # ingest pass populates header tables and runs GvsValidateVcfHeaders. If validation passes, the
+        # workflow proceeds to vet/ref data ingest; if validation fails and fail_on_validation_errors is true,
+        # it halts fast before any expensive vet/ref compute is spent. Set to false to bypass pre-ingest
+        # header checks.
+        Boolean validate_vcf_headers = true
+        # Exact triplet ('3.7.8', AoU) or a range with optional interval notation ('3.4.12-3.7.8',
+        # '[3.7.8-3.8)', '(3.7-3.8)'); see GvsValidateVcfHeaders.
+        String? expected_dragen_version
+        Boolean require_reblocking = true
+        Boolean fail_on_validation_errors = true
+        # End GvsValidateVcfHeaders
+
+        Boolean use_parquet_ingest = true
+        # `parquet_output_gcs_dir` must be defined if `use_parquet_ingest` is true.
         String? parquet_output_gcs_dir
+        # Independent post-load structural checks (VS-1989), forwarded to GvsImportGenomes; see that
+        # workflow. Defaults keep the vet screens quarantining a flagged sample's Parquet without aborting
+        # the run, and ploidy mode-inferred, so leaving them
+        # unset changes nothing.
+        Float parquet_vet_duplication_threshold = 1.6
+        Float parquet_vet_truncation_threshold = 1.6
+        Boolean parquet_allow_flagged_vet_loads = false
+        Boolean parquet_fail_on_quarantine = false
 
         Boolean use_compressed_references = false
     }
@@ -71,6 +104,12 @@ workflow GvsBulkIngestGenomes {
         vcf_index_files_column_name: "The column that supplies the path for the GVCF index files to be ingested. If not specified, the workflow will attempt to derive the column name."
         sample_set_name: "The recommended way to load samples; Sample sets must be created by the user. If no sample_set_name is specified, all samples will be loaded into GVS"
         bulk_ingest_fofn: "An explicitly specified FOFN of VCFs to be ingested. If specified, the workflow will not generate a FOFN from the data table. This can be useful for avoiding the scale limitations of Terra data tables. The format is tab delimited with no header: sample_name<tab>gvcf_file_path<tab>gvcf_index_file_path. If this value is specified, none of the data table parameters should be specified."
+        header_load_data_scatter_width: "Scatter width for the headers-only ingest pass that runs when validate_vcf_headers is true. Defaults to load_data_scatter_width, and if that is also unset, to GvsImportGenomes' automatic selection. Separate from data_load_data_scatter_width because the two passes consume different numbers of CreateWriteStream tokens per sample and run at different per-sample rates; AoU sets 400 here and 333 there (see scripts/variantstore/docs/aou/AOU_DELIVERABLES.md)."
+        data_load_data_scatter_width: "Scatter width for the variant and reference data ingest pass. Defaults to load_data_scatter_width, and if that is also unset, to GvsImportGenomes' automatic selection. See header_load_data_scatter_width."
+        parquet_vet_duplication_threshold: "VS-1989 post-load verification, forwarded to GvsImportGenomes: ratio-to-callset-median at or above which a vet sample's row count is flagged as a possible duplicate, and (mirrored) at or below median/ratio as a possible truncation. Must be > 1; default 1.6."
+        parquet_vet_truncation_threshold: "VS-1989 post-load verification, forwarded to GvsImportGenomes: ratio whose reciprocal sets the low-side floor -- a vet sample at or below median/ratio is flagged as possibly truncated. Must be > 1, or 0 to disable the truncation screen; default 1.6 (i.e. 0.625x). Separate from parquet_vet_duplication_threshold because only the high side has been calibrated."
+        parquet_allow_flagged_vet_loads: "VS-1989 post-load verification, forwarded to GvsImportGenomes: when false (default), the Parquet of any sample a vet duplication- or truncation-screen flag names is moved to a quarantine prefix instead of deleted (the load itself still succeeds, and the unflagged samples' Parquet is deleted as normal); when true the screens are waived and everything is deleted despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless."
+        parquet_fail_on_quarantine: "VS-1989 post-load verification, forwarded to GvsImportGenomes: when true, a run that quarantined the Parquet of a duplication-flagged sample aborts after the quarantine completes, so the run is not silently green. Defaults to false: duplicated vet / ref_ranges rows do not make results wrong (extract ignores them), so a quarantine is reported only through the parquet_quarantined_* outputs and the quarantine directory's README. Truncation-only flags never abort, because that threshold is not yet calibrated."
     }
 
     if (!defined(git_hash) ||
@@ -90,6 +129,11 @@ workflow GvsBulkIngestGenomes {
     String effective_workspace_id = select_first([workspace_id, GetToolVersions.workspace_id])
     String effective_workspace_bucket = select_first([workspace_bucket, GetToolVersions.workspace_bucket])
 
+    # WDL 1.0 idiom for an undefined optional string
+    if (false) {
+        String? none_string = ""
+    }
+
     if (defined(bulk_ingest_fofn) && (defined(sample_id_column_name) || defined(vcf_files_column_name) || defined(vcf_index_files_column_name) || defined(sample_set_name))) {
         call Utils.TerminateWorkflow as MustNotSpecifyDataTableParamsWhenBulkIngestFofnSpecified {
             input:
@@ -98,10 +142,20 @@ workflow GvsBulkIngestGenomes {
         }
     }
 
-    if (!load_vcf_headers && !load_vet_and_ref_ranges) {
+    # Controls-only ingest skips pre-ingest header validation because control samples are reference materials
+    # (e.g. NA12878) not subject to DRAGEN versioning or ReblockGVCF requirements.
+    Boolean effective_validate_vcf_headers = validate_vcf_headers && !samples_are_controls
+
+    # Controls still need their headers loaded even though they are not validated. Once the dataset has a
+    # sample_vcf_header table, samples_with_all_data requires header data, so a control loaded without headers
+    # is never marked is_loaded and silently drops out of prepare. Without a separate header pass, the data
+    # pass loads them.
+    Boolean data_pass_loads_vcf_headers = !effective_validate_vcf_headers && (load_vcf_headers || validate_vcf_headers)
+
+    if (!validate_vcf_headers && !load_vcf_headers && !load_vet_and_ref_ranges) {
         call Utils.TerminateWorkflow as MustLoadAtLeastOneThing {
             input:
-                message = "GvsBulkIngestGenomes called with both load_vcf_headers and load_vet_and_ref_ranges set to false",
+                message = "GvsBulkIngestGenomes called with validate_vcf_headers, load_vcf_headers, and load_vet_and_ref_ranges all set to false",
                 basic_docker = effective_basic_docker,
         }
     }
@@ -134,7 +188,7 @@ workflow GvsBulkIngestGenomes {
             dataset_name = dataset_name,
             project_id = project_id,
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
-            load_vcf_headers = load_vcf_headers,
+            load_vcf_headers = (load_vcf_headers || validate_vcf_headers),
             load_vet_and_ref_ranges = load_vet_and_ref_ranges,
             enable_vrs_ids = enable_vrs_ids,
             cloud_sdk_docker = effective_cloud_sdk_docker,
@@ -142,46 +196,136 @@ workflow GvsBulkIngestGenomes {
             samples_are_controls = samples_are_controls,
     }
 
-    call ImportGenomes.GvsImportGenomes as ImportGenomes {
-        input:
-            go = AssignIds.done,
-            git_branch_or_tag = git_branch_or_tag,
-            git_hash = effective_git_hash,
-            dataset_name = dataset_name,
-            project_id = project_id,
-            external_sample_names = SplitBulkImportFofn.sample_name_fofn,
-            num_samples = SplitBulkImportFofn.sample_num,
-            input_vcfs = SplitBulkImportFofn.vcf_file_name_fofn,
-            input_vcf_indexes = SplitBulkImportFofn.vcf_index_file_name_fofn,
-            reference_name = reference_name,
-            reference_fasta = reference_fasta,
-            reference_fasta_index = reference_fasta_index,
-            reference_dict = reference_dict,
-            interval_list = interval_list,
-            load_data_scatter_width = load_data_scatter_width,
-            load_data_maxretries_override = load_data_maxretries_override,
-            load_data_preemptible_override = load_data_preemptible_override,
-            basic_docker = effective_basic_docker,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-            variants_docker = effective_variants_docker,
-            gatk_docker = effective_gatk_docker,
-            load_data_gatk_override = gatk_override,
-            drop_state = drop_state,
-            billing_project_id = billing_project_id,
-            use_compressed_references = use_compressed_references,
-            load_vet_and_ref_ranges = load_vet_and_ref_ranges,
-            load_vcf_headers = load_vcf_headers,
-            enable_vrs_ids = enable_vrs_ids,
-            is_rate_limited_beta_customer = tighter_gcp_quotas,
-            use_parquet_ingest = use_parquet_ingest,
-            parquet_output_gcs_dir = parquet_output_gcs_dir,
-            is_wgs = is_wgs,
+    # Undefined must stay undefined: GvsImportGenomes selects the scatter width automatically when
+    # load_data_scatter_width is not supplied, so these fall through rather than defaulting to a value.
+    Int? effective_header_load_data_scatter_width = if defined(header_load_data_scatter_width) then header_load_data_scatter_width else load_data_scatter_width
+    Int? effective_data_load_data_scatter_width = if defined(data_load_data_scatter_width) then data_load_data_scatter_width else load_data_scatter_width
+
+    # Separate scratch Parquet directories for headers and data passes to avoid prefix collisions.
+    # The data pass unconditionally uses /data so that recursive listing never picks up residual
+    # files from a prior header pass, even if validate_vcf_headers is false.
+    # Strip trailing slashes before appending, or `gs://b/x/` becomes `gs://b/x//data`.
+    String? headers_parquet_output_gcs_dir = if (defined(parquet_output_gcs_dir) && effective_validate_vcf_headers) then sub(select_first([parquet_output_gcs_dir]), "/+$", "") + "/headers" else none_string
+    String? data_parquet_output_gcs_dir = if defined(parquet_output_gcs_dir) then sub(select_first([parquet_output_gcs_dir]), "/+$", "") + "/data" else none_string
+    # VS-1966 / VS-1995: If validate_vcf_headers is true, run an initial headers-only ingest pass,
+    # validate the ingested headers, and generate a report. If validation fails, the workflow halts
+    # fast before any expensive vet/ref data ingest.
+    if (effective_validate_vcf_headers) {
+        call ImportGenomes.GvsImportGenomes as ImportHeaders {
+            input:
+                go = AssignIds.done,
+                git_branch_or_tag = git_branch_or_tag,
+                git_hash = effective_git_hash,
+                dataset_name = dataset_name,
+                project_id = project_id,
+                external_sample_names = SplitBulkImportFofn.sample_name_fofn,
+                num_samples = SplitBulkImportFofn.sample_num,
+                input_vcfs = SplitBulkImportFofn.vcf_file_name_fofn,
+                input_vcf_indexes = SplitBulkImportFofn.vcf_index_file_name_fofn,
+                reference_name = reference_name,
+                interval_list = interval_list,
+                load_data_scatter_width = effective_header_load_data_scatter_width,
+                load_data_maxretries_override = load_data_maxretries_override,
+                load_data_preemptible_override = load_data_preemptible_override,
+                basic_docker = effective_basic_docker,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+                variants_docker = effective_variants_docker,
+                gatk_docker = effective_gatk_docker,
+                load_data_gatk_override = gatk_override,
+                drop_state = drop_state,
+                billing_project_id = billing_project_id,
+                use_compressed_references = use_compressed_references,
+                load_vet_and_ref_ranges = false,
+                load_vcf_headers = true,
+                is_rate_limited_beta_customer = tighter_gcp_quotas,
+                use_parquet_ingest = use_parquet_ingest,
+                parquet_output_gcs_dir = headers_parquet_output_gcs_dir,
+                is_wgs = is_wgs,
+        }
+
+        call ValidateVcfHeaders.GvsValidateVcfHeaders as ValidateHeaders {
+            input:
+                go = ImportHeaders.done,
+                dataset_name = dataset_name,
+                project_id = project_id,
+                sample_names_file = SplitBulkImportFofn.sample_name_fofn,
+                expected_dragen_version = expected_dragen_version,
+                require_reblocking = require_reblocking,
+                fail_on_validation_errors = fail_on_validation_errors,
+                git_branch_or_tag = git_branch_or_tag,
+                variants_docker = effective_variants_docker,
+                basic_docker = effective_basic_docker,
+        }
+    }
+
+    # Data ingest pass:
+    # - If validate_vcf_headers is true, gated on ValidateHeaders.done to load vet/ref ranges. If
+    #   load_vet_and_ref_ranges is false, this is intentionally skipped (headers-only pass).
+    # - If validate_vcf_headers is false, or samples_are_controls suppresses validation, runs directly gated on
+    #   AssignIds.done (direct import) and loads headers itself when data_pass_loads_vcf_headers says so.
+    Boolean should_run_data_import = load_vet_and_ref_ranges || data_pass_loads_vcf_headers
+    if (should_run_data_import) {
+        call ImportGenomes.GvsImportGenomes as ImportGenomesData {
+            input:
+                go = select_first([ValidateHeaders.done, AssignIds.done]),
+                git_branch_or_tag = git_branch_or_tag,
+                git_hash = effective_git_hash,
+                dataset_name = dataset_name,
+                project_id = project_id,
+                external_sample_names = SplitBulkImportFofn.sample_name_fofn,
+                num_samples = SplitBulkImportFofn.sample_num,
+                input_vcfs = SplitBulkImportFofn.vcf_file_name_fofn,
+                input_vcf_indexes = SplitBulkImportFofn.vcf_index_file_name_fofn,
+                reference_name = reference_name,
+                reference_fasta = reference_fasta,
+                reference_fasta_index = reference_fasta_index,
+                reference_dict = reference_dict,
+                interval_list = interval_list,
+                load_data_scatter_width = effective_data_load_data_scatter_width,
+                load_data_maxretries_override = load_data_maxretries_override,
+                load_data_preemptible_override = load_data_preemptible_override,
+                basic_docker = effective_basic_docker,
+                cloud_sdk_docker = effective_cloud_sdk_docker,
+                variants_docker = effective_variants_docker,
+                gatk_docker = effective_gatk_docker,
+                load_data_gatk_override = gatk_override,
+                drop_state = drop_state,
+                billing_project_id = billing_project_id,
+                use_compressed_references = use_compressed_references,
+                load_vet_and_ref_ranges = load_vet_and_ref_ranges,
+                load_vcf_headers = data_pass_loads_vcf_headers,
+                enable_vrs_ids = enable_vrs_ids,
+                is_rate_limited_beta_customer = tighter_gcp_quotas,
+                use_parquet_ingest = use_parquet_ingest,
+                parquet_output_gcs_dir = data_parquet_output_gcs_dir,
+                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
+                parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
+                parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+                parquet_fail_on_quarantine = parquet_fail_on_quarantine,
+                is_wgs = is_wgs,
+        }
     }
 
     output {
         Boolean done = true
         String recorded_git_hash = effective_git_hash
-        Boolean used_tighter_gcp_quotas = ImportGenomes.used_tighter_gcp_quotas
+        Boolean used_tighter_gcp_quotas = tighter_gcp_quotas
+        # Optional because the ValidateHeaders call is conditional (validate_vcf_headers): Cromwell
+        # surfaces an un-run conditional call's outputs as None, so consumers must treat these as
+        # optional (defined()/select_first). This is the same pattern GvsValidateVDS uses.
+        Boolean? vcf_headers_validation_passed = ValidateHeaders.validation_passed
+        File? vcf_headers_validation_report = ValidateHeaders.validation_report
+        String? vcf_headers_validation_report_contents = ValidateHeaders.validation_report_contents
+        # Parquet quarantine observability (VS-1989). A run whose screens flagged a sample sets that
+        # sample's Parquet aside instead of deleting it with the rest. A duplication flag aborts
+        # the ingest only when parquet_fail_on_quarantine is true (off by default; see GvsImportGenomes),
+        # so a reader will normally see these on a green run -- a
+        # non-zero parquet_quarantined_samples on a green run means review it.
+        # Optional for the same reason as the header outputs above: the Parquet path is conditional.
+        Int? parquet_quarantined_samples = ImportGenomesData.parquet_quarantined_samples
+        Int? parquet_quarantined_duplication_samples = ImportGenomesData.parquet_quarantined_duplication_samples
+        Int? parquet_quarantined_files = ImportGenomesData.parquet_quarantined_files
+        File? parquet_quarantine_files_list = ImportGenomesData.parquet_quarantine_files_list
     }
 }
 

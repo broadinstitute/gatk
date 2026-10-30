@@ -168,8 +168,11 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
 
     /**
      * Flush the current hom-ref block, if necessary, to the underlying writer, and reset the currentBlock to null
+     *
+     * Protected so that subclasses which emit a record without routing it through {@link #addHomRefSite} can close
+     * out any open band first and keep the output position-ordered.
      */
-    private void emitCurrentBlock() {
+    protected void emitCurrentBlock() {
         if (currentBlock != null) {
             toOutput.add(currentBlock.toVariantContext(sampleName, floorBlocks));
             this.currentBlock = null;

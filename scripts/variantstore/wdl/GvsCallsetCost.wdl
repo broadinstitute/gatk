@@ -53,9 +53,9 @@ workflow GvsCallsetCost {
 
     output {
         File workflow_compute_costs = WorkflowComputeCosts.costs
-        String vet_gib = CoreStorageModelSizes.vet_gib
-        String ref_ranges_gib = CoreStorageModelSizes.ref_ranges_gib
-        String alt_allele_gib = CoreStorageModelSizes.alt_allele_gib
+        Float vet_gib = CoreStorageModelSizes.vet_gib
+        Float ref_ranges_gib = CoreStorageModelSizes.ref_ranges_gib
+        Float alt_allele_gib = CoreStorageModelSizes.alt_allele_gib
         File cost_observability = ReadCostObservabilityTable.cost_observability
         String recorded_git_hash = effective_git_hash
     }

@@ -2,7 +2,6 @@
 import uuid
 import datetime
 import argparse
-import pybedtools
 import re
 
 from google.cloud import bigquery
@@ -54,6 +53,10 @@ AS (
 """
 
 CHROM_MAP = {'chr1': '1', 'chr2': '2', 'chr3': '3', 'chr4': '4', 'chr5': '5', 'chr6': '6', 'chr7': '7', 'chr8': '8', 'chr9': '9', 'chr10': '10', 'chr11': '11', 'chr12': '12', 'chr13': '13', 'chr14': '14', 'chr15': '15', 'chr16': '16', 'chr17': '17', 'chr18': '18', 'chr19': '19', 'chr20': '20', 'chr21': '21', 'chr22': '22', 'chrX': '23', 'chrY': '24', 'chrM': '25'}
+
+# Maximum number of intervals for which an inline SQL WHERE clause is generated.
+# Larger interval lists (e.g. ACAF at ~58 M intervals) are discarded and all locations are queried.
+MAX_INLINE_INTERVAL_COUNT = 5000
 
 
 def get_partition_range(i):
@@ -134,16 +137,54 @@ def create_extract_samples_table(control_samples, fq_destination_table_samples, 
     return query_return['results']
 
 
+def _parse_interval_list(interval_list):
+    """Parse a Picard interval_list file, yielding (chrom, start, end) tuples.
+    interval_list format is 1-based closed; GVS location encoding is also 1-based,
+    so coordinates are passed through unchanged.
+    Raises ValueError if the file has no '@' header lines (e.g. a BED file was passed)."""
+    saw_header = False
+    with open(interval_list) as f:
+        for line in f:
+            if line.startswith('@'):
+                saw_header = True
+                continue
+            if not saw_header:
+                raise ValueError(
+                    f"{interval_list} does not appear to be a Picard interval_list file "
+                    f"(no '@' header lines found before the first data line). "
+                    f"BED files and other 0-based formats are not currently supported."
+                )
+            parts = line.strip().split('\t')
+            if len(parts) < 3:
+                continue
+            yield parts[0], int(parts[1]), int(parts[2])
+
+
 def get_location_filters_from_interval_list(interval_list):
-    interval_test = pybedtools.BedTool(interval_list)
-    # check to make sure there aren't too many locations to build a SQL query from
-    if len(interval_test) > 5000:
-        print(f"\n\nTrying to query over the limit of 5,000 locations; {interval_list} will be discarded, and all locations will be queried.\n\n")
+    # Stream only as many rows as needed to detect an oversized list, avoiding
+    # loading huge files (e.g. ACAF at ~58 M intervals) into memory.
+    intervals = []
+    for row in _parse_interval_list(interval_list):
+        intervals.append(row)
+        if len(intervals) > MAX_INLINE_INTERVAL_COUNT:
+            break
+
+    if not intervals:
         return ""
 
-    location_clause_list = [f"""(location >= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.start)))}{interval.start} 
-            AND location <= {CHROM_MAP[interval.chrom]}{'0' * (12 - len(str(interval.end)))}{interval.end})"""
-                            for interval in interval_test]
+    # Check the cap before contig validation: oversized lists are discarded
+    # without further inspection, matching prior behavior.
+    if len(intervals) > MAX_INLINE_INTERVAL_COUNT:
+        print(f"\n\nTrying to query over the limit of {MAX_INLINE_INTERVAL_COUNT:,} locations; {interval_list} will be discarded, and all locations will be queried.\n\n")
+        return ""
+
+    unknown_chroms = {chrom for chrom, _, _ in intervals if chrom not in CHROM_MAP}
+    if unknown_chroms:
+        raise ValueError(f"Interval list contains contigs not recognized by GVS: {sorted(unknown_chroms)}")
+
+    location_clause_list = [f"""(location >= {CHROM_MAP[chrom]}{'0' * (12 - len(str(start)))}{start}
+            AND location <= {CHROM_MAP[chrom]}{'0' * (12 - len(str(end)))}{end})"""
+                            for chrom, start, end in intervals]
     return "WHERE (" + " OR ".join(location_clause_list) + ")"
 
 

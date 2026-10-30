@@ -5,6 +5,9 @@ import "GvsUtils.wdl" as Utils
 workflow GvsImportGenomes {
 
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String? git_branch_or_tag
     String? git_hash
@@ -52,7 +55,6 @@ workflow GvsImportGenomes {
     File? load_data_gatk_override
     String? billing_project_id
 
-    # Currently only in limited use.
     Boolean use_parquet_ingest = true
     # Dump these Parquet files to a bucket.
     String? parquet_output_gcs_dir
@@ -61,14 +63,44 @@ workflow GvsImportGenomes {
     Boolean delete_parquet_files_after_loading = true
     Boolean use_alternate_parquet_delete_strategy = false
 
+    # Independent post-load structural checks (VS-1989). The vet duplication screen flags any sample
+    # whose vet row count is >= parquet_vet_duplication_threshold times the callset median; the
+    # truncation screen flags any sample at or below median / parquet_vet_truncation_threshold. A flag
+    # does not fail the load: the flagged samples' Parquet is moved to a quarantine prefix out of the
+    # bulk delete's reach and the rest of the callset is deleted as normal. Set
+    # parquet_allow_flagged_vet_loads to waive both screens and delete everything anyway.
+    Float parquet_vet_duplication_threshold = 1.6
+    # The two thresholds are equal by default but deliberately separate, because the evidence behind
+    # them is not. Foxtrot calibration measured the high side only (1.6x flagged 2 vet samples of
+    # 540,545); nothing has been measured below the median, and a variant-count distribution has no
+    # reason to be symmetric -- its upper tail is bounded by biology while its lower tail absorbs
+    # low-coverage samples and more aggressive GQ dropping. So the low side must be movable, and
+    # switchable off, without disturbing the calibrated high side. Set to 0 to disable the truncation
+    # screen entirely while leaving the duplication screen running.
+    Float parquet_vet_truncation_threshold = 1.6
+    Boolean parquet_allow_flagged_vet_loads = false
+    # Whether a quarantine should also abort the workflow. Without this a flagged run is simply a green
+    # run that quietly set some Parquet aside, and the only trace is a workflow output nobody reads.
+    # Aborting is safe here because it happens after the files are already quarantined, so it destroys
+    # nothing and reverses nothing -- it is purely a notification that the run needs a human.
+    # Off by default: duplicated vet / ref_ranges rows do not make results wrong (extract ignores them), so
+    # knowing a quarantine happened is enough.
+    Boolean parquet_fail_on_quarantine = false
+
     Boolean is_wgs = true
+  }
+
+  parameter_meta {
+    # VS-1989 independent post-load structural checks; documented so these verification controls are
+    # discoverable (womtool inputs, Terra, integration tests) alongside use_parquet_ingest.
+    parquet_vet_duplication_threshold: "VS-1989 post-load verification: ratio-to-callset-median at or above which a vet sample's row count is flagged as a possible duplicate. Must be > 1; default 1.6, calibrated against Foxtrot."
+    parquet_vet_truncation_threshold: "VS-1989 post-load verification: ratio whose reciprocal sets the low-side floor -- a vet sample at or below median/ratio is flagged as possibly truncated. Must be > 1, or 0 to disable the truncation screen; default 1.6 (i.e. 0.625x). Separate from parquet_vet_duplication_threshold because only the high side has been calibrated, so the low side can be retuned or switched off on its own."
+    parquet_allow_flagged_vet_loads: "VS-1989 post-load verification: when false (default), the Parquet of any sample a vet duplication- or truncation-screen flag names is moved to a quarantine prefix instead of deleted (the load itself still succeeds, and the unflagged samples' Parquet is deleted as normal); when true the screens are waived and everything is deleted despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless. Supersedes parquet_fail_on_quarantine in practice: waiving the screens leaves nothing quarantined, so that gate has nothing to fire on. Note that it also deletes the flagged sample's Parquet, so prefer parquet_fail_on_quarantine = false when the intent is to finish a flagged run with its Parquet still recoverable."
+    parquet_fail_on_quarantine: "VS-1989 post-load verification: when true, a run that quarantined the Parquet of a duplication-flagged sample aborts after the quarantine completes, so the run is not silently green. Defaults to false: duplicated vet / ref_ranges rows do not make results wrong (extract ignores them), so a quarantine is reported only through the parquet_quarantined_* outputs and the quarantine directory's README. Truncation-only flags never abort, because that threshold is not yet calibrated. Has no effect when parquet_allow_flagged_vet_loads is true, which waives the screens upstream and so leaves nothing to abort on."
   }
 
   Int max_auto_scatter_width = if is_wgs then 25000 else 100000
   String genome_type = if is_wgs then "WGS" else "exome"
-  Array[String] regular_parquet_table_prefixes = if enable_vrs_ids
-      then ["sample_chromosome_ploidy", "vrs_allele"]
-      else ["sample_chromosome_ploidy"]
 
   # Broad users enjoy higher quotas and can scatter more widely than beta users before BigQuery smacks them
   # We don't expect this to be changed at runtime, so we can keep this as a constant defined in here
@@ -98,16 +130,6 @@ workflow GvsImportGenomes {
         basic_docker = effective_basic_docker,
     }
   }
-  # We're not considering the combo of !use_parquet_ingest && defined(parquet_output_gcs_dir) an error for now, this is
-  # how this workflow is (indirectly) invoked through our integration test.
-
-  if (load_vcf_headers && use_parquet_ingest) {
-    call Utils.TerminateWorkflow as CannotLoadHeadersWithParquetIngest {
-      input:
-      message = "The combination of Parquet ingest and VCF header loading is not currently supported.",
-      basic_docker = effective_basic_docker,
-    }
-  }
 
   call Utils.GetReference {
     input:
@@ -128,7 +150,12 @@ workflow GvsImportGenomes {
     }
   }
 
-  if ((num_samples > max_auto_scatter_width) && !(defined(load_data_scatter_width))) {
+  # Parquet ingest scatters to 1000 unless the caller says otherwise; other ingests keep automatic selection.
+  Int? requested_scatter_width = if (defined(load_data_scatter_width)) then load_data_scatter_width
+                                 else if use_parquet_ingest then 1000
+                                 else load_data_scatter_width
+
+  if ((num_samples > max_auto_scatter_width) && !(defined(requested_scatter_width))) {
     call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataScatterWidth {
       input:
         message = "Importing " + num_samples + " samples but 'load_data_scatter_width' is not explicitly specified; the limit for automatic scatter width selection is " + max_auto_scatter_width + " for " + genome_type + " samples.",
@@ -136,9 +163,16 @@ workflow GvsImportGenomes {
     }
   }
 
-  # At least 1, per limits above not more than 20.
-  # But if it's a beta customer, use the number computed above
-  Int effective_load_data_batch_size = if (defined(load_data_scatter_width)) then num_samples / select_first([load_data_scatter_width])
+  # Compute effective scatter width, clamped to not exceed number of samples
+  Int effective_scatter_width = if (defined(requested_scatter_width)) then
+                                  if select_first([requested_scatter_width]) < num_samples then select_first([requested_scatter_width]) else num_samples
+                                else num_samples
+
+  # Compute batch size using ceiling division to ensure we don't exceed the requested scatter width.
+  # Using (x + y - 1) / y implementation of ceil(x/y)
+  # Example: 10 samples, scatter_width 6 -> batch_size = ceil(10/6) = 2 -> actual tasks = ceil(10/2) ≈ 5 ≤ 6
+  Int effective_load_data_batch_size = if (defined(requested_scatter_width)) then
+                                         (num_samples + effective_scatter_width - 1) / effective_scatter_width
                                        else if num_samples < max_scatter_for_user then 1
                                          else if is_wgs then num_samples / max_scatter_for_user
                                            else if num_samples < 5001 then 20
@@ -256,76 +290,189 @@ workflow GvsImportGenomes {
     }
   }
 
+  # Load whatever Parquet we generated into BigQuery. Headers and vet/ref/ploidy are discovered and
+  # loaded together here; header data lands in the vcf_header_lines_scratch table. A caller wanting the
+  # AoU-style gated phasing (load + sanity-check headers, THEN load the rest) does so by running this
+  # workflow twice -- once with load_vcf_headers=true/load_vet_and_ref_ranges=false, then the reverse.
+  # See the VS-1968 design doc, section 1.5. (No intra-run gate between the two phases is implemented.)
+  if (use_parquet_ingest && (load_vet_and_ref_ranges || load_vcf_headers)) {
+    # Strip trailing slashes so the subpaths appended below do not contain `//`.
+    String defined_parquet_output_dir = sub(select_first([parquet_output_gcs_dir]), "/+$", "")
+
+    # Table prefixes to discover/load/verify. vcf_header_lines_scratch is included only when headers
+    # were generated (its table may not exist otherwise). vet/ref_ranges/ploidy prefixes are harmless
+    # to include for a headers-only run -- no such files will be present to match. Likewise
+    # vrs_allele is included only when VRS IDs were computed, since its table is created only then.
+    Array[String] parquet_regular_prefixes = flatten([
+      ["sample_chromosome_ploidy"],
+      if load_vcf_headers then ["vcf_header_lines_scratch"] else [],
+      if enable_vrs_ids then ["vrs_allele"] else []
+    ])
+    Array[String] parquet_superpartitioned_prefixes = ["vet", "ref_ranges"]
+
+    # Parquet belonging to a sample the heuristic vet screens flag is moved under this subdirectory of
+    # the output dir instead of being deleted, so it survives for inspection and re-ingest while the
+    # rest of the callset's Parquet is deleted normally (VS-1989). Two tasks have to agree on the name
+    # -- QuarantineFlaggedParquetFiles writes it and DiscoverParquetFiles must not re-discover it -- so
+    # it is declared once here and threaded to both.
+    #
+    # The name is deliberately outside the prefixes ConfigureParquetLifecycle matches (vet/,
+    # ref_ranges/, sample_chromosome_ploidy/, vcf_header_lines_scratch/) and outside the directory list
+    # DeleteParquetFiles' alternate strategy walks. That is what exempts quarantined files from the
+    # bucket's own 14-day Delete rule and from that strategy. Any lifecycle rule the operator has
+    # configured on the bucket independently of this workflow is of course still theirs to reckon with.
+    String parquet_quarantine_subdir = "quarantine"
+
+    # Appended to each quarantined object's name so it no longer ends in ".parquet". The two deletion
+    # strategies in DeleteParquetFiles are defeated by different halves of this: the default strategy's
+    # whole-output-dir "*.parquet" glob by the rename, the alternate strategy's per-table-directory
+    # deletes by the location. DeleteParquetFiles asserts this value does not itself end in ".parquet".
+    String parquet_quarantine_suffix = ".quarantined"
+
+    # Set up lifecycle rules for parquet directories before loading
+    if (configure_parquet_lifecycle) {
+      call ConfigureParquetLifecycle {
+        input:
+          output_gcs_dir = defined_parquet_output_dir,
+          billing_project_id = billing_project_id,
+          variants_docker = effective_variants_docker,
+      }
+    }
+
+    # Discover and load Parquet files into BigQuery after all data has been created.
+    call DiscoverParquetFiles {
+      input:
+        output_gcs_dir = defined_parquet_output_dir,
+        project_id = project_id,
+        dataset_name = dataset_name,
+        regular_table_prefixes = parquet_regular_prefixes,
+        superpartitioned_table_prefixes = parquet_superpartitioned_prefixes,
+        quarantine_subdir = parquet_quarantine_subdir,
+        go = flatten([
+          select_all([ConfigureParquetLifecycle.done]),
+          select_all(GenerateParquetFilesFromInputGVCFs.done)
+        ]),
+        variants_docker = effective_variants_docker,
+    }
+
+    scatter (fofn in DiscoverParquetFiles.file_fofns) {
+      call LoadParquetFilesToBQ {
+        input:
+          project_id = project_id,
+          dataset_name = dataset_name,
+          fofn_file = fofn,
+          batch_size = 10000,
+          variants_docker = effective_variants_docker,
+      }
+    }
+
+    call VerifyParquetLoading {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        gcs_files_list = DiscoverParquetFiles.all_files_list,
+        regular_table_prefixes = parquet_regular_prefixes,
+        superpartitioned_table_prefixes = parquet_superpartitioned_prefixes,
+        vet_duplication_threshold = parquet_vet_duplication_threshold,
+        vet_truncation_threshold = parquet_vet_truncation_threshold,
+        allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
+        verification_diagnostics_gcs_dir = defined_parquet_output_dir + "/verification_diagnostics",
+        billing_project_id = billing_project_id,
+        go = LoadParquetFilesToBQ.done,
+        variants_docker = effective_variants_docker,
+    }
+
+    # Move the flagged samples' Parquet out of the bulk delete's reach before that delete runs. Called
+    # unconditionally, and a no-op on the usual clean run where the work list is empty, so that the
+    # ordering guarantee is structural (DeleteParquetFiles consumes this task's `done`) rather than a
+    # boolean anyone could get wrong. A failed quarantine followed by a bulk delete is the one unsafe
+    # ordering, so this task fails loudly and takes the delete down with it.
+    #
+    # Not gated on delete_parquet_files_after_loading, because this workflow's own delete is not the
+    # only thing that removes the Parquet: the lifecycle rule ConfigureParquetLifecycle installs deletes
+    # it after 14 days regardless. Quarantining is what a flagged sample needs in either case.
+    call QuarantineFlaggedParquetFiles {
+      input:
+        output_gcs_dir = defined_parquet_output_dir,
+        project_id = project_id,
+        dataset_name = dataset_name,
+        quarantine_subdir = parquet_quarantine_subdir,
+        quarantine_suffix = parquet_quarantine_suffix,
+        quarantine_files_list = VerifyParquetLoading.quarantine_files_list,
+        billing_project_id = billing_project_id,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
+    if (delete_parquet_files_after_loading &&
+        VerifyParquetLoading.safe_to_delete_parquet &&
+        VerifyParquetLoading.quarantined_files < VerifyParquetLoading.total_files) {
+      call DeleteParquetFiles {
+        input:
+          output_gcs_dir = defined_parquet_output_dir,
+          quarantine_suffix = parquet_quarantine_suffix,
+          use_alternate_delete_strategy = use_alternate_parquet_delete_strategy,
+          billing_project_id = billing_project_id,
+          go = QuarantineFlaggedParquetFiles.done,
+          cloud_sdk_docker = effective_cloud_sdk_docker,
+      }
+    }
+
+    # Make a quarantine visible. Everything upstream of here succeeded -- the samples are loaded and
+    # their Parquet is safe -- so without this the run is green and the only trace is a workflow output
+    # nobody reads. Aborting here is therefore a notification and nothing more: it destroys nothing,
+    # rolls nothing back, and re-running with parquet_fail_on_quarantine = false (or
+    # parquet_allow_flagged_vet_loads = true, if the flag has been reviewed and dismissed) picks up from
+    # a fully loaded dataset.
+    #
+    # Conditioned on QuarantineFlaggedParquetFiles.quarantined_files rather than on the equivalent
+    # VerifyParquetLoading count so the data dependency places the abort after the move; see that
+    # output's comment. DeleteParquetFiles depends on the same task, so it and this abort are siblings
+    # and Cromwell may start the delete first. That race is benign -- the delete skips the quarantined
+    # files by both their suffix and their location, and deleting the unflagged samples' Parquet is
+    # wanted either way.
+    #
+    # Only duplication flags abort. A truncation-only flag still quarantines and still reports, but the
+    # truncation threshold has been measured on its high side only, and an uncalibrated heuristic should
+    # not be able to fail a completed 500k-sample ingest.
+    #
+    # This condition is also what makes parquet_allow_flagged_vet_loads supersede
+    # parquet_fail_on_quarantine. There is no precedence rule anywhere; waiving the screens simply
+    # empties the quarantine work list, and an abort keyed on quarantined_files then has nothing to fire
+    # on. Anything that re-keys this on the screen flags themselves would break that, silently turning a
+    # waived run back into a failing one.
+    if (parquet_fail_on_quarantine && QuarantineFlaggedParquetFiles.quarantined_files > 0 && VerifyParquetLoading.quarantined_duplication_samples > 0) {
+      call Utils.TerminateWorkflow as ParquetWasQuarantined {
+        input:
+          message = "Parquet ingest completed and all data loaded, but the VS-1989 vet duplication screen flagged " +
+                    VerifyParquetLoading.quarantined_duplication_samples + " sample(s). Their Parquet (" +
+                    QuarantineFlaggedParquetFiles.quarantined_files + " file(s), including any truncation-flagged samples) " +
+                    "has been moved to " + defined_parquet_output_dir + "/" + parquet_quarantine_subdir +
+                    "/ and is exempt from both the bulk delete and the bucket's 14-day lifecycle rule; see the README.txt " +
+                    "there. Review those samples, then re-run with parquet_fail_on_quarantine = false to finish, or with " +
+                    "parquet_allow_flagged_vet_loads = true to waive the screens. THE DATA IS LOADED -- this failure is a " +
+                    "notification, not an incomplete ingest.",
+          basic_docker = effective_basic_docker,
+      }
+    }
+  }
+
+  # Merge the loaded header scratch data into vcf_header_lines / sample_vcf_header. Gate on whichever
+  # load path ran: the Parquet header load (VerifyParquetLoading) or the BQ Write API.
+  # Declared before SetIsLoadedColumn because that task may depend on this one's `done` (see below).
   if (load_vcf_headers) {
     call ProcessVCFHeaders {
       input:
         variants_docker = effective_variants_docker,
-        go = select_all(LoadDataViaBigQueryWriteAPI.done), # add a gate for Parquet header loading here once that's implemented
+        go = flatten([
+          select_all([VerifyParquetLoading.done]),
+          select_all(LoadDataViaBigQueryWriteAPI.done)
+        ]),
         dataset_name = dataset_name,
         project_id = project_id,
     }
   }
 
   if (load_vet_and_ref_ranges) {
-    if (use_parquet_ingest) {
-      String defined_parquet_output_dir = select_first([parquet_output_gcs_dir])
-
-      # Set up lifecycle rules for parquet directories before loading
-      if (configure_parquet_lifecycle) {
-        call ConfigureParquetLifecycle {
-          input:
-            output_gcs_dir = defined_parquet_output_dir,
-            billing_project_id = billing_project_id,
-            variants_docker = effective_variants_docker,
-        }
-      }
-
-      # Discover and load Parquet files into BigQuery after all data has been created.
-      call DiscoverParquetFiles {
-        input:
-          output_gcs_dir = defined_parquet_output_dir,
-          project_id = project_id,
-          dataset_name = dataset_name,
-          regular_table_prefixes = regular_parquet_table_prefixes,
-          superpartitioned_table_prefixes = ["vet", "ref_ranges"],
-          go = flatten([
-            select_all([ConfigureParquetLifecycle.done]),
-            select_all(GenerateParquetFilesFromInputGVCFs.done)
-          ]),
-          variants_docker = effective_variants_docker,
-      }
-
-      scatter (fofn in DiscoverParquetFiles.file_fofns) {
-        call LoadParquetFilesToBQ {
-          input:
-            project_id = project_id,
-            dataset_name = dataset_name,
-            fofn_file = fofn,
-            batch_size = 10000,
-            variants_docker = effective_variants_docker,
-        }
-      }
-
-      call VerifyParquetLoading {
-        input:
-          project_id = project_id,
-          dataset_name = dataset_name,
-          gcs_files_list = DiscoverParquetFiles.all_files_list,
-          go = LoadParquetFilesToBQ.done,
-          variants_docker = effective_variants_docker,
-      }
-
-      if (delete_parquet_files_after_loading && VerifyParquetLoading.all_loaded) {
-        call DeleteParquetFiles {
-          input:
-            output_gcs_dir = defined_parquet_output_dir,
-            use_alternate_delete_strategy = use_alternate_parquet_delete_strategy,
-            billing_project_id = billing_project_id,
-            cloud_sdk_docker = effective_cloud_sdk_docker,
-        }
-      }
-    }
-
     call SetIsLoadedColumn {
       input:
         # A BQ Write API-flavored invocation of `LoadData` actually loads all data into vet and ref ranges tables, but a
@@ -334,9 +481,22 @@ workflow GvsImportGenomes {
         # `GenerateParquetFilesFromInputGVCFs`, the `go` trigger for setting the `is_loaded` column is the `done` output
         # of the last task in that chain, `VerifyParquetLoading`. The other component of the `go` trigger is the
         # `LoadDataViaBigQueryWriteAPI.done` corresponding to the Write API flow.
-        go = select_all(select_first([[VerifyParquetLoading.done], LoadDataViaBigQueryWriteAPI.done])),
+        # Intentionally using select_first to pick whichever of the two mutually exclusive code paths (Parquet vs WriteAPI) ran.
+        #
+        # Also gate on ProcessVCFHeaders.done: this task computes is_loaded from `samples_with_all_data`, which
+        # JOINs `samples_with_header_data` (backed by `sample_vcf_header` on the Parquet path). That table is
+        # populated by ProcessVCFHeaders, and the Parquet path writes no HEADERS_LOADED status to rescue the
+        # view. When a single run sets both load_vcf_headers and load_vet_and_ref_ranges, without this edge the
+        # two tasks race and is_loaded is silently left FALSE. select_all makes it a no-op for data-only runs
+        # (headers loaded in a prior run, so sample_vcf_header is already populated).
+        #@ except: UnnecessaryFunctionCall
+        go = flatten([
+          select_all(select_first([[VerifyParquetLoading.done], LoadDataViaBigQueryWriteAPI.done])),
+          select_all([ProcessVCFHeaders.done])
+        ]),
         project_id = project_id,
         dataset_name = dataset_name,
+        ingested_sample_ids = GetUningestedSampleIds.gvs_ids,
         cloud_sdk_docker = effective_cloud_sdk_docker,
     }
   }
@@ -345,10 +505,37 @@ workflow GvsImportGenomes {
     Boolean done = true
     Boolean used_tighter_gcp_quotas = is_rate_limited_beta_customer
     String recorded_git_hash = effective_git_hash
+    # Intentionally using select_first to pick the stderr files from whichever of the two mutually exclusive code paths (Parquet vs WriteAPI) ran.
+    #@ except: UnnecessaryFunctionCall
     Array[File] load_data_stderrs = select_first([select_all(GenerateParquetFilesFromInputGVCFs.stderr), select_all(LoadDataViaBigQueryWriteAPI.stderr)])
     Boolean? parquet_loading_verified = VerifyParquetLoading.all_loaded
+    Boolean? parquet_safe_to_delete = VerifyParquetLoading.safe_to_delete_parquet
     Int? parquet_files_loaded = VerifyParquetLoading.loaded_files
     Int? parquet_total_files = VerifyParquetLoading.total_files
+    # Independent structural-check observability (VS-1989). parquet_loading_verified (all_loaded) is the
+    # factual "load complete?" verdict; parquet_safe_to_delete (safe_to_delete_parquet) is the bulk
+    # deletion gate. A vet screen flag no longer separates them: the flagged samples' Parquet is moved
+    # under the quarantine subdirectory and the rest of the callset is deleted as usual, so a flagged
+    # run is both all_loaded and safe_to_delete. They differ only in the one case where a flagged
+    # sample had no Parquet path to move, which leaves the delete blocked because running it would
+    # destroy exactly the files the screens asked to keep.
+    #
+    # The screen flags and the quarantine counts are surfaced because a flagged run is now a SUCCESSFUL
+    # run that quietly set some Parquet aside -- without these outputs nothing above this workflow would
+    # say so. parquet_quarantined_samples being non-zero on a green run is the signal to go and look --
+    # green rather than aborted when parquet_fail_on_quarantine is false (the default), or when every
+    # flagged sample was flagged by the truncation screen alone.
+    #
+    # The family-completeness / ploidy-cardinality components are exact checks that fail the fail-loud
+    # VerifyParquetLoading task, whose outputs Cromwell then never delocalizes -- so they could only
+    # ever be read as true and are not published; the full verdict is written to
+    # verification_results.json, copied to a durable diagnostics path on failure.
+    Boolean? parquet_vet_duplication_flagged = VerifyParquetLoading.vet_duplication_flagged
+    Boolean? parquet_vet_truncation_flagged = VerifyParquetLoading.vet_truncation_flagged
+    Int? parquet_quarantined_samples = VerifyParquetLoading.quarantined_samples
+    Int? parquet_quarantined_duplication_samples = VerifyParquetLoading.quarantined_duplication_samples
+    Int? parquet_quarantined_files = VerifyParquetLoading.quarantined_files
+    File? parquet_quarantine_files_list = VerifyParquetLoading.quarantine_files_list
   }
 }
 
@@ -442,7 +629,6 @@ task ProcessInputGVCFs {
     }
   }
 
-  Int samples_per_table = 4000
   Int num_samples = length(sample_names)
   String temp_table = "~{dataset_name}.sample_names_to_load_~{index}"
   # add labels for DSP Cloud Cost Control Labeling and Reporting
@@ -557,16 +743,36 @@ task ProcessInputGVCFs {
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
       # We always do our own localization.
-      # It seems possible that the Parquet / non-Parquet branches below might be coalesced.
       if [[ "~{use_parquet_ingest}" = 'true' ]]
       then
         updated_input_vcf=input_vcf_${i}_${sample_name}.vcf.gz
+      else
+        updated_input_vcf=input_vcf_$i.vcf.gz
+      fi
+
+      if [[ "~{load_vet_and_ref_ranges}" = 'true' ]]
+      then
         gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf $updated_input_vcf
         gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf_index ${updated_input_vcf}.tbi
       else
-        gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf input_vcf_$i.vcf.gz
-        gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf_index input_vcf_$i.vcf.gz.tbi
-        updated_input_vcf=input_vcf_$i.vcf.gz
+        # Headers-only pass: read just the start of the gVCF instead of localizing all of it. CreateVariantIngestFiles
+        # builds the header rows from the parsed header alone, so a header-only VCF gives the same rows and the
+        # walker traverses zero records. It is indexed so the usual -L invocation still works.
+        #
+        # The `|| true` is required: once sed quits at #CHROM, gunzip dies of SIGPIPE (exit 141), which pipefail
+        # would turn into a failure on every sample. It also fails on the BGZF block cut off at the end of the range.
+        # Swallowing its status hides a corrupt input too, which the #CHROM check below catches instead; the data
+        # pass reads the whole file and would fail on it regardless.
+        header_vcf=${updated_input_vcf%.gz}
+        gcloud storage ~{"--billing-project " + billing_project_id} cat --range=0-16777215 "${gs_input_vcf}" |
+          { gunzip -c 2>/dev/null || true; } | sed '/^#CHROM/q' > "${header_vcf}"
+        if ! grep -q '^#CHROM' "${header_vcf}"
+        then
+          echo "No #CHROM line in the first 16 MiB of ${gs_input_vcf}: the header is longer than that, or the file is corrupt." >&2
+          exit 1
+        fi
+        bgzip -f "${header_vcf}"
+        tabix -f -p vcf "${updated_input_vcf}"
       fi
 
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
@@ -596,18 +802,30 @@ task ProcessInputGVCFs {
         rm ${updated_input_vcf}.tbi
 
         OUTPUT_GCS_DIR=$(echo ~{parquet_output_gcs_dir} | sed 's/\/$//')
-        # the file name is a little wonky, so let's just grab the file using such a star statement
-        vet_parquet_file=`ls vet_*.parquet`
-        ref_parquet_file=`ls ref_*.parquet`
-        ploidy_parquet_file=`ls sample_chromosome_ploidy_*.parquet`
 
-        # parse the table superpartition out of the file name
-        table_number=$(echo "$vet_parquet_file" | cut -d'_' -f2)
+        if [[ "~{load_vet_and_ref_ranges}" = 'true' ]]
+        then
+          # the file name is a little wonky, so let's just grab the file using such a star statement
+          vet_parquet_file=`ls vet_*.parquet`
+          ref_parquet_file=`ls ref_*.parquet`
+          ploidy_parquet_file=`ls sample_chromosome_ploidy_*.parquet`
 
-        # copy the vet and ref parquet files to the gcs bucket in the right place
-        gcloud storage ~{"--billing-project " + billing_project_id} cp $vet_parquet_file ${OUTPUT_GCS_DIR}/vet/$table_number/$vet_parquet_file
-        gcloud storage ~{"--billing-project " + billing_project_id} cp $ref_parquet_file ${OUTPUT_GCS_DIR}/ref_ranges/$table_number/$ref_parquet_file
-        gcloud storage ~{"--billing-project " + billing_project_id} cp $ploidy_parquet_file ${OUTPUT_GCS_DIR}/sample_chromosome_ploidy/$ploidy_parquet_file
+          # parse the table superpartition out of the file name
+          table_number=$(echo "$vet_parquet_file" | cut -d'_' -f2)
+
+          # copy the vet and ref parquet files to the gcs bucket in the right place
+          gcloud storage ~{"--billing-project " + billing_project_id} cp $vet_parquet_file ${OUTPUT_GCS_DIR}/vet/$table_number/$vet_parquet_file
+          gcloud storage ~{"--billing-project " + billing_project_id} cp $ref_parquet_file ${OUTPUT_GCS_DIR}/ref_ranges/$table_number/$ref_parquet_file
+          gcloud storage ~{"--billing-project " + billing_project_id} cp $ploidy_parquet_file ${OUTPUT_GCS_DIR}/sample_chromosome_ploidy/$ploidy_parquet_file
+        fi
+
+        if [[ "~{load_vcf_headers}" = 'true' ]]
+        then
+          # Header parquet is named vcf_header_lines_scratch_<sampleId>.parquet so DiscoverParquetFiles
+          # groups it under the vcf_header_lines_scratch table.
+          header_parquet_file=`ls vcf_header_lines_scratch_*.parquet`
+          gcloud storage ~{"--billing-project " + billing_project_id} cp $header_parquet_file ${OUTPUT_GCS_DIR}/vcf_header_lines_scratch/$header_parquet_file
+        fi
 
         if [[ "~{enable_vrs_ids}" = 'true' ]]
         then
@@ -616,7 +834,7 @@ task ProcessInputGVCFs {
         fi
 
         # cleanup after ourselves
-        rm *.parquet
+        rm -f *.parquet
       else
         rm input_vcf_$i.vcf.gz
         rm input_vcf_$i.vcf.gz.tbi
@@ -644,6 +862,9 @@ task ProcessVCFHeaders {
   input {
     String dataset_name
     String project_id
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Array[Boolean] go
     String variants_docker
   }
@@ -661,6 +882,11 @@ task ProcessVCFHeaders {
       --dataset_name ~{dataset_name}
   >>>
 
+  output {
+    # Exists so downstream tasks (e.g. SetIsLoadedColumn) can order themselves after the header merge.
+    Boolean done = true
+  }
+
   runtime {
     docker: variants_docker
     disks: "local-disk 500 HDD"
@@ -672,7 +898,12 @@ task SetIsLoadedColumn {
     String dataset_name
     String project_id
 
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Array[Boolean] go
+    # The samples this run set out to load, from GetUningestedSampleIds: one sample_id per line, under a header.
+    File ingested_sample_ids
     String cloud_sdk_docker
   }
   meta {
@@ -706,6 +937,63 @@ task SetIsLoadedColumn {
     );
 
     '
+
+    # The UPDATE above succeeds even when it touches no rows, and a sample left without is_loaded is invisible to
+    # everything downstream: e.g. GvsCreateFilterSet reads no samples and will fail much later with an opaque error from
+    # ExtractVariantAnnotations (VS-2049). The usual cause is an empty view feeding samples_with_all_data, e.g. a
+    # dataset reused from an earlier load_vcf_headers=true run that created sample_vcf_header but never filled it.
+    # So fail here if any sample this run loaded is still not marked loaded.
+
+    # Size the fetch below from this count so that --max_rows cannot silently truncate it.
+    # bq query --max_rows check: ok one row
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+
+    SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.sample_info`
+    WHERE is_loaded IS NOT TRUE AND withdrawn IS NULL
+
+    ' > not_loaded_count.csv
+    not_loaded_count=$(tail -1 not_loaded_count.csv)
+
+    tail -n +2 ~{ingested_sample_ids} | sort -u > ingested_sample_ids.txt
+    : > not_loaded_ingested_sample_ids.txt
+    if [[ ${not_loaded_count} -gt 0 ]]
+    then
+      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        --max_rows ${not_loaded_count} '
+
+      SELECT sample_id FROM `~{project_id}.~{dataset_name}.sample_info`
+      WHERE is_loaded IS NOT TRUE AND withdrawn IS NULL
+
+      ' > not_loaded.csv
+      tail -n +2 not_loaded.csv | sort -u > not_loaded_sample_ids.txt
+      comm -12 ingested_sample_ids.txt not_loaded_sample_ids.txt > not_loaded_ingested_sample_ids.txt
+    fi
+
+    num_failed=$(wc -l < not_loaded_ingested_sample_ids.txt | tr -d ' ')
+    if [[ ${num_failed} -gt 0 ]]
+    then
+      set +o xtrace
+      {
+        echo "ERROR: ${num_failed} of the $(wc -l < ingested_sample_ids.txt | tr -d ' ') sample(s) loaded by this run do not have"
+        echo "sample_info.is_loaded = TRUE, so every later stage would silently skip them. The first few sample_ids:"
+        head -10 not_loaded_ingested_sample_ids.txt | paste -sd ' ' -
+        echo "is_loaded is set from samples_with_all_data, which joins the views below; whichever is empty is the cause."
+        echo "An empty samples_with_header_data usually means the dataset was reused from an earlier run with"
+        echo "load_vcf_headers = true whose headers were never loaded. Rerun into a fresh dataset."
+        for view in samples_with_reference_data samples_with_variant_data samples_with_header_data samples_with_all_data
+        do
+          # bq query --max_rows check: ok one row
+          if count=$(bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+                       "SELECT COUNT(DISTINCT sample_id) FROM \`~{project_id}.~{dataset_name}.${view}\`" | tail -1)
+          then
+            echo "  ${view}: ${count} sample(s)"
+          else
+            echo "  ${view}: does not exist"
+          fi
+        done
+      } >&2
+      exit 1
+    fi
   >>>
   runtime {
     docker: cloud_sdk_docker
@@ -721,6 +1009,9 @@ task SetIsLoadedColumn {
 
 task GetUningestedSampleIds {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go
     String dataset_name
     String project_id
@@ -926,7 +1217,7 @@ task CreateSampleDataViews {
       -- determine load status. Conversely, data written with the BigQuery Write API seems to result in very delayed
       -- population of INFORMATION_SCHEMA, often lagging writes by several hours, which makes reading INFORMATION_SCHEMA
       -- unreliable with the Write API. The following vet and ref ranges queries UNION DISTINCT the sample_load_status
-      -- table with INFORMATION_SCHEMA to reliably detect sample data regarless of how it was loaded into GVS.
+      -- table with INFORMATION_SCHEMA to reliably detect sample data regardless of how it was loaded into GVS.
       --
       -- This code also provides for a header row existence view if headers are being loaded.
 
@@ -1013,10 +1304,12 @@ task CreateSampleDataViews {
       DECLARE create_header_data_view STRING;
       DECLARE create_all_sample_data_view STRING;
 
+      -- Probe sample_vcf_header, the table the view below actually reads (it is created alongside
+      -- vcf_header_lines_scratch when load_vcf_headers is set), so the guard matches its dependency.
       SET header_table_exists = (
         SELECT COUNT(1) FROM
         `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
-        WHERE table_name = 'vcf_header_lines_scratch'
+        WHERE table_name = 'sample_vcf_header'
       );
 
       IF header_table_exists > 0 THEN
@@ -1026,11 +1319,21 @@ task CreateSampleDataViews {
           SET headers_load_status_clause = '';
         END IF;
 
+        -- Read the DURABLE sample->header map, not the transient scratch table. `vcf_header_lines_scratch`
+        -- is emptied by ProcessVCFHeaders after each merge, so a view over it goes empty once headers are
+        -- loaded; combined with the Parquet path not writing HEADERS_LOADED, that left this view empty for
+        -- Parquet callsets and prevented SetIsLoadedColumn from ever setting is_loaded. sample_vcf_header
+        -- persists and is populated for both the BQ and Parquet paths. See the VS-1968 design doc.
+        --
+        -- Safe for the BQ path: the HEADERS_LOADED status clause (UNION'd below) still covers the
+        -- during-ingest window before the scratch->final merge, and post-merge sample_vcf_header is
+        -- populated for BQ as well -- so switching the data-presence source from scratch to
+        -- sample_vcf_header does not lose any BQ samples from this view.
         SET create_header_data_view = """
 
           CREATE OR REPLACE VIEW `~{project_id}.~{dataset_name}.samples_with_header_data` AS
           (
-          SELECT DISTINCT sample_id FROM `~{project_id}.~{dataset_name}.vcf_header_lines_scratch`
+          SELECT DISTINCT sample_id FROM `~{project_id}.~{dataset_name}.sample_vcf_header`
 
           """ || headers_load_status_clause || ");";
 
@@ -1085,6 +1388,7 @@ task CreateSampleDataViews {
 task ConfigureParquetLifecycle {
   input {
     String output_gcs_dir
+    # TODO: billing_project_id is declared but not passed to load_parquet_to_bq.py - see VS-1955.
     String? billing_project_id
     String variants_docker
   }
@@ -1132,7 +1436,7 @@ task ConfigureParquetLifecycle {
       "action": {"type": "Delete"},
       "condition": {
         "age": 14,
-        "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/", "${BUCKET_PATH_PREFIX}sample_chromosome_ploidy/"]
+        "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/", "${BUCKET_PATH_PREFIX}sample_chromosome_ploidy/", "${BUCKET_PATH_PREFIX}vcf_header_lines_scratch/"]
       }
     }
 EOF
@@ -1195,6 +1499,15 @@ task DiscoverParquetFiles {
     String dataset_name
     Array[String] regular_table_prefixes
     Array[String] superpartitioned_table_prefixes
+    # Subdirectory of output_gcs_dir holding Parquet quarantined by a previous run (VS-1989). Excluded
+    # from the listing below: those files are already loaded, and re-discovering them would double-count
+    # their samples and hand the loader a second copy of work it has done. The quarantine rename also
+    # takes them out of the ".parquet" filter on its own; this exclusion is by location as well, so the
+    # property holds even for a file someone has restored in place.
+    String quarantine_subdir = "quarantine"
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Array[Boolean] go
     String? billing_project_id
     String variants_docker
@@ -1211,12 +1524,57 @@ task DiscoverParquetFiles {
     # Normalize GCS path to ensure exactly one trailing slash
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
 
-    # List all objects, filter for Parquet files
+    # List all objects, filter for Parquet files.
+    #
+    # We deliberately tolerate exactly one gcloud failure mode -- stderr containing "One or more
+    # URLs matched no objects" -- and treat it as a legitimately empty directory (proceed with an
+    # empty file list). Every other non-zero exit fails the task. This couples GVS idempotency to
+    # gcloud's error wording; we go into it with open eyes:
+    #   - It is fail-safe. If a future cloud-sdk reworded this message, the empty-directory case
+    #     would stop matching and fall through to the `else`, failing the task loudly (retried, then
+    #     a visible workflow failure) rather than silently loading nothing.
+    #   - gcloud is version-pinned in the Variants image, so the wording can only change at a
+    #     deliberate cloud-sdk bump -- a reviewed, integration-tested event -- not under a running
+    #     pipeline.
+    #   - The match is kept specific (not broadened) so a genuine listing error is never mis-read
+    #     as "empty" -- that would be the one silent, dangerous direction.
+    # A canary asserts this contract against real gcloud + GCS. build_docker.sh runs it inside every
+    # freshly built Variants image (so a cloud-sdk bump that reworded this is caught at rebuild time);
+    # it can also be run standalone:
+    #   scripts/variantstore/scripts/test/gcs_listing_canary/run_gcs_listing_canary.sh
+    # If you change the grep pattern below, change the SENTINEL in that script too.
     echo "Listing files in ${OUTPUT_GCS_DIR}..."
+    set +o errexit
     gcloud storage ls --recursive ~{"--billing-project " + billing_project_id} \
-      "${OUTPUT_GCS_DIR}/" > all_objects.txt || true
+      "${OUTPUT_GCS_DIR}/" > all_objects.txt 2> gcloud_ls_stderr.txt
+    GCLOUD_LS_EXIT_CODE=$?
+    set -o errexit
 
-    grep '\.parquet$' all_objects.txt > all_files.txt || touch all_files.txt
+    if [[ ${GCLOUD_LS_EXIT_CODE} -ne 0 ]]; then
+      if grep -q 'One or more URLs matched no objects' gcloud_ls_stderr.txt; then
+        echo "No objects found under ${OUTPUT_GCS_DIR}/, proceeding with an empty file list."
+        : > all_objects.txt
+      else
+        echo "gcloud storage ls failed unexpectedly:" >&2
+        cat gcloud_ls_stderr.txt >&2
+        exit "${GCLOUD_LS_EXIT_CODE}"
+      fi
+    fi
+
+    grep '\.parquet$' all_objects.txt > all_parquet_objects.txt || touch all_parquet_objects.txt
+
+    # Drop anything a previous run quarantined (VS-1989). Those files were already loaded -- they were
+    # set aside for inspection, not left unloaded -- so discovering them again would add a duplicate
+    # (table, sample_id) entry for every quarantined sample, inflating the file counts the verifier
+    # reconciles and handing LoadParquetFilesToBQ a second copy of the same work.
+    # awk index() rather than grep -v "^..." so the prefix is matched literally: a GCS bucket name may
+    # contain dots, which as a regex would match any character and could over-exclude.
+    awk -v pfx="${OUTPUT_GCS_DIR}/~{quarantine_subdir}/" 'index($0, pfx) != 1' \
+      all_parquet_objects.txt > all_files.txt
+    QUARANTINED_COUNT=$(( $(wc -l < all_parquet_objects.txt) - $(wc -l < all_files.txt) ))
+    if [[ ${QUARANTINED_COUNT} -gt 0 ]]; then
+      echo "Skipping ${QUARANTINED_COUNT} previously quarantined Parquet file(s) under ${OUTPUT_GCS_DIR}/~{quarantine_subdir}/"
+    fi
 
     FILE_COUNT=$(wc -l < all_files.txt)
     echo "Found $FILE_COUNT Parquet files"
@@ -1236,6 +1594,7 @@ task DiscoverParquetFiles {
     memory: "4 GB"
     disks: "local-disk 50 HDD"
     preemptible: 3
+    maxRetries: 3
     cpu: 2
   }
 
@@ -1252,6 +1611,7 @@ task LoadParquetFilesToBQ {
     String dataset_name
     File fofn_file
     Int batch_size
+    # TODO: billing_project_id is declared but not passed to load_parquet_to_bq.py - see VS-1955.
     String? billing_project_id
     String variants_docker
   }
@@ -1264,7 +1624,6 @@ task LoadParquetFilesToBQ {
       --project-id ~{project_id} \
       --dataset-name ~{dataset_name} \
       --files-fofn ~{fofn_file} \
-      --pending-jobs-path pending_jobs.json \
       --batch-size ~{batch_size} \
       --output-stats stats.json
   >>>
@@ -1289,6 +1648,25 @@ task VerifyParquetLoading {
     String project_id
     String dataset_name
     File gcs_files_list
+    Array[String] regular_table_prefixes = ["sample_chromosome_ploidy"]
+    Array[String] superpartitioned_table_prefixes = ["vet", "ref_ranges"]
+    # Independent structural checks (VS-1989): the two screen ratios and whether a screen flag is
+    # waived. By default (false) a flag quarantines the flagged samples' Parquet; true waives the
+    # screens. vet_truncation_threshold is separate from vet_duplication_threshold -- only the high
+    # side is calibrated -- and 0 disables the truncation screen alone.
+    Float vet_duplication_threshold = 1.6
+    Float vet_truncation_threshold = 1.6
+    Boolean allow_flagged_vet_loads = false
+    # Optional durable location for the verdict JSON. This task is fail-loud -- a bad load exits non-zero
+    # and aborts the workflow -- and Cromwell does not delocalize a failed task's outputs, so copying the
+    # results JSON here keeps the diagnostic recoverable at a predictable path on failure. Unset -> no copy
+    # (the JSON still lives only in the task execution directory).
+    String? verification_diagnostics_gcs_dir
+    # Billing project for the diagnostics copy, required when the target bucket is requester-pays.
+    String? billing_project_id
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Array[Boolean] go
     String variants_docker
   }
@@ -1302,11 +1680,47 @@ task VerifyParquetLoading {
     set -o errexit -o nounset -o xtrace -o pipefail
     mkdir -p verification_output
 
+    # This verification is fail-loud: verify_all_loaded.py exits non-zero when the load is incomplete, and
+    # a non-zero task aborts the workflow before any irreversible Parquet deletion. Capture that exit code
+    # (rather than letting errexit abort here) so we can first copy the verdict JSON somewhere durable --
+    # Cromwell never delocalizes a failed task's outputs -- and then re-raise the code below.
+    rc=0
     python3 /app/verify_all_loaded.py \
       --project-id ~{project_id} \
       --dataset-name ~{dataset_name} \
       --gcs-files-list ~{gcs_files_list} \
-      --output-dir verification_output
+      --regular-table-prefixes ~{sep=" " regular_table_prefixes} \
+      --superpartitioned-table-prefixes ~{sep=" " superpartitioned_table_prefixes} \
+      --vet-duplication-threshold ~{vet_duplication_threshold} \
+      --vet-truncation-threshold ~{vet_truncation_threshold} \
+      ~{true="--allow-flagged-vet-loads" false="" allow_flagged_vet_loads} \
+      --output-dir verification_output || rc=$?
+
+    # Copy the verdict JSON to a durable location if one was configured, so the diagnostic survives the
+    # fail-loud abort above. The copy must only happen on failure ($rc -ne 0) so a successful retry does
+    # not overwrite the failure diagnostic that this path is meant to preserve. The copy must never mask
+    # the verification verdict, hence the trailing `|| true`.
+    diagnostics_dir='~{default="" verification_diagnostics_gcs_dir}'
+    if [[ $rc -ne 0 && -n "${diagnostics_dir}" && -f verification_output/verification_results.json ]]
+    then
+      gcloud storage cp ~{"--billing-project " + billing_project_id} \
+        verification_output/verification_results.json "${diagnostics_dir%/}/verification_results.json" || true
+    fi
+
+    # A quarantine on an otherwise-green run needs the same durable evidence: the task succeeds, so the
+    # only record of why those files were set aside would otherwise be this execution directory, which
+    # is exactly what gets cleaned up. Written under a distinct name so this path -- which a successful
+    # retry does re-run -- cannot overwrite a preserved failure diagnostic above.
+    if [[ $rc -eq 0 && -n "${diagnostics_dir}" && -s verification_output/quarantine_files.txt ]]
+    then
+      gcloud storage cp ~{"--billing-project " + billing_project_id} \
+        verification_output/verification_results.json \
+        "${diagnostics_dir%/}/verification_results.quarantine.json" || true
+      gcloud storage cp ~{"--billing-project " + billing_project_id} \
+        verification_output/quarantine_files.txt "${diagnostics_dir%/}/quarantine_files.txt" || true
+    fi
+
+    exit $rc
   >>>
 
   runtime {
@@ -1317,20 +1731,77 @@ task VerifyParquetLoading {
   }
 
   output {
+    # TODO: Sprocket flags read_json indexing as invalid on Union type; fix by upgrading to WDL 1.1 and using struct coercion — see VS-1957.
     File results_json = "verification_output/verification_results.json"
     Boolean all_loaded = read_json(results_json)["all_loaded"]
+    # The bulk deletion gate DeleteParquetFiles is conditioned on: all_loaded, plus every sample the
+    # heuristic vet screens flagged having Parquet the quarantine step can move aside. A screen flag by
+    # itself no longer withholds the delete -- the flagged samples' files are quarantined and the rest
+    # of the callset is deleted -- so on a flagged-but-complete load this reads true alongside
+    # all_loaded. It is still distinct from all_loaded because a flagged sample with no resolvable
+    # Parquet path leaves nothing to quarantine, and deleting then would destroy the very files the
+    # screens asked to keep. Meaningful precisely when the task succeeds, so -- unlike the exact-check
+    # components below -- it is safe to publish as a task output.
+    Boolean safe_to_delete_parquet = read_json(results_json)["safe_to_delete_parquet"]
     Int total_files = read_json(results_json)["total_files"]
     Int loaded_files = read_json(results_json)["loaded_files"]
     Int missing_files = read_json(results_json)["missing_files"]
     File? missing_files_list = "verification_output/missing_files.txt"
+    # Independent structural-check observability (VS-1989), read shallowly. Both vet screens --
+    # duplication and truncation -- are exposed as task outputs: they never fail all_loaded, so they
+    # are meaningful precisely when the task succeeds. Since a flag no longer blocks deletion, these
+    # and the quarantine counts are the only thing that says a green run set some Parquet aside.
+    #
+    # quarantine_files_list is the work list QuarantineFlaggedParquetFiles consumes, and is written
+    # unconditionally (empty on a clean run) so that task can be unconditional rather than gated on an
+    # optional output. It is derived from the uncapped screen detail, not from the capped per-sample
+    # lists in results_json, so it cannot silently omit a flagged file.
+    #
+    # The family-completeness / ploidy-cardinality components are exact checks -- if any fails,
+    # verify_all_loaded.py exits non-zero and the task fails, at which point Cromwell does not evaluate
+    # outputs at all. Publishing them as task outputs could only ever yield true, so they are omitted;
+    # the complete verdict lives in results_json (copied to a durable diagnostics path on failure).
+    Boolean vet_duplication_flagged = read_json(results_json)["vet_duplication_flagged"]
+    Boolean vet_truncation_flagged = read_json(results_json)["vet_truncation_flagged"]
+    File quarantine_files_list = "verification_output/quarantine_files.txt"
+    Int quarantined_files = read_json(results_json)["quarantine_files"]
+    Int quarantined_samples = read_json(results_json)["quarantine_sample_count"]
+    # Of those samples, the ones the duplication screen objected to. The workflow's abort condition
+    # keys on this rather than on quarantined_samples because the duplication threshold is the only
+    # calibrated one -- Foxtrot flagged 2 samples of 540,545 -- while the truncation threshold has been
+    # measured on its high side only, and a heuristic that has never had its false-positive rate
+    # measured should not be able to fail a completed 500k-sample ingest.
+    Int quarantined_duplication_samples = read_json(results_json)["quarantine_duplication_sample_count"]
     Boolean done = true
   }
 }
 
-task DeleteParquetFiles {
+task QuarantineFlaggedParquetFiles {
+  meta {
+    description: "Move the Parquet of samples the heuristic vet screens flagged out of the bulk delete's reach, so it survives for inspection and re-ingest (VS-1989)."
+    volatile: true
+  }
+
   input {
     String output_gcs_dir
-    Boolean use_alternate_delete_strategy = false
+    # Only used to name the dataset in the restore instructions this task writes into the quarantine
+    # directory. Nothing here reads or writes BigQuery -- the quarantine is a pure GCS operation.
+    String project_id
+    String dataset_name
+    String quarantine_subdir
+    # Appended to each quarantined object's name so that it no longer ends in ".parquet". Two things
+    # then have to go wrong at once for a quarantined file to be lost, rather than one: DeleteParquetFiles'
+    # default strategy globs "*.parquet" across the whole output dir and so is defeated by the rename,
+    # while its alternate strategy deletes only the four table directories and so is defeated by the
+    # location. Same for the bucket's 14-day lifecycle rule, which matches those four prefixes.
+    String quarantine_suffix
+    # Work list from VerifyParquetLoading, one gs:// path per line, empty on a clean run.
+    File quarantine_files_list
+    # A flag rate this high is a miscalibrated screen, not a callset with this many bad samples, so
+    # refuse rather than grind through a per-object move. Foxtrot's calibration flagged 2 samples out
+    # of 540,545 on vet; the same threshold applied to ref_ranges flagged 38,629, which is the shape of
+    # mistake this guards against.
+    Int max_quarantine_files = 10000
 
     String? billing_project_id
     String cloud_sdk_docker
@@ -1342,6 +1813,201 @@ task DeleteParquetFiles {
 
     # Normalize GCS path by removing any trailing slash
     OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+    QUARANTINE_DIR="${OUTPUT_GCS_DIR}/~{quarantine_subdir}"
+
+    FILE_COUNT=$(grep -c . ~{quarantine_files_list} || true)
+
+    # Published as a task output so the workflow can abort a green-but-quarantined run off this count.
+    # Written here, before the early exit below, so the clean-run path reports 0 rather than no output.
+    echo "${FILE_COUNT}" > quarantine_count.txt
+
+    if [[ "${FILE_COUNT}" -eq 0 ]]; then
+      echo "No samples were flagged by the duplication or truncation screens; nothing to quarantine."
+      exit 0
+    fi
+
+    if [[ "${FILE_COUNT}" -gt ~{max_quarantine_files} ]]; then
+      echo "ERROR: ${FILE_COUNT} Parquet files were flagged for quarantine, over the limit of ~{max_quarantine_files}." >&2
+      echo "A flag rate this high means the screens are miscalibrated for this callset, not that this" >&2
+      echo "many samples are genuinely bad. Refusing to move them object by object." >&2
+      echo "Review verification_results.json, then either retune the screen that fired --" >&2
+      echo "parquet_vet_duplication_threshold, or parquet_vet_truncation_threshold (0 disables it) --" >&2
+      echo "or set parquet_allow_flagged_vet_loads to waive both screens for this run." >&2
+      exit 1
+    fi
+
+    echo "Quarantining ${FILE_COUNT} Parquet file(s) to ${QUARANTINE_DIR}/"
+
+    # The move preserves each file's path relative to the output dir, so vet/001/<file> lands at
+    # quarantine/vet/001/<file>. That keeps which table and sample a quarantined file belongs to
+    # readable from its path, and makes a collision between two families' files impossible.
+    #
+    # Each move is also recorded as a destination/source pair. The work list this task consumes holds
+    # pre-move paths, so printing it into the README would name objects that no longer exist -- the
+    # rename is precisely what the quarantine did. Recording the pair here means the README can name
+    # the object that is actually there AND the path to put it back at, instead of asking the reader to
+    # apply the rename in their head.
+    : > quarantine_manifest.txt
+
+    while IFS= read -r src
+    do
+      if [[ -z "${src}" ]]
+      then
+        continue
+      fi
+      rel="${src#"${OUTPUT_GCS_DIR}/"}"
+      if [[ "${rel}" == "${src}" ]]
+      then
+        # Nothing stripped, so this path is not under the output dir. Refuse rather than invent a
+        # destination for it: an unexpected path here means the work list and this task disagree about
+        # the layout, and guessing would move a file somewhere nobody will look for it.
+        echo "ERROR: ${src} is not under ${OUTPUT_GCS_DIR}/; refusing to move it." >&2
+        exit 1
+      fi
+      gcloud storage mv ~{"--billing-project " + billing_project_id} \
+        "${src}" "${QUARANTINE_DIR}/${rel}~{quarantine_suffix}"
+      {
+        echo "  ${QUARANTINE_DIR}/${rel}~{quarantine_suffix}"
+        echo "    restores to: ${src}"
+      } >> quarantine_manifest.txt
+    done < ~{quarantine_files_list}
+
+    # Leave the restore instructions where whoever finds the quarantine will find them too. The .txt
+    # extension keeps this file out of every Parquet glob in this workflow.
+    {
+      echo "Parquet quarantined by GvsImportGenomes because the VS-1989 duplication or truncation"
+      echo "screen flagged the owning sample. These files were loaded to BigQuery; they were held back"
+      echo "from deletion so the load can be inspected, not because the load failed."
+      echo
+      echo "Re-ingesting one of these takes TWO steps, and the second one alone does nothing. The"
+      echo "sample's rows are still in BigQuery, so the loader treats it as already loaded and skips"
+      echo "any file you restore: DiscoverParquetFiles considers a (table, sample_id) pair loaded when"
+      echo "its vet_%/ref_ranges_% partition holds any bytes at all -- which a duplicated partition"
+      echo "certainly does -- and, for the unpartitioned tables, when the sample_id appears in the"
+      echo "table at all."
+      echo
+      echo "1. Remove the sample's rows from BigQuery. Each filename carries the table and the"
+      echo "   sample_id it belongs to -- 'vet_123_4567_<...>.parquet' is table vet_123, sample_id"
+      echo "   4567. This form works for every table quarantined here:"
+      echo
+      echo "     bq query --use_legacy_sql=false \\"
+      echo "       'DELETE FROM \`~{project_id}.~{dataset_name}.<table>\` WHERE sample_id = <sample_id>'"
+      echo
+      echo "   For vet_% and ref_ranges_% only, dropping the partition is equivalent and cheaper --"
+      echo "   those tables are range-partitioned on sample_id with step 1, so the partition id IS"
+      echo "   the sample_id:"
+      echo
+      echo "     bq rm -f -t '~{project_id}:~{dataset_name}.<table>\$<sample_id>'"
+      echo
+      echo "   Do not reach for that form on sample_chromosome_ploidy or vcf_header_lines_scratch."
+      echo "   Both are created with partitioned = false (GvsAssignIds.wdl), so there is no partition"
+      echo "   to drop and the decorator is rejected outright: 'Cannot read partition information"
+      echo "   from a table that is not partitioned'. Use the DELETE above for those two."
+      echo
+      echo "   Do this for every table the sample appears under here, not just vet: a sample's"
+      echo "   ref_ranges, sample_chromosome_ploidy and vcf_header_lines_scratch rows are quarantined"
+      echo "   alongside it, and a partial delete reloads the sample inconsistently across families."
+      echo
+      echo "2. Restore the Parquet. Each object keeps its path relative to ${OUTPUT_GCS_DIR}/, moved"
+      echo "   under ${QUARANTINE_DIR}/ with '~{quarantine_suffix}' appended to its name. The listing"
+      echo "   below pairs every quarantined object with the path to copy it back to:"
+      echo
+      echo "     gcloud storage cp <quarantined object> <the path listed under it>"
+      echo
+      echo "   The suffix is what keeps these objects out of the bulk delete's '*.parquet' glob, so do"
+      echo "   not strip it in place -- copy, then delete the quarantined object once you are done."
+      echo
+      echo "Then re-run the ingest. It will now see an empty partition and load the restored files."
+      echo
+      echo "If instead the flag has been reviewed and dismissed, nothing needs restoring: the data is"
+      echo "already loaded and correct. Delete this directory and carry on, or re-run with"
+      echo "parquet_allow_flagged_vet_loads = true if a later step is still blocked on the screens."
+      echo
+      echo "Nothing deletes this directory: it is outside the four prefixes the bucket's 14-day"
+      echo "lifecycle rule matches. Clean it up by hand once the samples have been reviewed."
+      echo
+      echo "Quarantined files, each followed by the path it restores to:"
+      cat quarantine_manifest.txt
+    } > quarantine_README.txt
+    gcloud storage cp ~{"--billing-project " + billing_project_id} \
+      quarantine_README.txt "${QUARANTINE_DIR}/README.txt"
+
+    echo "✓ Quarantined ${FILE_COUNT} Parquet file(s) under ${QUARANTINE_DIR}/."
+    echo "These are exempt from both the bulk delete and the bucket's 14-day lifecycle rule, so they"
+    echo "will persist until someone removes them. Review them and clean up when done."
+  >>>
+
+  output {
+    Boolean done = true
+    # How many files this task actually moved. The workflow's abort condition reads this rather than
+    # VerifyParquetLoading's equivalent count, because the data dependency is what sequences the abort
+    # after the move: terminating off the verification output instead would let Cromwell kill the
+    # workflow while the flagged files are still under the prefixes the 14-day lifecycle rule matches,
+    # neither quarantined nor deleted.
+    Int quarantined_files = read_int("quarantine_count.txt")
+  }
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    disks: "local-disk 10 HDD"
+    # Deliberately not preemptible and not retried. A partial move leaves some sources already gone, so
+    # a second attempt would fail on the missing source and fail permanently anyway; failing on the
+    # first attempt keeps the failure legible, and DeleteParquetFiles consumes this task's `done`, so a
+    # failure here holds the delete back rather than letting it run over an incomplete quarantine.
+    preemptible: 0
+    cpu: 1
+  }
+}
+
+task DeleteParquetFiles {
+  input {
+    String output_gcs_dir
+    # Suffix appended to every quarantined object's name (VS-1989). Passed in so the assertion below
+    # can state, and check, this task's dependency on it: the default strategy's glob deletes
+    # "*.parquet" across the whole output dir, and a quarantined object survives that glob precisely
+    # because its name no longer ends in ".parquet".
+    String quarantine_suffix
+    Boolean use_alternate_delete_strategy = false
+
+    String? billing_project_id
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
+    Boolean go
+    String cloud_sdk_docker
+  }
+
+  command <<<
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o xtrace -o pipefail
+
+    # Normalize GCS path by removing any trailing slash
+    OUTPUT_GCS_DIR=$(echo ~{output_gcs_dir} | sed 's/\/$//')
+
+    # Neither strategy below may touch quarantined Parquet (VS-1989). Two independent things keep it
+    # safe, and this task depends on both:
+    #
+    #  * The default strategy globs "*.parquet" across the whole output dir, so it is the quarantine
+    #    SUFFIX that saves those objects -- QuarantineFlaggedParquetFiles renames each one to end in
+    #    the suffix below, which the glob no longer matches.
+    #  * The alternate strategy deletes only the four named table directories, so it is the quarantine
+    #    LOCATION that saves them -- they live in a sibling subdirectory that is not in that list.
+    #
+    # Assert the first of those, since it is a property of a string and so can be checked here. A
+    # suffix ending in ".parquet" would make the default strategy delete the whole quarantine.
+    case "~{quarantine_suffix}" in
+      *.parquet)
+        echo "ERROR: quarantine suffix '~{quarantine_suffix}' ends in .parquet, so the deletion glob" >&2
+        echo "below would match quarantined objects and destroy them. Choose another suffix." >&2
+        exit 1
+        ;;
+      "")
+        echo "ERROR: quarantine suffix is empty, so quarantined objects keep their .parquet names and" >&2
+        echo "the deletion glob below would match them. Choose a non-empty suffix." >&2
+        exit 1
+        ;;
+    esac
 
     if [ "~{use_alternate_delete_strategy}" = "false" ]; then
       gcloud storage rm --recursive ~{"--billing-project " + billing_project_id} "${OUTPUT_GCS_DIR}/"'**/*.parquet'
@@ -1351,6 +2017,10 @@ task DeleteParquetFiles {
       gcloud storage ls ~{"--billing-project " + billing_project_id} \
         "${OUTPUT_GCS_DIR}/vet/" "${OUTPUT_GCS_DIR}/ref_ranges/" > parquet_dirs.txt
       echo "${OUTPUT_GCS_DIR}/sample_chromosome_ploidy/" >> parquet_dirs.txt
+      # Only present when headers were loaded; guard on existence so data-only runs don't fail here.
+      if gcloud storage ls ~{"--billing-project " + billing_project_id} "${OUTPUT_GCS_DIR}/vcf_header_lines_scratch/" >/dev/null 2>&1; then
+        echo "${OUTPUT_GCS_DIR}/vcf_header_lines_scratch/" >> parquet_dirs.txt
+      fi
 
       # Iterate over all Google Cloud paths in parquet_dirs.txt and delete all objects therein
       echo "Deleting Parquet files..."

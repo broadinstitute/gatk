@@ -19,7 +19,7 @@ import java.util.HashMap;
  *
  * <p>Supports two field shapes:
  * <ul>
- *   <li>Scalar primitives: INT64, FLOAT, BINARY (UTF8 string)</li>
+ *   <li>Scalar primitives: INT64, FLOAT, BOOLEAN, BINARY (UTF8 string)</li>
  *   <li>Repeated string lists using the standard Parquet 3-level list encoding:
  *     <pre>
  *     optional group &lt;name&gt; (LIST) {
@@ -94,6 +94,7 @@ public class ParquetWriteSupport extends WriteSupport<JSONObject> {
                         switch (fieldType.asPrimitiveType().getPrimitiveTypeName()) {
                             case INT64  -> recordConsumer.addLong(jsonArray.getLong(i));
                             case FLOAT  -> recordConsumer.addFloat((float) jsonArray.getDouble(i));
+                            case BOOLEAN -> recordConsumer.addBoolean(jsonArray.getBoolean(i));
                             case BINARY -> recordConsumer.addBinary(Binary.fromString(jsonArray.getString(i)));
                             default     -> throw new UnsupportedOperationException(
                                     "Unsupported primitive type for column '" + fieldName + "': "
@@ -107,6 +108,7 @@ public class ParquetWriteSupport extends WriteSupport<JSONObject> {
                     switch (fieldType.asPrimitiveType().getPrimitiveTypeName()) {
                         case INT64  -> recordConsumer.addLong(record.getLong(fieldName));
                         case FLOAT  -> recordConsumer.addFloat(record.getFloat(fieldName));
+                        case BOOLEAN -> recordConsumer.addBoolean(record.getBoolean(fieldName));
                         case BINARY -> recordConsumer.addBinary(Binary.fromString(record.getString(fieldName)));
                         default     -> throw new UnsupportedOperationException(
                                 "Unsupported primitive type for column '" + fieldName + "': "

@@ -6,6 +6,9 @@ import "../../vcf_site_level_filtering_wdl/JointVcfFiltering.wdl" as VETS
 
 workflow GvsCreateFilterSet {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String dataset_name
     String project_id
@@ -20,6 +23,7 @@ workflow GvsCreateFilterSet {
     String? cloud_sdk_docker
     String? variants_docker
     String? gatk_docker
+    String? gatk_heavy_docker
     String? git_branch_or_tag
     String? git_hash
     File? gatk_override
@@ -33,6 +37,7 @@ workflow GvsCreateFilterSet {
     Int? SNP_VQSR_max_gaussians_override = 6
     Int? SNP_VQSR_mem_gb_override
 
+    # TODO: Sprocket rejects map literals as struct initializers in WDL 1.0; fix by upgrading to WDL 1.1 struct literal syntax — see VS-1957.
     RuntimeAttributes? vets_extract_runtime_attributes = {"command_mem_gb": 27}
     RuntimeAttributes? vets_train_runtime_attributes = {"command_mem_gb": 27}
     RuntimeAttributes? vets_score_runtime_attributes = {"command_mem_gb": 15}
@@ -49,7 +54,7 @@ workflow GvsCreateFilterSet {
 
   String filter_set_info_destination_table_schema = "filter_set_name:string,type:string,location:integer,ref:string,alt:string,calibration_sensitivity:float,score:float,vqslod:float,culprit:string,training_label:string,yng_status:string"
 
-  if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker)) {
+  if (!defined(git_hash) || !defined(basic_docker) || !defined(cloud_sdk_docker) || !defined(variants_docker) || !defined(gatk_docker) || !defined(gatk_heavy_docker)) {
     call Utils.GetToolVersions {
       input:
         git_branch_or_tag = git_branch_or_tag,
@@ -61,6 +66,7 @@ workflow GvsCreateFilterSet {
   String effective_cloud_sdk_docker = select_first([cloud_sdk_docker, GetToolVersions.cloud_sdk_docker])
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_gatk_docker = select_first([gatk_docker, GetToolVersions.gatk_docker])
+  String effective_gatk_heavy_docker = select_first([gatk_heavy_docker, GetToolVersions.gatk_heavy_docker])
 
   call Utils.GetReference {
     input:
@@ -161,7 +167,7 @@ workflow GvsCreateFilterSet {
         extract_runtime_attributes = vets_extract_runtime_attributes,
         train_runtime_attributes = vets_train_runtime_attributes,
         score_runtime_attributes = vets_score_runtime_attributes,
-        gatk_docker = effective_gatk_docker,
+        gatk_docker = effective_gatk_heavy_docker,
         gatk_override = gatk_override,
         monitoring_script = "gs://gvs_quickstart_storage/cromwell_monitoring_script.sh",
         scoring_python_script = scoring_python_script,
@@ -240,7 +246,7 @@ workflow GvsCreateFilterSet {
         INDEL_VQSR_mem_gb_override = INDEL_VQSR_mem_gb_override,
         SNP_VQSR_max_gaussians_override = SNP_VQSR_max_gaussians_override,
         SNP_VQSR_mem_gb_override = SNP_VQSR_mem_gb_override,
-        gatk_docker = effective_gatk_docker,
+        gatk_docker = effective_gatk_heavy_docker,
         gatk_override = gatk_override,
     }
   }
@@ -372,6 +378,9 @@ task CheckIfFilterSetNameIsInUse {
 
 task ExtractFilterTask {
   input {
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
     Boolean go = true
     String project_id
     String dataset_id
@@ -380,11 +389,15 @@ task ExtractFilterTask {
     File reference
 
     String fq_sample_table
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String sample_table_timestamp
 
     File intervals
 
     String fq_alt_allele_table
+    # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
+    #@ except: UnusedInput
     String alt_allele_table_timestamp
 
     String cost_observability_tablename = "cost_observability"

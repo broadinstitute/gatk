@@ -12,8 +12,8 @@ import create_vat_inputs
 # hard filter bad sites: hard_filter_non_passing_sites()
 # hard filter based on FT flag:
 # get GT, replace_lgt_with_gt(), swap to no-calls: failing_gts_to_no_call()
-# track how many sites have more than 50 alt alleles TODO: we currently aren't tracking this, are we?
-# drop 50+ alternate alleles
+# track how many sites have 100 or more alt alleles TODO: we currently aren't tracking this, are we?
+# drop 100+ alternate alleles
 # calculate the AC, AN, AF, SC, for the full population and for the subpopulations
 # split multi allelic sites to be one variant per row (note that we want to do this after the above calculations)
 # drop all spanning deletions
@@ -64,7 +64,7 @@ def failing_gts_to_no_call(vds):
 
 def remove_too_many_alt_allele_sites(vds):
     """
-     Remove sites with more than 100 alternate alleles
+     Remove sites with 100 or more alternate alleles
     """
     vd = vds.variant_data
     vd_100_aa_cutoff = vd.filter_rows(hl.len(vd.alleles) <= 100)
@@ -132,8 +132,8 @@ def matrix_table_ac_an_af(mt, ancestry_file):
         ac_an_af_adj=hl.agg.filter(mt.adj, hl.agg.call_stats(mt.GT, mt.alleles)),
         call_stats_by_pop_adj=hl.agg.filter(mt.adj, hl.agg.group_by(mt.pop, hl.agg.call_stats(mt.GT, mt.alleles))),
     )
-
-    return hl.methods.split_multi(ac_an_af_mt, left_aligned=True) # split each alternate allele onto it's own row. This will also remove all spanning delstions for us
+    # Split each alternate allele onto its own row. This will also remove all spanning deletions.
+    return hl.methods.split_multi(ac_an_af_mt, left_aligned=True)
 
 
 def vds_ac_an_af(mt, vds):
@@ -182,49 +182,65 @@ def add_variant_tracking_info(mt, sites_only_vcf_path):
 
 
 def main(vds, ancestry_file_location, sites_only_vcf_path):
-    n_samples = vds.n_samples()
-    n_rounds = math.ceil(n_samples / 100000)
-    # note: this was hardcoded as 5 for the Echo callset creation  n_rounds = 5
-    n_parts = vds.variant_data.n_partitions()
-    # Add in 'n_rounds - 1' to include all of the partitions in the set of groups, otherwise we would omit the final
-    # n_parts % n_rounds partitions.
-    parts_per_round = (n_parts + n_rounds - 1) // n_rounds
-    ht_paths = [sites_only_vcf_path.replace(r".sites-only.vcf.bgz", f'_{i}.ht') for i in range(n_rounds)]
+
+    # Apply entry-level filters to the whole VDS first
+    transforms = [
+        remove_too_many_alt_allele_sites,
+        hard_filter_non_passing_sites,
+        failing_gts_to_no_call,
+    ]
+    filtered_vds = vds
+    for transform in transforms:
+        filtered_vds = transform(filtered_vds)
+
+    # Calculate safe chunks based on partitions, not samples
+    total_partitions = filtered_vds.variant_data.n_partitions()
+    # Safe number of tasks for Master Node to track at once
+    partitions_per_round = 20000
+    n_rounds = max(1, math.ceil(total_partitions / partitions_per_round))
+
+    ht_paths = []
+
     for i in range(n_rounds):
-        part_range = range(i*parts_per_round, min((i+1)*parts_per_round, n_parts))
-        vds_part = hl.vds.VariantDataset(
-            vds.reference_data._filter_partitions(part_range),
-            vds.variant_data._filter_partitions(part_range),
+        print(f"Processing round {i+1} of {n_rounds}...")
+
+        # Calculate the start and end partition indices for this round
+        start_idx = i * partitions_per_round
+        end_idx = min((i + 1) * partitions_per_round, total_partitions)
+
+        # Slice the FILTERED VDS down to just this round's partitions
+        round_vds = hl.vds.VariantDataset(
+            filtered_vds.reference_data._filter_partitions(range(start_idx, end_idx)),
+            filtered_vds.variant_data._filter_partitions(range(start_idx, end_idx))
         )
 
-        transforms = [
-            remove_too_many_alt_allele_sites,
-            hard_filter_non_passing_sites,
-            failing_gts_to_no_call,
-        ]
-        transformed_vds=vds_part
-        for transform in transforms:
-            transformed_vds = transform(transformed_vds)
+        # Densify this chunk
+        mt = hl.vds.to_dense_mt(round_vds)
 
-        print(f"densifying dense matrix table index {i}")
-        mt = hl.vds.to_dense_mt(transformed_vds)
-
+        # Calculate call stats
         with open(ancestry_file_location, 'r') as ancestry_file:
-            mt = matrix_table_ac_an_af(mt, ancestry_file) # this adds subpopulation information and splits our multi-allelic rows
+            mt = matrix_table_ac_an_af(mt, ancestry_file)
 
+        # Extract just the rows
         ht = mt.rows()
         ht = ht.select('call_stats_by_pop', 'a_index', 'ac_an_af', 'ac_an_af_adj', 'call_stats_by_pop_adj')
-        ht.write(ht_paths[i])
 
-        # potentially in the future: merge AC, AN, AF back to the original VDS with: vds = vds_ac_an_af(mt, vds)
+        # Checkpoint this chunk to disk to clear the Master Node's memory
+        temp_ht_path = f"{sites_only_vcf_path}.temp_round_{i}.ht"
+        ht.write(temp_ht_path, overwrite=True)
+        ht_paths.append(temp_ht_path)
 
-        # for debugging information -- remove for now to get us through Echo
-        # add_variant_tracking_info(mt, sites_only_vcf_path)
+    # Reload all the tiny chunks, union them, and coalesce safely
+    print("Unioning rounds and writing final output...")
+    ht_list = [hl.read_table(path) for path in ht_paths]
+    final_ht = ht_list[0].union(*ht_list[1:])
 
-    # create a sites only VCF (that is hard filtered!) and that can be made into a custom annotations TSV for Nirvana to use with AC, AN, AF, SC for all subpopulations and populations
-    ht_list = [hl.read_table(ht_path).naive_coalesce(5000) for ht_path in ht_paths] # repartition each table to 5k partitions before we union them
-    ht_all = ht_list[0].union(*ht_list[1:])
-    write_sites_only_vcf(ht_all, sites_only_vcf_path)
+    # Now that the lineage is broken and the heavy lifting is done, naive_coalesce is safe!
+    # naive_coalesce is documented as a no-op when max_partitions exceeds the current partition
+    # count, but guard explicitly to make the intent clear for small datasets (e.g. integration tests).
+    if final_ht.n_partitions() > 25000:
+        final_ht = final_ht.naive_coalesce(25000)
+    write_sites_only_vcf(final_ht, sites_only_vcf_path)
 
 
 def annotate_entry_filter_flag(mt):

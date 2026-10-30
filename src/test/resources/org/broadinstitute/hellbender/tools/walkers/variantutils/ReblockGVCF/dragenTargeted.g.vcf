@@ -1,0 +1,23 @@
+##fileformat=VCFv4.2
+##ALT=<ID=NON_REF,Description="Represents any possible alternative allele at this location">
+##FILTER=<ID=PASS,Description="All filters passed">
+##FORMAT=<ID=AD,Number=R,Type=Integer,Description="Allelic depths for the ref and alt alleles in the order listed">
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=JAD,Number=.,Type=Integer,Description="Joint allelic depths across the targeted caller's regions">
+##FORMAT=<ID=JDP,Number=1,Type=Integer,Description="Joint read depth across the targeted caller's regions">
+##FORMAT=<ID=JGQ,Number=1,Type=Integer,Description="Joint genotype quality">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##INFO=<ID=TARGETED,Number=0,Type=Flag,Description="The call is from a targeted caller">
+##INFO=<ID=TargetedCaller,Number=1,Type=String,Description="Targeted Caller Name">
+##contig=<ID=chrM,length=16569>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	TESTSAMPLE
+chrM	200	.	A	<NON_REF>	.	PASS	END=250	GT:DP:GQ:MIN_DP:PL	0/0:30:99:30:0,90,1350
+chrM	280	.	C	T	1.67	PASS	TARGETED;TargetedCaller=smn	GT:GQ:PL:JGQ:JDP:JAD	0/1:2:120,0,3:112:59:10,49
+chrM	300	.	A	<NON_REF>	.	PASS	END=350	GT:DP:GQ:MIN_DP:PL	0/0:28:99:26:0,90,1350
+chrM	320	.	C	G	0.00	PASS	TARGETED;TargetedCaller=cyp21a2	GT:GQ:PL:JGQ:JDP:JAD	0/0:97:0,97,150:90:44:44,0
+chrM	330	.	CAC	C	0.00	PASS	TARGETED;TargetedCaller=cyp21a2	GT:GQ:PL:JGQ:JDP:JAD	0/0:90:0,90,150:88:41:41,0
+chrM	340	.	C	A,*	1.67	PASS	TARGETED;TargetedCaller=smn	GT:GQ:PL:JGQ:JDP:JAD	1/2:2:120,0,3,3,0,150:112:57:9,47,1

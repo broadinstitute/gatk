@@ -11,6 +11,7 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.GATKPath;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Coverage;
@@ -428,6 +429,493 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
 
     }
 
+    private static final Allele CHR_M_REF = Allele.create("A", true);
+    private static final Allele CHR_M_ALT = Allele.create("G", false);
+
+    /**
+     * Wire up a reblocker with a MockVcfWriter we can read back, using the same GQ bands
+     * (20, 100) and floorBlocks setting as the other unit tests in this class.
+     */
+    private static MockVcfWriter attachMockWriter(final ReblockGVCF reblocker) {
+        final MockVcfWriter mockWriter = new MockVcfWriter();
+        reblocker.createAnnotationEngine();
+        reblocker.vcfWriter = new ReblockingGVCFWriter(mockWriter, Arrays.asList(20, 100), true, null, new ReblockingOptions());
+        return mockWriter;
+    }
+
+    /**
+     * A DRAGEN-style somatic reference block: SQ, but no GQ and no PL.
+     */
+    private static VariantContext makeSomaticRefBlock(final int start, final int end, final String sq, final int minDP) {
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
+        gb.attribute(GATKVCFConstants.SOMATIC_QUALITY_KEY, sq)
+          .attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, minDP)
+          .AD(new int[]{76, 0})
+          .DP(76)
+          .noGQ()
+          .noPL();
+        return new VariantContextBuilder("test", "chrM", start, end,
+                Arrays.asList(CHR_M_REF, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, end)
+                .genotypes(gb.make()).unfiltered().make();
+    }
+
+    /**
+     * A DRAGEN-style somatic ALT call: SQ, but no GQ and no PL.
+     */
+    private static VariantContext makeSomaticVariant(final int position) {
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_ALT, CHR_M_ALT));
+        gb.attribute(GATKVCFConstants.SOMATIC_QUALITY_KEY, "97.96,0.00")
+          .AD(new int[]{0, 88, 0})
+          .DP(88)
+          .noGQ()
+          .noPL();
+        return new VariantContextBuilder("test", "chrM", position, position,
+                Arrays.asList(CHR_M_REF, CHR_M_ALT, Allele.NON_REF_ALLELE))
+                .genotypes(gb.make()).unfiltered().make();
+    }
+
+    /**
+     * Somatic-style mitochondrial records from DRAGEN carry SQ instead of GQ/PL. Both the reference
+     * blocks and the ALT calls should reach the output with their genotypes untouched -- in particular
+     * still carrying SQ and still lacking GQ, rather than being banded or having quality synthesized.
+     *
+     * Note the submission order: the reference block covers 2-72 and so must be submitted before the
+     * call at 73. Submitting the call first advances the writer's output end past the block, and the
+     * block is then correctly discarded as already-covered, which is a different code path.
+     */
+    @Test
+    public void testSomaticSQRecordsPassThroughUntouched() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+
+        reblocker.regenotypeVC(makeSomaticRefBlock(2, 72, "10", 45));
+        reblocker.regenotypeVC(makeSomaticVariant(73));
+        reblocker.vcfWriter.close();
+
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 2, "both the somatic ref block and the somatic call should be emitted");
+
+        final VariantContext outRefBlock = emitted.get(0);
+        Assert.assertEquals(outRefBlock.getStart(), 2, "ref block start should be unchanged");
+        Assert.assertEquals(outRefBlock.getEnd(), 72, "ref block end should be unchanged");
+        final Genotype refBlockGenotype = outRefBlock.getGenotype(0);
+        Assert.assertEquals(refBlockGenotype.getExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY), "10", "SQ should survive on the ref block");
+        Assert.assertFalse(refBlockGenotype.hasGQ(), "no GQ should be synthesized for the somatic ref block");
+        Assert.assertFalse(refBlockGenotype.hasPL(), "no PL should be synthesized for the somatic ref block");
+
+        final VariantContext outVariant = emitted.get(1);
+        Assert.assertEquals(outVariant.getStart(), 73, "call should be emitted at its original position");
+        final Genotype variantGenotype = outVariant.getGenotype(0);
+        Assert.assertEquals(variantGenotype.getExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY), "97.96,0.00", "SQ should survive on the call");
+        Assert.assertFalse(variantGenotype.hasGQ(), "no GQ should be synthesized for the somatic call");
+        Assert.assertFalse(variantGenotype.hasPL(), "no PL should be synthesized for the somatic call");
+    }
+
+    /**
+     * Adjacent somatic reference blocks must not be merged into a single banded block the way ordinary
+     * hom-ref blocks are -- there is no GQ to band on, and their SQ values differ. This is what exercises
+     * the somatic branch in ReblockingGVCFBlockCombiner.addHomRefSite: without it these blocks reach the
+     * "hom-ref genotypes must contain GQ or PL" check and the tool fails on valid DRAGEN input.
+     */
+    @Test
+    public void testAdjacentSomaticRefBlocksAreNotBanded() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+
+        reblocker.regenotypeVC(makeSomaticRefBlock(2, 72, "10", 45));
+        reblocker.regenotypeVC(makeSomaticRefBlock(73, 126, "6", 82));
+        reblocker.vcfWriter.close();
+
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 2, "adjacent somatic ref blocks should stay separate, not be banded together");
+        Assert.assertEquals(emitted.get(0).getStart(), 2);
+        Assert.assertEquals(emitted.get(0).getEnd(), 72);
+        Assert.assertEquals(emitted.get(1).getStart(), 73);
+        Assert.assertEquals(emitted.get(1).getEnd(), 126);
+        Assert.assertEquals(emitted.get(0).getGenotype(0).getExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY), "10");
+        Assert.assertEquals(emitted.get(1).getGenotype(0).getExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY), "6");
+    }
+
+    /**
+     * A record with both SQ and GQ/PL should NOT take the somatic passthrough path; it should be
+     * reblocked normally, as seen in some mixed DRAGEN outputs.
+     *
+     * The record here is a low-quality variant, chosen deliberately: for a hom-ref block the two paths
+     * both hand the same VariantContext to the writer and so cannot be told apart from the output. A
+     * low-quality variant diverges -- the normal path collapses it to a GQ0 hom-ref block carrying only
+     * <NON_REF>, whereas passthrough would emit it unchanged with its real ALT allele still attached.
+     * That surviving ALT is what this test watches for.
+     */
+    @Test
+    public void testRecordWithSQAndGQIsNotPassedThrough() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+        reblocker.dropLowQuals = false;
+
+        final Genotype lowQualG = VariantContextTestUtils.makeG("sample1", 11, LONG_REF, Allele.NON_REF_ALLELE, 200, 100, 200, 11, 0, 37);
+        final Genotype withSQ = new GenotypeBuilder(lowQualG).attribute(GATKVCFConstants.SOMATIC_QUALITY_KEY, "10").make();
+        final VariantContext lowQualVariantWithSQ = makeDeletionVC("lowQualVarWithSQ",
+                Arrays.asList(LONG_REF, DELETION, Allele.NON_REF_ALLELE), LONG_REF.length(), withSQ);
+
+        // sanity check on the fixture: the input really does carry SQ alongside GQ and PL
+        Assert.assertTrue(lowQualVariantWithSQ.getGenotype(0).hasExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY));
+        Assert.assertTrue(lowQualVariantWithSQ.getGenotype(0).hasGQ());
+        Assert.assertTrue(lowQualVariantWithSQ.getGenotype(0).hasPL());
+
+        reblocker.regenotypeVC(lowQualVariantWithSQ);
+        reblocker.vcfWriter.close();
+
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 1, "the record should be emitted once");
+        Assert.assertEquals(emitted.get(0).getAlternateAlleles(), Collections.singletonList(Allele.NON_REF_ALLELE),
+                "the low quality variant should have been reblocked to a hom-ref block; a surviving ALT allele means "
+                        + "it was passed through as somatic instead");
+        Assert.assertFalse(emitted.get(0).hasAllele(DELETION), "the real ALT allele should not survive reblocking");
+    }
+
+    /**
+     * A somatic record bypasses the block machinery in ReblockingGVCFBlockCombiner.addHomRefSite and is emitted
+     * directly. Any band left open by preceding ordinary hom-ref records covers earlier positions, so it has to be
+     * closed out first -- otherwise it is flushed at end-of-input and lands *after* the somatic record, leaving the
+     * output out of position order.
+     *
+     * The blocks here are deliberately contiguous (2-50 then 51-100) so that nothing else triggers a flush in
+     * between: the only thing that can emit the first band before the second record is the somatic branch itself.
+     */
+    @Test
+    public void testOpenBandIsFlushedBeforeSomaticRecordIsEmitted() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+
+        // an ordinary hom-ref block, which opens a band
+        final GenotypeBuilder normalGB = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
+        normalGB.GQ(40).PL(new int[]{0, 40, 400}).AD(new int[]{50, 0}).DP(50);
+        final VariantContext normalBlock = new VariantContextBuilder("test", "chrM", 2, 50,
+                Arrays.asList(CHR_M_REF, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, 50)
+                .genotypes(normalGB.make()).unfiltered().make();
+
+        reblocker.regenotypeVC(normalBlock);
+        reblocker.regenotypeVC(makeSomaticRefBlock(51, 100, "6", 82));
+        reblocker.vcfWriter.close();
+
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 2, "both blocks should reach the output");
+        Assert.assertEquals(emitted.get(0).getStart(), 2,
+                "the banded hom-ref block must be emitted first; emitting the somatic record ahead of it puts the "
+                        + "output out of position order");
+        Assert.assertEquals(emitted.get(1).getStart(), 51, "the somatic block should follow the band it came after");
+
+        // and the records should still be the ones we expect, not swapped in content
+        Assert.assertTrue(emitted.get(0).getGenotype(0).hasGQ(), "the first record should be the banded one");
+        Assert.assertEquals(emitted.get(1).getGenotype(0).getExtendedAttribute(GATKVCFConstants.SOMATIC_QUALITY_KEY), "6",
+                "the second record should be the somatic one");
+    }
+
+    /**
+     * The somatic guard in ReblockingGVCFBlockCombiner.addHomRefSite carries the same "no GQ and no PL"
+     * requirement as the one in regenotypeVC, and needs its own coverage: a hom-ref block carrying SQ
+     * alongside a real GQ must still be banded by the combiner rather than passed straight through.
+     *
+     * The discriminator is the GQ. Banding with floorBlocks set floors it to the band minimum of 20;
+     * a passthrough would leave the original 42 intact.
+     */
+    @Test
+    public void testCombinerBandsHomRefBlockThatHasBothSQAndGQ() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
+        gb.attribute(GATKVCFConstants.SOMATIC_QUALITY_KEY, "10")
+          .GQ(42)
+          .PL(new int[]{0, 42, 420})
+          .AD(new int[]{76, 0})
+          .DP(76);
+        final VariantContext sqAndGQBlock = new VariantContextBuilder("test", "chrM", 2, 72,
+                Arrays.asList(CHR_M_REF, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, 72)
+                .genotypes(gb.make()).unfiltered().make();
+
+        reblocker.regenotypeVC(sqAndGQBlock);
+        reblocker.vcfWriter.close();
+
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 1, "the block should be emitted once");
+        final Genotype emittedGenotype = emitted.get(0).getGenotype(0);
+        Assert.assertTrue(emittedGenotype.hasGQ(), "a block with GQ should keep a GQ");
+        Assert.assertEquals(emittedGenotype.getGQ(), 20,
+                "GQ should be floored to the band minimum, proving the combiner banded the block rather than "
+                        + "treating it as somatic and passing it through");
+    }
+
+    /**
+     * DRAGEN's targeted caller emits records with no <NON_REF> allele, which would otherwise trip the "not a GVCF"
+     * UserException. The call itself is discarded, but a GQ0 hom-ref block is emitted over its span rather than
+     * dropping the record outright.
+     *
+     * That matters because DRAGEN sometimes emits targeted calls into stretches where it wrote no reference blocks,
+     * leaving the record as the only coverage for its position. Dropping one of those produced a real production
+     * failure -- ValidateVariants reporting a single uncovered locus at chr5:70076654, inside a 275bp block-free
+     * hole. Where an enclosing reference block does exist the emitted block is merely redundant.
+     */
+    @Test
+    public void testTargetedCallWithoutNonRefBecomesGQ0HomRefBlock() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_ALT));
+        gb.GQ(50).PL(new int[]{500, 0, 600}).AD(new int[]{10, 20}).DP(30);
+        final VariantContext targetedNoNonRef = new VariantContextBuilder("test", "chrM", 150, 150,
+                Arrays.asList(CHR_M_REF, CHR_M_ALT))
+                .attribute(GATKVCFConstants.TARGETED_KEY, true)
+                .genotypes(gb.make()).unfiltered().make();
+
+        reblocker.apply(targetedNoNonRef, null, null, null);
+        reblocker.vcfWriter.close();
+
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 1,
+                "a flagged targeted record must still produce output, or its position can be left uncovered and "
+                        + "ValidateVariants --validate-GVCF fails the GVCF");
+
+        final VariantContext block = emitted.get(0);
+        Assert.assertEquals(block.getStart(), 150, "the block must cover the original record's position");
+        Assert.assertEquals(block.getEnd(), 150, "the block must cover the original record's full span");
+        Assert.assertEquals(block.getAlternateAlleles(), Collections.singletonList(Allele.NON_REF_ALLELE),
+                "the targeted call itself should not survive; only <NON_REF> should remain");
+
+        final Genotype blockGenotype = block.getGenotype(0);
+        Assert.assertTrue(blockGenotype.isHomRef(), "the emitted block should assert hom-ref, not the original call");
+        Assert.assertEquals(blockGenotype.getGQ(), 0,
+                "GQ should be 0 -- we are asserting coverage, not confidence in a reference call");
+
+        Assert.assertEquals(reblocker.convertedTargetedRecordCount, 1,
+                "the converted record should be counted so closeTool() can report it");
+    }
+
+    /**
+     * --drop-low-quals must not reintroduce the coverage hole. The targeted conversion exists precisely to keep the
+     * GVCF dense, so it has to outrank the flag that would otherwise discard a GQ0 block.
+     */
+    @Test
+    public void testTargetedConversionSurvivesDropLowQuals() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+        reblocker.dropLowQuals = true;
+
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_ALT));
+        gb.GQ(50).PL(new int[]{500, 0, 600}).AD(new int[]{10, 20}).DP(30);
+        final VariantContext targetedNoNonRef = new VariantContextBuilder("test", "chrM", 150, 150,
+                Arrays.asList(CHR_M_REF, CHR_M_ALT))
+                .attribute(GATKVCFConstants.TARGETED_KEY, true)
+                .genotypes(gb.make()).unfiltered().make();
+
+        reblocker.apply(targetedNoNonRef, null, null, null);
+        reblocker.vcfWriter.close();
+
+        Assert.assertEquals(mockWriter.getEmitted().size(), 1,
+                "the position must stay covered even with --drop-low-quals set");
+        Assert.assertEquals(mockWriter.getEmitted().get(0).getStart(), 150);
+    }
+
+    /**
+     * A targeted record with a multi-base reference allele has to produce a block covering its *whole* span, not just
+     * its start. DRAGEN emits these routinely -- `TC -> T` and `ACT -> A` both appear in the sample that motivated
+     * this conversion -- and getting the span wrong would leave part of a deletion's footprint uncovered.
+     *
+     * Note that the emitted block's reference allele is trimmed to a single base, which is what a GVCF reference
+     * block looks like; the span is carried by the END attribute rather than by the allele length.
+     */
+    @Test
+    public void testTargetedMultiBaseRefCoversWholeSpan() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+
+        final Allele longRef = Allele.create("CAC", true);
+        final Allele deletionAlt = Allele.create("C", false);
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(longRef, deletionAlt));
+        gb.GQ(90).PL(new int[]{0, 90, 150}).DP(41);
+        final VariantContext targetedDeletion = new VariantContextBuilder("test", "chrM", 330, 332,
+                Arrays.asList(longRef, deletionAlt))
+                .attribute(GATKVCFConstants.TARGETED_KEY, true)
+                .genotypes(gb.make()).unfiltered().make();
+
+        reblocker.apply(targetedDeletion, null, null, null);
+        reblocker.vcfWriter.close();
+
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 1, "the record should produce exactly one block");
+        final VariantContext block = emitted.get(0);
+        Assert.assertEquals(block.getStart(), 330, "the block must start where the record did");
+        Assert.assertEquals(block.getEnd(), 332,
+                "the block must span all 3 reference bases; covering only the start leaves 331-332 uncovered");
+        Assert.assertEquals(block.getAttributeAsInt(VCFConstants.END_KEY, -1), 332,
+                "the END attribute carries the span for a reference block");
+        Assert.assertEquals(block.getReference().length(), 1,
+                "a reference block's REF is trimmed to one base; the span lives in END");
+        Assert.assertEquals(block.getAlternateAlleles(), Collections.singletonList(Allele.NON_REF_ALLELE));
+    }
+
+    /**
+     * The record that caused the production failure carried a spanning deletion allele (`T -> G,*`), which routes
+     * through a different branch of changeCallToHomRefVersusNonRef than a plain SNP does. Converting it must still
+     * yield a well-formed hom-ref block rather than letting `*` leak into the output.
+     */
+    @Test
+    public void testTargetedRecordWithSpanningDeletionIsConverted() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+
+        final Allele ref = Allele.create("C", true);
+        final Allele alt = Allele.create("A", false);
+        // GT 1/2 over (ALT, SPAN_DEL), as DRAGEN's targeted caller emits at SMN loci
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(alt, Allele.SPAN_DEL));
+        gb.GQ(2).PL(new int[]{120, 0, 3, 3, 0, 150});
+        final VariantContext targetedWithStar = new VariantContextBuilder("test", "chrM", 340, 340,
+                Arrays.asList(ref, alt, Allele.SPAN_DEL))
+                .attribute(GATKVCFConstants.TARGETED_KEY, true)
+                .genotypes(gb.make()).unfiltered().make();
+
+        reblocker.apply(targetedWithStar, null, null, null);
+        reblocker.vcfWriter.close();
+
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 1, "the position must stay covered");
+        final VariantContext block = emitted.get(0);
+        Assert.assertEquals(block.getStart(), 340);
+        Assert.assertEquals(block.getAlternateAlleles(), Collections.singletonList(Allele.NON_REF_ALLELE),
+                "neither the real ALT nor the spanning deletion should survive into the block");
+        Assert.assertFalse(block.getGenotype(0).getAlleles().contains(Allele.SPAN_DEL),
+                "the emitted genotype must not retain the spanning deletion allele");
+        Assert.assertTrue(block.getGenotype(0).isHomRef(), "the emitted block should assert hom-ref");
+        Assert.assertEquals(block.getGenotype(0).getGQ(), 0);
+    }
+
+    /**
+     * Pins how depth is handled for a realistically-shaped targeted record. DRAGEN reports depth on these as JDP/JAD
+     * (the targeted caller's joint fields) and does *not* emit plain DP or AD, while changeCallToHomRefVersusNonRef
+     * sources depth only from INFO DP or genotype AD. The converted block therefore carries no depth at all, where an
+     * ordinary reblocked hom-ref block would.
+     *
+     * This test documents current behavior rather than endorsing it -- see the review note on VS-2023-V2. It exists
+     * so that a future change which starts honouring JDP is a visible, deliberate edit to this assertion rather than
+     * a silent change in output. Tests using a fixture with DP/AD present cannot observe this at all.
+     */
+    @Test
+    public void testTargetedConversionDropsDepthWhenOnlyJointFieldsPresent() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_ALT));
+        // deliberately no DP and no AD -- only the targeted caller's joint equivalents
+        gb.GQ(2).PL(new int[]{120, 0, 3})
+          .attribute("JDP", 59)
+          .attribute("JAD", "10,49");
+        final VariantContext targetedJointDepthOnly = new VariantContextBuilder("test", "chrM", 280, 280,
+                Arrays.asList(CHR_M_REF, CHR_M_ALT))
+                .attribute(GATKVCFConstants.TARGETED_KEY, true)
+                .genotypes(gb.make()).unfiltered().make();
+
+        reblocker.apply(targetedJointDepthOnly, null, null, null);
+        reblocker.vcfWriter.close();
+
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 1, "the position must stay covered");
+        final Genotype blockGenotype = emitted.get(0).getGenotype(0);
+        Assert.assertTrue(blockGenotype.isHomRef());
+        Assert.assertEquals(blockGenotype.getGQ(), 0);
+        Assert.assertFalse(blockGenotype.hasDP(),
+                "current behavior: JDP is not consulted, so the converted block carries no depth");
+        Assert.assertFalse(blockGenotype.hasAnyAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY),
+                "current behavior: no MIN_DP either, for the same reason");
+    }
+
+    /**
+     * Converted targeted records are counted rather than logged individually, so the count has to accumulate across
+     * the traversal. Records that are not converted must not be counted.
+     */
+    @Test
+    public void testConvertedTargetedRecordsAreCounted() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        attachMockWriter(reblocker);
+
+        Assert.assertEquals(reblocker.convertedTargetedRecordCount, 0, "nothing converted before any records are seen");
+
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_ALT));
+        gb.GQ(50).PL(new int[]{500, 0, 600}).AD(new int[]{10, 20}).DP(30);
+        for (final int position : new int[]{150, 151, 152}) {
+            reblocker.apply(new VariantContextBuilder("test", "chrM", position, position,
+                    Arrays.asList(CHR_M_REF, CHR_M_ALT))
+                    .attribute(GATKVCFConstants.TARGETED_KEY, true)
+                    .genotypes(gb.make()).unfiltered().make(), null, null, null);
+        }
+        Assert.assertEquals(reblocker.convertedTargetedRecordCount, 3, "each converted record should be counted");
+
+        // a targeted record that still has <NON_REF> is reblocked normally, not converted, so it must not be counted
+        reblocker.apply(new VariantContextBuilder(makeSomaticVariant(73))
+                .attribute(GATKVCFConstants.TARGETED_KEY, true).make(), null, null, null);
+        Assert.assertEquals(reblocker.convertedTargetedRecordCount, 3, "records that are not converted should not be counted");
+    }
+
+    /**
+     * The targeted bypass must be narrow: a record missing <NON_REF> that is NOT flagged as targeted is
+     * still a malformed GVCF record and must still fail loudly rather than being silently discarded.
+     */
+    @Test
+    public void testUnflaggedRecordWithoutNonRefStillThrows() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        attachMockWriter(reblocker);
+
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_ALT));
+        gb.GQ(50).PL(new int[]{500, 0, 600}).AD(new int[]{10, 20}).DP(30);
+        final VariantContext noNonRef = new VariantContextBuilder("test", "chrM", 150, 150,
+                Arrays.asList(CHR_M_REF, CHR_M_ALT))
+                .genotypes(gb.make()).unfiltered().make();
+
+        Assert.assertThrows(UserException.class, () -> reblocker.apply(noNonRef, null, null, null));
+    }
+
+    /**
+     * An explicit TARGETED=false is equivalent to the flag being absent, and must not open the bypass.
+     */
+    @Test
+    public void testExplicitlyFalseTargetedFlagStillThrows() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        attachMockWriter(reblocker);
+
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_ALT));
+        gb.GQ(50).PL(new int[]{500, 0, 600}).AD(new int[]{10, 20}).DP(30);
+        final VariantContext notTargeted = new VariantContextBuilder("test", "chrM", 150, 150,
+                Arrays.asList(CHR_M_REF, CHR_M_ALT))
+                .attribute(GATKVCFConstants.TARGETED_KEY, false)
+                .genotypes(gb.make()).unfiltered().make();
+
+        Assert.assertThrows(UserException.class, () -> reblocker.apply(notTargeted, null, null, null));
+    }
+
+    /**
+     * The bypass keys on the missing <NON_REF> allele, not on the TARGETED flag alone. A targeted record
+     * that does carry <NON_REF> is a well-formed GVCF record and must still be processed and emitted.
+     */
+    @Test
+    public void testTargetedCallWithNonRefIsNotDropped() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+
+        final VariantContext somatic = makeSomaticVariant(73);
+        final VariantContext targetedWithNonRef = new VariantContextBuilder(somatic)
+                .attribute(GATKVCFConstants.TARGETED_KEY, true).make();
+
+        reblocker.apply(targetedWithNonRef, null, null, null);
+        reblocker.vcfWriter.close();
+
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 1,
+                "a targeted record that still has <NON_REF> should be processed, not dropped");
+        Assert.assertEquals(emitted.get(0).getStart(), 73);
+    }
+
     private VariantContext makeDeletionVC(final String source, final List<Allele> alleles, final int refLength, final Genotype... genotypes) {
         final int start = DEFAULT_START;
         final int stop = start+refLength-1;
@@ -444,6 +932,123 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
 
     private Genotype addAD(final Genotype g, final int... ads) {
         return new GenotypeBuilder(g).AD(ads).make();
+    }
+
+    /**
+     * floorNegativeQualities applies to any record with a negative GQ or PL -- this test happens to use a reference
+     * block because that is the shape of the real record that exposed the bug, not because the fix is reference-block
+     * specific. Reblocking should raise both to zero rather than failing the run. Before this, such a record reached
+     * the GQ banding code and threw "GQ ... didn't fit into any partition", killing a whole-genome run over a single
+     * bad record.
+     *
+     * Values here mirror the real record: a zero-depth reference block at the chrY PAR1 boundary with GQ -1240 /
+     * PL 0,0,-1240.
+     */
+    @Test
+    public void testNegativeGqAndPlAreFlooredToZero() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
+        gb.GQ(-1240).PL(new int[]{0, 0, -1240}).DP(0).AD(new int[]{0, 0});
+        final VariantContext malformedBlock = new VariantContextBuilder("test", "chrM", 100, 148,
+                Arrays.asList(CHR_M_REF, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, 148)
+                .genotypes(gb.make()).unfiltered().make();
+
+        final VariantContext floored = reblocker.floorNegativeQualities(malformedBlock);
+        final Genotype flooredGenotype = floored.getGenotype(0);
+
+        Assert.assertEquals(flooredGenotype.getGQ(), 0, "a negative GQ should be raised to zero");
+        Assert.assertEquals(flooredGenotype.getPL(), new int[]{0, 0, 0}, "negative PLs should be raised to zero");
+        Assert.assertEquals(floored.getStart(), 100, "flooring must not disturb the block's span");
+        Assert.assertEquals(floored.getAttributeAsInt(VCFConstants.END_KEY, -1), 148);
+    }
+
+    /**
+     * The floor must not touch records whose qualities are already valid -- including GQ 0, which is legitimate and
+     * must not be confused with a malformed value. A well-formed record should come back as the same object so the
+     * check costs nothing on the overwhelming majority of records.
+     */
+    @Test
+    public void testValidQualitiesAreLeftAlone() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+
+        final GenotypeBuilder healthy = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
+        healthy.GQ(45).PL(new int[]{0, 45, 450}).DP(12);
+        final VariantContext healthyBlock = new VariantContextBuilder("test", "chrM", 100, 148,
+                Arrays.asList(CHR_M_REF, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, 148)
+                .genotypes(healthy.make()).unfiltered().make();
+        Assert.assertSame(reblocker.floorNegativeQualities(healthyBlock), healthyBlock,
+                "a valid record should be returned untouched, not rebuilt");
+
+        final GenotypeBuilder zeroGq = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
+        zeroGq.GQ(0).PL(new int[]{0, 0, 0}).DP(0);
+        final VariantContext zeroGqBlock = new VariantContextBuilder("test", "chrM", 200, 248,
+                Arrays.asList(CHR_M_REF, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, 248)
+                .genotypes(zeroGq.make()).unfiltered().make();
+        Assert.assertSame(reblocker.floorNegativeQualities(zeroGqBlock), zeroGqBlock,
+                "GQ 0 is valid and must not be treated as malformed");
+    }
+
+    /**
+     * A malformed record must actually survive reblocking end to end, not merely pass the floor in isolation --
+     * again using a reference block as the realistic shape, not because the fix only covers reference blocks. This
+     * is the behaviour that was broken: GQ banding rejected the negative value and the run died.
+     */
+    @Test
+    public void testBlockWithNegativeQualitiesStillReblocks() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        final MockVcfWriter mockWriter = attachMockWriter(reblocker);
+
+        final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
+        gb.GQ(-1240).PL(new int[]{0, 0, -1240}).DP(0).AD(new int[]{0, 0});
+        final VariantContext malformedBlock = new VariantContextBuilder("test", "chrM", 100, 148,
+                Arrays.asList(CHR_M_REF, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, 148)
+                .genotypes(gb.make()).unfiltered().make();
+
+        reblocker.apply(malformedBlock, null, null, null);
+        reblocker.vcfWriter.close();
+
+        final List<VariantContext> emitted = mockWriter.getEmitted();
+        Assert.assertEquals(emitted.size(), 1, "the block should be reblocked and emitted, not rejected");
+        Assert.assertEquals(emitted.get(0).getGenotype(0).getGQ(), 0,
+                "the emitted block should carry the floored GQ");
+        Assert.assertEquals(reblocker.flooredNegativeQualityRecordCount, 1,
+                "the floored record should be counted so closeTool() can report it, the same way targeted conversions are");
+    }
+
+    /**
+     * Floored records are counted rather than logged individually, the same way and for the same reason as converted
+     * targeted records -- see testConvertedTargetedRecordsAreCounted. Records with valid qualities must not be counted.
+     */
+    @Test
+    public void testFlooredNegativeQualityRecordsAreCounted() {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        attachMockWriter(reblocker);
+
+        Assert.assertEquals(reblocker.flooredNegativeQualityRecordCount, 0, "nothing floored before any records are seen");
+
+        for (final int position : new int[]{100, 200, 300}) {
+            final GenotypeBuilder gb = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
+            gb.GQ(-1240).PL(new int[]{0, 0, -1240}).DP(0).AD(new int[]{0, 0});
+            reblocker.apply(new VariantContextBuilder("test", "chrM", position, position + 48,
+                    Arrays.asList(CHR_M_REF, Allele.NON_REF_ALLELE))
+                    .attribute(VCFConstants.END_KEY, position + 48)
+                    .genotypes(gb.make()).unfiltered().make(), null, null, null);
+        }
+        Assert.assertEquals(reblocker.flooredNegativeQualityRecordCount, 3, "each floored record should be counted");
+
+        // a record with valid qualities must not be counted
+        final GenotypeBuilder healthy = new GenotypeBuilder("sample1", Arrays.asList(CHR_M_REF, CHR_M_REF));
+        healthy.GQ(45).PL(new int[]{0, 45, 450}).DP(12);
+        reblocker.apply(new VariantContextBuilder("test", "chrM", 400, 448,
+                Arrays.asList(CHR_M_REF, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, 448)
+                .genotypes(healthy.make()).unfiltered().make(), null, null, null);
+        Assert.assertEquals(reblocker.flooredNegativeQualityRecordCount, 3, "records with valid qualities should not be counted");
     }
 
     private VariantContext addAttributes(final VariantContext vc, final Map<String, Object> attributes) {

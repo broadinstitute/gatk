@@ -55,8 +55,8 @@ This document describes the changes necessary to run exome gVCFs through the GVS
    - This workflow does not use the Terra Data Entity Model to run, so be sure to select the `Run workflow with inputs defined by file paths` workflow submission option.
    - Input values with truth inputs for NA12878/HG001:
      - `truth_beds`:  `[ "gs://gvs-internal/truth/HG001.exome_evaluation_regions.v1.1.bed" ]`
-     - `truth_vcfs`: `[ "gs://gvs-internal/truth/HG001_exome_filtered.recode.vcf.gz.tbi" ]`
-     - `truth_vcf_indices`: `"gs://gvs-internal/truth/HG001_exome_filtered.recode.vcf.gz.tbi"`
+     - `truth_vcfs`: `[ "gs://gvs-internal/truth/HG001_exome_filtered.recode.vcf.gz" ]`
+     - `truth_vcf_indices`: `[ "gs://gvs-internal/truth/HG001_exome_filtered.recode.vcf.gz.tbi" ]`
      - `vcf_eval_bed_file`: `"gs://gvs-internal/truth/HG001.exome_evaluation_regions.v1.1.bed"`
      - `chromosomes`: `[ "chr1", "chr2", "chr3", "chr4", "chr5", "chr6", "chr7", "chr8", "chr9", "chr10", "chr11", "chr12", "chr13", "chr14", "chr15", "chr16", "chr17", "chr18", "chr19", "chr20", "chr21", "chr22" ]`
      - `interval_list`: `"gs://gcp-public-data--broad-references/hg38/v0/bge_exome_calling_regions.v1.1.interval_list"`

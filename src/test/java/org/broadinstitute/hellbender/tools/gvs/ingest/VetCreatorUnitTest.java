@@ -25,7 +25,7 @@ public class VetCreatorUnitTest {
 
     int sampleTableNumber = IngestUtils.getTableNumber(SAMPLE_ID, IngestConstants.partitionPerTable);
     String tableNumber = String.format("%03d", sampleTableNumber);
-    String sampleIdentifierForOutputFileName = "parquet";
+    String inputVcfFileName = "parquet";
     public final MessageType PARQUET_SCHEMA = MessageTypeParser // do we want this in a utils file? or as part of a method?
             .parseMessageType("""
                     message VariantRow {
@@ -53,7 +53,7 @@ public class VetCreatorUnitTest {
     @Test
     public void testParquetOutputFileNaming() throws IOException {
         String fullPath = Paths.get(currentRelativePath.toAbsolutePath().toString(), outputDirectory.toString()).toString();
-        String filename = VetCreator.getOutputFileName(tableNumber, 27L, sampleIdentifierForOutputFileName, outputType);
+        String filename = VetCreator.getOutputFileName(tableNumber, 27L, inputVcfFileName, outputType);
         final File parquetOutputFile = new File(fullPath, filename);
 
         String expected = Paths.get(fullPath, "vet_001_27_parquet.parquet").toString();
@@ -70,7 +70,7 @@ public class VetCreatorUnitTest {
         Files.createDirectories(outputDirectory.toPath());
 
         // Calculate the actual filename that will be generated
-        String filename = VetCreator.getOutputFileName(tableNumber, SAMPLE_ID, sampleIdentifierForOutputFileName, outputType);
+        String filename = VetCreator.getOutputFileName(tableNumber, SAMPLE_ID, inputVcfFileName, outputType);
         final File parquetOutputFile = new File(outputDirectory, filename);
 
         // Clean up any existing file first
@@ -82,7 +82,7 @@ public class VetCreatorUnitTest {
         try {
             // This should throw a FileAlreadyExistsException
             new VetCreator(
-                    sampleIdentifierForOutputFileName,
+                    inputVcfFileName,
                     SAMPLE_ID,
                     tableNumber,
                     outputDirectory,

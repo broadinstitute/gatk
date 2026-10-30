@@ -9,6 +9,8 @@ workflow GvsTieoutPgenToVcf {
         String plink_download_url = "https://github.com/broadinstitute/pgen-jni/raw/de500ad710ce70a8171fd3d0806857a1f36d8a2e/plink2_assets/plink2_linux_x86_64_20240318.zip"
     }
 
+    # Intentionally unused: runs for its side effect of validating PGEN-to-VCF tieout; its output is not consumed downstream.
+    #@ except: UnusedCall
     call Tieout {
         input:
             vcf_extract_extract_task_call_root = vcf_extract_extract_task_call_root,

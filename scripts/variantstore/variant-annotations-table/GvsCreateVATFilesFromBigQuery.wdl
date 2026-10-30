@@ -43,7 +43,7 @@ workflow GvsCreateVATFilesFromBigQuery {
 
     call MergeVatTSVs {
         input:
-            export_done = BigQueryExportVat.done,
+            go = BigQueryExportVat.done,
             contig_array = contig_array,
             output_path = output_path,
             merge_vcfs_disk_size_override = merge_vcfs_disk_size_override,
@@ -55,6 +55,7 @@ workflow GvsCreateVATFilesFromBigQuery {
 
     output {
         File final_tsv_file = MergeVatTSVs.tsv_file
+        File final_tsv_file_index = MergeVatTSVs.tsv_file_index
         String recorded_git_hash = effective_git_hash
     }
 }
@@ -153,7 +154,7 @@ task BigQueryExportVat {
         docker: cloud_sdk_docker
         memory: "2 GB"
         preemptible: 3
-        cpu: "1"
+        cpu: 1
         disks: "local-disk 100 HDD"
     }
     # ------------------------------------------------
@@ -167,7 +168,10 @@ task BigQueryExportVat {
 
 task MergeVatTSVs {
     input {
-        Array[Boolean] export_done
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
+        Array[Boolean] go
         Array[String] contig_array
         String project_id
         String dataset_name
@@ -233,26 +237,34 @@ task MergeVatTSVs {
         # NOTE: Contents of tsvs exported from BigQuery are tab-separated, the header must also be tab-separated!
         cat header.tsv | gzip > header.gz
 
-        echo_date "concatenating $files"
-        cat $(echo $files) > vat_complete.tsv.gz
         echo_date "bgzipping concatenated file"
-        cat vat_complete.tsv.gz | gunzip | bgzip > vat_complete.bgz.tsv.gz
-        echo_date "copying bgzipped file to ~{output_path}"
+        cat $(echo $files) | gunzip | bgzip -@ $(nproc) > vat_complete.bgz.tsv.gz
+        rm -f $(echo $files)
+
+        echo_date "indexing with tabix"
+        contig_col=$(head -1 header.tsv | tr '\t' '\n' | grep -n "^contig$" | cut -d: -f1)
+        position_col=$(head -1 header.tsv | tr '\t' '\n' | grep -n "^position$" | cut -d: -f1)
+        echo_date "contig column: $contig_col, position column: $position_col"
+        tabix -s "$contig_col" -b "$position_col" -e "$position_col" -S 1 vat_complete.bgz.tsv.gz
+
+        echo_date "copying bgzipped file and index to ~{output_path}"
         gcloud storage cp vat_complete.bgz.tsv.gz ~{output_path}
+        gcloud storage cp vat_complete.bgz.tsv.gz.tbi ~{output_path}
     >>>
     # ------------------------------------------------
     # Runtime settings:
     runtime {
         docker: cloud_sdk_slim_docker
-        memory: "4 GB"
+        memory: "8 GB"
         preemptible: 3
-        cpu: "2"
-        disks: "local-disk ~{disk_size} HDD"
+        cpu: 8
+        disks: "local-disk ~{disk_size} SSD"
     }
     # ------------------------------------------------
     # Outputs:
     output {
         File tsv_file = "vat_complete.bgz.tsv.gz"
+        File tsv_file_index = "vat_complete.bgz.tsv.gz.tbi"
         File monitoring_log = "monitoring.log"
     }
 }

@@ -35,6 +35,8 @@ workflow SearchGVCFsAtSite {
             variants_docker = GetToolVersions.variants_docker,
     }
 
+    # Intentionally unused: this workflow exists solely to run this task as a side effect; there are no outputs to consume.
+    #@ except: UnusedCall
     call UploadGVCFContent {
         input:
             project_id = project_id,

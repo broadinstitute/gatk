@@ -137,6 +137,9 @@ workflow JointVcfFiltering {
 task ExtractVariantAnnotations {
     input {
         File input_vcf
+        # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+        # tools require the index to be co-located with the data file and will fail if it is absent.
+        #@ except: UnusedInput
         File input_vcf_idx
         String output_prefix
         Array[String] annotations
@@ -155,7 +158,9 @@ task ExtractVariantAnnotations {
         input_vcf_idx: {localization_optional: true}
     }
 
-    command {
+    Int effective_command_mem_gb = select_first([runtime_attributes.command_mem_gb, 6])
+
+    command <<<
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -163,14 +168,14 @@ task ExtractVariantAnnotations {
           bash ~{monitoring_script} > monitoring.log &
         fi
 
-        gatk --java-options "-Xmx~{default=6 runtime_attributes.command_mem_gb}G" \
+        gatk --java-options "-Xmx~{effective_command_mem_gb}G" \
             ExtractVariantAnnotations \
                 -V ~{input_vcf} \
                 -O ~{output_prefix}.extract \
                 -A ~{sep=" -A " annotations} \
                 ~{resource_args} \
                 ~{extra_args}
-    }
+    >>>
 
     runtime {
         docker: gatk_docker
@@ -208,7 +213,9 @@ task TrainVariantAnnotationsModel {
         RuntimeAttributes runtime_attributes = {}
     }
 
-    command {
+    Int effective_command_mem_gb = select_first([runtime_attributes.command_mem_gb, 6])
+
+    command <<<
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
 
@@ -216,7 +223,7 @@ task TrainVariantAnnotationsModel {
           bash ~{monitoring_script} > monitoring.log &
         fi
 
-        gatk --java-options "-Xmx~{default=6 runtime_attributes.command_mem_gb}G" \
+        gatk --java-options "-Xmx~{effective_command_mem_gb}G" \
             TrainVariantAnnotationsModel \
                 --annotations-hdf5 ~{annotations_hdf5} \
                 ~{"--unlabeled-annotations-hdf5 " + unlabeled_annotations_hdf5} \
@@ -225,7 +232,7 @@ task TrainVariantAnnotationsModel {
                 ~{"--hyperparameters-json " + hyperparameters_json} \
                 -O ~{output_prefix}.train \
                 ~{extra_args}
-    }
+    >>>
 
     runtime {
         docker: gatk_docker
@@ -246,11 +253,17 @@ task TrainVariantAnnotationsModel {
 task ScoreVariantAnnotations {
     input {
         File input_vcf
+        # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+        # tools require the index to be co-located with the data file and will fail if it is absent.
+        #@ except: UnusedInput
         File input_vcf_idx
         String output_prefix
         Array[String] annotations
         String resource_args
         File extracted_vcf
+        # Intentionally unused: the execution engine localizes index files as siblings to their main data file; bioinformatics
+        # tools require the index to be co-located with the data file and will fail if it is absent.
+        #@ except: UnusedInput
         File extracted_vcf_idx
         String model_prefix
         Array[File] model_files
@@ -272,7 +285,9 @@ task ScoreVariantAnnotations {
         extracted_vcf_idx: {localization_optional: true}
     }
 
-    command {
+    Int effective_command_mem_gb = select_first([runtime_attributes.command_mem_gb, 2])
+
+    command <<<
         set -e
 
         if [ -s ~{monitoring_script} ]; then
@@ -284,7 +299,7 @@ task ScoreVariantAnnotations {
         mkdir model-files
         ln -s ~{sep=" model-files && ln -s " model_files} model-files
 
-        gatk --java-options "-Xmx~{default=2 runtime_attributes.command_mem_gb}G" \
+        gatk --java-options "-Xmx~{effective_command_mem_gb}G" \
             ScoreVariantAnnotations \
                 -V ~{input_vcf} \
                 -O ~{output_prefix}.score \
@@ -295,7 +310,7 @@ task ScoreVariantAnnotations {
                 ~{"--model-backend " + model_backend} \
                 ~{"--python-script " + python_script} \
                 ~{extra_args}
-    }
+    >>>
 
     runtime {
         docker: gatk_docker

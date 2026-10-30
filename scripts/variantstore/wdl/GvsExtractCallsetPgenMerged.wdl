@@ -7,6 +7,9 @@ import "GvsUtils.wdl" as Utils
 workflow GvsExtractCallsetPgenMerged {
 
     input {
+        # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+        # is passed here to prevent this task from running until the upstream task has completed.
+        #@ except: UnusedInput
         Boolean go = true
         String dataset_name
         String project_id
@@ -118,7 +121,6 @@ workflow GvsExtractCallsetPgenMerged {
             x_bed_weight_scaling = x_bed_weight_scaling,
             y_bed_weight_scaling = y_bed_weight_scaling,
             write_cost_to_db = write_cost_to_db,
-            output_gcs_dir = output_gcs_dir,
     }
 
     call SplitFilesByChromosome {
@@ -220,7 +222,7 @@ task SplitFilesByChromosome {
         docker: "ubuntu:20.04"
         memory: "1 GB"
         disks: "local-disk ${disk_size} HDD"
-        cpu: "1"
+        cpu: 1
         preemptible: 1
     }
 }
