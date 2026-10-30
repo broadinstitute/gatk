@@ -155,6 +155,29 @@ values that were never clinical classifications.**
 
 ### Known residuals
 
+#### Production edge case: nonzero-star RCV without a classification
+
+The production VAT run `ea4d6584-df8a-4360-a158-92fa664808a5` (submission
+`88e9f11a-51b6-45ae-8c52-1a90c536bb09`) failed in `PrepVtAnnotationJson`, shard 1420.
+For `13-32394734-T-G`, the July 2025 RCV XML lists `RCV000031813.18` with review status
+`criteria provided, single submitter`, but its classification is
+`no classifications from unflagged records`. Both underlying SCVs (`SCV000054421.6` and
+`SCV000147606.1`) are flagged submissions. Excluding that placeholder is correct.
+
+The resulting Nirvana annotation omits `significance` while retaining the nonzero-star review
+status. The earlier integration comparison did not exercise this combination; an unchanged loader
+does not guarantee compatibility with every record in the updated release. The previous claim that
+classification-less RCVs simply disappear assumed an empty list rather than an omitted field.
+
+The VAT loader now skips matching nonzero-star RCVs whose `significance` is absent, null, or empty,
+logging the accession and VID. It excludes the entire RCV contribution, including its date and
+phenotypes, while preserving the variant and any other qualifying RCVs. Regression tests cover
+each representation both alone and alongside a valid RCV, and compare the entire resulting row.
+Deployment requires rebuilding the Variants image and updating `variants_docker` in
+`GvsUtils.wdl`; a source-only change does not fix a running workflow.
+
+#### Other residuals
+
 One edge case: a record whose *Explanation* field reads `Pathogenic, low penetrance` is dropped
 entirely, because that code path splits on `/` and `;` but not `,`. This affects exactly 1 record in
 10.18 million and is a pre-existing inconsistency in Nirvana's own `GetSignificances`, not something
