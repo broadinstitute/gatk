@@ -340,6 +340,32 @@ limits of Terra data tables and being unable to read AoU-sized sample sets, but
 providing this workflow with a FOFN TSV directly is also much simpler than the
 previous TSV to Terra data table to TSV approach.
 
+### Parquet ingest sizes, and what they mean for BigQuery limits
+
+On the Parquet ingest path, one whole genome produces about 350 MB of Parquet
+and one exome about 13 MB. These are totals per sample, not per file. Each is
+spread over at least three files, one each for `vet`, `ref_ranges` and
+`sample_chromosome_ploidy`, plus a fourth for `vcf_header_lines_scratch` when
+headers are loaded. A single family's file is therefore smaller than these
+figures, and an ingest writes three or four files per sample. Use these numbers
+to size anything that reads a whole ingest's Parquet at once, rather than
+guessing.
+
+The one place this matters today is the VS-2032 footer row count check in
+`verify_structural_checks.py`, which reads each table family's Parquet through
+a BigQuery external table. An external table is limited to 600 TB of files *as
+stored on Cloud Storage*, and to 10,000,000 files. The size limit counts stored
+bytes, not billed bytes, so a query that bills 0 bytes, as the footer query
+does, can still hit it. Both limits apply to each external table separately,
+and the check builds one table per family, so each table sees only one file
+and one family's share of the bytes per sample. Even in the worst case, where
+all 350 MB of a genome sat in one family, a table would hold about 1.7 million
+genomes before reaching 600 TB. A 500k-sample AoU ingest therefore uses under a
+third of it, and since the bytes are really split three or four ways, it uses
+well under that. For exomes the file limit binds first, at 10 million samples
+per ingest. That limit counts one family's files, so the three or four files
+each sample writes do not reduce it.
+
 ### GvsPopulateAltAllele.wdl
 
 This workflow populates the `alt_allele` table with allele information from the
@@ -1066,3 +1092,10 @@ commit date is circumstantial in the same way.
 It matters most when a WDL starts passing a new argument to a baked-in script.
 A stale image fails with argparse's `error: unrecognized arguments`, which
 surfaces only at runtime inside a Cromwell task, long after review.
+
+A merge conflict on the `variants_docker` line itself is routine, not a
+finding to investigate. It happens whenever another branch that bumped the
+image merges to `ah_var_store` first. Neither side's tag is right after the
+merge, so the fix is always the same: rebuild from the merged tree and bump to
+that tag. In a review, note the conflict as a "rebuild after merge" action and
+move on. Do not pull both images to work out which changes each one lacks.
