@@ -32,6 +32,7 @@ import java.io.PrintWriter;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 public class PermutectDatasetEngine implements AutoCloseable {
 
@@ -150,19 +151,7 @@ public class PermutectDatasetEngine implements AutoCloseable {
         final int normalDepth = (int) MathUtils.sum(normalADs);
         final boolean hasNormal = normalDepth > 0;
 
-        final List<Allele> allRefAlleles = new ArrayList<>();
-        allRefAlleles.add(vc.getReference());
-        truthVCs.ifPresent(vcs -> vcs.forEach(var -> allRefAlleles.add(var.getReference())));
-        final Allele longestRef = allRefAlleles.stream().sorted(Comparator.comparingInt(Allele::length).reversed()).findFirst().get();
-
-        // skip(1) excludes the reference allele
-        final List<Allele> remappedAltAlleles = ReferenceConfidenceVariantContextMerger.remapAlleles(vc, longestRef).stream()
-                .skip(1).toList();
-
-        final Set<Allele> truthAlleles = !truthVCs.isPresent() ? Collections.emptySet() : truthVCs.get().stream()
-                .filter(truthVC -> ! truthVC.isFiltered())
-                .flatMap(truthVC -> ReferenceConfidenceVariantContextMerger.remapAlleles(truthVC, longestRef).stream())
-                .collect(Collectors.toSet());
+        final List<Boolean> altAllelesMatchingTruth = truthVCs.map(vcs -> altAllelesMatchingTruth(vc, vcs)).orElse(null);
 
         final List<Label> labels = new ArrayList<>(numAlt);
         final Map<Allele, Integer> altDownsampleMap= new HashMap<>();
@@ -171,7 +160,6 @@ public class PermutectDatasetEngine implements AutoCloseable {
             final double tumorAF = tumorADs[n+1] / ((double) tumorDepth);
             final double normalAF = hasNormal ? normalADs[n+1] / ((double) normalDepth) : 0.0;
             Allele altAllele = vc.getAlternateAllele(n);
-            final Allele remappedAltAlelle = remappedAltAlleles.get(n);
             final String altAlleleString = altAllele.getBaseString();
             final int diff = altAlleleString.length() - refAllele.length();
             final VariantType type = diff == 0 ? VariantType.SNV : ( diff > 0 ? VariantType.INSERTION : VariantType.DELETION);
@@ -183,10 +171,10 @@ public class PermutectDatasetEngine implements AutoCloseable {
                 // extremely strict criteria because there are so many germline variants we can afford to waste a lot
                 final boolean definiteGermline = !likelySeqError && popafs[n] < COMMON_POPAF_THRESHOLD &&
                         tumorAF > 0.35 && (!hasNormal || normalAF > 0.35);
-                final boolean trueVariant = truthVCs.isPresent() ? truthAlleles.contains(remappedAltAlelle) : definiteGermline;
+                final boolean trueVariant = truthVCs.isPresent() ? altAllelesMatchingTruth.get(n) : definiteGermline;
 
                 // low AF in tumor and normal, rare in population implies artifact
-                boolean probableArtifact = !likelySeqError && (truthVCs.isPresent() ? !truthAlleles.contains(remappedAltAlelle) :
+                boolean probableArtifact = !likelySeqError && (truthVCs.isPresent() ? !altAllelesMatchingTruth.get(n) :
                         (tumorAF < 0.2 && popafs[n] > RARE_POPAF_THRESHOLD));
 
                 if  (probableArtifact) {
@@ -216,7 +204,7 @@ public class PermutectDatasetEngine implements AutoCloseable {
             } else {    // not training mode -- we are generating tensors in order to apply the Permutect artifact model to a callset
                 if (truthVCs.isPresent()) {
                     // here, for the purposes of test data, both sequencing errors and technical artifacts get the "ARTIFACT" label
-                    labels.add(truthAlleles.contains(remappedAltAlelle) ? Label.VARIANT : Label.ARTIFACT);
+                    labels.add(altAllelesMatchingTruth.get(n) ? Label.VARIANT : Label.ARTIFACT);
                 } else {
                     labels.add(Label.UNLABELED);
                 }
@@ -282,6 +270,63 @@ public class PermutectDatasetEngine implements AutoCloseable {
             final double normalSeqErrorLogLikelihood = -MathUtils.log10ToLog(nalod) - Math.log(normalDepth + 1);
             printWriter.printf("%.3f%n", normalSeqErrorLogLikelihood);
         }
+    }
+
+    // a substitution of one base, eg the substitution of a G at position 100, as part of an SNV or MNV
+    private record Substitution(int position, byte altBase) { }
+
+    /**
+     * The single-base substitutions of an alt allele relative to its ref allele.  For example, AT->GC at position 100
+     * is the substitutions of G at 100 and C at 101.  Empty unless the alleles have the same length.
+     */
+    private static Set<Substitution> substitutions(final int start, final Allele ref, final Allele alt) {
+        if (alt.isSymbolic() || alt.equals(Allele.SPAN_DEL) || alt.length() != ref.length()) {
+            return Collections.emptySet();
+        }
+        final byte[] refBases = ref.getBases();
+        final byte[] altBases = alt.getBases();
+        return IntStream.range(0, refBases.length).filter(n -> refBases[n] != altBases[n])
+                .mapToObj(n -> new Substitution(start + n, altBases[n])).collect(Collectors.toSet());
+    }
+
+    /**
+     * For each alt allele of a call, whether an unfiltered truth record contains it.  A truth record starting at the call's
+     * position matches if it has the same allele after padding both to a common ref allele.  In addition, since truth VCFs
+     * may represent a multi-nucleotide substitution (MNV) as separate SNVs, an MNV matches if the truth has each of its
+     * substituted bases.
+     *
+     * @param vc the call
+     * @param truthVCs truth records overlapping the call
+     * @return whether each alt allele of the call, in order, matches the truth
+     */
+    static List<Boolean> altAllelesMatchingTruth(final VariantContext vc, final List<VariantContext> truthVCs) {
+        final List<VariantContext> truthVCsAtStart = truthVCs.stream().filter(truthVC -> truthVC.getStart() == vc.getStart()).toList();
+
+        final List<Allele> allRefAlleles = new ArrayList<>();
+        allRefAlleles.add(vc.getReference());
+        truthVCsAtStart.forEach(truthVC -> allRefAlleles.add(truthVC.getReference()));
+        final Allele longestRef = allRefAlleles.stream().sorted(Comparator.comparingInt(Allele::length).reversed()).findFirst().get();
+
+        // skip(1) excludes the reference allele
+        final List<Allele> remappedAltAlleles = ReferenceConfidenceVariantContextMerger.remapAlleles(vc, longestRef).stream()
+                .skip(1).toList();
+
+        final Set<Allele> truthAlleles = truthVCsAtStart.stream()
+                .filter(truthVC -> ! truthVC.isFiltered())
+                .flatMap(truthVC -> ReferenceConfidenceVariantContextMerger.remapAlleles(truthVC, longestRef).stream())
+                .collect(Collectors.toSet());
+
+        final Set<Substitution> truthSubstitutions = truthVCs.stream()
+                .filter(truthVC -> ! truthVC.isFiltered())
+                .flatMap(truthVC -> truthVC.getAlternateAlleles().stream()
+                        .flatMap(alt -> substitutions(truthVC.getStart(), truthVC.getReference(), alt).stream()))
+                .collect(Collectors.toSet());
+
+        return IntStream.range(0, vc.getNAlleles() - 1).mapToObj(n -> {
+            final Set<Substitution> altSubstitutions = substitutions(vc.getStart(), vc.getReference(), vc.getAlternateAllele(n));
+            final boolean isMnv = altSubstitutions.size() > 1;
+            return truthAlleles.contains(remappedAltAlleles.get(n)) || (isMnv && truthSubstitutions.containsAll(altSubstitutions));
+        }).toList();
     }
 
     private String integerString(final List<Integer> numbers) {
