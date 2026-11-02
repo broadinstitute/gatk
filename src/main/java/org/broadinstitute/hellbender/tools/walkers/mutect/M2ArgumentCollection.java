@@ -35,6 +35,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String GERMLINE_RESOURCE_LONG_NAME = "germline-resource";
     public static final String DEFAULT_AF_LONG_NAME = "af-of-alleles-not-in-resource";
     public static final String DEFAULT_AF_SHORT_NAME = "default-af";
+    public static final String ASSIGN_MNV_AF_FROM_GERMLINE_SNVS_LONG_NAME = "assign-mnv-af-from-germline-snvs";
     public static final String EMISSION_LOD_LONG_NAME = "tumor-lod-to-emit";
     public static final String EMISSION_LOG_SHORT_NAME = "emit-lod";
     public static final String INITIAL_TUMOR_LOG_10_ODDS_LONG_NAME = "initial-tumor-lod";
@@ -159,6 +160,19 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
         return afOfAllelesNotInGermlineResource >= 0 ? afOfAllelesNotInGermlineResource :
                 (normalSamples.isEmpty() ? DEFAULT_AF_FOR_TUMOR_ONLY_CALLING : DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING);
     }
+
+    /**
+     * Germline resources often lack multi-nucleotide variants (MNVs) even when they contain the MNV's single-nucleotide
+     * variants (SNVs), in which case a common germline MNV would get the default population allele frequency of alleles
+     * not in the resource.  If this is true, an MNV not in the germline resource is assigned the allele frequency of its
+     * rarest SNV, since an MNV can be no more common than any of its SNVs, but only if every one of its SNVs is in the
+     * germline resource.  For example, an AC->GT MNV at chr2:1000 needs both an A->G SNV at chr2:1000 and a C->T SNV at
+     * chr2:1001.  If this is false, MNVs only get allele frequencies from exactly matching alleles in the germline resource.
+     */
+    @Advanced
+    @Argument(fullName = ASSIGN_MNV_AF_FROM_GERMLINE_SNVS_LONG_NAME, optional = true,
+            doc = "Assign an MNV not in the germline resource the allele frequency of its rarest SNV if all its SNVs are in the resource.")
+    public boolean assignMnvAfFromGermlineSnvs = true;
 
     /**
      * Mitochondria mode changes default values for --tumor-lod-to-emit and --initial-tumor-lod to 0 to increase sensitivity.
