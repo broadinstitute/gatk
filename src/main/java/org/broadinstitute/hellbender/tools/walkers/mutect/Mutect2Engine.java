@@ -518,12 +518,13 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
                     final Allele germlineAlt = germlineVC.getAlternateAllele(germlineAltIdx);
 
-                    // if it's a substitution that shares its first base with the dominant tumor allele, or if it's an
-                    // indel and the dominant tumor allele is an indel, skip
+                    // if it's a substitution whose alt base at this locus is the dominant tumor allele, or if it's an
+                    // indel and the dominant tumor allele is an indel, it's probably germline.  Note that a multi-base
+                    // substitution in the resource may start before this locus.
                     if (PileupQualBuffer.likeliestIndexIsIndel(bestTumorAltAllele.getLeft()) && germlineAlt.length() != germlineRef.length()) {
                             return new ActivityProfileState(refInterval, 0.0);
                     } else if (PileupQualBuffer.likeliestIndexIsSubstitution(bestTumorAltAllele.getLeft()) && germlineAlt.length() == germlineRef.length()
-                            && PileupQualBuffer.getSubstitutionBase(bestTumorAltAllele.getLeft()) == germlineRef.getBases()[0]) {
+                            && PileupQualBuffer.getSubstitutionBase(bestTumorAltAllele.getLeft()) == germlineAlt.getBases()[refInterval.getStart() - germlineVC.getStart()]) {
                         return new ActivityProfileState(refInterval, 0.0);
                     }
 
