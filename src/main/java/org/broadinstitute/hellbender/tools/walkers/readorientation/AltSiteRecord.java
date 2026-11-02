@@ -31,7 +31,8 @@ public class AltSiteRecord {
                          final int refF1R2, final int altF1R2, final Nucleotide altAllele){
         Utils.validateArg(altAllele != null && altAllele.isStandard(), "altAllele must be one of {A,C,G,T} but got " + altAllele);
 
-        this.referenceContext = referenceContext;
+        // records with the same context share one String to save memory
+        this.referenceContext = referenceContext.intern();
         this.refCount = refCount;
         this.altCount = altCount;
         this.refF1R2 = refF1R2;
