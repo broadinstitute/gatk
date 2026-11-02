@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.engine.spark.Mutect2AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
@@ -222,6 +223,10 @@ import java.util.*;
 public final class Mutect2 extends AssemblyRegionWalker {
      public static final String MUTECT_STATS_SHORT_NAME = "stats";
      public static final String DEFAULT_STATS_EXTENSION = ".stats";
+
+    public Mutect2() {
+        super(new Mutect2AssemblyRegionArgumentCollection());
+    }
 
     @ArgumentCollection
     protected M2ArgumentCollection MTAC = new M2ArgumentCollection();
