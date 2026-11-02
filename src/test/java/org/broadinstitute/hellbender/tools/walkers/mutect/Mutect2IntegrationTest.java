@@ -4,6 +4,9 @@ import com.google.common.collect.ImmutableSet;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
+import htsjdk.variant.variantcontext.writer.Options;
+import htsjdk.variant.variantcontext.writer.VariantContextWriter;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.collections4.SetUtils;
@@ -33,6 +36,7 @@ import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -44,6 +48,7 @@ import java.nio.file.Files;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Created by davidben on 9/1/16.
@@ -387,6 +392,69 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                    args -> args.addFlag(ReadThreadingAssemblerArgumentCollection.LINKED_DE_BRUIJN_GRAPH_LONG_NAME),
                    args -> args.add(M2ArgumentCollection.PERMUTECT_TRAINING_DATASET_LONG_NAME, trainingDataset),
                     args -> args.add(M2ArgumentCollection.PERMUTECT_TEST_DATASET_LONG_NAME, testDataset));
+    }
+
+    // A truth VCF may represent a multi-nucleotide variant (MNV) as separate SNVs, and the Permutect test dataset must still
+    // label an MNV call that matches them a true variant.  Here the truth is Mutect2's own calls with each MNV split into
+    // SNVs, so every datum is a true variant.
+    @Test
+    public void testPermutectTestDatasetMatchesMnvsToSplitTruth() throws IOException {
+        final File tumor = new File(NA12878_20_21_WGS_bam);
+        // this interval contains the MNVs 20:10102247 GT->AC, 20:10102530 CA->TG and 20:10103849 TG->CA
+        final String interval = "20:10100000-10105000";
+        // NA12878 is not a tumor, so we genotype germline sites in order to call its germline MNVs
+        final Function<ArgumentsBuilder, ArgumentsBuilder> genotypeGermlineSites = args -> args.addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME);
+
+        Utils.resetRandomGenerator();
+        final File calls = createTempFile("calls", ".vcf");
+        runMutect2(tumor, calls, interval, b37Reference, Optional.of(GNOMAD), genotypeGermlineSites);
+
+        final Pair<VCFHeader, List<VariantContext>> headerAndCalls = VariantContextTestUtils.readEntireVCFIntoMemory(calls.getAbsolutePath());
+        final List<VariantContext> splitCalls = headerAndCalls.getRight().stream()
+                .flatMap(vc -> vc.getAlternateAlleles().stream().flatMap(alt -> splitIntoSnvsIfMnv(vc, alt).stream()))
+                .sorted(Comparator.comparingInt(VariantContext::getStart))
+                .toList();
+        final VCFHeader truthHeader = new VCFHeader();
+        truthHeader.setSequenceDictionary(headerAndCalls.getLeft().getSequenceDictionary());
+        final File truth = createTempFile("truth", ".vcf");
+        try (final VariantContextWriter writer = GATKVariantContextUtils.createVCFWriter(truth.toPath(),
+                truthHeader.getSequenceDictionary(), false, Options.INDEX_ON_THE_FLY)) {
+            writer.writeHeader(truthHeader);
+            splitCalls.forEach(writer::add);
+        }
+
+        Utils.resetRandomGenerator();
+        final File testDataset = createTempFile("test", ".data");
+        runMutect2(tumor, createTempFile("calls-again", ".vcf"), interval, b37Reference, Optional.of(GNOMAD), genotypeGermlineSites,
+                args -> args.add(M2ArgumentCollection.PERMUTECT_TEST_DATASET_LONG_NAME, testDataset)
+                        .add(M2ArgumentCollection.PERMUTECT_TEST_TRUTH_LONG_NAME, truth));
+
+        // each datum begins with a line for its label, followed by a line contig:position,ref->alt
+        final List<String> lines = Files.readAllLines(testDataset.toPath());
+        final List<Integer> labelLines = IntStream.range(0, lines.size())
+                .filter(n -> Set.of("ARTIFACT", "VARIANT", "UNLABELED").contains(lines.get(n))).boxed().toList();
+        Assert.assertFalse(labelLines.isEmpty());
+        labelLines.forEach(n -> Assert.assertEquals(lines.get(n), "VARIANT", lines.get(n + 1)));
+
+        final List<String> mnvs = labelLines.stream().map(n -> lines.get(n + 1)).filter(variant -> {
+            final String[] alleles = variant.split(",")[1].split("->");
+            return alleles[0].length() == alleles[1].length() &&
+                    IntStream.range(0, alleles[0].length()).filter(n -> alleles[0].charAt(n) != alleles[1].charAt(n)).count() > 1;
+        }).toList();
+        Assert.assertEquals(mnvs.size(), 3, "the interval's MNVs: " + mnvs);
+    }
+
+    // a biallelic record for an alt allele of a variant, or if the allele is an MNV, an SNV for each substituted base
+    private static List<VariantContext> splitIntoSnvsIfMnv(final VariantContext vc, final Allele alt) {
+        final byte[] refBases = vc.getReference().getBases();
+        final byte[] altBases = alt.getBases();
+        final List<Integer> substitutedOffsets = refBases.length != altBases.length ? List.of() :
+                IntStream.range(0, refBases.length).filter(n -> refBases[n] != altBases[n]).boxed().toList();
+        if (substitutedOffsets.size() < 2) {
+            return List.of(new VariantContextBuilder("truth", vc.getContig(), vc.getStart(), vc.getEnd(), List.of(vc.getReference(), alt)).make());
+        }
+        return substitutedOffsets.stream().map(n -> new VariantContextBuilder("truth", vc.getContig(), vc.getStart() + n, vc.getStart() + n,
+                List.of(Allele.create(refBases[n], true), Allele.create(altBases[n], false))).make()).toList();
     }
 
     // make sure we can call tumor alts when the normal has a different alt at the same site
