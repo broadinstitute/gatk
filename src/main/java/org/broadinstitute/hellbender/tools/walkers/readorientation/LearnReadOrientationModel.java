@@ -1,6 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.Sets;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.*;
 import org.apache.commons.lang3.tuple.Pair;
@@ -85,6 +86,18 @@ public class LearnReadOrientationModel extends CommandLineProgram {
 
         IntStream.range(0, inputTarGzs.size()).forEach(n -> IOUtils.extractTarGz(inputTarGzs.get(n).toPath(), tmpDirs.get(n).toPath()));
 
+        // older versions of GATK wrote one alt table per sample rather than one per sample and reference context
+        for (int n = 0; n < inputTarGzs.size(); n++) {
+            final File dir = tmpDirs.get(n);
+            final int numAltTablesWithContext = F1R2FilterConstants.ALL_KMERS.stream()
+                    .mapToInt(kmer -> F1R2CountsCollector.getAltTablesFromExtractedTar(dir, kmer).size()).sum();
+            if (numAltTablesWithContext != F1R2CountsCollector.getAltTablesFromExtractedTar(dir).size()) {
+                throw new UserException.BadInput(String.format("%s has alt tables that are not split by reference context, probably because " +
+                        "an older version of GATK made it.  Please regenerate it with this version of CollectF1R2Counts or Mutect2 --%s.",
+                        inputTarGzs.get(n), M2ArgumentCollection.F1R2_TAR_GZ_NAME));
+            }
+        }
+
         final List<File> refHistogramFiles = tmpDirs.stream().flatMap(dir -> F1R2CountsCollector.getRefHistogramsFromExtractedTar(dir).stream()).collect(Collectors.toList());
         final List<File> altHistogramFiles = tmpDirs.stream().flatMap(dir -> F1R2CountsCollector.getAltHistogramsFromExtractedTar(dir).stream()).collect(Collectors.toList());
 
@@ -129,6 +142,12 @@ public class LearnReadOrientationModel extends CommandLineProgram {
 
             final Map<String, List<AltSiteRecord>> forwardRecordsBySample = gatherAltSiteRecords(altTableFilesForContext);
             final Map<String, List<AltSiteRecord>> reverseRecordsBySample = gatherAltSiteRecords(altTableFilesForReverseComplement);
+
+            for (final String sample : Sets.union(forwardRecordsBySample.keySet(), reverseRecordsBySample.keySet())) {
+                if (!samples.contains(sample)) {
+                    throw new UserException.BadInput(String.format("Sample %s has alt tables but no ref histograms", sample));
+                }
+            }
 
             for (final Map.Entry<String, ArtifactPriorCollection> entry : artifactPriorCollectionBySample.entrySet()) {
                 final String sample = entry.getKey();
