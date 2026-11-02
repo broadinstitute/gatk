@@ -269,6 +269,15 @@ workflow Mutect2 {
                     gatk_docker = gatk_docker,
                     disk_space_gb = model_segments_normal_disk
             }
+
+            call PlotModeledSegments as PlotModeledSegmentsNormal {
+                input:
+                    entity_id = normal_entity,
+                    het_allelic_counts = select_first([ModelSegmentsNormal.het_allelic_counts]),
+                    modeled_segments = select_first([ModelSegmentsNormal.modeled_segments]),
+                    ref_dict = ref_dict,
+                    gatk_override = gatk_override
+            }
         }
 
         Int model_segments_normal_portion = if defined(normal_reads) then ceil(size(MergeNormalAllelicCounts.merged_table, "GB")) else 0
@@ -284,6 +293,15 @@ workflow Mutect2 {
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
                 disk_space_gb = model_segments_tumor_disk
+        }
+
+        call PlotModeledSegments as PlotModeledSegmentsTumor {
+            input:
+                entity_id = tumor_entity,
+                het_allelic_counts = ModelSegmentsTumor.het_allelic_counts,
+                modeled_segments = ModelSegmentsTumor.modeled_segments,
+                ref_dict = ref_dict,
+                gatk_override = gatk_override
         }
     }
 
@@ -398,7 +416,9 @@ workflow Mutect2 {
         File permutect_read_groups_table = select_first(M2.permutect_read_groups_table)
 
         File? modeled_segments_tumor = ModelSegmentsTumor.modeled_segments
+        File? modeled_segments_plot_tumor = PlotModeledSegmentsTumor.modeled_segments_plot
         File? modeled_segments_normal = ModelSegmentsNormal.modeled_segments
+        File? modeled_segments_plot_normal = PlotModeledSegmentsNormal.modeled_segments_plot
     }
 }
 
@@ -953,6 +973,62 @@ task ModelSegments {
         File modeled_segments = "output_dir/~{entity_id}.modelFinal.seg"
         File copy_ratio_parameters = "output_dir/~{entity_id}.modelFinal.cr.param"
         File allele_fraction_parameters = "output_dir/~{entity_id}.modelFinal.af.param"
+    }
+}
+
+task PlotModeledSegments {
+    input {
+        String entity_id
+        File? denoised_copy_ratios
+        File het_allelic_counts
+        File modeled_segments
+        File ref_dict
+
+        Int? minimum_contig_length
+        String? maximum_copy_ratio
+        Float? point_size_copy_ratio
+        Float? point_size_allele_fraction
+        File? gatk_override
+
+        # Runtime parameters
+        String gatk_docker = "us.gcr.io/broad-gatk/gatk"
+        Int? mem_gb
+        Int? disk_space_gb
+        Boolean use_ssd = false
+        Int? cpu
+        Int? preemptible_attempts
+    }
+
+    Int machine_mem_mb = select_first([mem_gb, 7]) * 1000
+    Int command_mem_mb = machine_mem_mb - 1000
+
+    command <<<
+        set -e
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+        gatk --java-options "-Xmx~{command_mem_mb}m" PlotModeledSegments \
+        ~{"--denoised-copy-ratios " + denoised_copy_ratios} \
+        --allelic-counts ~{het_allelic_counts} \
+        --segments ~{modeled_segments} \
+        --sequence-dictionary ~{ref_dict} \
+        --minimum-contig-length ~{default="1000000" minimum_contig_length} \
+        --maximum-copy-ratio ~{default="4.0" maximum_copy_ratio} \
+        --point-size-copy-ratio ~{default="0.2" point_size_copy_ratio} \
+        --point-size-allele-fraction ~{default="0.4" point_size_allele_fraction} \
+        --output output \
+        --output-prefix ~{entity_id}
+    >>>
+
+    runtime {
+        docker: "~{gatk_docker}"
+        memory: machine_mem_mb + " MB"
+        disks: "local-disk " + select_first([disk_space_gb, 100]) + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
+        preemptible: select_first([preemptible_attempts, 5])
+    }
+
+    output {
+        File modeled_segments_plot = "output/~{entity_id}.modeled.png"
     }
 }
 
