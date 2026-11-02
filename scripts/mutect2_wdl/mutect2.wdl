@@ -94,6 +94,8 @@ workflow Mutect2 {
         String? getpileupsummaries_extra_args
         String? collect_allelic_counts_extra_args
         String? split_intervals_extra_args
+        Int? model_segments_min_total_allele_count
+        String? model_segments_extra_args
 
         # additional modes and outputs
         File? realignment_index_bundle
@@ -254,6 +256,34 @@ workflow Mutect2 {
                     input_tables = M2.normal_allelic_counts,
                     runtime_params = standard_runtime
             }
+
+            Int model_segments_normal_disk = ceil(size(MergeNormalAllelicCounts.merged_table, "GB")) + emergency_extra_disk
+            String normal_entity = "normal"
+            call ModelSegments as ModelSegmentsNormal {
+                input:
+                    entity_id = normal_entity,
+                    allelic_counts = MergeNormalAllelicCounts.merged_table,
+                    min_total_allele_count = model_segments_min_total_allele_count,
+                    model_segments_extra_args = model_segments_extra_args,
+                    gatk_override = gatk_override,
+                    gatk_docker = gatk_docker,
+                    disk_space_gb = model_segments_normal_disk
+            }
+        }
+
+        Int model_segments_normal_portion = if defined(normal_reads) then ceil(size(MergeNormalAllelicCounts.merged_table, "GB")) else 0
+        Int model_segments_tumor_disk = ceil(size(MergeTumorAllelicCounts.merged_table, "GB")) + model_segments_normal_portion + emergency_extra_disk
+        String tumor_entity = "tumor"
+        call ModelSegments as ModelSegmentsTumor {
+            input:
+                entity_id = tumor_entity,
+                allelic_counts = MergeTumorAllelicCounts.merged_table,
+                normal_allelic_counts = MergeNormalAllelicCounts.merged_table,
+                min_total_allele_count = model_segments_min_total_allele_count,
+                model_segments_extra_args = model_segments_extra_args,
+                gatk_override = gatk_override,
+                gatk_docker = gatk_docker,
+                disk_space_gb = model_segments_tumor_disk
         }
     }
 
@@ -366,6 +396,9 @@ workflow Mutect2 {
         File? permutect_test_dataset = ConcatenatePermutectTestData.concatenated
         File permutect_contigs_table = select_first(M2.permutect_contigs_table)
         File permutect_read_groups_table = select_first(M2.permutect_read_groups_table)
+
+        File? modeled_segments_tumor = ModelSegmentsTumor.modeled_segments
+        File? modeled_segments_normal = ModelSegmentsNormal.modeled_segments
     }
 }
 
@@ -851,6 +884,75 @@ task CalculateContamination {
     output {
         File contamination_table = "contamination.table"
         File maf_segments = "segments.table"
+    }
+}
+
+task ModelSegments {
+    input {
+        String entity_id
+        File? denoised_copy_ratios
+        File allelic_counts
+        File? normal_allelic_counts
+        Int? min_total_allele_count
+        String? model_segments_extra_args
+        File? gatk_override
+
+        # Runtime parameters
+        String gatk_docker
+        Int? mem_gb
+        Int? disk_space_gb
+        Boolean use_ssd = false
+        Int? cpu
+        Int? preemptible_attempts
+    }
+
+    Int machine_mem_mb = select_first([mem_gb, 13]) * 1000
+    # ModelSegments seems to need at least 3GB of overhead to run
+    Int command_mem_mb = machine_mem_mb - 3000
+
+    # default values are min_total_allele_count_ = 0 in matched-normal mode
+    #                                            = 30 in case-only mode
+    Int default_min_total_allele_count = if defined(normal_allelic_counts) then 0 else 30
+    Int min_total_allele_count_ = select_first([min_total_allele_count, default_min_total_allele_count])
+
+    command <<<
+        set -e
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" gatk_override}
+
+        gatk --java-options "-Xmx~{command_mem_mb}m" ModelSegments \
+            ~{"--denoised-copy-ratios " + denoised_copy_ratios} \
+            --allelic-counts ~{allelic_counts} \
+            ~{"--normal-allelic-counts " + normal_allelic_counts} \
+            --minimum-total-allele-count-case ~{min_total_allele_count_} \
+            ~{model_segments_extra_args} \
+            --output output_dir \
+            --output-prefix ~{entity_id}
+
+        # We need to create the file even if the above command doesn't so we have something to delocalize
+        # If no file is created by the above task then it will copy out an empty file
+        touch output_dir/~{entity_id}.hets.normal.tsv
+    >>>
+
+    runtime {
+        docker: "~{gatk_docker}"
+        memory: machine_mem_mb + " MB"
+        disks: "local-disk " + disk_space_gb + if use_ssd then " SSD" else " HDD"
+        cpu: select_first([cpu, 1])
+        preemptible: select_first([preemptible_attempts, 2])
+    }
+
+    output {
+        File het_allelic_counts = "output_dir/~{entity_id}.hets.tsv"
+        File normal_het_allelic_counts = "output_dir/~{entity_id}.hets.normal.tsv"
+        File copy_ratio_only_segments = "output_dir/~{entity_id}.cr.seg"
+        File copy_ratio_legacy_segments = "output_dir/~{entity_id}.cr.igv.seg"
+        File allele_fraction_legacy_segments = "output_dir/~{entity_id}.af.igv.seg"
+        File modeled_segments_begin = "output_dir/~{entity_id}.modelBegin.seg"
+        File copy_ratio_parameters_begin = "output_dir/~{entity_id}.modelBegin.cr.param"
+        File allele_fraction_parameters_begin = "output_dir/~{entity_id}.modelBegin.af.param"
+        File modeled_segments = "output_dir/~{entity_id}.modelFinal.seg"
+        File copy_ratio_parameters = "output_dir/~{entity_id}.modelFinal.cr.param"
+        File allele_fraction_parameters = "output_dir/~{entity_id}.modelFinal.af.param"
     }
 }
 
