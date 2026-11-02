@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCaller;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PileupDetectionArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
@@ -260,6 +261,13 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(numVariants, 0);
     }
 
+    // Mutect2 supplies its own assembly region arguments, whose default activity profile is MUTECT2
+    @Test
+    public void testDefaultActivityProfile() {
+        Assert.assertEquals(new Mutect2().assemblyRegionArgs.activityProfileType, ActivityProfile.ProfileType.MUTECT2);
+        Assert.assertEquals(new HaplotypeCaller().assemblyRegionArgs.activityProfileType, ActivityProfile.ProfileType.BAND_PASS);
+    }
+
     // With the band-pass activity profile, as in mitochondria mode, panel of normals sites and, unless we genotype germline
     // sites, germline sites are not active, as was the case before the Mutect2 activity profile
     @Test
@@ -286,6 +294,23 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 args -> args.addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME));
         Assert.assertTrue(VariantContextTestUtils.streamVcf(callsWithoutGermline).count() < VariantContextTestUtils.streamVcf(callsWithGermline).count() / 2,
                 "most germline sites were called without genotyping germline sites");
+    }
+
+    // Generating Permutect training data implies genotyping germline sites, and the germline fraction controls how many
+    // clusters of germline variants without nearby somatic variants are genotyped
+    @Test
+    public void testPermutectTrainingGermlineFraction() {
+        final List<Long> callCounts = new ArrayList<>();
+        for (final double germlineFraction : new double[] {0.0, 1.0}) {
+            Utils.resetRandomGenerator();
+            final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+            final File dataset = createTempFile("dataset", ".txt");
+            runMutect2(DREAM_4_TUMOR, DREAM_4_NORMAL, unfilteredVcf, "20:1-10000000", b37Reference, Optional.empty(),
+                    args -> args.add(M2ArgumentCollection.PERMUTECT_TRAINING_DATASET_LONG_NAME, dataset)
+                            .add(AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, germlineFraction));
+            callCounts.add(VariantContextTestUtils.streamVcf(unfilteredVcf).count());
+        }
+        Assert.assertTrue(callCounts.get(0) < callCounts.get(1), "germline fraction had no effect: " + callCounts);
     }
 
     // Generating Permutect training data implies genotyping panel of normals sites, which supply examples of artifacts
