@@ -37,11 +37,8 @@ public class LearnReadOrientationModelEngine {
 
     private final List<AltSiteRecord> altDesignMatrix;
 
-    /**
-     * N by K matrix of posterior probabilities of latent variable z, where N is the number of alt sites,
-     * evaluated at the current estimates of the mixture weights
-     */
-    private final RealMatrix altResponsibilities;
+    // K-dimensional sum over alt sites of the posterior probabilities of latent variable z, computed in the E step
+    private double[] effectiveAltCountsFromDesignMatrix;
 
     private final Map<Triple<Integer, Nucleotide, ReadOrientation>, double[]> responsibilitiesOfAltDepth1Sites;
 
@@ -128,8 +125,6 @@ public class LearnReadOrientationModelEngine {
         // multiply by the number of counts for that depth
         this.refResponsibilities = new Array2DRowRealMatrix(maxDepth, F1R2FilterConstants.NUM_STATES);
 
-        this.altResponsibilities = new Array2DRowRealMatrix(altDesignMatrix.size(), F1R2FilterConstants.NUM_STATES);
-
         // Store responsibilities for each depth and the F1R2/F2R1 of the one alt read
         this.responsibilitiesOfAltDepth1Sites = new HashMap<>();
         this.refAllele = F1R2FilterUtils.getMiddleBase(referenceContext);
@@ -188,12 +183,13 @@ public class LearnReadOrientationModelEngine {
         }
 
         // Compute the responsibilities of alt sites.  Within an E step, where the artifact priors are fixed, these depend only on
-        // the alt allele, alt depth, alt F1R2 depth, and depth, so we compute them once for each distinct combination
+        // the alt allele, alt depth, alt F1R2 depth, and depth, so we compute them once for each distinct combination.
+        // The M step only needs their sum, so we don't store them for each alt site
         final Map<AltSiteKey, double[]> responsibilitiesByKey = new HashMap<>();
-        for (int n = 0; n < altDesignMatrix.size(); n++) {
-            final AltSiteRecord example = altDesignMatrix.get(n);
+        effectiveAltCountsFromDesignMatrix = new double[F1R2FilterConstants.NUM_STATES];
+        for (final AltSiteRecord example : altDesignMatrix) {
             final AltSiteKey key = new AltSiteKey(example.getAltAllele(), example.getAltCount(), example.getAltF1R2(), example.getDepth());
-            altResponsibilities.setRow(n, responsibilitiesByKey.computeIfAbsent(key, k ->
+            MathUtils.addToArrayInPlace(effectiveAltCountsFromDesignMatrix, responsibilitiesByKey.computeIfAbsent(key, k ->
                     computeResponsibilities(refAllele, k.altAllele(), k.altDepth(), k.altF1R2(), k.depth(), artifactPriors, false)));
         }
 
@@ -223,7 +219,6 @@ public class LearnReadOrientationModelEngine {
      */
     private double[] takeMstep(final double[] pseudocounts) {
         // First we compute the effective counts of each state, N_k in the docs. We do this separately over alt and ref sites
-        final double[] effectiveAltCountsFromDesignMatrix = MathUtils.sumArrayFunction(0, altDesignMatrix.size(), n -> altResponsibilities.getRow(n));
         double[] effectiveAltCountsFromHistograms = new double[F1R2FilterConstants.NUM_STATES];
 
         for (Histogram<Integer> histogram : altDepthOneHistograms){
@@ -333,11 +328,6 @@ public class LearnReadOrientationModelEngine {
     @VisibleForTesting
     public double[] getRefResonsibilities(final int rowNum){
         return refResponsibilities.getRow(rowNum);
-    }
-
-    @VisibleForTesting
-    public double[] getAltResonsibilities(final int rowNum){
-        return altResponsibilities.getRow(rowNum);
     }
 
     @VisibleForTesting

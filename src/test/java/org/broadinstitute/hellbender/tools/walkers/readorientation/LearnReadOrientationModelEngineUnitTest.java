@@ -121,8 +121,6 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
 
         IntStream.range(0, F1R2FilterConstants.DEFAULT_MAX_DEPTH).mapToDouble(i -> MathUtils.sum(engine.getRefResonsibilities(i)))
                 .forEach(s -> Assert.assertEquals(s, 1.0, EPSILON));
-        IntStream.range(0, numAltExamples).mapToDouble(i -> MathUtils.sum(engine.getAltResonsibilities(i)))
-                .forEach(s -> Assert.assertEquals(s, 1.0, EPSILON));
         Assert.assertEquals(engine.getEffectiveCounts().getL1Norm(), numExamples, EPSILON);
 
         Assert.assertEquals(engine.getEffectiveCounts(artifactState), (double) numAltExamples, EPSILON);
