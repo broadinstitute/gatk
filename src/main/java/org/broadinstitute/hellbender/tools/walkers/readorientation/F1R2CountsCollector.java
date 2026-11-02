@@ -78,7 +78,7 @@ public class F1R2CountsCollector {
                 refSitesHistogramsForThisSample.put(context, emptyRefHistogram);
 
                 // Intentionally not use try-with-resources so that the writer stays open outside of the try block
-                final File altTableFile = new File(tmpDir, IOUtils.urlEncode(sample) + "." + context + ALT_TABLE_EXTENSION);
+                final File altTableFile = new File(tmpDir, getAltTableName(sample, context));
                 try {
                     altTableWriters.get(sample).put(context, new AltSiteRecord.AltSiteRecordTableWriter(IOUtils.fileToPath(altTableFile), sample));
                 } catch (IOException e) {
@@ -232,7 +232,8 @@ public class F1R2CountsCollector {
         return Arrays.stream(extractedTarDir.listFiles()).filter(file -> file.getAbsolutePath().endsWith(ALT_TABLE_EXTENSION)).collect(Collectors.toList());
     }
 
-    public static List<File> getAltTablesFromExtractedTar(final File extractedTarDir, final String refContext) {
-        return Arrays.stream(extractedTarDir.listFiles()).filter(file -> file.getAbsolutePath().endsWith("." + refContext + ALT_TABLE_EXTENSION)).collect(Collectors.toList());
+    // alt tables are named <sample>.<reference context>.alt_table
+    public static String getAltTableName(final String sample, final String refContext) {
+        return IOUtils.urlEncode(sample) + "." + refContext + ALT_TABLE_EXTENSION;
     }
 }

@@ -69,14 +69,14 @@ public class LearnReadOrientationModelUnitTest extends CommandLineProgramTest {
 
         final List<Histogram<Integer>> ref = LearnReadOrientationModel.sumHistogramsFromFiles(scatteredRefMetricsFiles, true);
         final List<Histogram<Integer>> alt = LearnReadOrientationModel.sumHistogramsFromFiles(scatteredAltMetricsFiles, false);
-        final List<AltSiteRecord> altSites = LearnReadOrientationModel.gatherAltSiteRecords(scatteredAltTableFiles).get("SM-CEMAH");
+        final List<AltSiteRecord> altSites = LearnReadOrientationModel.gatherAltSiteRecords(scatteredAltTableFiles);
 
         final File refHistUnscattered = F1R2CountsCollector.getRefHistogramsFromExtractedTar(extractedDir).get(0);
 
         final File altHistUnscattered = F1R2CountsCollector.getAltHistogramsFromExtractedTar(extractedDir).get(0);
 
         final List<File> altTablesUnscattered = F1R2CountsCollector.getAltTablesFromExtractedTar(extractedDir);
-        final List<AltSiteRecord> altSitesTruth = LearnReadOrientationModel.gatherAltSiteRecords(altTablesUnscattered).get("SM-CEMAH");
+        final List<AltSiteRecord> altSitesTruth = LearnReadOrientationModel.gatherAltSiteRecords(altTablesUnscattered);
 
         final List<Histogram<Integer>> refTruth = LearnReadOrientationModel.readMetricsFile(refHistUnscattered).getAllHistograms();
         final List<Histogram<Integer>> altTruth = LearnReadOrientationModel.readMetricsFile(altHistUnscattered).getAllHistograms();

@@ -168,7 +168,7 @@ public class LearnReadOrientationModelIntegrationTest extends CommandLineProgram
         final String sample = "SAMPLE";
         final File extractedDir = collectSyntheticF1R2Counts(sample);
         final List<File> altTables = F1R2CountsCollector.getAltTablesFromExtractedTar(extractedDir);
-        final List<AltSiteRecord> records = LearnReadOrientationModel.gatherAltSiteRecords(altTables).get(sample);
+        final List<AltSiteRecord> records = LearnReadOrientationModel.gatherAltSiteRecords(altTables);
         altTables.forEach(File::delete);
         try (final AltSiteRecord.AltSiteRecordTableWriter writer = new AltSiteRecord.AltSiteRecordTableWriter(
                 new File(extractedDir, sample + F1R2CountsCollector.ALT_TABLE_EXTENSION).toPath(), sample)) {

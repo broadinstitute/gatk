@@ -88,7 +88,7 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(totalAltRecords, 4);
 
         for (final String context : List.of("CAC", "TAA", "AGC", "ACA")) {
-            final File altTableFile = F1R2CountsCollector.getAltTablesFromExtractedTar(extractedDir, context).stream().findFirst().get();
+            final File altTableFile = new File(extractedDir, F1R2CountsCollector.getAltTableName(sample, context));
             final List<AltSiteRecord> altDesignMatrix = AltSiteRecord.readAltSiteRecords(altTableFile.toPath()).getRight();
             Assert.assertEquals(altDesignMatrix.size(), 1);
             final AltSiteRecord record = altDesignMatrix.get(0);

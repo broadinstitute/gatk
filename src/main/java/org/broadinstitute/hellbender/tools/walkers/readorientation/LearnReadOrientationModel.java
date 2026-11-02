@@ -1,10 +1,8 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.Sets;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.*;
-import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -85,24 +83,8 @@ public class LearnReadOrientationModel extends CommandLineProgram {
 
         IntStream.range(0, inputTarGzs.size()).forEach(n -> IOUtils.extractTarGz(inputTarGzs.get(n).toPath(), tmpDirs.get(n).toPath()));
 
-        // older versions of GATK wrote one alt table per sample rather than one per sample and reference context
-        for (int n = 0; n < inputTarGzs.size(); n++) {
-            final File dir = tmpDirs.get(n);
-            final int numAltTablesWithContext = F1R2FilterConstants.ALL_KMERS.stream()
-                    .mapToInt(kmer -> F1R2CountsCollector.getAltTablesFromExtractedTar(dir, kmer).size()).sum();
-            if (numAltTablesWithContext != F1R2CountsCollector.getAltTablesFromExtractedTar(dir).size()) {
-                throw new UserException.BadInput(String.format("%s has alt tables that are not split by reference context, probably because " +
-                        "an older version of GATK made it.  Please regenerate it with this version of CollectF1R2Counts or Mutect2 --%s.",
-                        inputTarGzs.get(n), M2ArgumentCollection.F1R2_TAR_GZ_NAME));
-            }
-        }
-
         final List<File> refHistogramFiles = tmpDirs.stream().flatMap(dir -> F1R2CountsCollector.getRefHistogramsFromExtractedTar(dir).stream()).collect(Collectors.toList());
         final List<File> altHistogramFiles = tmpDirs.stream().flatMap(dir -> F1R2CountsCollector.getAltHistogramsFromExtractedTar(dir).stream()).collect(Collectors.toList());
-
-        final Map<String, List<File>> altTableFilesByContext = F1R2FilterConstants.ALL_KMERS.stream()
-                .collect(Collectors.toMap(kmer -> kmer,
-                        kmer -> tmpDirs.stream().flatMap(dir -> F1R2CountsCollector.getAltTablesFromExtractedTar(dir, kmer).stream()).collect(Collectors.toList())));
 
         // TODO: this is brittle: it relies on the fact that in CollectF1R2Counts we put a single header line with the same name in the ref and alt histograms
         final Map<String, List<MetricsFile<?, Integer>>> refHistogramMetricsFilesBySample = refHistogramFiles.stream()
@@ -128,6 +110,21 @@ public class LearnReadOrientationModel extends CommandLineProgram {
 
         final Set<String> samples = refHistogramsBySample.keySet();
 
+        // Alt tables are named <sample>.<reference context>.alt_table, but older versions of GATK wrote one alt table per sample
+        final Set<String> altTableNames = samples.stream()
+                .flatMap(sample -> F1R2FilterConstants.ALL_KMERS.stream().map(kmer -> F1R2CountsCollector.getAltTableName(sample, kmer)))
+                .collect(Collectors.toSet());
+        for (int n = 0; n < inputTarGzs.size(); n++) {
+            for (final File table : F1R2CountsCollector.getAltTablesFromExtractedTar(tmpDirs.get(n))) {
+                if (!altTableNames.contains(table.getName())) {
+                    throw new UserException.BadInput(String.format("%s has an alt table %s that is not named <sample>.<reference context>%s " +
+                            "for a sample with ref histograms.  If an older version of GATK made it, please regenerate it with this version of " +
+                            "CollectF1R2Counts or Mutect2 --%s.", inputTarGzs.get(n), table.getName(), F1R2CountsCollector.ALT_TABLE_EXTENSION,
+                            M2ArgumentCollection.F1R2_TAR_GZ_NAME));
+                }
+            }
+        }
+
         final Map<String, ArtifactPriorCollection> artifactPriorCollectionBySample = samples.stream()
                 .collect(Collectors.toMap(sample -> sample, sample -> new ArtifactPriorCollection(sample)));
 
@@ -135,18 +132,6 @@ public class LearnReadOrientationModel extends CommandLineProgram {
         // Since e.g. G->T under AGT F1R2 is equivalent to C->A under ACT F2R1, combine the data
         for (final String refContext : F1R2FilterConstants.CANONICAL_KMERS) {
             final String reverseComplement = SequenceUtil.reverseComplement(refContext);
-
-            final List<File> altTableFilesForContext = altTableFilesByContext.get(refContext);
-            final List<File> altTableFilesForReverseComplement = altTableFilesByContext.get(reverseComplement);
-
-            final Map<String, List<AltSiteRecord>> forwardRecordsBySample = gatherAltSiteRecords(altTableFilesForContext);
-            final Map<String, List<AltSiteRecord>> reverseRecordsBySample = gatherAltSiteRecords(altTableFilesForReverseComplement);
-
-            for (final String sample : Sets.union(forwardRecordsBySample.keySet(), reverseRecordsBySample.keySet())) {
-                if (!samples.contains(sample)) {
-                    throw new UserException.BadInput(String.format("Sample %s has alt tables but no ref histograms", sample));
-                }
-            }
 
             for (final Map.Entry<String, ArtifactPriorCollection> entry : artifactPriorCollectionBySample.entrySet()) {
                 final String sample = entry.getKey();
@@ -172,11 +157,10 @@ public class LearnReadOrientationModel extends CommandLineProgram {
                                 .collect(Collectors.toList());
                 final List<Histogram<Integer>> combinedAltHistograms = combineAltDepthOneHistogramWithRC(altDepthOneHistogramsForContext, altDepthOneHistogramsRevComp, maxDepth);
 
-                // Finally, merge the rest of alt records
-                final List<AltSiteRecord> altDesignMatrix = forwardRecordsBySample.getOrDefault(sample, new ArrayList<>()); // Cannot use Collections.emptyList() here because the input list must be mutable
-                final List<AltSiteRecord> altDesignMatrixRevComp = reverseRecordsBySample.getOrDefault(sample, Collections.emptyList());
-                // Warning: the below method appends the reverse complements of {@code altDesignMatrixRevComp} to {@code altDesignMatrix},
-                // which is the list in {@code forwardRecordsBySample}
+                // Finally, merge the rest of alt records, which we read for one sample and context at a time to save memory
+                final List<AltSiteRecord> altDesignMatrix = gatherAltSiteRecords(getAltTables(tmpDirs, sample, refContext));
+                final List<AltSiteRecord> altDesignMatrixRevComp = gatherAltSiteRecords(getAltTables(tmpDirs, sample, reverseComplement));
+                // Warning: the below method appends the reverse complements of {@code altDesignMatrixRevComp} to {@code altDesignMatrix}
                 mergeDesignMatrices(altDesignMatrix, altDesignMatrixRevComp);
 
                 if (combinedRefHistograms.getSumOfValues() == 0 || altDesignMatrix.isEmpty()) {
@@ -354,20 +338,15 @@ public class LearnReadOrientationModel extends CommandLineProgram {
     }
 
     @VisibleForTesting
-    static Map<String, List<AltSiteRecord>> gatherAltSiteRecords(final List<File> tables){
-        final Map<String, List<AltSiteRecord>> result = new HashMap<>();
-        for (final File table : tables) {
-            final Pair<String, List<AltSiteRecord>> sampleAndRecords = AltSiteRecord.readAltSiteRecords(table.toPath());
-            final String sample = sampleAndRecords.getLeft();
-            final List<AltSiteRecord> records = sampleAndRecords.getRight();
-
-            if (result.containsKey(sample)) {
-                result.get(sample).addAll(records);
-            } else {
-                result.put(sample, records);
-            }
-        }
-
+    static List<AltSiteRecord> gatherAltSiteRecords(final List<File> tables){
+        final List<AltSiteRecord> result = new ArrayList<>();
+        tables.forEach(table -> result.addAll(AltSiteRecord.readAltSiteRecords(table.toPath()).getRight()));
         return result;
+    }
+
+    // the alt tables of one sample and reference context in all inputs, some of which may not have the sample
+    private static List<File> getAltTables(final List<File> extractedTarDirs, final String sample, final String refContext) {
+        return extractedTarDirs.stream().map(dir -> new File(dir, F1R2CountsCollector.getAltTableName(sample, refContext)))
+                .filter(File::exists).collect(Collectors.toList());
     }
 }
