@@ -129,7 +129,7 @@ workflow Mutect2 {
         String? gcs_project_for_requester_pays
 
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
-        Int emergency_extra_disk = 0
+        Int emergency_extra_disk = 20
     }
 
     # Disk sizes used for dynamic sizing
