@@ -125,7 +125,7 @@ public class F1R2CountsCollector {
             final int depth = (int) MathUtils.sum(baseCounts);
 
             if (!isPileupGood(samplePileup)) {
-                return;
+                continue;
             }
 
             // Make a copy of base counts and update the counts of ref to -1. Now the maxElementIndex of the array gives us
@@ -138,7 +138,7 @@ public class F1R2CountsCollector {
             // If the site is ref, we simply update the coverage histogram
             if (referenceSite) {
                 refSiteHistograms.get(sample).get(refContext).increment(Math.min(depth, CF1R2Args.maxDepth));
-                return;
+                continue;
             }
 
             // If we got here, we have an alt site with a single alt base
@@ -154,7 +154,7 @@ public class F1R2CountsCollector {
             if (altCount == 1) {
                 final ReadOrientation type = altF1R2 == 1 ? ReadOrientation.F1R2 : ReadOrientation.F2R1;
                 depthOneAltHistograms.get(sample).increment(refContext, altBase, type, depth);
-                return;
+                continue;
             }
 
             try {

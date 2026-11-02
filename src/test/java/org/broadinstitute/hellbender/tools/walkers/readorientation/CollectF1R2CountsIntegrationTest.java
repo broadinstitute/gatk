@@ -20,6 +20,7 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -204,6 +205,7 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
         final String[] args12 = {
                 "-R", hg19_chr1_1M_Reference,
                 "-I", sam1.getAbsolutePath(),
+                "-I", sam2.getAbsolutePath(),
                 "-O", outputTarGZ12.getAbsolutePath()
         };
 
@@ -213,17 +215,24 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
         final File extractedDir1 = createTempDir("extracted1");
         IOUtils.extractTarGz(outputTarGZ1.toPath(), extractedDir1.toPath());
 
+        final File extractedDir2 = createTempDir("extracted2");
+        IOUtils.extractTarGz(outputTarGZ2.toPath(), extractedDir2.toPath());
+
         final File extractedDir12 = createTempDir("extracted12");
         IOUtils.extractTarGz(outputTarGZ12.toPath(), extractedDir12.toPath());
 
-        for (final String context : List.of("ACC", "TGC", "CAA")) {
-            IntegrationTestSpec.assertEqualTextFiles(new File(extractedDir1, sample1 + "." + context + F1R2CountsCollector.ALT_TABLE_EXTENSION),
-                    new File(extractedDir12, sample1 + "." + context + F1R2CountsCollector.ALT_TABLE_EXTENSION));
-        }
+        // each sample's counts are the same whether it is collected alone or together with the other sample
+        for (final Map.Entry<String, File> sampleAndDir : Map.of(sample1, extractedDir1, sample2, extractedDir2).entrySet()) {
+            final String sample = sampleAndDir.getKey();
+            for (final String context : F1R2FilterConstants.ALL_KMERS) {
+                final String altTable = F1R2CountsCollector.getAltTableName(sample, context);
+                IntegrationTestSpec.assertEqualTextFiles(new File(sampleAndDir.getValue(), altTable), new File(extractedDir12, altTable));
+            }
 
-        for (final String extension : List.of(F1R2CountsCollector.REF_HIST_EXTENSION, F1R2CountsCollector.ALT_HIST_EXTENSION)) {
-            IntegrationTestSpec.assertEqualTextFiles(new File(extractedDir1, sample1 + extension),
-                    new File(extractedDir12, sample1 + extension));
+            for (final String extension : List.of(F1R2CountsCollector.REF_HIST_EXTENSION, F1R2CountsCollector.ALT_HIST_EXTENSION)) {
+                IntegrationTestSpec.assertEqualTextFiles(new File(sampleAndDir.getValue(), sample + extension),
+                        new File(extractedDir12, sample + extension));
+            }
         }
     }
 
