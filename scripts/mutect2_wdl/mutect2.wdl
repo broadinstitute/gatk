@@ -241,6 +241,22 @@ workflow Mutect2 {
 
     call MergeStats { input: stats = M2.stats, runtime_params = standard_runtime }
 
+    if(defined(common_hets_for_segmentation)) {
+        call MergeAllelicCounts as MergeTumorAllelicCounts {
+                input:
+                    input_tables = M2.tumor_allelic_counts,
+                    runtime_params = standard_runtime
+        }
+
+        if (defined(normal_reads)) {
+            call MergeAllelicCounts as MergeNormalAllelicCounts {
+                input:
+                    input_tables = M2.normal_allelic_counts,
+                    runtime_params = standard_runtime
+            }
+        }
+    }
+
     # When generating Permutect test data we need the minor allele fraction (MAF) segmentation from CalculateContamination,
     # even if we are skipping filtering.  Note also that we run CalculateContamination witht he normal as a "tumor"
     # in order to get normal MAF segments.
@@ -730,6 +746,42 @@ task MergePileupSummaries {
 
     output {
         File merged_table = "~{output_name}.tsv"
+    }
+}
+
+task MergeAllelicCounts {
+    input {
+        Array[File] input_tables
+        Runtime runtime_params
+    }
+
+    File first_table = input_tables[0]
+
+    command {
+        set -e
+
+        # header of first file
+        grep '^[#@]' ~{first_table} > merged.tsv
+        grep -v '^[#@]' ~{first_table} | head -n 1 >> merged.tsv
+
+        for file in ~{sep=' ' input_tables}; do
+            # tail -n +2 skips the CONTIG   POSITION. . . line
+            grep -v '^[#@]' $file | tail -n +2 >> merged.tsv
+        done
+    }
+
+    runtime {
+        docker: runtime_params.gatk_docker
+        bootDiskSizeGb: runtime_params.boot_disk_size
+        memory: runtime_params.machine_mem + " MB"
+        disks: "local-disk " + runtime_params.disk + " HDD"
+        preemptible: runtime_params.preemptible
+        maxRetries: runtime_params.max_retries
+        cpu: runtime_params.cpu
+    }
+
+    output {
+        File merged_table = "merged.tsv"
     }
 }
 
