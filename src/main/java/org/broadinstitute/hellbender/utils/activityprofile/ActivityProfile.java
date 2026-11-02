@@ -17,7 +17,7 @@ import java.util.stream.IntStream;
 public class ActivityProfile {
 
     public enum ProfileType {
-        BASE, BAND_PASS
+        BASE, BAND_PASS, MUTECT2
     }
 
     public static ActivityProfile create(final AssemblyRegionArgumentCollection args, final SAMFileHeader header) {
@@ -25,6 +25,7 @@ public class ActivityProfile {
             case BASE -> new ActivityProfile(args.maxProbPropagationDistance, args.activeProbThreshold, header);
             case BAND_PASS -> new BandPassActivityProfile(args.maxProbPropagationDistance, args.activeProbThreshold,
                     BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, header);
+            case MUTECT2 -> new Mutect2ActivityProfile(args, header);
         };
     }
 
@@ -352,7 +353,7 @@ public class ActivityProfile {
      * @param maxRegionSize the maximize size of the returned region
      * @return the size of this region and whether it is active
      */
-    private Pair<Integer, Boolean> findSizeAndActivityOfRegion(final int minRegionSize, final int maxRegionSize) {
+    protected Pair<Integer, Boolean> findSizeAndActivityOfRegion(final int minRegionSize, final int maxRegionSize) {
         Utils.validate(!stateList.isEmpty(), "state list is empty");
         Utils.validateArg(minRegionSize >= 1, "minRegionSize must be >= 1");
         final boolean aboveThreshold = getProb(0) > activeProbThreshold;
@@ -379,7 +380,7 @@ public class ActivityProfile {
      * @param index a valid offset into the state list
      * @return the isActiveProb of the state at index
      */
-    private double getProb(final int index) {
+    protected double getProb(final int index) {
         Utils.validIndex(index, stateList.size());
 
         return stateList.get(index).isActiveProb();
