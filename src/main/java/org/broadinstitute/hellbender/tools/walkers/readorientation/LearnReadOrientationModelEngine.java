@@ -187,14 +187,14 @@ public class LearnReadOrientationModelEngine {
             refResponsibilities.setRow(i, computeResponsibilities(refAllele, refAllele, 0, 0, depth, artifactPriors, false));
         }
 
-        // Compute the responsibilities of alt sites
+        // Compute the responsibilities of alt sites.  Within an E step, where the artifact priors are fixed, these depend only on
+        // the alt allele, alt depth, alt F1R2 depth, and depth, so we compute them once for each distinct combination
+        final Map<AltSiteKey, double[]> responsibilitiesByKey = new HashMap<>();
         for (int n = 0; n < altDesignMatrix.size(); n++) {
             final AltSiteRecord example = altDesignMatrix.get(n);
-            final int depth = example.getDepth();
-            final int altDepth = example.getAltCount();
-            final int altF1R2 = example.getAltF1R2();
-
-            altResponsibilities.setRow(n, computeResponsibilities(refAllele, example.getAltAllele(), altDepth, altF1R2, depth, artifactPriors, false));
+            final AltSiteKey key = new AltSiteKey(example.getAltAllele(), example.getAltCount(), example.getAltF1R2(), example.getDepth());
+            altResponsibilities.setRow(n, responsibilitiesByKey.computeIfAbsent(key, k ->
+                    computeResponsibilities(refAllele, k.altAllele(), k.altDepth(), k.altF1R2(), k.depth(), artifactPriors, false)));
         }
 
         // Compute the responsibilities of alt sites with depth=1
@@ -372,4 +372,6 @@ public class LearnReadOrientationModelEngine {
     private Triple<Integer, Nucleotide, ReadOrientation> createKey(final int depth, final Nucleotide altAllele, final ReadOrientation orientation){
         return new ImmutableTriple<>(depth, altAllele, orientation);
     }
+
+    private record AltSiteKey(Nucleotide altAllele, int altDepth, int altF1R2, int depth) { }
 }
