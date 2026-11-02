@@ -30,6 +30,7 @@ import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import org.testng.Assert;
@@ -257,6 +258,52 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 .filter(vc -> vc.getFilters().isEmpty()).count();
 
         Assert.assertEquals(numVariants, 0);
+    }
+
+    // With the band-pass activity profile, as in mitochondria mode, panel of normals sites and, unless we genotype germline
+    // sites, germline sites are not active, as was the case before the Mutect2 activity profile
+    @Test
+    public void testBandPassActivityProfile() {
+        final Function<ArgumentsBuilder, ArgumentsBuilder> bandPass =
+                args -> args.add(AssemblyRegionArgumentCollection.ACTIVITY_PROFILE_TYPE_LONG_NAME, ActivityProfile.ProfileType.BAND_PASS);
+
+        // panel of normals sites: as in testPon, make a pon from a tumor and call the same tumor with it
+        Utils.resetRandomGenerator();
+        final File ponVcf = createTempFile("pon", ".vcf");
+        final File callsWithPon = createTempFile("calls-with-pon", ".vcf");
+        runMutect2(DREAM_1_TUMOR, DREAM_1_NORMAL, ponVcf, CHROMOSOME_20, b37Reference, Optional.empty(), bandPass);
+        runMutect2(DREAM_1_TUMOR, DREAM_1_NORMAL, callsWithPon, CHROMOSOME_20, b37Reference, Optional.empty(), bandPass,
+                args -> args.add(M2ArgumentCollection.PANEL_OF_NORMALS_LONG_NAME, ponVcf));
+        final long ponSites = VariantContextTestUtils.streamVcf(ponVcf).count();
+        Assert.assertTrue(ponSites > 10, "too few pon sites for a meaningful test");
+        Assert.assertTrue(VariantContextTestUtils.streamVcf(callsWithPon).count() < ponSites / 2, "most pon sites were called");
+
+        // germline sites: tumor-only calls with the germline resource on NA12878, which is not a tumor
+        final File callsWithoutGermline = createTempFile("calls-without-germline", ".vcf");
+        final File callsWithGermline = createTempFile("calls-with-germline", ".vcf");
+        runMutect2(new File(NA12878_20_21_WGS_bam), callsWithoutGermline, "20:10000000-10010000", b37Reference, Optional.of(GNOMAD), bandPass);
+        runMutect2(new File(NA12878_20_21_WGS_bam), callsWithGermline, "20:10000000-10010000", b37Reference, Optional.of(GNOMAD), bandPass,
+                args -> args.addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME));
+        Assert.assertTrue(VariantContextTestUtils.streamVcf(callsWithoutGermline).count() < VariantContextTestUtils.streamVcf(callsWithGermline).count() / 2,
+                "most germline sites were called without genotyping germline sites");
+    }
+
+    // Generating Permutect training data implies genotyping panel of normals sites, which supply examples of artifacts
+    @Test
+    public void testPermutectTrainingIncludesPonSites() {
+        Utils.resetRandomGenerator();
+        final File ponVcf = createTempFile("pon", ".vcf");
+        final File callsWithPon = createTempFile("calls-with-pon", ".vcf");
+        final File dataset = createTempFile("dataset", ".txt");
+        runMutect2(DREAM_1_TUMOR, DREAM_1_NORMAL, ponVcf, CHROMOSOME_20, b37Reference, Optional.empty());
+        runMutect2(DREAM_1_TUMOR, DREAM_1_NORMAL, callsWithPon, CHROMOSOME_20, b37Reference, Optional.empty(),
+                args -> args.add(M2ArgumentCollection.PANEL_OF_NORMALS_LONG_NAME, ponVcf)
+                        .add(M2ArgumentCollection.PERMUTECT_TRAINING_DATASET_LONG_NAME, dataset));
+
+        final Set<Integer> ponStarts = VariantContextTestUtils.streamVcf(ponVcf).map(VariantContext::getStart).collect(Collectors.toSet());
+        final long ponSitesCalled = VariantContextTestUtils.streamVcf(callsWithPon).filter(vc -> ponStarts.contains(vc.getStart())).count();
+        Assert.assertTrue(ponStarts.size() > 10, "too few pon sites for a meaningful test");
+        Assert.assertTrue(ponSitesCalled > ponStarts.size() / 2, "most pon sites were not called");
     }
 
     // run tumor-normal mode using the original DREAM synthetic sample 1 tumor and normal restricted to

@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -65,6 +66,8 @@ public class ActivityProfileUnitTest extends GATKBaseTest {
                 case BAND_PASS:
                     // zero size => equivalent to ActivityProfile
                     return new BandPassActivityProfile(MAX_PROB_PROPAGATION_DISTANCE, ACTIVE_PROB_THRESHOLD, 0, 0.01, false, header);
+                case MUTECT2:
+                    return new Mutect2ActivityProfile(new AssemblyRegionArgumentCollection(), header);
                 default: throw new IllegalStateException(type.toString());
             }
         }
