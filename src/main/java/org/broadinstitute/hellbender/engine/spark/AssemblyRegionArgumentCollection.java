@@ -20,6 +20,7 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public static final String MAX_STARTS_LONG_NAME = "max-reads-per-alignment-start";
     public static final String THRESHOLD_LONG_NAME = "active-probability-threshold";
     public static final String PROPAGATION_LONG_NAME = "max-prob-propagation-distance";
+    public static final String GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME = "genotype-germline-sites-fraction";
 
     public static final int DEFAULT_MIN_ASSEMBLY_REGION_SIZE = 50;
     public static final int DEFAULT_MAX_ASSEMBLY_REGION_SIZE = 300;
@@ -27,6 +28,7 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public static final int DEFAULT_MAX_READS_PER_ALIGNMENT = 50;
     public static final double DEFAULT_ACTIVE_PROB_THRESHOLD = 0.002;
     public static final int DEFAULT_MAX_PROB_PROPAGATION_DISTANCE = 50;
+    public static final double DEFAULT_GENOTYPE_GERMLINE_SITES_FRACTION = 1.0;
     public static final String INDEL_PADDING_LONG_NAME = "padding-around-indels";
     public static final String SNP_PADDING_LONG_NAME = "padding-around-snps";
     public static final String STR_PADDING_LONG_NAME = "padding-around-strs";
@@ -115,6 +117,16 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public int strPaddingForGenotyping = 75;
 
     /**
+     * For the purposes of learning some parameters in Permutect it may be useful to genotype *some* germline variants
+     * and emit them as Permutect tensors.  When --genotype-germline-sites is true, setting this parameter to a value less
+     * than the default of 1.0 causes only that fraction of clusters of germline variants without nearby somatic variants
+     * to be genotyped.  When --genotype-germline-sites is false this argument has no effect and no germline sites are
+     * genotyped.  Values other than 1.0 require the MUTECT2 activity profile.
+     */
+    @Argument(fullName= GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, doc="Fraction of germline sites to be genotyped randomly.", optional = true)
+    public double genotypeGermlineSitesFraction = defaultGenotypeGermlineSitesFraction();
+
+    /**
      * The maximum extent into the full active region extension that we're willing to go in genotyping our events
      * NOTE: this is only applicable to the legacy assembly region trimming currently
      */
@@ -162,6 +174,8 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      * @return Default value for the {@link #activeProbThreshold} parameter, if none is provided on the command line
      */
     protected double defaultActiveProbThreshold() { return DEFAULT_ACTIVE_PROB_THRESHOLD; }
+
+    protected double defaultGenotypeGermlineSitesFraction() { return DEFAULT_GENOTYPE_GERMLINE_SITES_FRACTION; }
 
     /**
      * @return Default value for the {@link #maxProbPropagationDistance} parameter, if none is provided on the command line

@@ -41,6 +41,7 @@ import org.broadinstitute.hellbender.tools.walkers.readorientation.F1R2CountsCol
 import org.broadinstitute.hellbender.transformers.PalindromeArtifactClipReadTransformer;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
@@ -110,6 +111,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
     private final boolean forceCallingAllelesPresent;
 
+    // only the Mutect2 activity profile distinguishes germline and panel of normals sites from somatic sites
+    private final boolean usesMutect2ActivityProfile;
+
     private CachingIndexedFastaSequenceFile referenceReader;
     private ReadThreadingAssembler assemblyEngine;
     private ReadLikelihoodCalculationEngine likelihoodCalculationEngine;
@@ -165,6 +169,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         normalSamples.forEach(this::checkSampleInBamHeader);
 
         forceCallingAllelesPresent = MTAC.alleles != null;
+        usesMutect2ActivityProfile = assemblyRegionArgs.activityProfileType == ActivityProfile.ProfileType.MUTECT2;
 
         annotationEngine = Utils.nonNull(annotatorEngine);
         assemblyEngine = MTAC.createReadThreadingAssembler();
@@ -463,15 +468,15 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
     @Override
     public ActivityProfileState isActive(final AlignmentContext context, final ReferenceContext ref, final FeatureContext features) {
-        if ( forceCallingAllelesPresent && features.getValues(MTAC.alleles, ref).stream().anyMatch(vc -> MTAC.forceCallFiltered || vc.isNotFiltered())) {
-            return new ActivityProfileState(ref.getInterval(), 1.0);
-        }
-
         final byte refBase = ref.getBase();
         final SimpleInterval refInterval = ref.getInterval();
 
+        if ( forceCallingAllelesPresent && features.getValues(MTAC.alleles, ref).stream().anyMatch(vc -> MTAC.forceCallFiltered || vc.isNotFiltered())) {
+            return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.SOMATIC, null);
+        }
+
         if( context == null || context.getBasePileup().isEmpty() ) {
-            return new ActivityProfileState(refInterval, 0.0);
+            return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.NONE, null);
         }
 
         final ReadPileup pileup = context.getBasePileup();
@@ -488,23 +493,51 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         final double tumorLogOdds = logLikelihoodRatio(tumorPileup.size() - bestTumorAltAllele.getRight().size(), bestTumorAltAllele.getRight());
 
         if (tumorLogOdds < MTAC.getInitialLogOdds()) {
-            return new ActivityProfileState(refInterval, 0.0);
-        } else if (MTAC.permutectTrainingDataset != null) {
-            return new ActivityProfileState(ref.getInterval(), 1.0);
+            return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.NONE, null);
         }
 
-        if (hasNormal() && !MTAC.genotypeGermlineSites) {
+        // Germline sites are not inherently active.  The Mutect2 activity profile uses them to phase with nearby somatic sites
+        // and keeps a fraction of germline-only clusters when genotyping germline sites, which generating Permutect training
+        // data implies.  Other activity profiles see only probabilities, so for them germline sites are inactive unless we
+        // genotype germline sites, in which case they are candidates like any other site.
+        if (isGermlineSite(pileup, refBase, refInterval, features, bestTumorAltAllele)) {
+            if (usesMutect2ActivityProfile) {
+                return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.GERMLINE, null);
+            } else if (!MTAC.genotypeGermlineSites) {
+                return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.GERMLINE, null);
+            }
+        }
+
+        // likewise, panel of normals sites are not inherently active, but the Mutect2 activity profile uses them for phasing.
+        // We genotype them when generating Permutect training data, which uses them as examples of artifacts.
+        if (!MTAC.genotypePonSites && !features.getValues(MTAC.pon, new SimpleInterval(context.getContig(), (int) context.getPosition(), (int) context.getPosition())).isEmpty()) {
+            return new ActivityProfileState(refInterval, usesMutect2ActivityProfile ? 1.0 : 0.0, ActivityProfileState.Type.ARTIFACT, null);
+        }
+
+        // if a site is active, count it toward the total of callable sites even if its depth is below the threshold
+        if (pileup.size() < minCallableDepth) {
+            callableSites.increment();
+        }
+        return new ActivityProfileState( refInterval, 1.0, ActivityProfileState.Type.SOMATIC, null);
+    }
+
+    /**
+     * Is the dominant tumor alt allele at this site apparently a germline variant, judging by the matched normal or, in
+     * tumor-only mode, by the germline resource?
+     */
+    private boolean isGermlineSite(final ReadPileup pileup, final byte refBase, final SimpleInterval refInterval,
+                                   final FeatureContext features, final Pair<Integer, ByteArrayList> bestTumorAltAllele) {
+        if (hasNormal()) {  // look for activity in the matched normal
             final ReadPileup normalPileup = pileup.makeFilteredPileup(pe -> isNormalSample(ReadUtils.getSampleName(pe.getRead(), header)));
             normalPileupQualBuffer.accumulateQuals(normalPileup, refBase, MTAC.pcrSnvQual);
             final Pair<Integer, ByteArrayList> bestNormalAltAllele = normalPileupQualBuffer.likeliestIndexAndQuals();
             if (bestNormalAltAllele.getLeft() == bestTumorAltAllele.getLeft()) {
                 final int normalAltCount = bestNormalAltAllele.getRight().size();
                 final double normalQualSum = normalPileupQualBuffer.qualSum(bestNormalAltAllele.getLeft());
-                if (normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM) {
-                    return new ActivityProfileState(refInterval, 0.0);
-                }
+                // TODO: split this classification -- low AF in normal is probably ARTIFACT, not GERMLINE
+                return normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM;
             }
-        } else if (!MTAC.genotypeGermlineSites) {
+        } else {    // tumor-only: guess germline variants using the germline resource
             final List<VariantContext> germline = features.getValues(MTAC.germlineResource, refInterval);
 
             for (final VariantContext germlineVC : germline) {
@@ -513,6 +546,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
                 for (int germlineAltIdx = 0; germlineAltIdx < germlineAlleleFrequencies.size(); germlineAltIdx++) {
                     if (germlineAlleleFrequencies.get(germlineAltIdx) < MTAC.maxPopulationAlleleFrequency) {
+                        // allele is rare in population, might not be germline
                         continue;
                     }
 
@@ -522,25 +556,16 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
                     // indel and the dominant tumor allele is an indel, it's probably germline.  Note that a multi-base
                     // substitution in the resource may start before this locus.
                     if (PileupQualBuffer.likeliestIndexIsIndel(bestTumorAltAllele.getLeft()) && germlineAlt.length() != germlineRef.length()) {
-                            return new ActivityProfileState(refInterval, 0.0);
+                        return true;
                     } else if (PileupQualBuffer.likeliestIndexIsSubstitution(bestTumorAltAllele.getLeft()) && germlineAlt.length() == germlineRef.length()
                             && PileupQualBuffer.getSubstitutionBase(bestTumorAltAllele.getLeft()) == germlineAlt.getBases()[refInterval.getStart() - germlineVC.getStart()]) {
-                        return new ActivityProfileState(refInterval, 0.0);
+                        return true;
                     }
 
                 }
             }
         }
-
-        if (!MTAC.genotypePonSites && !features.getValues(MTAC.pon, new SimpleInterval(context.getContig(), (int) context.getPosition(), (int) context.getPosition())).isEmpty()) {
-            return new ActivityProfileState(refInterval, 0.0);
-        }
-
-        // if a site is active, count it toward the total of callable sites even if its depth is below the threshold
-        if (pileup.size() < minCallableDepth) {
-            callableSites.increment();
-        }
-        return new ActivityProfileState( refInterval, 1.0, ActivityProfileState.Type.NONE, null);
+        return false;
     }
 
     // NOTE: this is a hack to get around an htsjdk bug: https://github.com/samtools/htsjdk/issues/1228
