@@ -55,7 +55,7 @@ public class SomaticGenotypingEngineUnitTest {
         final int stop = start + length - 1;
         final VariantContext vc1 = new VariantContextBuilder("SOURCE", "1", start, stop, germlineAlleles)
                 .attribute(VCFConstants.ALLELE_FREQUENCY_KEY, germlineAltAFs).make();
-        final double[] result = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(calledAlleles, List.of(vc1), DEFAULT_AF);
+        final double[] result = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(calledAlleles, start, List.of(vc1), DEFAULT_AF, true);
         Assert.assertEquals(result, expected, 1.0e-10);
 
         // multiallelic -- test splitting into multiple VCs
@@ -69,7 +69,7 @@ public class SomaticGenotypingEngineUnitTest {
                 germlineVCs.add(splitVC);
             }
 
-            final double[] splitResult = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(calledAlleles, germlineVCs, DEFAULT_AF);
+            final double[] splitResult = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(calledAlleles, start, germlineVCs, DEFAULT_AF, true);
             Assert.assertEquals(splitResult, expected, 1.0e-10);
         }
     }
@@ -86,7 +86,7 @@ public class SomaticGenotypingEngineUnitTest {
 
     @Test(dataProvider = "missingAFData")
     public void testGetGermlineAltAlleleFrequenciesWithMissingAF(final VariantContext vc) {
-        final double[] result = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(vc.getAlleles(), List.of(vc), DEFAULT_AF);
+        final double[] result = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(vc.getAlleles(), 1, List.of(vc), DEFAULT_AF, true);
         Assert.assertEquals(result, new double[] {DEFAULT_AF}, 1.0e-10);
     }
 
@@ -100,7 +100,57 @@ public class SomaticGenotypingEngineUnitTest {
         final VariantContext vc2 = new VariantContextBuilder("SOURCE", "1", 1, 1, Arrays.asList(Allele.REF_A, Allele.ALT_T))
                 .attribute(VCFConstants.ALLELE_FREQUENCY_KEY, af2).make();
         final List<Allele> alleles = List.of(Allele.REF_A, Allele.ALT_C, Allele.ALT_T);
-        final double[] result = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(alleles, List.of(vc1, vc2), DEFAULT_AF);
+        final double[] result = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(alleles, 1, List.of(vc1, vc2), DEFAULT_AF, true);
         Assert.assertEquals(result, new double[] {af1, af2}, 1.0e-10);
+    }
+
+    @DataProvider
+    Object[][] mnvGermlineAltAlleleFrequenciesData() {
+        final List<Allele> acToGt = alleles("AC", "GT");
+        final VariantContext germlineMnv = germlineVC(1, acToGt, 0.2);
+        final VariantContext aToG = germlineVC(1, alleles("A", "G"), 0.3);
+        final VariantContext cToT = germlineVC(2, alleles("C", "T"), 0.4);
+        final VariantContext cToA = germlineVC(2, alleles("C", "A"), 0.5);
+
+        // {called alleles starting at position 1, germline VCs, assign MNV AFs from germline SNVs?, expected}
+        return new Object[][] {
+                // an exact match takes precedence over the SNVs
+                { acToGt, List.of(germlineMnv, aToG, cToT), true, new double[] {0.2}},
+
+                // every SNV is in the resource: the smallest of their AFs, unless turned off
+                { acToGt, List.of(aToG, cToT), true, new double[] {0.3}},
+                { acToGt, List.of(aToG, cToT), false, new double[] {DEFAULT_AF}},
+
+                // not every SNV is in the resource, including a different alt base at the second SNV
+                { acToGt, List.of(aToG), true, new double[] {DEFAULT_AF}},
+                { acToGt, List.of(cToT), true, new double[] {DEFAULT_AF}},
+                { acToGt, List.of(aToG, cToA), true, new double[] {DEFAULT_AF}},
+
+                // an MNV padded by a called deletion, and an SNV in a multiallelic germline record with a padded representation
+                { alleles("ACG", "GTG", "A"), List.of(aToG, germlineVC(2, alleles("CG", "C", "TG"), 0.1, 0.4)), true, new double[] {0.3, DEFAULT_AF}},
+
+                // an unchanged base inside an MNV need not be in the resource
+                { alleles("AAA", "TAT"), List.of(germlineVC(1, alleles("A", "T"), 0.1), germlineVC(3, alleles("A", "T"), 0.3)), true, new double[] {0.1}}
+        };
+    }
+
+    @Test(dataProvider = "mnvGermlineAltAlleleFrequenciesData")
+    public void testGetGermlineAltAlleleFrequenciesOfMnvs(final List<Allele> calledAlleles, final List<VariantContext> germlineVCs,
+                                                         final boolean assignMnvAfFromGermlineSnvs, final double[] expected) {
+        final double[] result = SomaticGenotypingEngine.getGermlineAltAlleleFrequencies(calledAlleles, 1, germlineVCs, DEFAULT_AF, assignMnvAfFromGermlineSnvs);
+        Assert.assertEquals(result, expected, 1.0e-10);
+    }
+
+    // alleles with the reference first
+    private static List<Allele> alleles(final String ref, final String... alts) {
+        final List<Allele> result = new ArrayList<>(List.of(Allele.create(ref, true)));
+        Arrays.stream(alts).forEach(alt -> result.add(Allele.create(alt, false)));
+        return result;
+    }
+
+    private static VariantContext germlineVC(final int start, final List<Allele> alleles, final double... altAFs) {
+        final int stop = start + alleles.get(0).length() - 1;
+        return new VariantContextBuilder("SOURCE", "1", start, stop, alleles)
+                .attribute(VCFConstants.ALLELE_FREQUENCY_KEY, altAFs).make();
     }
 }
