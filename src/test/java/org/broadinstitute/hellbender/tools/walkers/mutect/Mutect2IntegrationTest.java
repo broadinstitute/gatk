@@ -448,11 +448,14 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final SimpleInterval interval = new SimpleInterval("20", start, start + 25000);
 
+        // NA12878 is not a tumor, so we genotype germline sites in order to call its germline indels
         final File calls1 = createTempFile("unfiltered", ".vcf");
-        runMutect2(tumor, calls1, interval.toString(), b37Reference, Optional.of(GNOMAD));
+        runMutect2(tumor, calls1, interval.toString(), b37Reference, Optional.of(GNOMAD),
+                args -> args.addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME));
 
         final File calls2 = createTempFile("unfiltered", ".vcf");
         runMutect2(tumor, calls2, interval.toString(), b37Reference, Optional.of(GNOMAD),
+                args -> args.addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME),
                 args -> args.addFlag(AssemblyBasedCallerArgumentCollection.DONT_USE_SOFT_CLIPPED_BASES_LONG_NAME));
 
         final List<VariantContext> indelsWithSoftClips = VariantContextTestUtils.streamVcf(calls1).filter(VariantContext::isIndel).collect(Collectors.toList());
@@ -522,11 +525,29 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(startToAFArray.get(position3), new double[] {0.1}, 1e-8);
     }
 
+    // In tumor-only mode, SNVs matching common alleles in the germline resource are germline, and therefore not active
+    // unless they are near somatic variants or we genotype germline sites.  With the germline resource of
+    // testUnparsimoniousGermlineResource, which calls 20:1366255 G->A and 20:1401389 G->C when genotyping germline sites,
+    // these SNVs are not called otherwise.  Note that the resource represents them as GT -> AT and GT -> CA.
+    @Test
+    public void testTumorOnlyGermlineSnvsAreInactive() {
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final List<Integer> positions = List.of(1366255, 1401389);
+        final List<String> intervals = positions.stream().map(position -> "20:" + (position - 1000) + "-" + (position + 1000)).toList();
+        runMutect2(DREAM_4_TUMOR, unfilteredVcf, intervals.get(0), b37Reference, Optional.of(UNPARSIMONIOUS_GNOMAD_SNIPPET),
+                args -> args.addInterval(intervals.get(1)));
+
+        final Set<Integer> calledPositions = VariantContextTestUtils.streamVcf(unfilteredVcf).map(VariantContext::getStart).collect(Collectors.toSet());
+        positions.forEach(position -> Assert.assertFalse(calledPositions.contains(position), "germline SNV at " + position + " was called"));
+    }
+
     @Test
     public void testContaminationFilter() {
         Utils.resetRandomGenerator();
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
-        runMutect2(new File(NA12878_20_21_WGS_bam), unfilteredVcf, "20:10000000-20010000", b37Reference, Optional.of(GNOMAD));
+        // NA12878 is not a tumor, so we genotype germline sites in order to call its germline variants and subject them to filtering
+        runMutect2(new File(NA12878_20_21_WGS_bam), unfilteredVcf, "20:10000000-20010000", b37Reference, Optional.of(GNOMAD),
+                args -> args.addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME));
 
         final Map<Integer, Set<VariantContext>> filteredVariants = Arrays.stream(new int[] {0, 5, 10}).boxed().collect(Collectors.toMap(pct -> pct, pct -> {
             final File filteredVcf = createTempFile("filtered-" + pct, ".vcf");
