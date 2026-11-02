@@ -47,7 +47,6 @@ import java.util.stream.IntStream;
 public class LearnReadOrientationModel extends CommandLineProgram {
     public static final double DEFAULT_CONVERGENCE_THRESHOLD = 1e-4;
     public static final int DEFAULT_MAX_ITERATIONS = 20;
-    private static final int DEFAULT_INITIAL_LIST_SIZE = 1_000_000;
 
     public static final String EM_CONVERGENCE_THRESHOLD_LONG_NAME = "convergence-threshold";
     public static final String MAX_EM_ITERATIONS_LONG_NAME = "num-em-iterations";
@@ -358,7 +357,7 @@ public class LearnReadOrientationModel extends CommandLineProgram {
     static Map<String, List<AltSiteRecord>> gatherAltSiteRecords(final List<File> tables){
         final Map<String, List<AltSiteRecord>> result = new HashMap<>();
         for (final File table : tables) {
-            final Pair<String, List<AltSiteRecord>> sampleAndRecords = AltSiteRecord.readAltSiteRecords(table.toPath(), DEFAULT_INITIAL_LIST_SIZE);
+            final Pair<String, List<AltSiteRecord>> sampleAndRecords = AltSiteRecord.readAltSiteRecords(table.toPath());
             final String sample = sampleAndRecords.getLeft();
             final List<AltSiteRecord> records = sampleAndRecords.getRight();
 
