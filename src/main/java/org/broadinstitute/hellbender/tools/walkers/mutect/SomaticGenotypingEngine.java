@@ -242,10 +242,11 @@ public class SomaticGenotypingEngine implements AutoCloseable {
                 AssemblyBasedCallerUtils.annotateReadLikelihoodsWithSupportedAlleles(trimmedCall, trimmedLikelihoods, Fragment::getReads);
             }
 
+            // truth records overlapping the call, not just those starting at it, so that an MNV can match truth SNVs past its first base
             final Optional<List<VariantContext>> trainingTruthVCs = MTAC.permutectTrainingTruth == null ? Optional.empty() :
-                    Optional.of(featureContext.getValues(MTAC.permutectTrainingTruth, mergedVC.getStart()));
+                    Optional.of(featureContext.getValues(MTAC.permutectTrainingTruth, annotatedCall));
             final Optional<List<VariantContext>> testTruthVCs = MTAC.permutectTestTruth == null ? Optional.empty() :
-                    Optional.of(featureContext.getValues(MTAC.permutectTestTruth, mergedVC.getStart()));
+                    Optional.of(featureContext.getValues(MTAC.permutectTestTruth, annotatedCall));
             permutectTrainingDatasetEngines.forEach(engine -> engine.addData(referenceContext, annotatedCall, trainingTruthVCs,
                     trimmedLikelihoodsForAnnotation, logFragmentLikelihoods, logLikelihoods, MTAC.permutectDatasetMode));
             permutectTestDatasetEngines.forEach(engine -> engine.addData(referenceContext, annotatedCall, testTruthVCs,
