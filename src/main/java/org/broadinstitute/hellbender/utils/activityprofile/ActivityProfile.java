@@ -342,6 +342,7 @@ public class ActivityProfile {
      */
     private int findEndOfRegion(final int minRegionSize, final int maxRegionSize) {
         Utils.validate(!stateList.isEmpty(), "state list is empty");
+        Utils.validateArg(minRegionSize >= 1, "minRegionSize must be >= 1");
         final boolean aboveThreshold = getProb(0) > activeProbThreshold;
         final int maxContiguousSize = Math.min(stateList.size(), maxRegionSize);
         final int contiguousSize = IntStream.range(0, maxContiguousSize)
@@ -349,36 +350,15 @@ public class ActivityProfile {
                 .findFirst().orElse(maxContiguousSize);
 
         final boolean needToSplit = aboveThreshold && contiguousSize == maxRegionSize;
-        return needToSplit ? findBestCutSite(contiguousSize, minRegionSize) - 1 : contiguousSize - 1;
-    }
-
-    /**
-     * Find the the local minimum within 0 - endOfActiveRegion where we should divide region
-     *
-     * This algorithm finds the global minimum probability state within the region [minRegionSize, endOfActiveRegion)
-     * (exclusive of endOfActiveRegion), and returns the state index of that state.
-     * that it
-     *
-     * @param endOfActiveRegion the last state of the current active region (exclusive)
-     * @param minRegionSize the minimum of the left-most region, after cutting
-     * @return the index of state after the cut site (just like endOfActiveRegion)
-     */
-    private int findBestCutSite(final int endOfActiveRegion, final int minRegionSize) {
-        Utils.validateArg(endOfActiveRegion >= minRegionSize, "endOfActiveRegion must be >= minRegionSize");
-        Utils.validateArg(minRegionSize >= 0, "minRegionSize must be >= 0");
-
-        int minI = endOfActiveRegion - 1;
-        double minP = Double.MAX_VALUE;
-
-        for ( int i = minI; i >= minRegionSize - 1; i-- ) {
-            double cur = getProb(i);
-            if ( cur < minP && isLocalMinimum(i) ) {
-                minP = cur;
-                minI = i;
-            }
+        // If the active region is too big, split at the lowest local minimum, ties favoring later cuts, defaulting to
+        // the max region size if no local minima exist
+        if (needToSplit) {
+            return IntStream.range(minRegionSize - 1, contiguousSize).filter(this::isLocalMinimum).boxed()
+                    .sorted(Comparator.comparingDouble((Integer n) -> getProb(n)).thenComparingInt(n -> -n))
+                    .findFirst().orElse(contiguousSize - 1);
+        } else {
+            return contiguousSize - 1;
         }
-
-        return minI + 1;
     }
 
     /**
