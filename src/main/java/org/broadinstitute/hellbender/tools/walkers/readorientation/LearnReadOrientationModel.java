@@ -176,7 +176,8 @@ public class LearnReadOrientationModel extends CommandLineProgram {
                 // Finally, merge the rest of alt records
                 final List<AltSiteRecord> altDesignMatrix = forwardRecordsBySample.getOrDefault(sample, new ArrayList<>()); // Cannot use Collections.emptyList() here because the input list must be mutable
                 final List<AltSiteRecord> altDesignMatrixRevComp = reverseRecordsBySample.getOrDefault(sample, Collections.emptyList());
-                // Warning: the below method will mutate the content of {@link altDesignMatrixRevComp} and append to {@code altDesignMatrix}
+                // Warning: the below method appends the reverse complements of {@code altDesignMatrixRevComp} to {@code altDesignMatrix},
+                // which is the list in {@code forwardRecordsBySample}
                 mergeDesignMatrices(altDesignMatrix, altDesignMatrixRevComp);
 
                 if (combinedRefHistograms.getSumOfValues() == 0 || altDesignMatrix.isEmpty()) {
