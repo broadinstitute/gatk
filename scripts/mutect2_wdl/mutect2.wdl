@@ -824,14 +824,24 @@ task MergeAllelicCounts {
         Runtime runtime_params
     }
 
-    File first_table = input_tables[0]
-
     command {
         set -e
 
-        # header of first file
-        grep '^[#@]' ~{first_table} > merged.tsv
-        grep -v '^[#@]' ~{first_table} | head -n 1 >> merged.tsv
+        # header of the first nonempty file, since a scatter whose intervals contain no common hets leaves an empty file
+        first_table=""
+        for file in ~{sep=' ' input_tables}; do
+            if [[ -s $file ]]; then
+                first_table=$file
+                break
+            fi
+        done
+        if [[ -z "$first_table" ]]; then
+            echo "Every allelic counts table is empty: either the common hets don't intersect the intervals or CollectAllelicCounts had a command line error in every scatter" >&2
+            exit 1
+        fi
+
+        grep '^[#@]' $first_table > merged.tsv
+        grep -v '^[#@]' $first_table | head -n 1 >> merged.tsv
 
         for file in ~{sep=' ' input_tables}; do
             # tail -n +2 skips the CONTIG   POSITION. . . line
