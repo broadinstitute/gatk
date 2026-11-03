@@ -3,7 +3,6 @@ package org.broadinstitute.hellbender.tools.walkers.readorientation;
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.*;
-import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
@@ -46,7 +45,6 @@ import java.util.stream.IntStream;
 public class LearnReadOrientationModel extends CommandLineProgram {
     public static final double DEFAULT_CONVERGENCE_THRESHOLD = 1e-4;
     public static final int DEFAULT_MAX_ITERATIONS = 20;
-    private static final int DEFAULT_INITIAL_LIST_SIZE = 1_000_000;
 
     public static final String EM_CONVERGENCE_THRESHOLD_LONG_NAME = "convergence-threshold";
     public static final String MAX_EM_ITERATIONS_LONG_NAME = "num-em-iterations";
@@ -87,16 +85,9 @@ public class LearnReadOrientationModel extends CommandLineProgram {
 
         final List<File> refHistogramFiles = tmpDirs.stream().flatMap(dir -> F1R2CountsCollector.getRefHistogramsFromExtractedTar(dir).stream()).collect(Collectors.toList());
         final List<File> altHistogramFiles = tmpDirs.stream().flatMap(dir -> F1R2CountsCollector.getAltHistogramsFromExtractedTar(dir).stream()).collect(Collectors.toList());
-        final List<File> altTableFiles = tmpDirs.stream().flatMap(dir -> F1R2CountsCollector.getAltTablesFromExtractedTar(dir).stream()).collect(Collectors.toList());
 
-        // TODO: this is brittle: it relies on the fact that in CollectF1R2Counts we put a single header line with the same name in the ref and alt histograms
-        final Map<String, List<MetricsFile<?, Integer>>> refHistogramMetricsFilesBySample = refHistogramFiles.stream()
-                .map(file -> readMetricsFile(file))
-                .collect(Collectors.groupingBy(metricsFile -> metricsFile.getHeaders().get(0).toString()));
-
-        final Map<String, List<MetricsFile<?, Integer>>> altHistogramMetricsFilesBySample = altHistogramFiles.stream()
-                .map(file -> readMetricsFile(file))
-                .collect(Collectors.groupingBy(metricsFile -> metricsFile.getHeaders().get(0).toString()));
+        final Map<String, List<MetricsFile<?, Integer>>> refHistogramMetricsFilesBySample = readHistogramFilesBySample(refHistogramFiles);
+        final Map<String, List<MetricsFile<?, Integer>>> altHistogramMetricsFilesBySample = readHistogramFilesBySample(altHistogramFiles);
 
         final Set<String> refHistogramSamples = refHistogramMetricsFilesBySample.keySet();
         final Set<String> altHistogramSamples = altHistogramMetricsFilesBySample.keySet();
@@ -111,21 +102,34 @@ public class LearnReadOrientationModel extends CommandLineProgram {
         altHistogramsBySample = altHistogramSamples.stream().collect(Collectors.toMap(sample -> sample,
                 sample -> sumHistogramsFromFiles(altHistogramMetricsFilesBySample.get(sample), false)));
 
-        final Map<String, List<AltSiteRecord>> recordsBySample = gatherAltSiteRecords(altTableFiles);
+        final Set<String> samples = refHistogramsBySample.keySet();
 
-        final Map<String, ArtifactPriorCollection> artifactPriorCollectionBySample = new HashMap<>();
-        for (final Map.Entry<String, List<AltSiteRecord>> entry : recordsBySample.entrySet()) {
-            final String sample = entry.getKey();
-            final List<AltSiteRecord> records = entry.getValue();
+        // Alt tables are named <sample>.<reference context>.alt_table, but older versions of GATK wrote one alt table per sample
+        final Set<String> altTableNames = samples.stream()
+                .flatMap(sample -> F1R2FilterConstants.ALL_KMERS.stream().map(kmer -> F1R2CountsCollector.getAltTableName(sample, kmer)))
+                .collect(Collectors.toSet());
+        for (int n = 0; n < inputTarGzs.size(); n++) {
+            for (final File table : F1R2CountsCollector.getAltTablesFromExtractedTar(tmpDirs.get(n))) {
+                if (!altTableNames.contains(table.getName())) {
+                    throw new UserException.BadInput(String.format("%s has an alt table %s that is not named <sample>.<reference context>%s " +
+                            "for a sample with ref histograms.  If an older version of GATK made it, please regenerate it with this version of " +
+                            "CollectF1R2Counts or Mutect2 --%s.", inputTarGzs.get(n), table.getName(), F1R2CountsCollector.ALT_TABLE_EXTENSION,
+                            M2ArgumentCollection.F1R2_TAR_GZ_NAME));
+                }
+            }
+        }
 
-            final Map<String, List<AltSiteRecord>> altDesignMatrixByContext = records.stream()
-                    .collect(Collectors.groupingBy(AltSiteRecord::getReferenceContext));
+        final Map<String, ArtifactPriorCollection> artifactPriorCollectionBySample = samples.stream()
+                .collect(Collectors.toMap(sample -> sample, sample -> new ArtifactPriorCollection(sample)));
 
-            final ArtifactPriorCollection artifactPriorCollection = new ArtifactPriorCollection(sample);
 
-            // Since e.g. G->T under AGT F1R2 is equivalent to C->A under ACT F2R1, combine the data
-            for (final String refContext : F1R2FilterConstants.CANONICAL_KMERS) {
-                final String reverseComplement = SequenceUtil.reverseComplement(refContext);
+        // Since e.g. G->T under AGT F1R2 is equivalent to C->A under ACT F2R1, combine the data
+        for (final String refContext : F1R2FilterConstants.CANONICAL_KMERS) {
+            final String reverseComplement = SequenceUtil.reverseComplement(refContext);
+
+            for (final Map.Entry<String, ArtifactPriorCollection> entry : artifactPriorCollectionBySample.entrySet()) {
+                final String sample = entry.getKey();
+                final ArtifactPriorCollection artifactPriorCollection = entry.getValue();
 
                 // Merge ref histograms
                 final Histogram<Integer> refHistogram = refHistogramsBySample.get(sample).stream()
@@ -136,24 +140,22 @@ public class LearnReadOrientationModel extends CommandLineProgram {
                         .findFirst().orElseGet(() -> F1R2FilterUtils.createRefHistogram(reverseComplement, maxDepth));
                 final Histogram<Integer> combinedRefHistograms = combineRefHistogramWithRC(refContext, refHistogram, refHistogramRevComp, maxDepth);
 
-
                 // Merge alt depth=1 histograms
                 final List<Histogram<Integer>> altDepthOneHistogramsForContext = !altHistogramsBySample.containsKey(sample) ? Collections.emptyList() :
                         altHistogramsBySample.get(sample).stream()
-                        .filter(h -> h.getValueLabel().startsWith(refContext))
-                        .collect(Collectors.toList());
+                                .filter(h -> h.getValueLabel().startsWith(refContext))
+                                .collect(Collectors.toList());
                 final List<Histogram<Integer>> altDepthOneHistogramsRevComp = !altHistogramsBySample.containsKey(sample) ? Collections.emptyList() :
                         altHistogramsBySample.get(sample).stream()
-                        .filter(h -> h.getValueLabel().startsWith(reverseComplement))
-                        .collect(Collectors.toList());
+                                .filter(h -> h.getValueLabel().startsWith(reverseComplement))
+                                .collect(Collectors.toList());
                 final List<Histogram<Integer>> combinedAltHistograms = combineAltDepthOneHistogramWithRC(altDepthOneHistogramsForContext, altDepthOneHistogramsRevComp, maxDepth);
 
-                // Finally, merge the rest of alt records
-                final List<AltSiteRecord> altDesignMatrix = altDesignMatrixByContext.getOrDefault(refContext, new ArrayList<>()); // Cannot use Collections.emptyList() here because the input list must be mutable
-                final List<AltSiteRecord> altDesignMatrixRevComp = altDesignMatrixByContext.getOrDefault(reverseComplement, Collections.emptyList());
-                // Warning: the below method will mutate the content of {@link altDesignMatrixRevComp} and append to {@code altDesignMatrix}
+                // Finally, merge the rest of alt records, which we read for one sample and context at a time to save memory
+                final List<AltSiteRecord> altDesignMatrix = gatherAltSiteRecords(getAltTables(tmpDirs, sample, refContext));
+                final List<AltSiteRecord> altDesignMatrixRevComp = gatherAltSiteRecords(getAltTables(tmpDirs, sample, reverseComplement));
+                // Warning: the below method appends the reverse complements of {@code altDesignMatrixRevComp} to {@code altDesignMatrix}
                 mergeDesignMatrices(altDesignMatrix, altDesignMatrixRevComp);
-
 
                 if (combinedRefHistograms.getSumOfValues() == 0 || altDesignMatrix.isEmpty()) {
                     logger.info(String.format("Skipping the reference context %s as we didn't find either the ref or alt table for the context", refContext));
@@ -171,7 +173,6 @@ public class LearnReadOrientationModel extends CommandLineProgram {
                 final ArtifactPrior artifactPrior = engine.learnPriorForArtifactStates();
                 artifactPriorCollection.set(artifactPrior);
             }
-            artifactPriorCollectionBySample.put(sample, artifactPriorCollection);
         }
 
         final File tmpPriorDir = IOUtils.createTempDir("priors");
@@ -197,7 +198,7 @@ public class LearnReadOrientationModel extends CommandLineProgram {
                                                                final Histogram<Integer> refHistogramRevComp,
                                                                final int maxDepth){
         Utils.validateArg(refHistogram.getValueLabel()
-                .equals(SequenceUtil.reverseComplement(refHistogramRevComp.getValueLabel())),
+                        .equals(SequenceUtil.reverseComplement(refHistogramRevComp.getValueLabel())),
                 "ref context = " + refHistogram.getValueLabel() + ", rev comp = " + refHistogramRevComp.getValueLabel());
         Utils.validateArg(refHistogram.getValueLabel().equals(refContext), "this better match");
 
@@ -300,6 +301,16 @@ public class LearnReadOrientationModel extends CommandLineProgram {
         return metricsFile;
     }
 
+    // the ref or alt histogram files of all the inputs, by sample
+    private static Map<String, List<MetricsFile<?, Integer>>> readHistogramFilesBySample(final List<File> histogramFiles) {
+        final Map<String, List<MetricsFile<?, Integer>>> result = new HashMap<>();
+        for (final File file : histogramFiles) {
+            final MetricsFile<?, Integer> metricsFile = readMetricsFile(file);
+            result.computeIfAbsent(F1R2CountsCollector.getSample(metricsFile, file), sample -> new ArrayList<>()).add(metricsFile);
+        }
+        return result;
+    }
+
     public static List<Histogram<Integer>> sumHistogramsFromFiles(final List<MetricsFile<?,Integer>> metricsFiles, final boolean ref){
         Utils.nonNull(metricsFiles, "files may not be null");
         if (metricsFiles.isEmpty()) {
@@ -331,20 +342,15 @@ public class LearnReadOrientationModel extends CommandLineProgram {
     }
 
     @VisibleForTesting
-    static Map<String, List<AltSiteRecord>> gatherAltSiteRecords(final List<File> tables){
-        final Map<String, List<AltSiteRecord>> result = new HashMap<>();
-        for (final File table : tables) {
-            final Pair<String, List<AltSiteRecord>> sampleAndRecords = AltSiteRecord.readAltSiteRecords(table.toPath(), DEFAULT_INITIAL_LIST_SIZE);
-            final String sample = sampleAndRecords.getLeft();
-            final List<AltSiteRecord> records = sampleAndRecords.getRight();
-
-            if (result.containsKey(sample)) {
-                result.get(sample).addAll(records);
-            } else {
-                result.put(sample, records);
-            }
-        }
-
+    static List<AltSiteRecord> gatherAltSiteRecords(final List<File> tables){
+        final List<AltSiteRecord> result = new ArrayList<>();
+        tables.forEach(table -> result.addAll(AltSiteRecord.readAltSiteRecords(table.toPath()).getRight()));
         return result;
+    }
+
+    // the alt tables of one sample and reference context in all inputs, some of which may not have the sample
+    private static List<File> getAltTables(final List<File> extractedTarDirs, final String sample, final String refContext) {
+        return extractedTarDirs.stream().map(dir -> new File(dir, F1R2CountsCollector.getAltTableName(sample, refContext)))
+                .filter(File::exists).collect(Collectors.toList());
     }
 }
