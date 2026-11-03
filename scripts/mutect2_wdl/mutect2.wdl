@@ -614,6 +614,12 @@ task M2 {
         fi
 
         # CollectAllelicCounts
+
+        # As with GetPileupSummaries, an empty intersection of the common hets and the intervals for this scatter is an
+        # error, for which GATK exits with code 1 and leaves the empty allelic counts table created above, which simply
+        # doesn't contribute to the merged table downstream.  Other command line errors also exit with code 1, but they
+        # leave every scatter's table empty, so that MergeAllelicCounts fails.  Any other failure would silently leave
+        # this scatter's hets out of the segmentation, so it fails the task.
         if [[ ! -z "~{common_hets_for_segmentation}" ]]; then
             gatk --java-options "-Xmx~{command_mem}m" CollectAllelicCounts \
                 -R ~{ref_fasta} -I ~{tumor_reads} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
@@ -621,6 +627,10 @@ task M2 {
                 ~{collect_allelic_counts_extra_args} \
                 -O tumor_allelic_counts.tsv \
                 ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
+            allelic_counts_exit_code=$?
+            if [[ $allelic_counts_exit_code -gt 1 ]]; then
+                exit $allelic_counts_exit_code
+            fi
 
             if [[ ! -z "~{normal_reads}" ]]; then
                 gatk --java-options "-Xmx~{command_mem}m" CollectAllelicCounts \
@@ -629,10 +639,14 @@ task M2 {
                     ~{collect_allelic_counts_extra_args} \
                     -O normal_allelic_counts.tsv \
                     ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
+                allelic_counts_exit_code=$?
+                if [[ $allelic_counts_exit_code -gt 1 ]]; then
+                    exit $allelic_counts_exit_code
+                fi
             fi
         fi
 
-        # the script only fails if Mutect2 itself fails
+        # apart from CollectAllelicCounts, the script only fails if Mutect2 itself fails
         exit $m2_exit_code
     >>>
 
