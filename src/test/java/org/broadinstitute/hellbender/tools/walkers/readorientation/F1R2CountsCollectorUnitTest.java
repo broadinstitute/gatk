@@ -2,10 +2,16 @@ package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
 import com.sun.management.UnixOperatingSystemMXBean;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.samtools.metrics.Header;
+import htsjdk.samtools.metrics.MetricsFile;
+import htsjdk.samtools.metrics.StringHeader;
+import htsjdk.samtools.metrics.VersionHeader;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.SkipException;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
@@ -18,6 +24,39 @@ import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class F1R2CountsCollectorUnitTest extends GATKBaseTest {
+    // write a histogram file with the given headers and read it as LearnReadOrientationModel does
+    private static MetricsFile<?, Integer> writeAndRead(final List<Header> headers) {
+        final MetricsFile<?, Integer> metricsFile = new MetricsFile<>();
+        headers.forEach(metricsFile::addHeader);
+        final File file = createTempFile("histograms", F1R2CountsCollector.REF_HIST_EXTENSION);
+        metricsFile.write(file);
+        return LearnReadOrientationModel.readMetricsFile(file);
+    }
+
+    @Test
+    public void testSampleHeader() {
+        // LearnReadOrientationModel used to take a histogram file's first header as its sample
+        final VersionHeader otherHeader = new VersionHeader();
+        otherHeader.setVersionedItem("GATK");
+        otherHeader.setVersionString("4.0");
+        final MetricsFile<?, Integer> metricsFile = new MetricsFile<>();
+        metricsFile.addHeader(otherHeader);
+        F1R2CountsCollector.addSampleHeader(metricsFile, "tumor");
+
+        final MetricsFile<?, Integer> read = writeAndRead(metricsFile.getHeaders());
+        Assert.assertEquals(F1R2CountsCollector.getSample(read, new File("histograms")), "tumor");
+    }
+
+    @DataProvider
+    public Object[][] headersWithoutOneSample() {
+        return new Object[][] { { List.of() }, { List.of(new StringHeader("tumor"), new StringHeader("normal")) } };
+    }
+
+    @Test(dataProvider = "headersWithoutOneSample", expectedExceptions = UserException.BadInput.class)
+    public void testHistogramFileWithoutOneSampleHeader(final List<Header> headers) {
+        F1R2CountsCollector.getSample(writeAndRead(headers), new File("histograms"));
+    }
+
     // A writer for each sample and 3-base context used to stay open throughout collection, so that 16 samples took
     // 1024 file descriptors for the alt tables alone.
     @Test

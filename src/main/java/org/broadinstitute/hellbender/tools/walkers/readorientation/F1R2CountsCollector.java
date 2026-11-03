@@ -173,12 +173,12 @@ public class F1R2CountsCollector {
     public void writeHistograms() {
         for (final String sample : samples) {
             final MetricsFile<?, Integer> refMetricsFile = new MetricsFile<>();
-            refMetricsFile.addHeader(new StringHeader(sample));
+            addSampleHeader(refMetricsFile, sample);
             refSiteHistograms.get(sample).values().forEach(refMetricsFile::addHistogram);
             refMetricsFile.write(new File(tmpDir,IOUtils.urlEncode(sample) + REF_HIST_EXTENSION));
 
             final MetricsFile<?, Integer> altMetricsFile = new MetricsFile<>();
-            altMetricsFile.addHeader(new StringHeader(sample));
+            addSampleHeader(altMetricsFile, sample);
             depthOneAltHistograms.get(sample).getHistograms().forEach(altMetricsFile::addHistogram);
             altMetricsFile.write(new File(tmpDir, IOUtils.urlEncode(sample) + ALT_HIST_EXTENSION));
 
@@ -276,5 +276,29 @@ public class F1R2CountsCollector {
     // alt tables are named <sample>.<reference context>.alt_table
     public static String getAltTableName(final String sample, final String refContext) {
         return IOUtils.urlEncode(sample) + "." + refContext + ALT_TABLE_EXTENSION;
+    }
+
+    /**
+     * Record the sample of a ref or alt histogram file, which {@link #getSample} reads, as its only {@link StringHeader}
+     */
+    static void addSampleHeader(final MetricsFile<?, ?> metricsFile, final String sample) {
+        metricsFile.addHeader(new StringHeader(sample));
+    }
+
+    /**
+     * The sample of a ref or alt histogram file, recorded by {@link #addSampleHeader}
+     *
+     * @param file the histogram file, for the error message if it does not have exactly one {@link StringHeader}
+     */
+    static String getSample(final MetricsFile<?, ?> metricsFile, final File file) {
+        final List<String> sampleHeaders = metricsFile.getHeaders().stream()
+                .filter(header -> header instanceof StringHeader)
+                .map(header -> ((StringHeader) header).getValue())
+                .collect(Collectors.toList());
+        if (sampleHeaders.size() != 1) {
+            throw new UserException.BadInput(String.format("The histogram file %s should have one string header, " +
+                    "which names its sample, but it has %d.", file, sampleHeaders.size()));
+        }
+        return sampleHeaders.get(0);
     }
 }

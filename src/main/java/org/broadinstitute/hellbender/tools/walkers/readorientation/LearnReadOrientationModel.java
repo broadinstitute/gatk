@@ -86,14 +86,8 @@ public class LearnReadOrientationModel extends CommandLineProgram {
         final List<File> refHistogramFiles = tmpDirs.stream().flatMap(dir -> F1R2CountsCollector.getRefHistogramsFromExtractedTar(dir).stream()).collect(Collectors.toList());
         final List<File> altHistogramFiles = tmpDirs.stream().flatMap(dir -> F1R2CountsCollector.getAltHistogramsFromExtractedTar(dir).stream()).collect(Collectors.toList());
 
-        // TODO: this is brittle: it relies on the fact that in CollectF1R2Counts we put a single header line with the same name in the ref and alt histograms
-        final Map<String, List<MetricsFile<?, Integer>>> refHistogramMetricsFilesBySample = refHistogramFiles.stream()
-                .map(file -> readMetricsFile(file))
-                .collect(Collectors.groupingBy(metricsFile -> metricsFile.getHeaders().get(0).toString()));
-
-        final Map<String, List<MetricsFile<?, Integer>>> altHistogramMetricsFilesBySample = altHistogramFiles.stream()
-                .map(file -> readMetricsFile(file))
-                .collect(Collectors.groupingBy(metricsFile -> metricsFile.getHeaders().get(0).toString()));
+        final Map<String, List<MetricsFile<?, Integer>>> refHistogramMetricsFilesBySample = readHistogramFilesBySample(refHistogramFiles);
+        final Map<String, List<MetricsFile<?, Integer>>> altHistogramMetricsFilesBySample = readHistogramFilesBySample(altHistogramFiles);
 
         final Set<String> refHistogramSamples = refHistogramMetricsFilesBySample.keySet();
         final Set<String> altHistogramSamples = altHistogramMetricsFilesBySample.keySet();
@@ -305,6 +299,16 @@ public class LearnReadOrientationModel extends CommandLineProgram {
         metricsFile.read(reader);
         CloserUtil.close(reader);
         return metricsFile;
+    }
+
+    // the ref or alt histogram files of all the inputs, by sample
+    private static Map<String, List<MetricsFile<?, Integer>>> readHistogramFilesBySample(final List<File> histogramFiles) {
+        final Map<String, List<MetricsFile<?, Integer>>> result = new HashMap<>();
+        for (final File file : histogramFiles) {
+            final MetricsFile<?, Integer> metricsFile = readMetricsFile(file);
+            result.computeIfAbsent(F1R2CountsCollector.getSample(metricsFile, file), sample -> new ArrayList<>()).add(metricsFile);
+        }
+        return result;
     }
 
     public static List<Histogram<Integer>> sumHistogramsFromFiles(final List<MetricsFile<?,Integer>> metricsFiles, final boolean ref){
