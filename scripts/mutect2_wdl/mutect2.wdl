@@ -276,7 +276,8 @@ workflow Mutect2 {
                     het_allelic_counts = select_first([ModelSegmentsNormal.het_allelic_counts]),
                     modeled_segments = select_first([ModelSegmentsNormal.modeled_segments]),
                     ref_dict = ref_dict,
-                    gatk_override = gatk_override
+                    gatk_override = gatk_override,
+                    gatk_docker = gatk_docker
             }
         }
 
@@ -301,7 +302,8 @@ workflow Mutect2 {
                 het_allelic_counts = ModelSegmentsTumor.het_allelic_counts,
                 modeled_segments = ModelSegmentsTumor.modeled_segments,
                 ref_dict = ref_dict,
-                gatk_override = gatk_override
+                gatk_override = gatk_override,
+                gatk_docker = gatk_docker
         }
     }
 
@@ -991,7 +993,7 @@ task PlotModeledSegments {
         File? gatk_override
 
         # Runtime parameters
-        String gatk_docker = "us.gcr.io/broad-gatk/gatk"
+        String gatk_docker
         Int? mem_gb
         Int? disk_space_gb
         Boolean use_ssd = false
