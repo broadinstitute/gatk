@@ -119,8 +119,8 @@ public class AltSiteRecord {
     }
 
     /*** Reader ***/
-    private static class AltSiteRecordTableReader extends TableReader<AltSiteRecord> {
-        private AltSiteRecordTableReader(final Path table) throws IOException {
+    static class AltSiteRecordTableReader extends TableReader<AltSiteRecord> {
+        AltSiteRecordTableReader(final Path table) throws IOException {
             super(table);
         }
 

@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -42,17 +43,22 @@ public class F1R2CountsCollector {
     // For each sample store the total depths of alt sites with alt depth = 1 separately to save memory
     private Map<String, DepthOneHistograms> depthOneAltHistograms;
 
-    // alt table writers for each sample and 3-base context
+    // alt table writer for each sample
     // This is by far the largest quantity of data (for each sample histograms involve 64 3-base contexts x 3
     // substitution errors x 2 orientations x (by default) 200 histogram count bins, which comes out to maybe 1MB of RAM.
     // In a genome of 3 billion bases where every hundredth site or so has more than 1 alt base the alt records could come out
-    // to a gigabyte or more.  Thus it makes sense to split the alt table writers by sample *and* by 3-base context
+    // to a gigabyte or more.  Thus it makes sense to split the alt tables by sample *and* by 3-base context
     // so that downstream tools (LearnReadOrientationModel) need only load the records for one context at a time.
-    private Map<String, Map<String, AltSiteRecord.AltSiteRecordTableWriter>> altTableWriters;
+    // Each sample's table is split after collection, one sample at a time, so that one file per sample is open during
+    // collection rather than one per sample and context.
+    private Map<String, AltSiteRecord.AltSiteRecordTableWriter> altTableWriters;
 
-    // We put all pre-tarred output files in a temporary directory.  These include three files for each sample:
-    // an alt records file produced by that sample's altTableWriter, a depth one alt histogram file, and a ref site
-    // histogram file.  Each one of these files contains information for all 3-base contexts.
+    // the alt table of each sample, before it is split by 3-base context
+    private final File unsplitAltTableDir = IOUtils.createTempDir("unsplit");
+
+    // We put all pre-tarred output files in a temporary directory.  These include, for each sample, a depth one alt
+    // histogram file and a ref site histogram file, each with information for all 3-base contexts, and an alt table
+    // for each 3-base context.
     private final File tmpDir = IOUtils.createTempDir("untarred");
 
     // the final output file is produced by archiving every file in the temporary directory
@@ -71,23 +77,22 @@ public class F1R2CountsCollector {
         for (final String sample : samples) {
             final Map<String, Histogram<Integer>> refSitesHistogramsForThisSample = new HashMap<>(F1R2FilterConstants.ALL_KMERS.size());
 
-            altTableWriters.put(sample, new HashMap<>());
             // Initialize for each reference the histogram of the counts of reference sites by depth
             for (final String context : F1R2FilterConstants.ALL_KMERS) {
                 Histogram<Integer> emptyRefHistogram = F1R2FilterUtils.createRefHistogram(context, CF1R2Args.maxDepth);
                 refSitesHistogramsForThisSample.put(context, emptyRefHistogram);
-
-                // Intentionally not use try-with-resources so that the writer stays open outside of the try block
-                final File altTableFile = new File(tmpDir, getAltTableName(sample, context));
-                try {
-                    altTableWriters.get(sample).put(context, new AltSiteRecord.AltSiteRecordTableWriter(IOUtils.fileToPath(altTableFile), sample));
-                } catch (IOException e) {
-                    throw new UserException(String.format("Encountered an IO exception creating a writer for %s", altTableFile), e);
-                }
             }
 
             refSiteHistograms.put(sample, refSitesHistogramsForThisSample);
             depthOneAltHistograms.put(sample, new DepthOneHistograms(CF1R2Args.maxDepth));
+
+            // Intentionally not use try-with-resources so that the writer stays open outside of the try block
+            final File altTableFile = getUnsplitAltTable(sample);
+            try {
+                altTableWriters.put(sample, new AltSiteRecord.AltSiteRecordTableWriter(IOUtils.fileToPath(altTableFile), sample));
+            } catch (IOException e) {
+                throw new UserException(String.format("Encountered an IO exception creating a writer for %s", altTableFile), e);
+            }
         }
     }
 
@@ -158,7 +163,7 @@ public class F1R2CountsCollector {
             }
 
             try {
-                altTableWriters.get(sample).get(refContext).writeRecord(new AltSiteRecord(refContext, refCount, altCount, refF1R2, altF1R2, altBase));
+                altTableWriters.get(sample).writeRecord(new AltSiteRecord(refContext, refCount, altCount, refF1R2, altF1R2, altBase));
             } catch (IOException e) {
                 throw new UserException("Encountered an IO Exception writing to the alt data table", e);
             }
@@ -182,7 +187,7 @@ public class F1R2CountsCollector {
 
     public void closeAndArchiveFiles() {
         if (altTableWriters != null) {
-            altTableWriters.values().stream().flatMap(map -> map.values().stream()).forEach( writer -> {
+            for (final AltSiteRecord.AltSiteRecordTableWriter writer : altTableWriters.values()) {
                 if (writer != null) {
                     try {
                         writer.close();
@@ -190,7 +195,15 @@ public class F1R2CountsCollector {
                         throw new UserException("Encountered an IO exception while closing the alt table writer", e);
                     }
                 }
-            });
+            }
+        }
+
+        for (final String sample : samples) {
+            try {
+                splitAltTable(sample);
+            } catch (IOException e) {
+                throw new UserException(String.format("Encountered an IO exception while splitting the alt table of %s by reference context", sample), e);
+            }
         }
 
         try {
@@ -198,6 +211,34 @@ public class F1R2CountsCollector {
         } catch (final IOException ex) {
             throw new UserException.CouldNotCreateOutputFile("Could not create tar.gz file", ex);
         }
+    }
+
+    /**
+     * Split a sample's alt table into a table for each 3-base context, keeping the order of the records.  Only this
+     * sample's tables are open at once.
+     */
+    private void splitAltTable(final String sample) throws IOException {
+        final Map<String, AltSiteRecord.AltSiteRecordTableWriter> contextWriters = new HashMap<>(F1R2FilterConstants.ALL_KMERS.size());
+        for (final String context : F1R2FilterConstants.ALL_KMERS) {
+            final File altTableFile = new File(tmpDir, getAltTableName(sample, context));
+            contextWriters.put(context, new AltSiteRecord.AltSiteRecordTableWriter(IOUtils.fileToPath(altTableFile), sample));
+        }
+
+        final File unsplitAltTable = getUnsplitAltTable(sample);
+        try (AltSiteRecord.AltSiteRecordTableReader reader = new AltSiteRecord.AltSiteRecordTableReader(IOUtils.fileToPath(unsplitAltTable))) {
+            for (final AltSiteRecord record : reader) {
+                contextWriters.get(record.getReferenceContext()).writeRecord(record);
+            }
+        }
+
+        for (final AltSiteRecord.AltSiteRecordTableWriter writer : contextWriters.values()) {
+            writer.close();
+        }
+        Files.delete(unsplitAltTable.toPath());
+    }
+
+    private File getUnsplitAltTable(final String sample) {
+        return new File(unsplitAltTableDir, IOUtils.urlEncode(sample) + ALT_TABLE_EXTENSION);
     }
 
     /**
