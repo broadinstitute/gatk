@@ -61,7 +61,7 @@ workflow GvsCreateParticipantMappingFromVDS {
             help: "GCS prefix for the Hail job's outputs: keys_to_normalize.vcf.bgz, pairs.parquet and summary.json. Defaults to a path in the workspace bucket named for the dataset and the view. A relaunch with the same VDS, interval and prefix resumes from the job's checkpoint."
         }
         participant_mapping_table_name: {
-            help: "Name of the delivered view. The base and realigned inputs tables, and the staging tables, take it as a prefix. None may already exist, apart from the staging tables, which are replaced and expire after seven days."
+            help: "Name of the delivered view. The base and realigned inputs tables, and the staging tables, take it as a prefix. The view must not already exist. Base and realigned inputs tables left by an attempt that failed before creating it are dropped and rebuilt; the staging tables are replaced and expire after seven days."
         }
         max_secondary_workers: {
             help: "Ceiling on the preemptible secondary workers the autoscaling policy may add."
@@ -528,6 +528,15 @@ task CreateMappingTables {
                                          unnormalized_keys, ARRAY_TO_STRING(unnormalized_examples, ', '));
         END IF;
 
+        -- The view is created last, so it marks a finished build: never replace one. Without it, a base or realigned
+        -- inputs table is left from an attempt that failed partway, and is rebuilt from scratch.
+        IF EXISTS (SELECT 1 FROM `~{fq_dataset}.INFORMATION_SCHEMA.TABLES`
+                   WHERE table_name = '~{participant_mapping_table_name}') THEN
+            RAISE USING MESSAGE = '~{fq_dataset}.~{participant_mapping_table_name} already exists';
+        END IF;
+        DROP TABLE IF EXISTS `~{fq_dataset}.~{base_table_name}`;
+        DROP TABLE IF EXISTS `~{fq_dataset}.~{realigned_inputs_table_name}`;
+
         -- Filled one contig at a time below.
         CREATE TABLE `~{fq_dataset}.~{base_table_name}` (
             vid STRING,
@@ -573,7 +582,9 @@ task CreateMappingTables {
         WITH person_zygosity AS (
             -- One row per (vid, person). A person appears once per key, so only VIDs that more than one key normalizes
             -- to can repeat a person here. Such a person keeps the strongest zygosity any of their keys gives them,
-            -- so no person lands in two of the three arrays.
+            -- so no person lands in two of the three arrays. A person het at two of those keys therefore stays het,
+            -- though the two calls together may describe a hom. Foxtrot chr21 has no person on two keys of one VID;
+            -- other contigs and later callsets were not counted, which needs a read of the pairs table.
             SELECT COALESCE(k.vid, p.vds_key) AS vid,
                    p.person_id,
                    MAX(CASE p.zygosity WHEN 'het' THEN 1 WHEN 'hemi' THEN 2 WHEN 'hom' THEN 3 END) AS zygosity_rank
@@ -687,7 +698,9 @@ task CheckMappingTables {
             -- Every realigned VID has a mapping row. Counted from realigned, as j drops a VID in neither table.
             (SELECT COUNT(*) FROM realigned WHERE vid NOT IN (SELECT vid FROM mapping)) AS realigned_not_mapped,
             -- Criterion 3. No person appears twice for one VID, within an array or across them.
-            COUNTIF(n != n_distinct) AS vids_with_duplicate_person
+            COUNTIF(n != n_distinct) AS vids_with_duplicate_person,
+            -- One row per VID. A contig inserted twice passes every check above, each copy matching the VAT.
+            (SELECT COUNT(*) - COUNT(DISTINCT vid) FROM mapping) AS duplicate_vid_rows
         FROM j
         SQL
 
@@ -699,7 +712,8 @@ task CheckMappingTables {
         failures=$(jq -r 'to_entries[]
             | select(.key | IN("mismatch_outside_realigned", "below_inside_realigned", "hom_mismatch_outside_realigned",
                                "mapped_not_in_vat",
-                               "vat_carriers_without_row", "realigned_not_mapped", "vids_with_duplicate_person"))
+                               "vat_carriers_without_row", "realigned_not_mapped", "vids_with_duplicate_person",
+                               "duplicate_vid_rows"))
             | select(.value != 0) | "\(.key)=\(.value)"' acceptance_checks.json)
         if [[ -n "${failures}" ]]
         then
