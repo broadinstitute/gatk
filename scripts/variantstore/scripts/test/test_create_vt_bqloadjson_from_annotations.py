@@ -65,6 +65,39 @@ class TestCreateVtBqloadjsonFromAnnotations(unittest.TestCase):
 
 class TestMakeAnnotatedJsonRow(unittest.TestCase):
 
+    def test_clinvar_without_significance_is_excluded(self):
+        for significance in ({}, {"significance": None}, {"significance": []}):
+            for keep_valid_rcv in (False, True):
+                with self.subTest(significance=significance, keep_valid_rcv=keep_valid_rcv):
+                    variant = copy.deepcopy(cysticFibrosisNirvanaOutput)
+                    valid_rcv = {
+                        "id": "RCV_VALID",
+                        "reviewStatus": "criteria provided, single submitter",
+                        "refAllele": variant["refAllele"],
+                        "altAllele": variant["altAllele"],
+                        "significance": ["Pathogenic"],
+                        "phenotypes": ["retained phenotype"],
+                        "lastUpdatedDate": "2020-03-01",
+                    }
+                    variant["clinvar"] = [valid_rcv] if keep_valid_rcv else []
+                    expected = make_annotated_json_row(
+                        117559590, "ATCT", "A", variant, None)
+                    excluded_rcv = {
+                        **valid_rcv,
+                        "id": "RCV000031813.18",
+                        "phenotypes": ["excluded phenotype"],
+                        "lastUpdatedDate": "2025-05-16",
+                    }
+                    del excluded_rcv["significance"]
+                    excluded_rcv.update(significance)
+                    variant["clinvar"].append(excluded_rcv)
+                    with self.assertLogs(level="WARNING") as logs:
+                        actual = make_annotated_json_row(
+                            117559590, "ATCT", "A", variant, None)
+                    self.assertEqual(actual, expected)
+                    self.assertIn("RCV000031813.18", "\n".join(logs.output))
+                    self.assertIn(variant["vid"], "\n".join(logs.output))
+
     def test_make_annotated_json_row_success(self):
         actual = make_annotated_json_row(
             row_position=117559590,

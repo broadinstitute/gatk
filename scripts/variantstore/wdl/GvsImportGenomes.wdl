@@ -59,20 +59,23 @@ workflow GvsImportGenomes {
     Boolean delete_parquet_files_after_loading = true
     Boolean use_alternate_parquet_delete_strategy = false
 
-    # Independent post-load structural checks (VS-1989). The vet duplication screen flags any sample
-    # whose vet row count is >= parquet_vet_duplication_threshold times the callset median; the
-    # truncation screen flags any sample at or below median / parquet_vet_truncation_threshold. A flag
-    # does not fail the load: the flagged samples' Parquet is moved to a quarantine prefix out of the
-    # bulk delete's reach and the rest of the callset is deleted as normal. Set
-    # parquet_allow_flagged_vet_loads to waive both screens and delete everything anyway.
-    Float parquet_vet_duplication_threshold = 1.6
-    # The two thresholds are equal by default but deliberately separate, because the evidence behind
-    # them is not. Foxtrot calibration measured the high side only (1.6x flagged 2 vet samples of
-    # 540,545); nothing has been measured below the median, and a variant-count distribution has no
-    # reason to be symmetric -- its upper tail is bounded by biology while its lower tail absorbs
-    # low-coverage samples and more aggressive GQ dropping. So the low side must be movable, and
-    # switchable off, without disturbing the calibrated high side. Set to 0 to disable the truncation
-    # screen entirely while leaving the duplication screen running.
+    # Independent post-load structural checks (VS-1989, VS-2032). Two findings can hold a sample's
+    # Parquet back from the bulk delete. The footer row count comparison is exact: it sums the row
+    # counts the sample's source Parquet footers declare and compares them against the rows BigQuery
+    # holds for that (table, sample_id), across vet, ref_ranges and sample_chromosome_ploidy alike. The
+    # truncation screen is a heuristic and covers vet only: it flags any sample at or below the callset
+    # median / parquet_vet_truncation_threshold. Neither fails the load -- the flagged samples' Parquet
+    # is moved to a quarantine prefix out of the bulk delete's reach and the rest of the callset is
+    # deleted as normal. Set parquet_allow_flagged_vet_loads to waive the truncation screen; the footer
+    # comparison is exact and is not waivable.
+    #
+    # The low side is uncalibrated and so must be movable, and switchable off. Foxtrot calibration
+    # covered the high side (the 1.6x duplication ratio flagged 2 vet samples of 540,545), and
+    # that screen is now retired, superseded by the exact comparison. The mirrored floor flagged none
+    # of them, which shows it is quiet on a clean WGS callset but not that it catches a real
+    # truncation. A variant-count distribution has no reason to be symmetric -- its upper tail is
+    # bounded by biology while its lower tail absorbs low-coverage samples and more aggressive GQ
+    # dropping. Set to 0 to disable the truncation screen entirely.
     Float parquet_vet_truncation_threshold = 1.6
     Boolean parquet_allow_flagged_vet_loads = false
     # Whether a quarantine should also abort the workflow. Without this a flagged run is simply a green
@@ -85,12 +88,11 @@ workflow GvsImportGenomes {
   }
 
   parameter_meta {
-    # VS-1989 independent post-load structural checks; documented so these verification controls are
-    # discoverable (womtool inputs, Terra, integration tests) alongside use_parquet_ingest.
-    parquet_vet_duplication_threshold: "VS-1989 post-load verification: ratio-to-callset-median at or above which a vet sample's row count is flagged as a possible duplicate. Must be > 1; default 1.6, calibrated against Foxtrot."
-    parquet_vet_truncation_threshold: "VS-1989 post-load verification: ratio whose reciprocal sets the low-side floor -- a vet sample at or below median/ratio is flagged as possibly truncated. Must be > 1, or 0 to disable the truncation screen; default 1.6 (i.e. 0.625x). Separate from parquet_vet_duplication_threshold because only the high side has been calibrated, so the low side can be retuned or switched off on its own."
-    parquet_allow_flagged_vet_loads: "VS-1989 post-load verification: when false (default), the Parquet of any sample a vet duplication- or truncation-screen flag names is moved to a quarantine prefix instead of deleted (the load itself still succeeds, and the unflagged samples' Parquet is deleted as normal); when true the screens are waived and everything is deleted despite a flag. Family completeness and ploidy cardinality are exact checks that always gate load completeness regardless. Supersedes parquet_fail_on_quarantine in practice: waiving the screens leaves nothing quarantined, so that gate has nothing to fire on. Note that it also deletes the flagged sample's Parquet, so prefer parquet_fail_on_quarantine = false when the intent is to finish a flagged run with its Parquet still recoverable."
-    parquet_fail_on_quarantine: "VS-1989 post-load verification: when true (default), a run that quarantined the Parquet of a duplication-flagged sample aborts after the quarantine completes, so the run is not silently green. Set false to leave the quarantine advisory (reported only through the parquet_quarantined_* outputs and the quarantine directory's README). Truncation-only flags never abort, because that threshold is not yet calibrated. Has no effect when parquet_allow_flagged_vet_loads is true, which waives the screens upstream and so leaves nothing to abort on."
+    # VS-1989 / VS-2032 independent post-load structural checks; documented so these verification
+    # controls are discoverable (womtool inputs, Terra, integration tests) alongside use_parquet_ingest.
+    parquet_vet_truncation_threshold: "VS-1989 post-load verification: ratio whose reciprocal sets the low-side floor -- a vet sample at or below median/ratio is flagged as possibly truncated. Must be > 1, or 0 to disable the truncation screen; default 1.6 (i.e. 0.625x). A heuristic, and the only waivable finding: the high side it was paired with is now covered exactly by the VS-2032 footer row count comparison."
+    parquet_allow_flagged_vet_loads: "VS-1989 post-load verification: when false (default), the Parquet of any sample the vet truncation screen flags is moved to a quarantine prefix instead of deleted (the load itself still succeeds, and the unflagged samples' Parquet is deleted as normal); when true that screen is waived and its flagged Parquet is deleted with the rest. It does NOT waive the VS-2032 footer row count comparison, whose findings are exact and whose samples are always quarantined, nor family completeness and ploidy cardinality, which always gate load completeness. To finish a run the footer comparison flagged, set parquet_fail_on_quarantine = false instead -- waiving also deletes the flagged sample's Parquet, destroying the evidence."
+    parquet_fail_on_quarantine: "VS-1989 / VS-2032 post-load verification: when true (default), a run that quarantined the Parquet of a sample whose Parquet footer row counts disagree with BigQuery aborts after the quarantine completes, so the run is not silently green. Set false to leave the quarantine advisory (reported only through the parquet_quarantined_* outputs and the quarantine directory's README). Truncation-only flags never abort, because that threshold is not yet calibrated. parquet_allow_flagged_vet_loads does not disable this gate: it empties the truncation screen's contribution to the quarantine, but a footer mismatch still quarantines and still aborts."
   }
 
   Int max_auto_scatter_width = if is_wgs then 25000 else 100000
@@ -141,7 +143,12 @@ workflow GvsImportGenomes {
     }
   }
 
-  if ((num_samples > max_auto_scatter_width) && !(defined(load_data_scatter_width))) {
+  # Parquet ingest scatters to 1000 unless the caller says otherwise; other ingests keep automatic selection.
+  Int? requested_scatter_width = if (defined(load_data_scatter_width)) then load_data_scatter_width
+                                 else if use_parquet_ingest then 1000
+                                 else load_data_scatter_width
+
+  if ((num_samples > max_auto_scatter_width) && !(defined(requested_scatter_width))) {
     call Utils.TerminateWorkflow as DieDueToTooManySamplesWithoutExplicitLoadDataScatterWidth {
       input:
         message = "Importing " + num_samples + " samples but 'load_data_scatter_width' is not explicitly specified; the limit for automatic scatter width selection is " + max_auto_scatter_width + " for " + genome_type + " samples.",
@@ -150,14 +157,14 @@ workflow GvsImportGenomes {
   }
 
   # Compute effective scatter width, clamped to not exceed number of samples
-  Int effective_scatter_width = if (defined(load_data_scatter_width)) then
-                                  if select_first([load_data_scatter_width]) < num_samples then select_first([load_data_scatter_width]) else num_samples
+  Int effective_scatter_width = if (defined(requested_scatter_width)) then
+                                  if select_first([requested_scatter_width]) < num_samples then select_first([requested_scatter_width]) else num_samples
                                 else num_samples
 
   # Compute batch size using ceiling division to ensure we don't exceed the requested scatter width.
   # Using (x + y - 1) / y implementation of ceil(x/y)
   # Example: 10 samples, scatter_width 6 -> batch_size = ceil(10/6) = 2 -> actual tasks = ceil(10/2) ≈ 5 ≤ 6
-  Int effective_load_data_batch_size = if (defined(load_data_scatter_width)) then
+  Int effective_load_data_batch_size = if (defined(requested_scatter_width)) then
                                          (num_samples + effective_scatter_width - 1) / effective_scatter_width
                                        else if num_samples < max_scatter_for_user then 1
                                          else if is_wgs then num_samples / max_scatter_for_user
@@ -274,7 +281,8 @@ workflow GvsImportGenomes {
   # workflow twice -- once with load_vcf_headers=true/load_vet_and_ref_ranges=false, then the reverse.
   # See the VS-1968 design doc, section 1.5. (No intra-run gate between the two phases is implemented.)
   if (use_parquet_ingest && (load_vet_and_ref_ranges || load_vcf_headers)) {
-    String defined_parquet_output_dir = select_first([parquet_output_gcs_dir])
+    # Strip trailing slashes so the subpaths appended below do not contain `//`.
+    String defined_parquet_output_dir = sub(select_first([parquet_output_gcs_dir]), "/+$", "")
 
     # Table prefixes to discover/load/verify. vcf_header_lines_scratch is included only when headers
     # were generated (its table may not exist otherwise). vet/ref_ranges/ploidy prefixes are harmless
@@ -284,11 +292,11 @@ workflow GvsImportGenomes {
       else ["sample_chromosome_ploidy"]
     Array[String] parquet_superpartitioned_prefixes = ["vet", "ref_ranges"]
 
-    # Parquet belonging to a sample the heuristic vet screens flag is moved under this subdirectory of
-    # the output dir instead of being deleted, so it survives for inspection and re-ingest while the
-    # rest of the callset's Parquet is deleted normally (VS-1989). Two tasks have to agree on the name
-    # -- QuarantineFlaggedParquetFiles writes it and DiscoverParquetFiles must not re-discover it -- so
-    # it is declared once here and threaded to both.
+    # Parquet belonging to a sample the footer comparison or the vet truncation screen flags is moved
+    # under this subdirectory of the output dir instead of being deleted, so it survives for inspection
+    # and re-ingest while the rest of the callset's Parquet is deleted normally (VS-1989, VS-2032). Two
+    # tasks have to agree on the name -- QuarantineFlaggedParquetFiles writes it and
+    # DiscoverParquetFiles must not re-discover it -- so it is declared once here and threaded to both.
     #
     # The name is deliberately outside the prefixes ConfigureParquetLifecycle matches (vet/,
     # ref_ranges/, sample_chromosome_ploidy/, vcf_header_lines_scratch/) and outside the directory list
@@ -345,9 +353,9 @@ workflow GvsImportGenomes {
         project_id = project_id,
         dataset_name = dataset_name,
         gcs_files_list = DiscoverParquetFiles.all_files_list,
+        output_gcs_dir = defined_parquet_output_dir,
         regular_table_prefixes = parquet_regular_prefixes,
         superpartitioned_table_prefixes = parquet_superpartitioned_prefixes,
-        vet_duplication_threshold = parquet_vet_duplication_threshold,
         vet_truncation_threshold = parquet_vet_truncation_threshold,
         allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
         verification_diagnostics_gcs_dir = defined_parquet_output_dir + "/verification_diagnostics",
@@ -405,26 +413,29 @@ workflow GvsImportGenomes {
     # files by both their suffix and their location, and deleting the unflagged samples' Parquet is
     # wanted either way.
     #
-    # Only duplication flags abort. A truncation-only flag still quarantines and still reports, but the
-    # truncation threshold has been measured on its high side only, and an uncalibrated heuristic should
-    # not be able to fail a completed 500k-sample ingest.
+    # Only the footer row count comparison aborts. A truncation-only flag still quarantines and still
+    # reports, but that threshold is uncalibrated, and an uncalibrated heuristic should not be able to
+    # fail a completed 500k-sample ingest. The footer comparison is exact in both directions -- the
+    # rows BigQuery holds for the sample are not the rows its Parquet declares -- so there is no
+    # tuning argument to be had with it.
     #
-    # This condition is also what makes parquet_allow_flagged_vet_loads supersede
-    # parquet_fail_on_quarantine. There is no precedence rule anywhere; waiving the screens simply
-    # empties the quarantine work list, and an abort keyed on quarantined_files then has nothing to fire
-    # on. Anything that re-keys this on the screen flags themselves would break that, silently turning a
-    # waived run back into a failing one.
-    if (parquet_fail_on_quarantine && QuarantineFlaggedParquetFiles.quarantined_files > 0 && VerifyParquetLoading.quarantined_duplication_samples > 0) {
+    # parquet_allow_flagged_vet_loads does NOT supersede this gate (VS-2032 changed that). It waives
+    # the truncation screen alone, so a waived run with a footer mismatch still quarantines and still
+    # aborts here. Conditioning on quarantined_files as well keeps the data dependency that places the
+    # abort after the move, so the files are already safe when the workflow stops.
+    if (parquet_fail_on_quarantine && QuarantineFlaggedParquetFiles.quarantined_files > 0 && VerifyParquetLoading.quarantined_row_count_mismatch_samples > 0) {
       call Utils.TerminateWorkflow as ParquetWasQuarantined {
         input:
-          message = "Parquet ingest completed and all data loaded, but the VS-1989 vet duplication screen flagged " +
-                    VerifyParquetLoading.quarantined_duplication_samples + " sample(s). Their Parquet (" +
+          message = "Parquet ingest completed and all data loaded, but the VS-2032 footer row count comparison found " +
+                    VerifyParquetLoading.quarantined_row_count_mismatch_samples + " sample(s) whose BigQuery row count " +
+                    "disagrees with their source Parquet. Their Parquet (" +
                     QuarantineFlaggedParquetFiles.quarantined_files + " file(s), including any truncation-flagged samples) " +
                     "has been moved to " + defined_parquet_output_dir + "/" + parquet_quarantine_subdir +
                     "/ and is exempt from both the bulk delete and the bucket's 14-day lifecycle rule; see the README.txt " +
-                    "there. Review those samples, then re-run with parquet_fail_on_quarantine = false to finish, or with " +
-                    "parquet_allow_flagged_vet_loads = true to waive the screens. THE DATA IS LOADED -- this failure is a " +
-                    "notification, not an incomplete ingest.",
+                    "there. Review those samples, then re-run with parquet_fail_on_quarantine = false to finish. " +
+                    "parquet_allow_flagged_vet_loads will NOT get past this -- it waives the truncation screen only -- and " +
+                    "it would delete the flagged sample's Parquet. THE DATA IS LOADED -- this failure is a notification, " +
+                    "not an incomplete ingest.",
           basic_docker = effective_basic_docker,
       }
     }
@@ -470,6 +481,7 @@ workflow GvsImportGenomes {
         ]),
         project_id = project_id,
         dataset_name = dataset_name,
+        ingested_sample_ids = GetUningestedSampleIds.gvs_ids,
         cloud_sdk_docker = effective_cloud_sdk_docker,
     }
   }
@@ -485,16 +497,16 @@ workflow GvsImportGenomes {
     Boolean? parquet_safe_to_delete = VerifyParquetLoading.safe_to_delete_parquet
     Int? parquet_files_loaded = VerifyParquetLoading.loaded_files
     Int? parquet_total_files = VerifyParquetLoading.total_files
-    # Independent structural-check observability (VS-1989). parquet_loading_verified (all_loaded) is the
-    # factual "load complete?" verdict; parquet_safe_to_delete (safe_to_delete_parquet) is the bulk
-    # deletion gate. A vet screen flag no longer separates them: the flagged samples' Parquet is moved
-    # under the quarantine subdirectory and the rest of the callset is deleted as usual, so a flagged
-    # run is both all_loaded and safe_to_delete. They differ only in the one case where a flagged
-    # sample had no Parquet path to move, which leaves the delete blocked because running it would
-    # destroy exactly the files the screens asked to keep.
+    # Independent structural-check observability (VS-1989, VS-2032). parquet_loading_verified
+    # (all_loaded) is the factual "load complete?" verdict; parquet_safe_to_delete
+    # (safe_to_delete_parquet) is the bulk deletion gate. A flagged sample no longer separates them:
+    # its Parquet is moved under the quarantine subdirectory and the rest of the callset is deleted as
+    # usual, so a flagged run is both all_loaded and safe_to_delete. They differ only in the one case
+    # where a flagged sample had no Parquet path to move, which leaves the delete blocked because
+    # running it would destroy exactly the files the checks asked to keep.
     #
-    # The screen flags and the quarantine counts are surfaced because a flagged run is now a SUCCESSFUL
-    # run that quietly set some Parquet aside -- without these outputs nothing above this workflow would
+    # The flags and the quarantine counts are surfaced because a flagged run is now a SUCCESSFUL run
+    # that quietly set some Parquet aside -- without these outputs nothing above this workflow would
     # say so. parquet_quarantined_samples being non-zero on a green run is the signal to go and look --
     # green rather than aborted only when parquet_fail_on_quarantine was turned off, or when every
     # flagged sample was flagged by the truncation screen alone.
@@ -503,10 +515,10 @@ workflow GvsImportGenomes {
     # VerifyParquetLoading task, whose outputs Cromwell then never delocalizes -- so they could only
     # ever be read as true and are not published; the full verdict is written to
     # verification_results.json, copied to a durable diagnostics path on failure.
-    Boolean? parquet_vet_duplication_flagged = VerifyParquetLoading.vet_duplication_flagged
+    Boolean? parquet_row_count_mismatch_flagged = VerifyParquetLoading.row_count_mismatch_flagged
     Boolean? parquet_vet_truncation_flagged = VerifyParquetLoading.vet_truncation_flagged
     Int? parquet_quarantined_samples = VerifyParquetLoading.quarantined_samples
-    Int? parquet_quarantined_duplication_samples = VerifyParquetLoading.quarantined_duplication_samples
+    Int? parquet_quarantined_row_count_mismatch_samples = VerifyParquetLoading.quarantined_row_count_mismatch_samples
     Int? parquet_quarantined_files = VerifyParquetLoading.quarantined_files
     File? parquet_quarantine_files_list = VerifyParquetLoading.quarantine_files_list
   }
@@ -712,16 +724,36 @@ task ProcessInputGVCFs {
       sample_name="${SAMPLE_NAMES_ARRAY[$i]}"
 
       # We always do our own localization.
-      # It seems possible that the Parquet / non-Parquet branches below might be coalesced.
       if [[ "~{use_parquet_ingest}" = 'true' ]]
       then
         updated_input_vcf=input_vcf_${i}_${sample_name}.vcf.gz
+      else
+        updated_input_vcf=input_vcf_$i.vcf.gz
+      fi
+
+      if [[ "~{load_vet_and_ref_ranges}" = 'true' ]]
+      then
         gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf $updated_input_vcf
         gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf_index ${updated_input_vcf}.tbi
       else
-        gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf input_vcf_$i.vcf.gz
-        gcloud storage ~{"--billing-project " + billing_project_id} cp $gs_input_vcf_index input_vcf_$i.vcf.gz.tbi
-        updated_input_vcf=input_vcf_$i.vcf.gz
+        # Headers-only pass: read just the start of the gVCF instead of localizing all of it. CreateVariantIngestFiles
+        # builds the header rows from the parsed header alone, so a header-only VCF gives the same rows and the
+        # walker traverses zero records. It is indexed so the usual -L invocation still works.
+        #
+        # The `|| true` is required: once sed quits at #CHROM, gunzip dies of SIGPIPE (exit 141), which pipefail
+        # would turn into a failure on every sample. It also fails on the BGZF block cut off at the end of the range.
+        # Swallowing its status hides a corrupt input too, which the #CHROM check below catches instead; the data
+        # pass reads the whole file and would fail on it regardless.
+        header_vcf=${updated_input_vcf%.gz}
+        gcloud storage ~{"--billing-project " + billing_project_id} cat --range=0-16777215 "${gs_input_vcf}" |
+          { gunzip -c 2>/dev/null || true; } | sed '/^#CHROM/q' > "${header_vcf}"
+        if ! grep -q '^#CHROM' "${header_vcf}"
+        then
+          echo "No #CHROM line in the first 16 MiB of ${gs_input_vcf}: the header is longer than that, or the file is corrupt." >&2
+          exit 1
+        fi
+        bgzip -f "${header_vcf}"
+        tabix -f -p vcf "${updated_input_vcf}"
       fi
 
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
@@ -843,6 +875,8 @@ task SetIsLoadedColumn {
     # is passed here to prevent this task from running until the upstream task has completed.
     #@ except: UnusedInput
     Array[Boolean] go
+    # The samples this run set out to load, from GetUningestedSampleIds: one sample_id per line, under a header.
+    File ingested_sample_ids
     String cloud_sdk_docker
   }
   meta {
@@ -876,6 +910,63 @@ task SetIsLoadedColumn {
     );
 
     '
+
+    # The UPDATE above succeeds even when it touches no rows, and a sample left without is_loaded is invisible to
+    # everything downstream: e.g. GvsCreateFilterSet reads no samples and will fail much later with an opaque error from
+    # ExtractVariantAnnotations (VS-2049). The usual cause is an empty view feeding samples_with_all_data, e.g. a
+    # dataset reused from an earlier load_vcf_headers=true run that created sample_vcf_header but never filled it.
+    # So fail here if any sample this run loaded is still not marked loaded.
+
+    # Size the fetch below from this count so that --max_rows cannot silently truncate it.
+    # bq query --max_rows check: ok one row
+    bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} '
+
+    SELECT COUNT(*) FROM `~{project_id}.~{dataset_name}.sample_info`
+    WHERE is_loaded IS NOT TRUE AND withdrawn IS NULL
+
+    ' > not_loaded_count.csv
+    not_loaded_count=$(tail -1 not_loaded_count.csv)
+
+    tail -n +2 ~{ingested_sample_ids} | sort -u > ingested_sample_ids.txt
+    : > not_loaded_ingested_sample_ids.txt
+    if [[ ${not_loaded_count} -gt 0 ]]
+    then
+      bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+        --max_rows ${not_loaded_count} '
+
+      SELECT sample_id FROM `~{project_id}.~{dataset_name}.sample_info`
+      WHERE is_loaded IS NOT TRUE AND withdrawn IS NULL
+
+      ' > not_loaded.csv
+      tail -n +2 not_loaded.csv | sort -u > not_loaded_sample_ids.txt
+      comm -12 ingested_sample_ids.txt not_loaded_sample_ids.txt > not_loaded_ingested_sample_ids.txt
+    fi
+
+    num_failed=$(wc -l < not_loaded_ingested_sample_ids.txt | tr -d ' ')
+    if [[ ${num_failed} -gt 0 ]]
+    then
+      set +o xtrace
+      {
+        echo "ERROR: ${num_failed} of the $(wc -l < ingested_sample_ids.txt | tr -d ' ') sample(s) loaded by this run do not have"
+        echo "sample_info.is_loaded = TRUE, so every later stage would silently skip them. The first few sample_ids:"
+        head -10 not_loaded_ingested_sample_ids.txt | paste -sd ' ' -
+        echo "is_loaded is set from samples_with_all_data, which joins the views below; whichever is empty is the cause."
+        echo "An empty samples_with_header_data usually means the dataset was reused from an earlier run with"
+        echo "load_vcf_headers = true whose headers were never loaded. Rerun into a fresh dataset."
+        for view in samples_with_reference_data samples_with_variant_data samples_with_header_data samples_with_all_data
+        do
+          # bq query --max_rows check: ok one row
+          if count=$(bq --apilog=false --project_id=~{project_id} query --format=csv --use_legacy_sql=false ~{bq_labels} \
+                       "SELECT COUNT(DISTINCT sample_id) FROM \`~{project_id}.~{dataset_name}.${view}\`" | tail -1)
+          then
+            echo "  ${view}: ${count} sample(s)"
+          else
+            echo "  ${view}: does not exist"
+          fi
+        done
+      } >&2
+      exit 1
+    fi
   >>>
   runtime {
     docker: cloud_sdk_docker
@@ -1530,13 +1621,17 @@ task VerifyParquetLoading {
     String project_id
     String dataset_name
     File gcs_files_list
+    # Root the Parquet was written and discovered under. The VS-2032 footer row count comparison
+    # defines a BigQuery external table over <output_gcs_dir>/<family>/*.parquet for each family, so
+    # this must be the same string DiscoverParquetFiles listed -- the quarantine subdirectory sits
+    # outside those per-family prefixes and is therefore excluded, as is any sibling callset.
+    String output_gcs_dir
     Array[String] regular_table_prefixes = ["sample_chromosome_ploidy"]
     Array[String] superpartitioned_table_prefixes = ["vet", "ref_ranges"]
-    # Independent structural checks (VS-1989): the two screen ratios and whether a screen flag is
-    # waived. By default (false) a flag quarantines the flagged samples' Parquet; true waives the
-    # screens. vet_truncation_threshold is separate from vet_duplication_threshold -- only the high
-    # side is calibrated -- and 0 disables the truncation screen alone.
-    Float vet_duplication_threshold = 1.6
+    # Independent structural checks (VS-1989, VS-2032): the truncation screen's ratio and whether that
+    # screen is waived. By default (false) a flagged sample's Parquet is quarantined; true waives the
+    # truncation screen only -- the footer row count comparison is exact and always quarantines. 0
+    # disables the truncation screen entirely.
     Float vet_truncation_threshold = 1.6
     Boolean allow_flagged_vet_loads = false
     # Optional durable location for the verdict JSON. This task is fail-loud -- a bad load exits non-zero
@@ -1571,9 +1666,9 @@ task VerifyParquetLoading {
       --project-id ~{project_id} \
       --dataset-name ~{dataset_name} \
       --gcs-files-list ~{gcs_files_list} \
+      --output-gcs-dir ~{output_gcs_dir} \
       --regular-table-prefixes ~{sep=" " regular_table_prefixes} \
       --superpartitioned-table-prefixes ~{sep=" " superpartitioned_table_prefixes} \
-      --vet-duplication-threshold ~{vet_duplication_threshold} \
       --vet-truncation-threshold ~{vet_truncation_threshold} \
       ~{true="--allow-flagged-vet-loads" false="" allow_flagged_vet_loads} \
       --output-dir verification_output || rc=$?
@@ -1617,22 +1712,23 @@ task VerifyParquetLoading {
     File results_json = "verification_output/verification_results.json"
     Boolean all_loaded = read_json(results_json)["all_loaded"]
     # The bulk deletion gate DeleteParquetFiles is conditioned on: all_loaded, plus every sample the
-    # heuristic vet screens flagged having Parquet the quarantine step can move aside. A screen flag by
-    # itself no longer withholds the delete -- the flagged samples' files are quarantined and the rest
-    # of the callset is deleted -- so on a flagged-but-complete load this reads true alongside
-    # all_loaded. It is still distinct from all_loaded because a flagged sample with no resolvable
-    # Parquet path leaves nothing to quarantine, and deleting then would destroy the very files the
-    # screens asked to keep. Meaningful precisely when the task succeeds, so -- unlike the exact-check
+    # footer comparison or the vet truncation screen flagged having Parquet the quarantine step can
+    # move aside. A flag by itself no longer withholds the delete -- the flagged samples' files are
+    # quarantined and the rest of the callset is deleted -- so on a flagged-but-complete load this
+    # reads true alongside all_loaded. It is still distinct from all_loaded because a flagged sample
+    # with no resolvable Parquet path leaves nothing to quarantine, and deleting then would destroy
+    # the very files the checks asked to keep. Meaningful precisely when the task succeeds, so -- unlike the exact-check
     # components below -- it is safe to publish as a task output.
     Boolean safe_to_delete_parquet = read_json(results_json)["safe_to_delete_parquet"]
     Int total_files = read_json(results_json)["total_files"]
     Int loaded_files = read_json(results_json)["loaded_files"]
     Int missing_files = read_json(results_json)["missing_files"]
     File? missing_files_list = "verification_output/missing_files.txt"
-    # Independent structural-check observability (VS-1989), read shallowly. Both vet screens --
-    # duplication and truncation -- are exposed as task outputs: they never fail all_loaded, so they
-    # are meaningful precisely when the task succeeds. Since a flag no longer blocks deletion, these
-    # and the quarantine counts are the only thing that says a green run set some Parquet aside.
+    # Independent structural-check observability (VS-1989, VS-2032), read shallowly. Both quarantining
+    # findings -- the footer row count comparison and the vet truncation screen -- are exposed as task
+    # outputs: they never fail all_loaded, so they are meaningful precisely when the task succeeds.
+    # Since a flag no longer blocks deletion, these and the quarantine counts are the only thing that
+    # says a green run set some Parquet aside.
     #
     # quarantine_files_list is the work list QuarantineFlaggedParquetFiles consumes, and is written
     # unconditionally (empty on a clean run) so that task can be unconditional rather than gated on an
@@ -1643,24 +1739,24 @@ task VerifyParquetLoading {
     # verify_all_loaded.py exits non-zero and the task fails, at which point Cromwell does not evaluate
     # outputs at all. Publishing them as task outputs could only ever yield true, so they are omitted;
     # the complete verdict lives in results_json (copied to a durable diagnostics path on failure).
-    Boolean vet_duplication_flagged = read_json(results_json)["vet_duplication_flagged"]
+    Boolean row_count_mismatch_flagged = read_json(results_json)["row_count_mismatch_flagged"]
     Boolean vet_truncation_flagged = read_json(results_json)["vet_truncation_flagged"]
     File quarantine_files_list = "verification_output/quarantine_files.txt"
     Int quarantined_files = read_json(results_json)["quarantine_files"]
     Int quarantined_samples = read_json(results_json)["quarantine_sample_count"]
-    # Of those samples, the ones the duplication screen objected to. The workflow's abort condition
-    # keys on this rather than on quarantined_samples because the duplication threshold is the only
-    # calibrated one -- Foxtrot flagged 2 samples of 540,545 -- while the truncation threshold has been
-    # measured on its high side only, and a heuristic that has never had its false-positive rate
-    # measured should not be able to fail a completed 500k-sample ingest.
-    Int quarantined_duplication_samples = read_json(results_json)["quarantine_duplication_sample_count"]
+    # Of those samples, the ones whose Parquet footer row counts disagree with BigQuery. The workflow's
+    # abort condition keys on this rather than on quarantined_samples because this is the exact
+    # finding -- the sample's rows in BigQuery are not the rows its Parquet declares, in one direction
+    # or the other -- while the truncation threshold is an uncalibrated heuristic that should not be
+    # able to fail a completed 500k-sample ingest.
+    Int quarantined_row_count_mismatch_samples = read_json(results_json)["quarantine_row_count_mismatch_sample_count"]
     Boolean done = true
   }
 }
 
 task QuarantineFlaggedParquetFiles {
   meta {
-    description: "Move the Parquet of samples the heuristic vet screens flagged out of the bulk delete's reach, so it survives for inspection and re-ingest (VS-1989)."
+    description: "Move the Parquet of samples the footer row count comparison or the vet truncation screen flagged out of the bulk delete's reach, so it survives for inspection and re-ingest (VS-1989, VS-2032)."
     volatile: true
   }
 
@@ -1679,10 +1775,11 @@ task QuarantineFlaggedParquetFiles {
     String quarantine_suffix
     # Work list from VerifyParquetLoading, one gs:// path per line, empty on a clean run.
     File quarantine_files_list
-    # A flag rate this high is a miscalibrated screen, not a callset with this many bad samples, so
-    # refuse rather than grind through a per-object move. Foxtrot's calibration flagged 2 samples out
-    # of 540,545 on vet; the same threshold applied to ref_ranges flagged 38,629, which is the shape of
-    # mistake this guards against.
+    # A flag rate this high is something systematic -- a load that went wrong wholesale, or a check
+    # pointed at the wrong data -- not a callset with this many individually bad samples, so refuse
+    # rather than grind through a per-object move. Under VS-2032 the likeliest cause is no longer a
+    # miscalibrated threshold but an output_gcs_dir whose Parquet is not the Parquet that was loaded,
+    # which makes every pair mismatch at once.
     Int max_quarantine_files = 10000
 
     String? billing_project_id
@@ -1704,17 +1801,19 @@ task QuarantineFlaggedParquetFiles {
     echo "${FILE_COUNT}" > quarantine_count.txt
 
     if [[ "${FILE_COUNT}" -eq 0 ]]; then
-      echo "No samples were flagged by the duplication or truncation screens; nothing to quarantine."
+      echo "No samples were flagged by the footer row count comparison or the truncation screen; nothing to quarantine."
       exit 0
     fi
 
     if [[ "${FILE_COUNT}" -gt ~{max_quarantine_files} ]]; then
       echo "ERROR: ${FILE_COUNT} Parquet files were flagged for quarantine, over the limit of ~{max_quarantine_files}." >&2
-      echo "A flag rate this high means the screens are miscalibrated for this callset, not that this" >&2
-      echo "many samples are genuinely bad. Refusing to move them object by object." >&2
-      echo "Review verification_results.json, then either retune the screen that fired --" >&2
-      echo "parquet_vet_duplication_threshold, or parquet_vet_truncation_threshold (0 disables it) --" >&2
-      echo "or set parquet_allow_flagged_vet_loads to waive both screens for this run." >&2
+      echo "A flag rate this high means something systematic, not that this many samples are" >&2
+      echo "genuinely bad. Refusing to move them object by object." >&2
+      echo "Review verification_results.json. If the footer row count comparison fired across the" >&2
+      echo "board, suspect the load itself or a parquet_output_gcs_dir that does not hold the Parquet" >&2
+      echo "that was loaded -- that check is exact and has no threshold to retune. If the truncation" >&2
+      echo "screen fired, retune parquet_vet_truncation_threshold (0 disables it) or set" >&2
+      echo "parquet_allow_flagged_vet_loads to waive it for this run." >&2
       exit 1
     fi
 
@@ -1757,9 +1856,11 @@ task QuarantineFlaggedParquetFiles {
     # Leave the restore instructions where whoever finds the quarantine will find them too. The .txt
     # extension keeps this file out of every Parquet glob in this workflow.
     {
-      echo "Parquet quarantined by GvsImportGenomes because the VS-1989 duplication or truncation"
-      echo "screen flagged the owning sample. These files were loaded to BigQuery; they were held back"
-      echo "from deletion so the load can be inspected, not because the load failed."
+      echo "Parquet quarantined by GvsImportGenomes because the owning sample was flagged, either by"
+      echo "the VS-2032 footer row count comparison -- the rows BigQuery holds for that sample are not"
+      echo "the rows its Parquet footers declare -- or by the VS-1989 vet truncation screen. These"
+      echo "files were loaded to BigQuery; they were held back from deletion so the load can be"
+      echo "inspected, not because the load failed."
       echo
       echo "Re-ingesting one of these takes TWO steps, and the second one alone does nothing. The"
       echo "sample's rows are still in BigQuery, so the loader treats it as already loaded and skips"
@@ -1803,7 +1904,9 @@ task QuarantineFlaggedParquetFiles {
       echo
       echo "If instead the flag has been reviewed and dismissed, nothing needs restoring: the data is"
       echo "already loaded and correct. Delete this directory and carry on, or re-run with"
-      echo "parquet_allow_flagged_vet_loads = true if a later step is still blocked on the screens."
+      echo "parquet_fail_on_quarantine = false if a later step is still blocked on the flag."
+      echo "parquet_allow_flagged_vet_loads waives the truncation screen only, and deletes the Parquet"
+      echo "it flagged; it will not get a footer row count mismatch past the abort."
       echo
       echo "Nothing deletes this directory: it is outside the four prefixes the bucket's 14-day"
       echo "lifecycle rule matches. Clean it up by hand once the samples have been reviewed."

@@ -36,11 +36,10 @@ workflow GvsQuickstartIntegration {
         Int? maximum_alternate_alleles
         File? gatk_override
         Boolean use_parquet_ingest = true
-        # VS-1989 independent post-load structural checks, forwarded to every Parquet-ingest sub-workflow
-        # (the VCF VETS/VQSR/exome/BGE calls and the Beta GvsJointVariantCalling call) so an integration
-        # run can exercise them; e.g. set parquet_allow_flagged_vet_loads = true to waive the screens and
-        # let deletion proceed despite a flag.
-        Float parquet_vet_duplication_threshold = 1.6
+        # VS-1989 / VS-2032 independent post-load structural checks, forwarded to every Parquet-ingest
+        # sub-workflow (the VCF VETS/VQSR/exome/BGE calls and the Beta GvsJointVariantCalling call) so
+        # an integration run can exercise them; e.g. set parquet_allow_flagged_vet_loads = true to
+        # waive the truncation screen and let deletion proceed despite its flag.
         Float parquet_vet_truncation_threshold = 1.6
         Boolean parquet_allow_flagged_vet_loads = false
         Boolean parquet_fail_on_quarantine = true
@@ -148,7 +147,7 @@ workflow GvsQuickstartIntegration {
                 submission_id = submission_id,
                 hail_version = effective_hail_version,
                 maximum_alternate_alleles = maximum_alternate_alleles,
-                # The Hail integration test turns on header loading which is currently unsupported with Parquet.
+                # The Hail integration test runs with Write API ingest (use_parquet_ingest = false).
                 use_parquet_ingest = false,
         }
 
@@ -189,7 +188,6 @@ workflow GvsQuickstartIntegration {
                 submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 use_parquet_ingest = use_parquet_ingest,
-                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
                 parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
                 parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
                 parquet_fail_on_quarantine = parquet_fail_on_quarantine,
@@ -221,7 +219,6 @@ workflow GvsQuickstartIntegration {
                 submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 use_parquet_ingest = use_parquet_ingest,
-                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
                 parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
                 parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
                 parquet_fail_on_quarantine = parquet_fail_on_quarantine,
@@ -262,10 +259,12 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = vcf_index_files_column_name,
                 sample_set_name = exome_sample_set_name,
                 drop_state = "FORTY",
-                # Explicitly pass load_vcf_headers = true so the exome cohort's headers are loaded and
-                # then validated -- a distinct sample set whose headers are checked nowhere else.
-                # (validate_vcf_headers is not passed: it already defaults to true in the sub-workflow,
-                # and it only takes effect where headers were loaded.) Consistency-only (no
+                # The exome cohort is a distinct sample set whose headers are checked nowhere else.
+                # validate_vcf_headers is not passed: it already defaults to true in the sub-workflow,
+                # and that default by itself is what loads the headers and validates them, through the
+                # headers-only ingest pass. load_vcf_headers is a no-op while validation is on -- the
+                # data pass forces it to false -- and is passed only so this block would still load
+                # headers if validation were ever turned off here. Consistency-only (no
                 # expected_dragen_version): the shared top-level value targets the WGS/BGE cohorts and
                 # the exome cohort may differ.
                 load_vcf_headers = true,
@@ -280,7 +279,6 @@ workflow GvsQuickstartIntegration {
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 target_interval_list = target_interval_list,
                 use_parquet_ingest = use_parquet_ingest,
-                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
                 parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
                 parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
                 parquet_fail_on_quarantine = parquet_fail_on_quarantine,
@@ -313,10 +311,15 @@ workflow GvsQuickstartIntegration {
                 vcf_index_files_column_name = vcf_index_files_column_name,
                 sample_set_name = bge_sample_set_name,
                 drop_state = "FORTY",
-                # Exercise header loading + validation on the BGE (Parquet-ingest) path so the check
-                # gets integration coverage on a real cohort. The BGE samples (SM-13QO7/SM-3A2WA/
-                # SM-14YML) are GATK-reblocked and each carry DRAGEN "SW: 07.021.604.3.7.8" (triplet
-                # 3.7.8), so assert that by default; a top-level expected_dragen_version overrides it.
+                # Exercise header validation on the BGE (Parquet-ingest) path so the check gets
+                # integration coverage on a real cohort. The sub-workflow's default
+                # validate_vcf_headers = true is what loads and validates the headers; what this block
+                # adds is the version assertion below. The BGE samples (SM-13QO7/SM-3A2WA/SM-14YML)
+                # are GATK-reblocked and each carry DRAGEN "SW: 07.021.604.3.7.8" (triplet 3.7.8), so
+                # assert that by default; a top-level expected_dragen_version overrides it.
+                # load_vcf_headers is a no-op while validation is on -- the data pass forces it to
+                # false -- and is passed only so this block would still load headers if validation
+                # were ever turned off here.
                 load_vcf_headers = true,
                 expected_dragen_version = select_first([expected_dragen_version, "3.7.8"]),
                 basic_docker = effective_basic_docker,
@@ -330,7 +333,6 @@ workflow GvsQuickstartIntegration {
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 target_interval_list = target_interval_list,
                 use_parquet_ingest = use_parquet_ingest,
-                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
                 parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
                 parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
                 parquet_fail_on_quarantine = parquet_fail_on_quarantine,
@@ -387,7 +389,6 @@ workflow GvsQuickstartIntegration {
                 collect_variant_calling_metrics = collect_variant_calling_metrics,
                 use_parquet_ingest = use_parquet_ingest,
                 parquet_output_gcs_dir = parquet_output_gcs_dir,
-                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
                 parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
                 parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
                 parquet_fail_on_quarantine = parquet_fail_on_quarantine,
