@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableMap;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.GenotypeBuilder;
+import htsjdk.variant.variantcontext.GenotypeType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
@@ -14,7 +15,9 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -267,6 +270,158 @@ public class EvaluateGenotypingPerformanceUnitTests extends GATKBaseTest {
         Assert.assertEquals(EvaluateGenotypingPerformance.getACBin(1, 20), Integer.valueOf(0));
         Assert.assertEquals(EvaluateGenotypingPerformance.getACBin(20, 20), Integer.valueOf(19));
         Assert.assertEquals(EvaluateGenotypingPerformance.getACBin(21, 20), Integer.valueOf(19));
+    }
+
+    @Test
+    void testGetACForAltAllele() {
+        final List<Allele> alleles = Arrays.asList(Allele.REF_A, Allele.ALT_C, Allele.ALT_G);
+        final VariantContext withAC = new VariantContextBuilder("vc", "chr1", 100, 100, alleles).attribute("AC", Arrays.asList(3, 7)).make();
+        Assert.assertEquals(EvaluateGenotypingPerformance.getACForAltAllele(withAC, 0), Integer.valueOf(3));
+        Assert.assertEquals(EvaluateGenotypingPerformance.getACForAltAllele(withAC, 1), Integer.valueOf(7));
+
+        //missing AC
+        final VariantContext noAC = new VariantContextBuilder("vc", "chr1", 100, 100, alleles).make();
+        Assert.assertNull(EvaluateGenotypingPerformance.getACForAltAllele(noAC, 0));
+
+        //AC with fewer values than alt alleles
+        final VariantContext shortAC = new VariantContextBuilder("vc", "chr1", 100, 100, alleles).attribute("AC", "3").make();
+        Assert.assertEquals(EvaluateGenotypingPerformance.getACForAltAllele(shortAC, 0), Integer.valueOf(3));
+        Assert.assertNull(EvaluateGenotypingPerformance.getACForAltAllele(shortAC, 1));
+    }
+
+    @DataProvider(name = "getGPBinDataProvider")
+    Object[][] getGPBinDataProvider() {
+        return new Object[][] {
+                {0.0, 10, 0},
+                {0.05, 10, 0},
+                {0.1, 10, 1},
+                {0.95, 10, 9},
+                {1.0, 10, 9},
+                {0.5, 1, 0},
+                {1.0, 1, 0}
+        };
+    }
+
+    @Test(dataProvider = "getGPBinDataProvider")
+    void testGetGPBin(final double gp, final int nBins, final int expectedBin) {
+        Assert.assertEquals(EvaluateGenotypingPerformance.getGPBin(gp, nBins), expectedBin);
+    }
+
+    @DataProvider(name = "getGenotypeProbabilitiesDataProvider")
+    Object[][] getGenotypeProbabilitiesDataProvider() {
+        final List<Allele> diploid = Arrays.asList(Allele.REF_A, Allele.ALT_C);
+        final List<Allele> haploid = Collections.singletonList(Allele.ALT_C);
+        return new Object[][] {
+                //VCF-style comma-separated string
+                {new GenotypeBuilder("s", diploid).attribute("GP", "0.1,0.7,0.2").make(), new double[] {0.1, 0.7, 0.2}},
+                //BCF-style typed lists
+                {new GenotypeBuilder("s", diploid).attribute("GP", Arrays.asList(0.1, 0.7, 0.2)).make(), new double[] {0.1, 0.7, 0.2}},
+                {new GenotypeBuilder("s", diploid).attribute("GP", Arrays.asList(0.1f, 0.7f, 0.2f)).make(), new double[] {0.1f, 0.7f, 0.2f}},
+                //haploid
+                {new GenotypeBuilder("s", haploid).attribute("GP", "0.3,0.7").make(), new double[] {0.3, 0.7}},
+                {new GenotypeBuilder("s", haploid).attribute("GP", Arrays.asList(0.3, 0.7)).make(), new double[] {0.3, 0.7}},
+                //no GP
+                {new GenotypeBuilder("s", diploid).make(), null},
+                {null, null},
+                //missing values
+                {new GenotypeBuilder("s", diploid).attribute("GP", ".,.,.").make(), null},
+                {new GenotypeBuilder("s", diploid).attribute("GP", "0.1,.,0.2").make(), null},
+                //number of values does not match ploidy
+                {new GenotypeBuilder("s", diploid).attribute("GP", "0.3,0.7").make(), null},
+                {new GenotypeBuilder("s", haploid).attribute("GP", "0.1,0.7,0.2").make(), null},
+                {new GenotypeBuilder("s", diploid).attribute("GP", "0.1,0.2,0.3,0.4").make(), null}
+        };
+    }
+
+    @Test(dataProvider = "getGenotypeProbabilitiesDataProvider")
+    void testGetGenotypeProbabilities(final Genotype genotype, final double[] expected) {
+        final VariantContext vc = new VariantContextBuilder("vc", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_C)).make();
+        final double[] actual = EvaluateGenotypingPerformance.getGenotypeProbabilities(genotype, vc);
+        if (expected == null) {
+            Assert.assertNull(actual);
+        } else {
+            Assert.assertEquals(actual, expected, 1e-9);
+        }
+    }
+
+    @DataProvider(name = "getGenotypeProbabilitiesBadInputDataProvider")
+    Object[][] getGenotypeProbabilitiesBadInputDataProvider() {
+        final List<Allele> diploid = Arrays.asList(Allele.REF_A, Allele.ALT_C);
+        return new Object[][] {
+                {new GenotypeBuilder("s", diploid).attribute("GP", "0,30,60").make()}, //phred-scaled
+                {new GenotypeBuilder("s", diploid).attribute("GP", Arrays.asList(0, 30, 60)).make()},
+                {new GenotypeBuilder("s", diploid).attribute("GP", "-0.1,0.6,0.5").make()},
+                {new GenotypeBuilder("s", diploid).attribute("GP", "a,b,c").make()}
+        };
+    }
+
+    @Test(dataProvider = "getGenotypeProbabilitiesBadInputDataProvider", expectedExceptions = UserException.BadInput.class)
+    void testGetGenotypeProbabilitiesBadInput(final Genotype genotype) {
+        final VariantContext vc = new VariantContextBuilder("vc", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_C)).make();
+        EvaluateGenotypingPerformance.getGenotypeProbabilities(genotype, vc);
+    }
+
+    private static List<List<EvaluateGenotypingPerformance.GPCalibrationMetrics>> makeCalibrations(final int nBins) {
+        final List<List<EvaluateGenotypingPerformance.GPCalibrationMetrics>> calibrations = new ArrayList<>();
+        for (int i = 0; i < nBins; i++) {
+            final List<EvaluateGenotypingPerformance.GPCalibrationMetrics> thisBin = new ArrayList<>();
+            for (final GenotypeType genotypeType : EvaluateGenotypingPerformance.GP_GENOTYPE_TYPES) {
+                thisBin.add(new EvaluateGenotypingPerformance.GPCalibrationMetrics("s", (i + 0.5) / nBins, VariantContext.Type.SNP, genotypeType));
+            }
+            calibrations.add(thisBin);
+        }
+        return calibrations;
+    }
+
+    @Test
+    void testUpdateGPCalibrationDiploid() {
+        final VariantContext vc = new VariantContextBuilder("vc", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_C)).make();
+        final List<List<EvaluateGenotypingPerformance.GPCalibrationMetrics>> calibrations = makeCalibrations(2);
+        final Genotype eval = new GenotypeBuilder("s", Arrays.asList(Allele.REF_A, Allele.ALT_C)).attribute("GP", "0.1,0.8,0.1").make();
+        final Genotype truth = new GenotypeBuilder("s", Arrays.asList(Allele.REF_A, Allele.ALT_C)).make();
+        EvaluateGenotypingPerformance.updateGPCalibration(calibrations, eval, truth, vc, 2);
+
+        //HOM_REF and HOM_VAR (gp 0.1) in bin 0, incorrect; HET (gp 0.8) in bin 1, correct
+        assertCalibration(calibrations.get(0).get(0), 0, 1);
+        assertCalibration(calibrations.get(0).get(1), 0, 0);
+        assertCalibration(calibrations.get(0).get(2), 0, 1);
+        assertCalibration(calibrations.get(1).get(0), 0, 0);
+        assertCalibration(calibrations.get(1).get(1), 1, 1);
+        assertCalibration(calibrations.get(1).get(2), 0, 0);
+    }
+
+    @Test
+    void testUpdateGPCalibrationHaploid() {
+        final VariantContext vc = new VariantContextBuilder("vc", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_C)).make();
+        final List<List<EvaluateGenotypingPerformance.GPCalibrationMetrics>> calibrations = makeCalibrations(2);
+        final Genotype eval = new GenotypeBuilder("s", Collections.singletonList(Allele.ALT_C)).attribute("GP", "0.2,0.8").make();
+        final Genotype truth = new GenotypeBuilder("s", Collections.singletonList(Allele.ALT_C)).make();
+        EvaluateGenotypingPerformance.updateGPCalibration(calibrations, eval, truth, vc, 2);
+
+        //REF (gp 0.2) maps to HOM_REF in bin 0, incorrect; ALT (gp 0.8) maps to HOM_VAR in bin 1, correct; HET is never incremented
+        assertCalibration(calibrations.get(0).get(0), 0, 1);
+        assertCalibration(calibrations.get(1).get(2), 1, 1);
+        for (final List<EvaluateGenotypingPerformance.GPCalibrationMetrics> bin : calibrations) {
+            assertCalibration(bin.get(1), 0, 0);
+        }
+        assertCalibration(calibrations.get(0).get(2), 0, 0);
+        assertCalibration(calibrations.get(1).get(0), 0, 0);
+    }
+
+    @Test
+    void testUpdateGPCalibrationNullTruthIsHomRef() {
+        final VariantContext vc = new VariantContextBuilder("vc", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_C)).make();
+        final List<List<EvaluateGenotypingPerformance.GPCalibrationMetrics>> calibrations = makeCalibrations(1);
+        final Genotype eval = new GenotypeBuilder("s", Arrays.asList(Allele.REF_A, Allele.REF_A)).attribute("GP", "0.9,0.1,0.0").make();
+        EvaluateGenotypingPerformance.updateGPCalibration(calibrations, eval, null, vc, 1);
+        assertCalibration(calibrations.get(0).get(0), 1, 1);
+        assertCalibration(calibrations.get(0).get(1), 0, 1);
+        assertCalibration(calibrations.get(0).get(2), 0, 1);
+    }
+
+    private static void assertCalibration(final EvaluateGenotypingPerformance.GPCalibrationMetrics metrics, final int expectedCorrect, final int expectedTotal) {
+        Assert.assertEquals(metrics.CORRECT, expectedCorrect, metrics.GTYPE + " at " + metrics.GP_BIN_CENTER);
+        Assert.assertEquals(metrics.TOTAL, expectedTotal, metrics.GTYPE + " at " + metrics.GP_BIN_CENTER);
     }
 
     @DataProvider(name = "getBinDataProvider")

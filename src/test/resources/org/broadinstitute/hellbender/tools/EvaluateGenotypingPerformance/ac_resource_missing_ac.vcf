@@ -1,0 +1,14 @@
+##fileformat=VCFv4.2
+##INFO=<ID=AC,Number=A,Type=Integer,Description="Allele count in reference panel">
+##contig=<ID=chr1,length=1000,assembly=dummy>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO
+chr1	100	.	A	G	.	.	AC=1
+chr1	105	.	TC	T	.	.	AC=2
+chr1	110	.	GA	G	.	.	.
+chr1	176	.	CTT	C	.	.	AC=3
+chr1	200	.	C	G	.	.	AC=5
+chr1	205	.	T	TG	.	.	AC=1
+chr1	270	.	A	T	.	.	AC=2
+chr1	315	.	T	G	.	.	AC=3
+chr1	370	.	C	G	.	.	AC=1
+chr1	415	.	G	T	.	.	AC=2

@@ -10,6 +10,7 @@ import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.GenotypeType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFUtils;
 import org.apache.commons.collections4.Predicate;
 import org.broadinstitute.barclay.argparser.Argument;
@@ -28,6 +29,7 @@ import org.broadinstitute.hellbender.engine.filters.VariantIDsVariantFilter;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import picard.cmdline.programgroups.VariantEvaluationProgramGroup;
 
 import java.io.IOException;
@@ -143,7 +145,8 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
     /**
      * max ac for accuracy stratification
      */
-    @Argument(fullName = "max-ac-bin", optional = true)
+    @Argument(fullName = "max-ac-bin", optional = true, minValue = 1,
+            doc = "Maximum reference panel alt allele count bin for AC-stratified accuracy. Sites with AC >= this value are grouped into the last bin.")
     private int maxACBin = 20;
     /**
      * List of IDs (or a .list file containing ids) to select. The tool will only select variants whose ID
@@ -197,7 +200,9 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
 
     @Argument(
             fullName = "n-calibration-bins",
-            optional = true
+            optional = true,
+            minValue = 1,
+            doc = "Number of equally spaced genotype probability bins for GP calibration."
     )
     private int nCalibrationBins = 10;
 
@@ -279,7 +284,10 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
     final List<List<List<GPCalibrationMetrics>>> snpCalibrations = new ArrayList<>();
     final List<List<List<GPCalibrationMetrics>>> indelCalibrations = new ArrayList<>();
 
-    final List<GenotypeType> genotypeTypes = Arrays.asList(GenotypeType.HOM_REF, GenotypeType.HET, GenotypeType.HOM_VAR);
+    /** genotype types corresponding to diploid GP values, in GP order.  Also the order of the per-bin calibration metrics. */
+    static final List<GenotypeType> GP_GENOTYPE_TYPES = Collections.unmodifiableList(Arrays.asList(GenotypeType.HOM_REF, GenotypeType.HET, GenotypeType.HOM_VAR));
+    /** genotype types corresponding to haploid GP values, in GP order */
+    static final List<GenotypeType> HAPLOID_GP_GENOTYPE_TYPES = Collections.unmodifiableList(Arrays.asList(GenotypeType.HOM_REF, GenotypeType.HOM_VAR));
     @Override
     public void onTraversalStart() {
         if (forceCompareSingleSample && !sampleMappings.isEmpty()) {
@@ -349,7 +357,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             for (int i =0; i < nCalibrationBins; i++) {
                 final List<GPCalibrationMetrics> thisBinSnpCalibrationMetrics = new ArrayList<>();
                 final List<GPCalibrationMetrics> thisBinIndelCalibrationMetrics = new ArrayList<>();
-                for (final GenotypeType genotypeType : genotypeTypes) {
+                for (final GenotypeType genotypeType : GP_GENOTYPE_TYPES) {
                     thisBinSnpCalibrationMetrics.add(new GPCalibrationMetrics(sample, (i + 0.5) / (float) nCalibrationBins, VariantContext.Type.SNP, genotypeType));
                     thisBinIndelCalibrationMetrics.add(new GPCalibrationMetrics(sample, (i + 0.5) / (float) nCalibrationBins, VariantContext.Type.INDEL, genotypeType));
                 }
@@ -492,18 +500,8 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                     acSnpMetrics.get(i).get(acBin).incrementMetrics(concordanceState);
                 }
 
-                // calibration
-                if (evalGenotype != null && evalGenotype.hasExtendedAttribute("GP")) {
-                     final List<String> gpStrings = ParsingUtils.split((String)evalGenotype.getExtendedAttribute("GP"), ',');
-                     if(gpStrings.size()== 3) {
-                          for (int j=0; j<3; j++) {
-                              final double gp = VCFUtils.parseVcfDouble(gpStrings.get(j));
-                              final int gp_bin = gp == 1? nCalibrationBins - 1 : (int) (gp * nCalibrationBins);
-                              final GenotypeType truthGenotypeType = projectedTruthGenotype == null? GenotypeType.HOM_REF : projectedTruthGenotype.getType();
-                              final GenotypeType thisGenotypeType = genotypeTypes.get(j);
-                              snpCalibrations.get(i).get(gp_bin).get(j).increment(thisGenotypeType == truthGenotypeType);
-                          }
-                     }
+                if (outputCalibrationFile != null) {
+                    updateGPCalibration(snpCalibrations.get(i), evalGenotype, projectedTruthGenotype, evalVC, nCalibrationBins);
                 }
 
             } else if (evalVC.isIndel()) {
@@ -520,18 +518,8 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                     acIndelMetrics.get(i).get(acBin).incrementMetrics(concordanceState);
                 }
 
-                // calibration
-                if (evalGenotype != null && evalGenotype.hasExtendedAttribute("GP")) {
-                     final List<String> gpStrings = ParsingUtils.split((String)evalGenotype.getExtendedAttribute("GP"), ',');
-                     if(gpStrings.size()== 3) {
-                          for (int j=0; j<3; j++) {
-                              final double gp = VCFUtils.parseVcfDouble(gpStrings.get(j));
-                              final int gp_bin = gp == 1? nCalibrationBins - 1 : (int) (gp * nCalibrationBins);
-                              final GenotypeType truthGenotypeType = projectedTruthGenotype == null? GenotypeType.HOM_REF : projectedTruthGenotype.getType();
-                              final GenotypeType thisGenotypeType = genotypeTypes.get(j);
-                              indelCalibrations.get(i).get(gp_bin).get(j).increment(thisGenotypeType == truthGenotypeType);
-                          }
-                     }
+                if (outputCalibrationFile != null) {
+                    updateGPCalibration(indelCalibrations.get(i), evalGenotype, projectedTruthGenotype, evalVC, nCalibrationBins);
                 }
             }
         }
@@ -558,6 +546,78 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                 .map(allele -> allele.equals(altAllele) ? allele : refAllele)
                 .collect(Collectors.toList());
         return new GenotypeBuilder(genotype).alleles(projectedAlleles).make();
+    }
+
+    /**
+     * Update GP calibration metrics for a single eval genotype.  Genotypes without usable GP values are skipped.
+     * @param calibrations calibration metrics for one sample, indexed by GP bin and then by position in {@link #GP_GENOTYPE_TYPES}
+     * @param projectedTruthGenotype truth genotype projected onto the eval alt allele; null is treated as HOM_REF
+     */
+    static void updateGPCalibration(final List<List<GPCalibrationMetrics>> calibrations, final Genotype evalGenotype,
+                                    final Genotype projectedTruthGenotype, final VariantContext evalVC, final int nCalibrationBins) {
+        final double[] gps = getGenotypeProbabilities(evalGenotype, evalVC);
+        if (gps == null) {
+            return;
+        }
+        final List<GenotypeType> gpGenotypeTypes = gps.length == 3 ? GP_GENOTYPE_TYPES : HAPLOID_GP_GENOTYPE_TYPES;
+        final GenotypeType truthGenotypeType = projectedTruthGenotype == null ? GenotypeType.HOM_REF : projectedTruthGenotype.getType();
+        for (int j = 0; j < gps.length; j++) {
+            final GenotypeType thisGenotypeType = gpGenotypeTypes.get(j);
+            calibrations.get(getGPBin(gps[j], nCalibrationBins)).get(GP_GENOTYPE_TYPES.indexOf(thisGenotypeType))
+                    .increment(thisGenotypeType == truthGenotypeType);
+        }
+    }
+
+    /**
+     * Extract genotype probabilities from the GP field of a biallelic genotype.  Accepts both comma-separated strings (VCF)
+     * and typed lists (BCF).  Diploid genotypes must have 3 values (HOM_REF, HET, HOM_VAR) and haploid genotypes 2 values (REF, ALT).
+     * @return the genotype probabilities, or null if the genotype has no GP, has missing GP values, or has an unexpected number of values for its ploidy
+     * @throws UserException.BadInput if a GP value is not a probability in [0, 1] (e.g. phred-scaled GP)
+     */
+    static double[] getGenotypeProbabilities(final Genotype genotype, final VariantContext vc) {
+        if (genotype == null || !genotype.hasExtendedAttribute("GP")) {
+            return null;
+        }
+        final List<Object> gpValues = VariantContextGetters.attributeToList(genotype.getExtendedAttribute("GP"));
+        final int ploidy = genotype.getPloidy();
+        if (!((ploidy == 2 && gpValues.size() == 3) || (ploidy == 1 && gpValues.size() == 2))) {
+            return null;
+        }
+        final double[] gps = new double[gpValues.size()];
+        for (int j = 0; j < gps.length; j++) {
+            final Object value = gpValues.get(j);
+            if (value == null || VCFConstants.MISSING_VALUE_v4.equals(value.toString().trim())) {
+                return null;
+            }
+            final double gp;
+            try {
+                gp = value instanceof Number ? ((Number) value).doubleValue() : VCFUtils.parseVcfDouble(value.toString().trim());
+            } catch (final NumberFormatException e) {
+                throw new UserException.BadInput("Could not parse GP value " + value + " for sample " + genotype.getSampleName() +
+                        " at " + vc.getContig() + ":" + vc.getStart(), e);
+            }
+            if (Double.isNaN(gp)) {
+                return null;
+            }
+            if (gp < 0 || gp > 1) {
+                throw new UserException.BadInput("GP values must be probabilities between 0 and 1, but found " + value + " for sample " +
+                        genotype.getSampleName() + " at " + vc.getContig() + ":" + vc.getStart() + ".  Phred-scaled GP values are not supported for GP calibration.");
+            }
+            gps[j] = gp;
+        }
+        return gps;
+    }
+
+    static int getGPBin(final double gp, final int nCalibrationBins) {
+        return Math.min((int) (gp * nCalibrationBins), nCalibrationBins - 1);
+    }
+
+    /**
+     * @return the alt allele count at the given alt allele index (0-based, over alt alleles only), or null if AC is missing or has no value for that allele
+     */
+    static Integer getACForAltAllele(final VariantContext vc, final int altIndex) {
+        final List<Integer> acList = vc.getAttributeAsIntList(VCFConstants.ALLELE_COUNT_KEY, 0);
+        return altIndex >= 0 && altIndex < acList.size() ? acList.get(altIndex) : null;
     }
 
     static Integer getACBin(final Integer ac, final int maxACBin) {
@@ -599,8 +659,7 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                 if (feature.getReference().equals(vc.getReference())) {
                     final int altAlleleIndex = feature.getAlleleIndex(vc.getAlternateAllele(0));
                     if (altAlleleIndex > 0) {
-                        final List<Integer> ac_list = feature.getAttributeAsIntList("AC", 0);
-                        return ac_list.get(altAlleleIndex - 1);
+                        return getACForAltAllele(feature, altAlleleIndex - 1);
                     }
                 }
             }

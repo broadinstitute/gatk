@@ -1,7 +1,9 @@
 package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 
 import org.testng.annotations.DataProvider;
@@ -53,7 +55,22 @@ public class EvaluateGenotypingPerformanceIntegrationTest extends CommandLinePro
                         Collections.singletonMap("output-gp-calibration", new File(TEST_DIR + "expected_gp_calibration.tsv"))},
                 {TEST_DIR + "eval_ids.vcf", TEST_DIR + "truth.vcf", new File(TEST_DIR + "expected_correlations_keep_ids.tsv"), new File(TEST_DIR + "expected_accuracy_keep_ids.tsv"),
                         new File(TEST_DIR + "expected_accuracy_af_keep_ids.tsv"),
-                        Arrays.asList("--keep-ids", "rs100", "--keep-ids", "rs105", "--keep-ids", "rs415", "--keep-ids", "rs500"), Collections.emptyMap()}
+                        Arrays.asList("--keep-ids", "rs100", "--keep-ids", "rs105", "--keep-ids", "rs415", "--keep-ids", "rs500"), Collections.emptyMap()},
+                //ac resource missing AC at a site should skip that site for AC-stratified metrics (the site has AC=0 in ac_resource.vcf, so results are unchanged)
+                {TEST_DIR + "eval.vcf", TEST_DIR + "truth.vcf", new File(TEST_DIR + "expected_correlations_basic.tsv"), new File(TEST_DIR + "expected_accuracy_basic.tsv"),
+                        expectedAccuracyAFBasic, Arrays.asList("--ac-resource", TEST_DIR + "ac_resource_missing_ac.vcf", "--max-ac-bin", "3"),
+                        Collections.singletonMap("output-accuracy-ac", new File(TEST_DIR + "expected_accuracy_ac.tsv"))},
+                //ac resource with fewer AC values than alt alleles should skip that site for AC-stratified metrics
+                {TEST_DIR + "eval.vcf", TEST_DIR + "truth.vcf", new File(TEST_DIR + "expected_correlations_basic.tsv"), new File(TEST_DIR + "expected_accuracy_basic.tsv"),
+                        expectedAccuracyAFBasic, Arrays.asList("--ac-resource", TEST_DIR + "ac_resource_short_ac.vcf", "--max-ac-bin", "3"),
+                        Collections.singletonMap("output-accuracy-ac", new File(TEST_DIR + "expected_accuracy_ac.tsv"))},
+                //BCF eval decodes GP as a typed list, and should give the same calibration as the equivalent VCF
+                {TEST_DIR + "eval_gp.bcf", TEST_DIR + "truth.vcf", new File(TEST_DIR + "expected_correlations_basic.tsv"), new File(TEST_DIR + "expected_accuracy_basic.tsv"),
+                        expectedAccuracyAFBasic, Arrays.asList("--n-calibration-bins", "2"),
+                        Collections.singletonMap("output-gp-calibration", new File(TEST_DIR + "expected_gp_calibration.tsv"))},
+                //phred-scaled GP should be ignored when GP calibration output is not requested
+                {TEST_DIR + "eval_gp_phred.vcf", TEST_DIR + "truth.vcf", new File(TEST_DIR + "expected_correlations_basic.tsv"), new File(TEST_DIR + "expected_accuracy_basic.tsv"),
+                        expectedAccuracyAFBasic, Collections.emptyList(), Collections.emptyMap()}
         };
     }
 
@@ -100,6 +117,30 @@ public class EvaluateGenotypingPerformanceIntegrationTest extends CommandLinePro
     @Test(dataProvider = "exceptionProducingDataProvider", expectedExceptions = GATKException.class)
     void exceptionProducingTests(final String eval, final String truth, final List<String> additionalArgs) {
         runCommandLine(buildArgs(eval, truth,
+                createTempFile("correlation", ".tsv").getAbsolutePath(), createTempFile("accuracy", ".tsv").getAbsolutePath(), createTempFile("accuracy_af", ".tsv").getAbsolutePath(),
+                additionalArgs));
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    void testPhredScaledGPWithCalibrationOutput() {
+        runCommandLine(buildArgs(TEST_DIR + "eval_gp_phred.vcf", TEST_DIR + "truth.vcf",
+                createTempFile("correlation", ".tsv").getAbsolutePath(), createTempFile("accuracy", ".tsv").getAbsolutePath(), createTempFile("accuracy_af", ".tsv").getAbsolutePath(),
+                Arrays.asList("--output-gp-calibration", createTempFile("calibration", ".tsv").getAbsolutePath())));
+    }
+
+    @DataProvider(name = "invalidArgumentDataProvider")
+    Object[][] invalidArgumentDataProvider() {
+        return new Object[][] {
+                {Arrays.asList("--ac-resource", TEST_DIR + "ac_resource.vcf", "--max-ac-bin", "0")},
+                {Arrays.asList("--ac-resource", TEST_DIR + "ac_resource.vcf", "--max-ac-bin", "-1")},
+                {Arrays.asList("--n-calibration-bins", "0")},
+                {Arrays.asList("--n-calibration-bins", "-1")}
+        };
+    }
+
+    @Test(dataProvider = "invalidArgumentDataProvider", expectedExceptions = CommandLineException.class)
+    void testInvalidArguments(final List<String> additionalArgs) {
+        runCommandLine(buildArgs(TEST_DIR + "eval_gp.vcf", TEST_DIR + "truth.vcf",
                 createTempFile("correlation", ".tsv").getAbsolutePath(), createTempFile("accuracy", ".tsv").getAbsolutePath(), createTempFile("accuracy_af", ".tsv").getAbsolutePath(),
                 additionalArgs));
     }
