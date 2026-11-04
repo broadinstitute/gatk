@@ -1,16 +1,21 @@
 package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import htsjdk.samtools.metrics.MetricBase;
+import htsjdk.samtools.metrics.MetricsFile;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 
+import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.FileReader;
 import java.io.IOException;
+import java.io.Reader;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -86,10 +91,12 @@ public class EvaluateGenotypingPerformanceIntegrationTest extends CommandLinePro
 
         final List<String> args = new ArrayList<>(additionalArgs);
         final Map<File, File> additionalOutputFiles = new LinkedHashMap<>();
+        final Map<String, File> additionalOutputsByArg = new LinkedHashMap<>();
         for (final Map.Entry<String, File> entry : additionalOutputs.entrySet()) {
             final File output = createTempFile(entry.getKey(), ".tsv");
             args.addAll(Arrays.asList("--" + entry.getKey(), output.getAbsolutePath()));
             additionalOutputFiles.put(output, entry.getValue());
+            additionalOutputsByArg.put(entry.getKey(), output);
         }
 
         runCommandLine(buildArgs(eval, truth, outputCorrelation.getAbsolutePath(), outputAccuracy.getAbsolutePath(), outputAccuracyAF.getAbsolutePath(), args));
@@ -99,6 +106,53 @@ public class EvaluateGenotypingPerformanceIntegrationTest extends CommandLinePro
         IntegrationTestSpec.assertEqualTextFiles(outputAccuracyAF, expectedAccuracyAF, "#");
         for (final Map.Entry<File, File> entry : additionalOutputFiles.entrySet()) {
             IntegrationTestSpec.assertEqualTextFiles(entry.getKey(), entry.getValue(), "#");
+        }
+
+        //all reports should be readable by standard metrics readers
+        assertReadableMetrics(outputCorrelation, EvaluateGenotypingPerformance.AFCorrelationMetric.class);
+        assertReadableMetrics(outputAccuracy, EvaluateGenotypingPerformance.AccuracyMetrics.class);
+        assertReadableMetrics(outputAccuracyAF, EvaluateGenotypingPerformance.AFAccuracyMetrics.class);
+        if (additionalOutputsByArg.containsKey("output-accuracy-ac")) {
+            assertReadableMetrics(additionalOutputsByArg.get("output-accuracy-ac"), EvaluateGenotypingPerformance.ACAccuracyMetrics.class);
+        }
+        if (additionalOutputsByArg.containsKey("output-gp-calibration")) {
+            assertReadableMetrics(additionalOutputsByArg.get("output-gp-calibration"), EvaluateGenotypingPerformance.GPCalibrationMetrics.class);
+        }
+    }
+
+    private static void assertReadableMetrics(final File metricsFile, final Class<? extends MetricBase> expectedClass) throws IOException {
+        final MetricsFile<MetricBase, Comparable<?>> metrics = new MetricsFile<>();
+        try (final Reader reader = new FileReader(metricsFile)) {
+            metrics.read(reader);
+        }
+        Assert.assertFalse(metrics.getMetrics().isEmpty(), "no metrics read from " + metricsFile);
+        for (final MetricBase metric : metrics.getMetrics()) {
+            Assert.assertEquals(metric.getClass(), expectedClass);
+        }
+    }
+
+    @DataProvider(name = "unavailableGenotypeDataProvider")
+    Object[][] unavailableGenotypeDataProvider() {
+        return new Object[][] {
+                {Collections.emptyList()},
+                {Arrays.asList("--dosage-field", "DS")},
+                {Arrays.asList("--allow-differing-ploidies")}
+        };
+    }
+
+    /**
+     * Genotypes with no GT field (UNAVAILABLE, ploidy 0) should be skipped, giving the same results as explicit no-calls
+     */
+    @Test(dataProvider = "unavailableGenotypeDataProvider")
+    void testUnavailableGenotypesSkippedLikeNoCalls(final List<String> additionalArgs) throws IOException {
+        final File[] noGTOutputs = {createTempFile("correlation", ".tsv"), createTempFile("accuracy", ".tsv"), createTempFile("accuracy_af", ".tsv")};
+        final File[] noCallOutputs = {createTempFile("correlation", ".tsv"), createTempFile("accuracy", ".tsv"), createTempFile("accuracy_af", ".tsv")};
+        runCommandLine(buildArgs(TEST_DIR + "eval_no_gt.vcf", TEST_DIR + "truth_no_gt.vcf",
+                noGTOutputs[0].getAbsolutePath(), noGTOutputs[1].getAbsolutePath(), noGTOutputs[2].getAbsolutePath(), additionalArgs));
+        runCommandLine(buildArgs(TEST_DIR + "eval_no_call.vcf", TEST_DIR + "truth_no_call.vcf",
+                noCallOutputs[0].getAbsolutePath(), noCallOutputs[1].getAbsolutePath(), noCallOutputs[2].getAbsolutePath(), additionalArgs));
+        for (int i = 0; i < noGTOutputs.length; i++) {
+            IntegrationTestSpec.assertEqualTextFiles(noGTOutputs[i], noCallOutputs[i], "#");
         }
     }
 
@@ -134,7 +188,14 @@ public class EvaluateGenotypingPerformanceIntegrationTest extends CommandLinePro
                 {Arrays.asList("--ac-resource", TEST_DIR + "ac_resource.vcf", "--max-ac-bin", "0")},
                 {Arrays.asList("--ac-resource", TEST_DIR + "ac_resource.vcf", "--max-ac-bin", "-1")},
                 {Arrays.asList("--n-calibration-bins", "0")},
-                {Arrays.asList("--n-calibration-bins", "-1")}
+                {Arrays.asList("--n-calibration-bins", "-1")},
+                //malformed mappings
+                {Arrays.asList("--af-annotations", "SAMPLE3")},
+                {Arrays.asList("--af-annotations", "SAMPLE3:")},
+                {Arrays.asList("--af-annotations", ":AF3")},
+                {Arrays.asList("--af-annotations", "SAMPLE3:AF3:extra")},
+                {Arrays.asList("--sample-map", "SAMPLE1")},
+                {Arrays.asList("--sample-map", "SAMPLE1:SAMPLE3:SAMPLE4")}
         };
     }
 

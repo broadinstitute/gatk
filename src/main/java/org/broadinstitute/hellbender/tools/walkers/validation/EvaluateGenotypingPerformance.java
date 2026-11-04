@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.validation;
 
 import htsjdk.samtools.metrics.MetricBase;
 import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.StringUtil;
 import htsjdk.tribble.util.ParsingUtils;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
@@ -14,6 +13,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFUtils;
 import org.apache.commons.collections4.Predicate;
 import org.broadinstitute.barclay.argparser.Argument;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
 import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -298,12 +298,12 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
         final VCFHeader truthHeader = getTruthHeader();
         final List<String> samples = header.getSampleNamesInOrder();
         final Set<String> truthSamples = new HashSet<>(truthHeader.getSampleNamesInOrder());
-        loadMapping(afAnnotations, afAnnotationsMap);
+        loadMapping("af-annotations", afAnnotations, afAnnotationsMap);
         //create a set of the unique annotations that will need to be extracted for each site
         afAnnotationSet.addAll(afAnnotationsMap.values());
 
         if (!sampleMappings.isEmpty()) {
-             loadMapping(sampleMappings, sampleMap);
+             loadMapping("sample-map", sampleMappings, sampleMap);
          }
 
         if (forceCompareSingleSample) {
@@ -385,11 +385,19 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
      * @param mappingStrings list of string which map keys to values
      * @param map map into which the mappings are placed
      */
-    private void loadMapping(final List<String> mappingStrings, final Map<String, String> map) {
+    /**
+     * Parse colon-separated "key:value" mappings into map.
+     * @param argName argument the mappings came from, for error reporting
+     * @throws CommandLineException.BadArgumentValue if a mapping does not consist of exactly two nonempty colon-separated values
+     */
+    static void loadMapping(final String argName, final List<String> mappingStrings, final Map<String, String> map) {
         for (final String mappingString : mappingStrings) {
-            String[] tokens = new String[2];
-            StringUtil.split(mappingString, tokens,':');
-            map.put(tokens[0], tokens[1]);
+            final String[] tokens = mappingString.split(":", -1);
+            if (tokens.length != 2 || tokens[0].trim().isEmpty() || tokens[1].trim().isEmpty()) {
+                throw new CommandLineException.BadArgumentValue(argName, mappingString,
+                        "Mappings must consist of exactly two nonempty values separated by a colon");
+            }
+            map.put(tokens[0].trim(), tokens[1].trim());
         }
     }
 
@@ -476,9 +484,8 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
             final Integer bin = af!=null? getBin(af) : null;
             final Genotype evalGenotype = evalVC.getGenotype(sample);
             final Genotype truthGenotype = truthVC != null? truthVC.getGenotype(mappedSample) : null;
-            if ((truthGenotype != null && (truthGenotype.isNoCall() || truthGenotype.isMixed()))
-                    || (evalGenotype != null && (evalGenotype.isNoCall() || evalGenotype.isMixed()))) {
-                //not confident in truth, or eval is a noCall, so skip
+            if (isUnusableGenotype(truthGenotype) || isUnusableGenotype(evalGenotype)) {
+                //not confident in truth, or eval is a noCall, so skip.  A null truth genotype (no truth record) is treated as hom ref, so is not skipped
                 continue;
             }
             final double evalDosageFrac = getDosageFrac(evalGenotype, evalVC, evalAltAllele, dosageField);
@@ -523,6 +530,13 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                 }
             }
         }
+    }
+
+    /**
+     * @return true if genotype is present but cannot be scored: no-call, mixed, or unavailable (e.g. a record with no GT field)
+     */
+    static boolean isUnusableGenotype(final Genotype genotype) {
+        return genotype != null && (!genotype.isAvailable() || genotype.isNoCall() || genotype.isMixed());
     }
 
     static void validateBiallelicEval(final VariantContext eval) {
@@ -709,6 +723,10 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
                      ((List<?>) dosageAttribute).stream().map(d -> d == null ? VCFConstants.MISSING_VALUE_v4 : String.valueOf(d)).collect(Collectors.toList()) :
                      ParsingUtils.split(dosageAttribute.toString(), ',');
              final int altIndex = vc.getAlleleIndex(altAllele) - 1;
+             if (dosages.size() == 1 && VCFConstants.MISSING_VALUE_v4.equals(dosages.get(0).trim())) {
+                 //whole field is missing, so fall back to genotype call
+                 return getDosageFracFromGenotypeCall(geno, altAllele);
+             }
              if (altIndex < 0 || altIndex >= dosages.size()) {
                  throw new UserException.BadInput("Genotype for sample " + geno.getSampleName() + " at " + vc.getContig() + ":" + vc.getStart() +
                          " does not have a " + dosageField + " value for allele " + altAllele);
@@ -905,6 +923,9 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
           public double INDEL_SUM_X2;
           public double INDEL_SUM_Y2;
 
+          /** no-argument constructor, required for reading metrics files with {@link MetricsFile#read} */
+          public AFCorrelationMetric() {}
+
           AFCorrelationMetric(final AFCorrelationAggregator afCorrelationAggregator) {
               BIN_CENTER = afCorrelationAggregator.binCenter;
               SAMPLE = afCorrelationAggregator.sampleName;
@@ -979,6 +1000,9 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
           public int CORRECT;
           public int TOTAL;
 
+          /** no-argument constructor, required for reading metrics files with {@link MetricsFile#read} */
+          public GPCalibrationMetrics() {}
+
           GPCalibrationMetrics(final String sample, final double bin_center, final VariantContext.Type type,
                                final GenotypeType gtype) {
               this.SAMPLE = sample;
@@ -1009,6 +1033,9 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
           public double PRECISION;
           public double ACCURACY;
 
+
+          /** no-argument constructor, required for reading metrics files with {@link MetricsFile#read} */
+          public AccuracyMetrics() {}
 
           AccuracyMetrics(final VariantContext.Type type, final String sampleName) {
               this.TYPE = type;
@@ -1052,6 +1079,9 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
       public static final class AFAccuracyMetrics extends AccuracyMetrics {
           public double BIN_CENTER;
 
+          /** no-argument constructor, required for reading metrics files with {@link MetricsFile#read} */
+          public AFAccuracyMetrics() {}
+
           AFAccuracyMetrics(final double binCenter, final VariantContext.Type type, final String sampleName) {
               super(type, sampleName);
               BIN_CENTER = binCenter;
@@ -1063,6 +1093,9 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
        */
       public static final class ACAccuracyMetrics extends AccuracyMetrics {
           public double AC;
+
+          /** no-argument constructor, required for reading metrics files with {@link MetricsFile#read} */
+          public ACAccuracyMetrics() {}
 
           ACAccuracyMetrics(final double ac, final VariantContext.Type type, final String sampleName) {
               super(type, sampleName);

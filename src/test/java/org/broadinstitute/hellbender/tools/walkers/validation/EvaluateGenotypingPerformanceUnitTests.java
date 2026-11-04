@@ -8,6 +8,7 @@ import htsjdk.variant.variantcontext.GenotypeType;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.commons.math3.stat.correlation.PearsonsCorrelation;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
@@ -18,6 +19,7 @@ import org.testng.annotations.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -259,7 +261,10 @@ public class EvaluateGenotypingPerformanceUnitTests extends GATKBaseTest {
                 {biallelic, Arrays.asList(Allele.ALT_C, Allele.ALT_C), "nan", Allele.ALT_C, "DS", 1.0},
                 {biallelic, Arrays.asList(Allele.ALT_C, Allele.ALT_C), "NaN", Allele.ALT_C, "DS", 1.0},
                 {biallelic, Arrays.asList(Allele.REF_A, Allele.REF_A), "inf", Allele.ALT_C, "DS", 0.0},
-                {biallelic, Arrays.asList(Allele.REF_A, Allele.REF_A), "-Infinity", Allele.ALT_C, "DS", 0.0}
+                {biallelic, Arrays.asList(Allele.REF_A, Allele.REF_A), "-Infinity", Allele.ALT_C, "DS", 0.0},
+                //whole field missing, for any alt allele of a multiallelic genotype, so fall back to genotype call
+                {multiallelic, Arrays.asList(Allele.REF_A, Allele.ALT_G), ".", Allele.ALT_G, "DS", 0.5},
+                {multiallelic, Arrays.asList(Allele.REF_A, Allele.ALT_G), ".", Allele.ALT_C, "DS", 0.0}
         };
     }
 
@@ -287,6 +292,37 @@ public class EvaluateGenotypingPerformanceUnitTests extends GATKBaseTest {
         final Genotype genotype = new GenotypeBuilder("sample", Arrays.asList(Allele.ALT_C, Allele.ALT_G)).attribute("DS", Arrays.asList(0.9, null)).make();
         Assert.assertEquals(EvaluateGenotypingPerformance.getDosageFrac(genotype, vc, Allele.ALT_C, "DS"), 0.45, 1e-10);
         Assert.assertEquals(EvaluateGenotypingPerformance.getDosageFrac(genotype, vc, Allele.ALT_G, "DS"), 0.5, 1e-10);
+    }
+
+    @Test
+    void testIsUnusableGenotype() {
+        final List<Allele> het = Arrays.asList(Allele.REF_A, Allele.ALT_C);
+        Assert.assertFalse(EvaluateGenotypingPerformance.isUnusableGenotype(null));
+        Assert.assertFalse(EvaluateGenotypingPerformance.isUnusableGenotype(new GenotypeBuilder("s", het).make()));
+        Assert.assertFalse(EvaluateGenotypingPerformance.isUnusableGenotype(new GenotypeBuilder("s", Collections.singletonList(Allele.ALT_C)).make()));
+        //no GT field
+        Assert.assertTrue(EvaluateGenotypingPerformance.isUnusableGenotype(new GenotypeBuilder("s").attribute("DS", "0.9").make()));
+        //no call
+        Assert.assertTrue(EvaluateGenotypingPerformance.isUnusableGenotype(new GenotypeBuilder("s", Arrays.asList(Allele.NO_CALL, Allele.NO_CALL)).make()));
+        //mixed
+        Assert.assertTrue(EvaluateGenotypingPerformance.isUnusableGenotype(new GenotypeBuilder("s", Arrays.asList(Allele.REF_A, Allele.NO_CALL)).make()));
+    }
+
+    @Test
+    void testLoadMapping() {
+        final Map<String, String> map = new HashMap<>();
+        EvaluateGenotypingPerformance.loadMapping("af-annotations", Arrays.asList("SAMPLE1:AF1", "SAMPLE2:AF2"), map);
+        Assert.assertEquals(map, ImmutableMap.of("SAMPLE1", "AF1", "SAMPLE2", "AF2"));
+    }
+
+    @DataProvider(name = "badMappingDataProvider")
+    Object[][] badMappingDataProvider() {
+        return new Object[][] {{"SAMPLE1"}, {"SAMPLE1:"}, {":AF1"}, {":"}, {"SAMPLE1:AF1:extra"}, {""}, {" : "}};
+    }
+
+    @Test(dataProvider = "badMappingDataProvider", expectedExceptions = CommandLineException.BadArgumentValue.class)
+    void testLoadMappingRejectsMalformed(final String mapping) {
+        EvaluateGenotypingPerformance.loadMapping("af-annotations", Collections.singletonList(mapping), new HashMap<>());
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
