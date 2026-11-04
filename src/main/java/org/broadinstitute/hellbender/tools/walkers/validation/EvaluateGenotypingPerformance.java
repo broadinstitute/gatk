@@ -706,14 +706,27 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
          if (dosageField != null && geno.hasExtendedAttribute(dosageField)) {
              final Object dosageAttribute = geno.getExtendedAttribute(dosageField);
              final List<String> dosages = dosageAttribute instanceof List ?
-                     ((List<?>) dosageAttribute).stream().map(String::valueOf).collect(Collectors.toList()) :
+                     ((List<?>) dosageAttribute).stream().map(d -> d == null ? VCFConstants.MISSING_VALUE_v4 : String.valueOf(d)).collect(Collectors.toList()) :
                      ParsingUtils.split(dosageAttribute.toString(), ',');
              final int altIndex = vc.getAlleleIndex(altAllele) - 1;
              if (altIndex < 0 || altIndex >= dosages.size()) {
                  throw new UserException.BadInput("Genotype for sample " + geno.getSampleName() + " at " + vc.getContig() + ":" + vc.getStart() +
                          " does not have a " + dosageField + " value for allele " + altAllele);
              }
-             return VCFUtils.parseVcfDouble(dosages.get(altIndex))/(double)geno.getPloidy();
+             final String dosageString = dosages.get(altIndex).trim();
+             if (!VCFConstants.MISSING_VALUE_v4.equals(dosageString)) {
+                 final double dosage;
+                 try {
+                     dosage = VCFUtils.parseVcfDouble(dosageString);
+                 } catch (final NumberFormatException e) {
+                     throw new UserException.BadInput("Could not parse " + dosageField + " value " + dosageString + " for sample " + geno.getSampleName() +
+                             " at " + vc.getContig() + ":" + vc.getStart(), e);
+                 }
+                 if (Double.isFinite(dosage)) {
+                     return dosage / (double) geno.getPloidy();
+                 }
+             }
+             //missing or non-finite dosage for this allele, so fall back to genotype call
          }
 
          return getDosageFracFromGenotypeCall(geno, altAllele);
@@ -917,16 +930,9 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
        */
       static final class PearsonCorrelationAggregator {
           /*
-          We will calculate r using the formula r = (<xy> - <x><y>)/(sqrt(<x^2> - <x>^2) * sqrt(<y^2> - <y>^2)).  So we need to store
-          1) the sums of:
-              xy
-              x
-              y
-              x^2
-              y^2
-          2) the total number of entries
-
-          From these we can calculate all the required expectation values.
+          The raw sums of xy, x, y, x^2 and y^2 are kept so they can be reported (e.g. to combine results across runs).  The correlation
+          itself is computed from running means and co-moments (Welford's algorithm), which avoids the catastrophic cancellation that
+          r = (<xy> - <x><y>)/(sqrt(<x^2> - <x>^2) * sqrt(<y^2> - <y>^2)) suffers from when x or y is nearly constant.
            */
           private double sum_xy;
           private double sum_x;
@@ -935,6 +941,13 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
           private double sum_y2;
           private int n;
 
+          //running means and centered second moments, for numerically stable correlation
+          private double mean_x;
+          private double mean_y;
+          private double m2_x;
+          private double m2_y;
+          private double c_xy;
+
           void addEntry(final double x, final double y) {
               sum_xy += x*y;
               sum_x += x;
@@ -942,18 +955,19 @@ public class EvaluateGenotypingPerformance extends AbstractConcordanceWalker {
               sum_x2 += x*x;
               sum_y2 += y*y;
               n++;
+
+              final double dx = x - mean_x;
+              final double dy = y - mean_y;
+              mean_x += dx / n;
+              mean_y += dy / n;
+              m2_x += dx * (x - mean_x);
+              m2_y += dy * (y - mean_y);
+              c_xy += dx * (y - mean_y);
           }
 
           double getCorrelation() {
-              // r = (<xy> - <x><y>)/(sqrt(<x^2> - <x>^2) * sqrt(<y^2> - <y>^2))
-              final double n_d = n;
-              final double e_xy = sum_xy/n_d;
-              final double e_x = sum_x/n_d;
-              final double e_y = sum_y/n_d;
-              final double e_x2 = sum_x2/n_d;
-              final double e_y2 = sum_y2/n_d;
-
-              return (e_xy - e_x * e_y)/(Math.sqrt(e_x2 - e_x*e_x)* Math.sqrt(e_y2 - e_y*e_y));
+              // r = cov(x,y) / (sd(x) * sd(y)); the 1/n factors cancel.  NaN if there are no entries or x or y is constant.
+              return c_xy / Math.sqrt(m2_x * m2_y);
           }
       }
 

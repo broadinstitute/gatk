@@ -205,6 +205,36 @@ public class EvaluateGenotypingPerformanceUnitTests extends GATKBaseTest {
         Assert.assertNull(EvaluateGenotypingPerformance.projectGenotypeOntoAltAllele(null, Allele.REF_A, Allele.ALT_C));
     }
 
+    @Test
+    void testPearsonCorrelationAggregatorNearlyConstant() {
+        //raw-moment formula loses all variance here (computes a negative variance and returns NaN), but the correlation is exactly 1
+        final EvaluateGenotypingPerformance.PearsonCorrelationAggregator aggregator = new EvaluateGenotypingPerformance.PearsonCorrelationAggregator();
+        for (int i = 0; i < 100000; i++) {
+            final double value = i % 2 == 0 ? 0.999999 : 0.999998;
+            aggregator.addEntry(value, value);
+        }
+        Assert.assertEquals(aggregator.getCorrelation(), 1.0, 1e-6);
+
+        //anti-correlated, nearly constant, with a large offset
+        final EvaluateGenotypingPerformance.PearsonCorrelationAggregator antiAggregator = new EvaluateGenotypingPerformance.PearsonCorrelationAggregator();
+        for (int i = 0; i < 100000; i++) {
+            final double delta = i % 2 == 0 ? 1e-6 : -1e-6;
+            antiAggregator.addEntry(1 + delta, 1 - delta);
+        }
+        Assert.assertEquals(antiAggregator.getCorrelation(), -1.0, 1e-6);
+    }
+
+    @Test
+    void testPearsonCorrelationAggregatorUndefined() {
+        final EvaluateGenotypingPerformance.PearsonCorrelationAggregator empty = new EvaluateGenotypingPerformance.PearsonCorrelationAggregator();
+        Assert.assertTrue(Double.isNaN(empty.getCorrelation()));
+
+        final EvaluateGenotypingPerformance.PearsonCorrelationAggregator constant = new EvaluateGenotypingPerformance.PearsonCorrelationAggregator();
+        constant.addEntry(0.5, 0.1);
+        constant.addEntry(0.5, 0.9);
+        Assert.assertTrue(Double.isNaN(constant.getCorrelation()));
+    }
+
     @DataProvider(name = "getDosageFracDataProvider")
     Object[][] getDosageFracDataProvider() {
         final List<Allele> multiallelic = Arrays.asList(Allele.REF_A, Allele.ALT_C, Allele.ALT_G);
@@ -221,7 +251,15 @@ public class EvaluateGenotypingPerformanceUnitTests extends GATKBaseTest {
                 {multiallelic, Arrays.asList(Allele.ALT_C, Allele.ALT_G), "0.9,1.1", Allele.ALT_G, "DS", 0.55},
                 {biallelic, Arrays.asList(Allele.REF_A, Allele.ALT_C), "0.8", Allele.ALT_C, "DS", 0.4},
                 //dosage field requested but missing from genotype, so fall back to genotype call
-                {biallelic, Arrays.asList(Allele.REF_A, Allele.ALT_C), null, Allele.ALT_C, "DS", 0.5}
+                {biallelic, Arrays.asList(Allele.REF_A, Allele.ALT_C), null, Allele.ALT_C, "DS", 0.5},
+                //missing or non-finite dosage value for the selected allele, so fall back to genotype call
+                {multiallelic, Arrays.asList(Allele.ALT_C, Allele.ALT_G), "0.9,.", Allele.ALT_G, "DS", 0.5},
+                {multiallelic, Arrays.asList(Allele.ALT_C, Allele.ALT_G), "0.9,.", Allele.ALT_C, "DS", 0.45},
+                {biallelic, Arrays.asList(Allele.REF_A, Allele.ALT_C), ".", Allele.ALT_C, "DS", 0.5},
+                {biallelic, Arrays.asList(Allele.ALT_C, Allele.ALT_C), "nan", Allele.ALT_C, "DS", 1.0},
+                {biallelic, Arrays.asList(Allele.ALT_C, Allele.ALT_C), "NaN", Allele.ALT_C, "DS", 1.0},
+                {biallelic, Arrays.asList(Allele.REF_A, Allele.REF_A), "inf", Allele.ALT_C, "DS", 0.0},
+                {biallelic, Arrays.asList(Allele.REF_A, Allele.REF_A), "-Infinity", Allele.ALT_C, "DS", 0.0}
         };
     }
 
@@ -240,6 +278,22 @@ public class EvaluateGenotypingPerformanceUnitTests extends GATKBaseTest {
     void testGetDosageFracNullGenotype() {
         final VariantContext vc = new VariantContextBuilder("vc", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_C)).make();
         Assert.assertEquals(EvaluateGenotypingPerformance.getDosageFrac(null, vc, Allele.ALT_C, "DS"), 0.0);
+    }
+
+    @Test
+    void testGetDosageFracTypedListWithMissing() {
+        //BCF decodes multi-valued fields as typed lists, possibly with null for missing values
+        final VariantContext vc = new VariantContextBuilder("vc", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_C, Allele.ALT_G)).make();
+        final Genotype genotype = new GenotypeBuilder("sample", Arrays.asList(Allele.ALT_C, Allele.ALT_G)).attribute("DS", Arrays.asList(0.9, null)).make();
+        Assert.assertEquals(EvaluateGenotypingPerformance.getDosageFrac(genotype, vc, Allele.ALT_C, "DS"), 0.45, 1e-10);
+        Assert.assertEquals(EvaluateGenotypingPerformance.getDosageFrac(genotype, vc, Allele.ALT_G, "DS"), 0.5, 1e-10);
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    void testGetDosageFracUnparseableDosage() {
+        final VariantContext vc = new VariantContextBuilder("vc", "chr1", 100, 100, Arrays.asList(Allele.REF_A, Allele.ALT_C)).make();
+        final Genotype genotype = new GenotypeBuilder("sample", Arrays.asList(Allele.REF_A, Allele.ALT_C)).attribute("DS", "abc").make();
+        EvaluateGenotypingPerformance.getDosageFrac(genotype, vc, Allele.ALT_C, "DS");
     }
 
     @Test(expectedExceptions = UserException.BadInput.class)
