@@ -51,7 +51,7 @@ VARIANTSTORE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 # Pinned to a specific emulator release: Override if needed.
 EMULATOR_IMAGE="${EMULATOR_IMAGE:-ghcr.io/goccy/bigquery-emulator:0.8}"
 # The emulator runs at the daemon's native architecture: the amd64 build crashes under qemu (e.g. Colima
-# without Rosetta) with "growslice: len out of range" (VS-2055). Explicit because a bare `docker run`
+# without Rosetta) with "growslice: len out of range" (VS-2056). Explicit because a bare `docker run`
 # reuses whatever architecture a previously pulled tag points to.
 EMULATOR_PLATFORM="${EMULATOR_PLATFORM:-linux/$(docker version --format '{{.Server.Arch}}')}"
 EMULATOR_PORT="${EMULATOR_PORT:-9050}"
