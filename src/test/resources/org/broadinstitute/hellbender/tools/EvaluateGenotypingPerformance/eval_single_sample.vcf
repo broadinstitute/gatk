@@ -1,8 +1,8 @@
 ##fileformat=VCFv4.2
 ##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
 ##FORMAT=<ID=DS,Number=1,Type=String,Description="Dosage">
-##INFO=<ID=AF1,Number=A,Type=Flag,Description="allele frequency in population 1">
-##INFO=<ID=AF2,Number=A,Type=Flag,Description="allele frequency in population 2">
+##INFO=<ID=AF1,Number=A,Type=Float,Description="allele frequency in population 1">
+##INFO=<ID=AF2,Number=A,Type=Float,Description="allele frequency in population 2">
 ##contig=<ID=chr1,length=1000,assembly=dummy>
 #CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	SAMPLE1
 chr1	100	.	A	G	.	.	AF1=0.05;AF2=0.05	GT:DS	0/1:0.98
