@@ -197,8 +197,8 @@ public class SomaticGenotypingEngine implements AutoCloseable {
 
 
             final Map<String, Object> negativeLogPopulationAFAnnotation =
-                    getNegativeLogPopulationAFAnnotation(featureContext.getValues(MTAC.germlineResource, loc),
-                            allAllelesToEmit, MTAC.getDefaultAlleleFrequency());
+                    getNegativeLogPopulationAFAnnotation(featureContext.getValues(MTAC.germlineResource, new SimpleInterval(mergedVC)),
+                            allAllelesToEmit, loc, MTAC.getDefaultAlleleFrequency(), MTAC.assignMnvAfFromGermlineSnvs);
 
             final VariantContextBuilder callVcb = new VariantContextBuilder(mergedVC)
                     .alleles(allAllelesToEmit)
@@ -420,17 +420,23 @@ public class SomaticGenotypingEngine implements AutoCloseable {
 
     /**
      *
-     * @param germlineResourceVariants  Germline resource variants from which our AF INFO field annotation is drawn
+     * @param germlineResourceVariants  Germline resource variants overlapping the emitted alleles, from which our AF INFO field annotation is drawn
      * @param allAlleles    Every emitted allele, with the reference allele first.  Only alt alleles are annotated, but we
      *                      need the ref allele in case the germline resource has a more or less parsimoniuous representation
      *                      For example, eg ref = A, alt = C; germline ref = AT, germline alt = CT
+     * @param start         Position of the first base of the emitted alleles
      * @param afOfAllelesNotInGermlineResource  default value of germline AF annotation
+     * @param assignMnvAfFromGermlineSnvs   whether an MNV not in the germline resource gets the smallest AF of its SNVs
+     *                                      if they are all in the germline resource
      * @return
      */
     private static Map<String, Object> getNegativeLogPopulationAFAnnotation(List<VariantContext> germlineResourceVariants,
                                                                             final List<Allele> allAlleles,
-                                                                            final double afOfAllelesNotInGermlineResource) {
-        final double[] populationAlleleFrequencies = getGermlineAltAlleleFrequencies(allAlleles, germlineResourceVariants, afOfAllelesNotInGermlineResource);
+                                                                            final int start,
+                                                                            final double afOfAllelesNotInGermlineResource,
+                                                                            final boolean assignMnvAfFromGermlineSnvs) {
+        final double[] populationAlleleFrequencies = getGermlineAltAlleleFrequencies(allAlleles, start, germlineResourceVariants,
+                afOfAllelesNotInGermlineResource, assignMnvAfFromGermlineSnvs);
 
         return ImmutableMap.of(GATKVCFConstants.POPULATION_AF_KEY, MathUtils.applyToArray(populationAlleleFrequencies, x -> - Math.log10(x)));
     }
@@ -440,15 +446,43 @@ public class SomaticGenotypingEngine implements AutoCloseable {
      * @param allAlleles    Every emitted allele, with the reference allele first.  Only alt alleles are annotated, but we
      *      *               need the ref allele in case the germline resource has a more or less parsimonious representation
      *      *               For example, eg ref = A, alt = C; germline ref = AT, germline alt = CT
-     * @param germlineVCs    Germline resource variant contexts from which AF INFO field is drawn
+     * @param start         Position of the first base of {@code allAlleles}
+     * @param germlineVCs    Germline resource variant contexts overlapping {@code allAlleles}, from which AF INFO field is drawn.
+     *                       Those starting at {@code start} can match alleles exactly, and those starting later can match
+     *                       the SNVs of an MNV.
      * @param afOfAllelesNotInGermlineResource  Default value of population AF annotation
+     * @param assignMnvAfFromGermlineSnvs   whether an MNV not in the germline resource gets the smallest AF of its SNVs
+     *                                      if they are all in the germline resource
      * @return
      */
     @VisibleForTesting
-    static double[] getGermlineAltAlleleFrequencies(final List<Allele> allAlleles, final List<VariantContext> germlineVCs, final double afOfAllelesNotInGermlineResource) {
+    static double[] getGermlineAltAlleleFrequencies(final List<Allele> allAlleles, final int start, final List<VariantContext> germlineVCs,
+                                                    final double afOfAllelesNotInGermlineResource, final boolean assignMnvAfFromGermlineSnvs) {
         Utils.validateArg(!allAlleles.isEmpty(), "allAlleles are empty -- there is not even a reference allele.");
+        final List<VariantContext> germlineVCsAtStart = germlineVCs.stream().filter(vc -> vc.getStart() == start).toList();
+        final Map<Allele, Double> alleleFrequencies = alleleFrequenciesInGermlineResource(allAlleles, germlineVCsAtStart, afOfAllelesNotInGermlineResource);
+
+        if (assignMnvAfFromGermlineSnvs) {
+            final Allele ref = allAlleles.get(0);
+            allAlleles.stream().skip(1)
+                    .filter(allele -> isMnv(ref, allele) && !alleleFrequencies.containsKey(allele))
+                    .forEach(mnv -> mnvAlleleFrequencyFromGermlineSnvs(ref, mnv, start, germlineVCs, afOfAllelesNotInGermlineResource)
+                            .ifPresent(af -> alleleFrequencies.put(mnv, af)));
+        }
+
+        return allAlleles.stream().skip(1).mapToDouble(a -> alleleFrequencies.getOrDefault(a, afOfAllelesNotInGermlineResource)).toArray();   // skip the reference allele
+    }
+
+    /**
+     * The germline AFs of those alt alleles that are in the germline resource, possibly in a different representation
+     *
+     * @param alleles   alleles, with the reference allele first
+     * @param germlineVCs   germline resource variant contexts that start at the same position as {@code alleles}
+     * @param afOfAllelesNotInGermlineResource  AF of matching germline alleles that lack an AF annotation
+     */
+    private static Map<Allele, Double> alleleFrequenciesInGermlineResource(final List<Allele> alleles, final List<VariantContext> germlineVCs,
+                                                                           final double afOfAllelesNotInGermlineResource) {
         final Map<Allele, Double> alleleFrequencies = new HashMap<>();
-        allAlleles.forEach(a -> alleleFrequencies.put(a, afOfAllelesNotInGermlineResource));    // initialize everything to the default
 
         // look through every germline resource variant context at this locus and fill in the AFs
         for (final VariantContext germlineVC : germlineVCs) {
@@ -456,19 +490,54 @@ public class SomaticGenotypingEngine implements AutoCloseable {
                 logger.warn("Germline resource variant at " + germlineVC.getContig() + ":" + germlineVC.getStart() +" missing AF attribute");
             }
 
-            List<OptionalInt> germlineIndices = GATKVariantContextUtils.alleleIndices(allAlleles, germlineVC.getAlleles());
+            List<OptionalInt> germlineIndices = GATKVariantContextUtils.alleleIndices(alleles, germlineVC.getAlleles());
             final List<Double> germlineAltAFs = Mutect2Engine.getAttributeAsDoubleList(germlineVC, VCFConstants.ALLELE_FREQUENCY_KEY, afOfAllelesNotInGermlineResource);
 
             if (germlineAltAFs.size() == (germlineVC.getNAlleles() - 1)) {  // skip VCs with a bad AF field that got parsed as a wrong-length list
-                for (int alleleIndex = 1; alleleIndex < allAlleles.size(); alleleIndex++) { // start at 1 to skip the reference, which doesn't have an AF annotation
-                    final Allele allele = allAlleles.get(alleleIndex);
+                for (int alleleIndex = 1; alleleIndex < alleles.size(); alleleIndex++) { // start at 1 to skip the reference, which doesn't have an AF annotation
+                    final Allele allele = alleles.get(alleleIndex);
                     // note the -1 since germlineAltAFs do not include ref
                     germlineIndices.get(alleleIndex).ifPresent(germlineIndex -> alleleFrequencies.put(allele, germlineAltAFs.get(germlineIndex - 1)));
                 }
             }
         }
 
-        return allAlleles.stream().skip(1).mapToDouble(alleleFrequencies::get).toArray();   // skip the reference allele
+        return alleleFrequencies;
+    }
+
+    /**
+     * The smallest germline AF of the SNVs making up an MNV, if every one of them is in the germline resource.  For example,
+     * an AC->GT MNV at chr2:1000 gets an AF only if the germline resource has both an A->G SNV at chr2:1000 and a C->T SNV at chr2:1001.
+     *
+     * @param start     position of the first base of {@code ref} and {@code mnv}
+     * @param germlineVCs   germline resource variant contexts overlapping the MNV
+     * @return  empty if any of the MNV's SNVs is not in the germline resource
+     */
+    private static OptionalDouble mnvAlleleFrequencyFromGermlineSnvs(final Allele ref, final Allele mnv, final int start,
+                                                                    final List<VariantContext> germlineVCs,
+                                                                    final double afOfAllelesNotInGermlineResource) {
+        double result = Double.POSITIVE_INFINITY;
+        for (final int offset : substitutionOffsets(ref, mnv)) {
+            final Allele snvAlt = Allele.create(mnv.getBases()[offset], false);
+            final List<VariantContext> germlineVCsAtSnv = germlineVCs.stream().filter(vc -> vc.getStart() == start + offset).toList();
+            final Double snvAlleleFrequency = alleleFrequenciesInGermlineResource(List.of(Allele.create(ref.getBases()[offset], true), snvAlt),
+                    germlineVCsAtSnv, afOfAllelesNotInGermlineResource).get(snvAlt);
+            if (snvAlleleFrequency == null) {
+                return OptionalDouble.empty();
+            }
+            result = Math.min(result, snvAlleleFrequency);
+        }
+        return OptionalDouble.of(result);
+    }
+
+    // an MNV substitutes two or more bases, possibly with unchanged bases between them
+    private static boolean isMnv(final Allele ref, final Allele alt) {
+        return !alt.isSymbolic() && alt.length() == ref.length() && substitutionOffsets(ref, alt).length > 1;
+    }
+
+    // the offsets of the bases that differ between a ref allele and an alt allele of the same length
+    private static int[] substitutionOffsets(final Allele ref, final Allele alt) {
+        return IntStream.range(0, ref.length()).filter(n -> ref.getBases()[n] != alt.getBases()[n]).toArray();
     }
 
     /**
