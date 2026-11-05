@@ -1162,3 +1162,54 @@ commit date is circumstantial in the same way.
 It matters most when a WDL starts passing a new argument to a baked-in script.
 A stale image fails with argparse's `error: unrecognized arguments`, which
 surfaces only at runtime inside a Cromwell task, long after review.
+
+## Run the Docker refresh check locally, and read its output, not its exit status
+
+The "Detect missing Docker image tag updates" CI check is a wrapper around
+`scripts/ci/check_docker_refresh.sh`. Running it locally saves a push-and-wait
+cycle:
+
+    scripts/ci/check_docker_refresh.sh origin/ah_var_store HEAD
+
+Two things about it are easy to misread.
+
+It always exits 0. The verdict is the summary line it prints, and in CI the
+`status` it writes to `GITHUB_OUTPUT`. "Possible missing Docker tag updates
+detected" is a failure; "required Docker tag updates are present" and "no
+image-affecting changes" are passes. A script that tests `$?` passes every
+time.
+
+It diffs two commits (`base...head`), so it cannot see the working tree. A tag
+bump that is edited but not yet committed reports as missing. To check one
+before committing, run it against a commit object that no branch points to,
+built from a scratch index so the real index is untouched:
+
+    IDX=$(mktemp)
+    cp "$(git rev-parse --git-path index)" "${IDX}"
+    GIT_INDEX_FILE="${IDX}" git add scripts/variantstore/wdl/GvsUtils.wdl
+    C=$(git commit-tree "$(GIT_INDEX_FILE="${IDX}" git write-tree)" -p HEAD -m tmp)
+    scripts/ci/check_docker_refresh.sh origin/ah_var_store "${C}"
+
+Nothing references the commit, so git eventually garbage-collects it.
+
+## Check a rebuilt GATK image pair's shape without pulling it
+
+`building_gatk_docker_on_a_vm.md` gives the layer counts and compressed sizes
+of a correct lite/heavy pair. Its first "Gotcha" describes the failure these
+numbers catch: the lite image lost or overwritten because both builds share a
+tag. The registry reports these figures in seconds, with no need to pull about
+3.8 GB:
+
+    docker manifest inspect -v us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:<tag> |
+      python3 -c 'import json,sys; d=json.load(sys.stdin); d=d if isinstance(d,list) else [d]
+    for e in d:
+        m=e.get("OCIManifest") or e.get("SchemaV2Manifest")
+        if m and e["Descriptor"].get("platform",{}).get("architecture")!="unknown":
+            print(len(m["layers"]),"layers",round(sum(l["size"] for l in m["layers"])/1e9,2),"GB")'
+
+The `unknown` filter skips the BuildKit attestation entry that images built
+under the containerd store carry. Compare the result with the tags currently
+in `GetToolVersions` as well as with the doc. In VS-2057 both pairs came out at
+12 layers / 1.29 GB for lite and 13 layers / 2.49 GB for heavy. A matching
+shape shows the right image was pushed under each tag. It does not show that
+the image holds the branch's code.
