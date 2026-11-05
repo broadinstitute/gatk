@@ -421,6 +421,18 @@ workflow Mutect2 {
         File? modeled_segments_plot_tumor = PlotModeledSegmentsTumor.modeled_segments_plot
         File? modeled_segments_normal = ModelSegmentsNormal.modeled_segments
         File? modeled_segments_plot_normal = PlotModeledSegmentsNormal.modeled_segments_plot
+
+        # allelic counts at every common site, including those that look homozygous, eg from loss of heterozygosity
+        File? allelic_counts_tumor = MergeTumorAllelicCounts.merged_table
+        File? allelic_counts_normal = MergeNormalAllelicCounts.merged_table
+        # tumor allelic counts at the het sites that ModelSegments segmented, which are chosen in the normal if there is one,
+        # and the normal's allelic counts at the same sites, which are empty without a normal
+        File? het_allelic_counts_tumor = ModelSegmentsTumor.het_allelic_counts
+        File? normal_het_allelic_counts_tumor = ModelSegmentsTumor.normal_het_allelic_counts
+        # global parameters of ModelSegments' allele fraction model: the mean and variance of the gamma-distributed
+        # allelic bias of het sites, and the outlier probability
+        File? allele_fraction_parameters_tumor = ModelSegmentsTumor.allele_fraction_parameters
+        File? allele_fraction_parameters_normal = ModelSegmentsNormal.allele_fraction_parameters
     }
 }
 
