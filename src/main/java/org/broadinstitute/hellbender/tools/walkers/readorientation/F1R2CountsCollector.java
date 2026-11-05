@@ -19,6 +19,7 @@ import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -43,11 +44,25 @@ public class F1R2CountsCollector {
     private Map<String, DepthOneHistograms> depthOneAltHistograms;
 
     // alt table writer for each sample
+    // This is by far the largest quantity of data (for each sample histograms involve 64 3-base contexts x 3
+    // substitution errors x 2 orientations x (by default) 200 histogram count bins, which comes out to maybe 1MB of RAM.
+    // In a genome of 3 billion bases where every hundredth site or so has more than 1 alt base the alt records could come out
+    // to a gigabyte or more.  Thus it makes sense to split the alt tables by sample *and* by 3-base context
+    // so that downstream tools (LearnReadOrientationModel) need only load the records for one context at a time.
+    // Each sample's table is split after collection, one sample at a time, so that one file per sample is open during
+    // collection rather than one per sample and context.
     private Map<String, AltSiteRecord.AltSiteRecordTableWriter> altTableWriters;
 
-    private final File outputTarGzFile;
+    // the alt table of each sample, before it is split by 3-base context
+    private final File unsplitAltTableDir = IOUtils.createTempDir("unsplit");
 
+    // We put all pre-tarred output files in a temporary directory.  These include, for each sample, a depth one alt
+    // histogram file and a ref site histogram file, each with information for all 3-base contexts, and an alt table
+    // for each 3-base context.
     private final File tmpDir = IOUtils.createTempDir("untarred");
+
+    // the final output file is produced by archiving every file in the temporary directory
+    private final File outputTarGzFile;
 
     public F1R2CountsCollector(final CollectF1R2CountsArgumentCollection CF1R2Args, final SAMFileHeader header, final File outputTarGzFile, final Collection<String> samples) {
         this.CF1R2Args = CF1R2Args;
@@ -63,17 +78,16 @@ public class F1R2CountsCollector {
             final Map<String, Histogram<Integer>> refSitesHistogramsForThisSample = new HashMap<>(F1R2FilterConstants.ALL_KMERS.size());
 
             // Initialize for each reference the histogram of the counts of reference sites by depth
-            F1R2FilterConstants.ALL_KMERS.forEach(context -> {
+            for (final String context : F1R2FilterConstants.ALL_KMERS) {
                 Histogram<Integer> emptyRefHistogram = F1R2FilterUtils.createRefHistogram(context, CF1R2Args.maxDepth);
                 refSitesHistogramsForThisSample.put(context, emptyRefHistogram);
-            });
+            }
 
             refSiteHistograms.put(sample, refSitesHistogramsForThisSample);
-
             depthOneAltHistograms.put(sample, new DepthOneHistograms(CF1R2Args.maxDepth));
 
             // Intentionally not use try-with-resources so that the writer stays open outside of the try block
-            final File altTableFile = new File(tmpDir, IOUtils.urlEncode(sample) + ALT_TABLE_EXTENSION);
+            final File altTableFile = getUnsplitAltTable(sample);
             try {
                 altTableWriters.put(sample, new AltSiteRecord.AltSiteRecordTableWriter(IOUtils.fileToPath(altTableFile), sample));
             } catch (IOException e) {
@@ -116,7 +130,7 @@ public class F1R2CountsCollector {
             final int depth = (int) MathUtils.sum(baseCounts);
 
             if (!isPileupGood(samplePileup)) {
-                return;
+                continue;
             }
 
             // Make a copy of base counts and update the counts of ref to -1. Now the maxElementIndex of the array gives us
@@ -129,7 +143,7 @@ public class F1R2CountsCollector {
             // If the site is ref, we simply update the coverage histogram
             if (referenceSite) {
                 refSiteHistograms.get(sample).get(refContext).increment(Math.min(depth, CF1R2Args.maxDepth));
-                return;
+                continue;
             }
 
             // If we got here, we have an alt site with a single alt base
@@ -145,7 +159,7 @@ public class F1R2CountsCollector {
             if (altCount == 1) {
                 final ReadOrientation type = altF1R2 == 1 ? ReadOrientation.F1R2 : ReadOrientation.F2R1;
                 depthOneAltHistograms.get(sample).increment(refContext, altBase, type, depth);
-                return;
+                continue;
             }
 
             try {
@@ -159,12 +173,12 @@ public class F1R2CountsCollector {
     public void writeHistograms() {
         for (final String sample : samples) {
             final MetricsFile<?, Integer> refMetricsFile = new MetricsFile<>();
-            refMetricsFile.addHeader(new StringHeader(sample));
+            addSampleHeader(refMetricsFile, sample);
             refSiteHistograms.get(sample).values().forEach(refMetricsFile::addHistogram);
             refMetricsFile.write(new File(tmpDir,IOUtils.urlEncode(sample) + REF_HIST_EXTENSION));
 
             final MetricsFile<?, Integer> altMetricsFile = new MetricsFile<>();
-            altMetricsFile.addHeader(new StringHeader(sample));
+            addSampleHeader(altMetricsFile, sample);
             depthOneAltHistograms.get(sample).getHistograms().forEach(altMetricsFile::addHistogram);
             altMetricsFile.write(new File(tmpDir, IOUtils.urlEncode(sample) + ALT_HIST_EXTENSION));
 
@@ -184,11 +198,47 @@ public class F1R2CountsCollector {
             }
         }
 
+        for (final String sample : samples) {
+            try {
+                splitAltTable(sample);
+            } catch (IOException e) {
+                throw new UserException(String.format("Encountered an IO exception while splitting the alt table of %s by reference context", sample), e);
+            }
+        }
+
         try {
             IOUtils.writeTarGz(outputTarGzFile.getAbsolutePath(), tmpDir.listFiles());
         } catch (final IOException ex) {
             throw new UserException.CouldNotCreateOutputFile("Could not create tar.gz file", ex);
         }
+    }
+
+    /**
+     * Split a sample's alt table into a table for each 3-base context, keeping the order of the records.  Only this
+     * sample's tables are open at once.
+     */
+    private void splitAltTable(final String sample) throws IOException {
+        final Map<String, AltSiteRecord.AltSiteRecordTableWriter> contextWriters = new HashMap<>(F1R2FilterConstants.ALL_KMERS.size());
+        for (final String context : F1R2FilterConstants.ALL_KMERS) {
+            final File altTableFile = new File(tmpDir, getAltTableName(sample, context));
+            contextWriters.put(context, new AltSiteRecord.AltSiteRecordTableWriter(IOUtils.fileToPath(altTableFile), sample));
+        }
+
+        final File unsplitAltTable = getUnsplitAltTable(sample);
+        try (AltSiteRecord.AltSiteRecordTableReader reader = new AltSiteRecord.AltSiteRecordTableReader(IOUtils.fileToPath(unsplitAltTable))) {
+            for (final AltSiteRecord record : reader) {
+                contextWriters.get(record.getReferenceContext()).writeRecord(record);
+            }
+        }
+
+        for (final AltSiteRecord.AltSiteRecordTableWriter writer : contextWriters.values()) {
+            writer.close();
+        }
+        Files.delete(unsplitAltTable.toPath());
+    }
+
+    private File getUnsplitAltTable(final String sample) {
+        return new File(unsplitAltTableDir, IOUtils.urlEncode(sample) + ALT_TABLE_EXTENSION);
     }
 
     /**
@@ -221,5 +271,34 @@ public class F1R2CountsCollector {
 
     public static List<File> getAltTablesFromExtractedTar(final File extractedTarDir) {
         return Arrays.stream(extractedTarDir.listFiles()).filter(file -> file.getAbsolutePath().endsWith(ALT_TABLE_EXTENSION)).collect(Collectors.toList());
+    }
+
+    // alt tables are named <sample>.<reference context>.alt_table
+    public static String getAltTableName(final String sample, final String refContext) {
+        return IOUtils.urlEncode(sample) + "." + refContext + ALT_TABLE_EXTENSION;
+    }
+
+    /**
+     * Record the sample of a ref or alt histogram file, which {@link #getSample} reads, as its only {@link StringHeader}
+     */
+    static void addSampleHeader(final MetricsFile<?, ?> metricsFile, final String sample) {
+        metricsFile.addHeader(new StringHeader(sample));
+    }
+
+    /**
+     * The sample of a ref or alt histogram file, recorded by {@link #addSampleHeader}
+     *
+     * @param file the histogram file, for the error message if it does not have exactly one {@link StringHeader}
+     */
+    static String getSample(final MetricsFile<?, ?> metricsFile, final File file) {
+        final List<String> sampleHeaders = metricsFile.getHeaders().stream()
+                .filter(header -> header instanceof StringHeader)
+                .map(header -> ((StringHeader) header).getValue())
+                .collect(Collectors.toList());
+        if (sampleHeaders.size() != 1) {
+            throw new UserException.BadInput(String.format("The histogram file %s should have one string header, " +
+                    "which names its sample, but it has %d.", file, sampleHeaders.size()));
+        }
+        return sampleHeaders.get(0);
     }
 }
