@@ -358,6 +358,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_1868_fix_fiss
          tags:
              - /.*/
    - name: GvsIngestTieout
