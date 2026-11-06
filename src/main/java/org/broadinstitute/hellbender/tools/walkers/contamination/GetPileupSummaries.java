@@ -107,8 +107,21 @@ import java.util.List;
  * By default the output omits sites with no reads.  With {@code --include-uncovered-sites} it includes them with
  * counts of zero, so that samples run with the same variants and intervals have exactly the same sites, as ModelSegments
  * requires of a case sample and its matched normal.  {@link CalculateContamination} ignores sites with low coverage
- * in any case.
+ * in any case.  The tool then visits every position in the intervals, whether or not reads cover it, so the intervals
+ * should be the variants themselves, as in the examples above, not broad intervals such as whole chromosomes or exome
+ * targets.  To restrict the sites to other intervals as well, intersect them with the variants, as the Mutect2 WDL does:
  * </p>
+ *
+ * <pre>
+ * gatk GetPileupSummaries \
+ *   -I tumor.bam \
+ *   -V common_biallelic.vcf.gz \
+ *   -L common_biallelic.vcf.gz \
+ *   -L exome.interval_list \
+ *   --interval-set-rule INTERSECTION \
+ *   --include-uncovered-sites \
+ *   -O pileups.table
+ * </pre>
  *
  * <p>
  * Finally for those using mappers other than bwa mem or dragen-os, {@code --minimum-mapping-quality} threshold is
@@ -154,7 +167,9 @@ public class GetPileupSummaries extends LocusWalker {
     private double maxPopulationAlleleFrequency = DEFAULT_MAX_POPULATION_AF;
 
     @Argument(fullName = INCLUDE_UNCOVERED_SITES_LONG_NAME,
-            doc = "Include sites with no reads, with counts of zero, so that samples run with the same variants and intervals have the same sites.", optional = true)
+            doc = "Include sites with no reads, with counts of zero, so that samples run with the same variants and intervals have the same sites.  " +
+                    "The tool then visits every position in the intervals, so pass the variants as intervals too (-L), intersected with any " +
+                    "other intervals by --interval-set-rule INTERSECTION.", optional = true)
     private boolean includeUncoveredSites = false;
 
     private boolean sawVariantsWithoutAlleleFrequency = false;

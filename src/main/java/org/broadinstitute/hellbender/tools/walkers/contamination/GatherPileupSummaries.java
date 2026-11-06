@@ -16,7 +16,7 @@ import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 
 import java.io.File;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -52,8 +52,21 @@ public class GatherPileupSummaries extends CommandLineProgram {
 
     @Override
     protected Object doWork() {
-        final List<File> nonEmptyFiles = removeEmptyFiles(input);
-        Collections.sort(nonEmptyFiles, new PileupSummaryFileComparator(sequenceDictionary));
+        // Each file's first site, if it has any, is enough to order the files, under the assumption that
+        //   1. PileupSummaries are already sorted within each file
+        //   2. Files do not overlap
+        final List<Pair<File, PileupSummary>> filesAndFirstSites = new ArrayList<>();
+        for (final File file : input) {
+            PileupSummary.readFirstSite(file).ifPresent(firstSite -> filesAndFirstSites.add(Pair.of(file, firstSite)));
+        }
+        if (filesAndFirstSites.size() < input.size()){
+            logger.info(String.format("Removed %d empty samples", input.size() - filesAndFirstSites.size()));
+        }
+
+        final List<File> nonEmptyFiles = filesAndFirstSites.stream()
+                .sorted(Comparator.comparing(Pair::getRight, new PileupSummary.PileupSummaryComparator(sequenceDictionary)))
+                .map(Pair::getLeft)
+                .collect(Collectors.toList());
         PileupSummary.writeToFile(nonEmptyFiles, output);
         if (allelicCountsOutput != null) {
             writeAllelicCounts();
@@ -73,35 +86,5 @@ public class GatherPileupSummaries extends CommandLineProgram {
                 .collect(Collectors.toList());
         new AllelicCountCollection(new SimpleSampleLocatableMetadata(sampleAndSites.getLeft(), sequenceDictionary), allelicCounts)
                 .write(allelicCountsOutput);
-    }
-
-    private List<File> removeEmptyFiles(final List<File> list){
-        final List<File> nonEmptyList = list.stream().filter(f -> PileupSummary.readFromFile(f).getRight().size() > 0)
-                .collect(Collectors.toList());
-        if (nonEmptyList.size() < list.size()){
-            logger.info(String.format("Removed %d empty samples", list.size() - nonEmptyList.size()));
-        }
-        return nonEmptyList;
-    }
-
-    /**
-     * Compare two PilupSummary files under the assumption that
-     *   1. PileupSummaries are already sorted within each file
-     *   2. Files do not overlap
-     */
-    private class PileupSummaryFileComparator implements Comparator<File> {
-        final SAMSequenceDictionary sequenceDictionary;
-
-        private PileupSummaryFileComparator(final SAMSequenceDictionary sequenceDictionary){
-            this.sequenceDictionary = sequenceDictionary;
-        }
-
-        @Override
-        public int compare(File file1, File file2) {
-            final PileupSummary ps1 = PileupSummary.readFromFile(file1).getRight().get(0);
-            final PileupSummary ps2 = PileupSummary.readFromFile(file2).getRight().get(0);
-
-            return new PileupSummary.PileupSummaryComparator(sequenceDictionary).compare(ps1, ps2);
-        }
     }
 }

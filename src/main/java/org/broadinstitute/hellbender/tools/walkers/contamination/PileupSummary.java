@@ -20,6 +20,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -164,6 +165,15 @@ public class PileupSummary implements Locatable {
         try( PileupSummaryTableReader reader = new PileupSummaryTableReader(IOUtils.fileToPath(tableFile)) ) {
             final List<PileupSummary> pileupSummaries = reader.stream().filter(filter).collect(Collectors.toList());
             return ImmutablePair.of(reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG), pileupSummaries);
+        } catch (IOException e){
+            throw new UserException(String.format("Encountered an IO exception while reading from %s.", tableFile));
+        }
+    }
+
+    // the first site of a table, if it has any, without reading the others
+    public static Optional<PileupSummary> readFirstSite(final File tableFile) {
+        try( PileupSummaryTableReader reader = new PileupSummaryTableReader(IOUtils.fileToPath(tableFile)) ) {
+            return reader.stream().findFirst();
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", tableFile));
         }

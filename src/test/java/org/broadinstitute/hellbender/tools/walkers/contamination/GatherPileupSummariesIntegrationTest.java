@@ -21,7 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
@@ -86,7 +86,9 @@ public class GatherPileupSummariesIntegrationTest extends CommandLineProgramTest
 
     @Test
     public void testAllelicCountsOutput() {
-        // two scatters, given out of order, the first with a site that no reads cover
+        // two scatters, given out of order, the first with a site that no reads cover, and an empty scatter
+        final File emptyScatter = createTempFile("pileupSummary", ".tsv");
+        PileupSummary.writeToFile("sample1", Collections.emptyList(), emptyScatter);
         final File firstScatter = createTempFile("pileupSummary", ".tsv");
         PileupSummary.writeToFile("sample1", Arrays.asList(
                 new PileupSummary("1", 100, 10, 5, 1, 0.3, Nucleotide.A, Nucleotide.G),
@@ -100,6 +102,7 @@ public class GatherPileupSummariesIntegrationTest extends CommandLineProgramTest
         final ArgumentsBuilder args = new ArgumentsBuilder()
                 .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, FULL_HG19_DICT)
                 .add(StandardArgumentDefinitions.INPUT_SHORT_NAME, secondScatter.getAbsolutePath())
+                .add(StandardArgumentDefinitions.INPUT_SHORT_NAME, emptyScatter.getAbsolutePath())
                 .add(StandardArgumentDefinitions.INPUT_SHORT_NAME, firstScatter.getAbsolutePath())
                 .add(StandardArgumentDefinitions.OUTPUT_SHORT_NAME, combinedPileupSummary.getAbsolutePath())
                 .add(GatherPileupSummaries.ALLELIC_COUNTS_OUTPUT_LONG_NAME, allelicCounts.getAbsolutePath());
