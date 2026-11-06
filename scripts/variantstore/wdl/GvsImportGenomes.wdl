@@ -1979,13 +1979,20 @@ task DeleteParquetFiles {
         ;;
     esac
 
+    # `gcloud storage rm` can exit non-zero after a successful delete, e.g. GcsNotFoundError when its
+    # own retry finds the object gone, or a glob matching nothing on a task retry (VS-2053). So rm
+    # failures are tolerated, and the check below decides: success if no "*.parquet" object remains.
+    # Quarantined objects no longer end in ".parquet", so the check ignores them.
     if [ "~{use_alternate_delete_strategy}" = "false" ]; then
-      gcloud storage rm --recursive ~{"--billing-project " + billing_project_id} "${OUTPUT_GCS_DIR}/"'**/*.parquet'
+      gcloud storage rm --recursive ~{"--billing-project " + billing_project_id} "${OUTPUT_GCS_DIR}/"'**/*.parquet' \
+        || echo "WARNING: gcloud storage rm reported errors; checking below what remains." >&2
     else
-      # List the contents of the vet and ref_ranges directories for subsequent deletion in the loop below
+      # List the contents of the vet and ref_ranges directories for subsequent deletion in the loop below.
+      # On a retry these directories may already be gone, so a failed listing is tolerated here.
       echo "Listing directories under ${OUTPUT_GCS_DIR}/vet/ and ${OUTPUT_GCS_DIR}/ref_ranges/ ${OUTPUT_GCS_DIR}/sample_chromosome_ploidy/ for deletion..."
       gcloud storage ls ~{"--billing-project " + billing_project_id} \
-        "${OUTPUT_GCS_DIR}/vet/" "${OUTPUT_GCS_DIR}/ref_ranges/" > parquet_dirs.txt
+        "${OUTPUT_GCS_DIR}/vet/" "${OUTPUT_GCS_DIR}/ref_ranges/" > parquet_dirs.txt \
+        || echo "WARNING: could not list every directory to delete; checking below what remains." >&2
       echo "${OUTPUT_GCS_DIR}/sample_chromosome_ploidy/" >> parquet_dirs.txt
       # Only present when headers were loaded; guard on existence so data-only runs don't fail here.
       if gcloud storage ls ~{"--billing-project " + billing_project_id} "${OUTPUT_GCS_DIR}/vcf_header_lines_scratch/" >/dev/null 2>&1; then
@@ -1997,9 +2004,20 @@ task DeleteParquetFiles {
       while IFS= read -r gcs_path; do
         if [ -n "$gcs_path" ]; then
           echo "Deleting objects in: $gcs_path"
-          gcloud storage rm ~{"--billing-project " + billing_project_id} "$gcs_path" --recursive
+          gcloud storage rm ~{"--billing-project " + billing_project_id} "$gcs_path" --recursive \
+            || echo "WARNING: gcloud storage rm reported errors for ${gcs_path}; checking below what remains." >&2
         fi
       done < parquet_dirs.txt
+    fi
+
+    # Decide the outcome by what remains. Note the use of `gcloud storage objects list` rather than
+    # `gcloud storage ls`
+    gcloud storage objects list ~{"--billing-project " + billing_project_id} --format='value(name)' \
+      "${OUTPUT_GCS_DIR}/"'**/*.parquet' > remaining_parquet.txt
+    if [ -s remaining_parquet.txt ]; then
+      echo "ERROR: $(wc -l < remaining_parquet.txt) Parquet file(s) under ${OUTPUT_GCS_DIR}/ were not deleted, for example:" >&2
+      head -n 10 remaining_parquet.txt >&2
+      exit 1
     fi
 
     echo "✓ Completed deletion of Parquet files."
@@ -2014,6 +2032,8 @@ task DeleteParquetFiles {
     memory: "3 GB"
     disks: "local-disk 100 HDD"
     preemptible: 3
+    # Safe because the command is idempotent: see the comment above the deletion (VS-2053).
+    maxRetries: 3
     cpu: 1
   }
 }
