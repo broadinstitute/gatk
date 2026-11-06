@@ -2,6 +2,8 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.CigarOperator;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -10,6 +12,8 @@ import org.broadinstitute.barclay.help.DocumentedFeature;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.programgroups.CoverageAnalysisProgramGroup;
 import org.broadinstitute.hellbender.engine.FeatureContext;
+import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.engine.ReadWalker;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -18,6 +22,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.dragstr.BufferedReferenceBases;
 import org.broadinstitute.hellbender.utils.Nucleotide;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.tsv.DataLine;
@@ -29,11 +34,17 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 /**
  * Collects training data for a model of polymerase slippage, the PCR and sequencing errors that change the number of
@@ -59,12 +70,21 @@ import java.util.function.Consumer;
  *     units, and the number of fragments that change its length by at most -4 units, -3, -2, -1, 0, 1, 2, 3 and at least 4
  *     units, and by a length that isn't a whole number of units.
  * </p>
+ * <p>
+ *     Each row also gives the two non-zero changes of a whole number of units with the most fragments, with ties going to
+ *     the smaller change and then to the deletion, and their population allele frequencies in the
+ *     {@code --germline-resource}.  These help to tell slippage from germline variation.  A change of 0 means there is no
+ *     such allele, and the allele frequency is NaN if the resource doesn't have the allele or no resource was given.  A
+ *     resource allele matches if it changes the STR's length by the same number of units, however the resource
+ *     represents it.
+ * </p>
  *
  * <h3>Usage example</h3>
  * <pre>
  * gatk CollectSTRSlippageCounts \
  *   -R reference.fasta \
  *   -I normal.bam \
+ *   --germline-resource af-only-gnomad.vcf.gz \
  *   -O slippage-counts.table
  * </pre>
  */
@@ -93,11 +113,19 @@ public class CollectSTRSlippageCounts extends ReadWalker {
     public static final List<String> COUNT_COLUMNS = List.of("minus_4_or_more", "minus_3", "minus_2", "minus_1",
             "no_change", "plus_1", "plus_2", "plus_3", "plus_4_or_more", "not_whole_units");
 
+    // the most common non-zero changes of whole units, and their allele frequencies in the germline resource
+    public static final int ANNOTATED_ALTS = 2;
+    public static final List<String> ALT_COLUMNS = List.of("top_alt_change", "top_alt_af", "second_alt_change", "second_alt_af");
+
     private static final int REFERENCE_BUFFER_SIZE = 100_000;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME, shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
             doc = "The output table")
     private GATKPath outputTable;
+
+    @Argument(fullName = M2ArgumentCollection.GERMLINE_RESOURCE_LONG_NAME, optional = true,
+            doc = "Population vcf of germline sequencing containing allele frequencies, for annotating the most common changes in each STR's length")
+    private FeatureInput<VariantContext> germlineResource;
 
     @Argument(fullName = MIN_REPEAT_LENGTH_LONG_NAME, minValue = 1, optional = true,
             doc = "Minimum total length in bases of an STR")
@@ -116,9 +144,11 @@ public class CollectSTRSlippageCounts extends ReadWalker {
     private int flankingBases = DEFAULT_FLANKING_BASES;
 
     private ReferenceDataSource reference;
+    private FeatureDataSource<VariantContext> germlineResourceSource;
     private SlippageCountsWriter writer;
 
-    // the current contig's scanner, and the STRs it has found that reads might yet span, in order
+    // the current contig's reference and scanner, and the STRs the scanner has found that reads might yet span, in order
+    private BufferedReferenceBases contigReference;
     private RepeatScanner scanner;
     private final Deque<Repeat> pending = new ArrayDeque<>();
     private final Set<String> finishedContigs = new HashSet<>();
@@ -137,8 +167,11 @@ public class CollectSTRSlippageCounts extends ReadWalker {
 
     @Override
     public void onTraversalStart() {
-        // our own reference reader, since walkers may not use the engine's outside of apply()
+        // our own readers, since walkers may not use the engine's outside of apply()
         reference = ReferenceDataSource.of(referenceArguments.getReferencePath());
+        if (germlineResource != null) {
+            germlineResourceSource = new FeatureDataSource<>(germlineResource, FeatureDataSource.DEFAULT_QUERY_LOOKAHEAD_BASES, VariantContext.class);
+        }
         try {
             writer = new SlippageCountsWriter(outputTable.toPath());
             writer.writeMetadata(TableUtils.SAMPLE_METADATA_TAG, String.join(",", ReadUtils.getSamplesFromHeader(getHeaderForReads())));
@@ -187,6 +220,9 @@ public class CollectSTRSlippageCounts extends ReadWalker {
         if (reference != null) {
             reference.close();
         }
+        if (germlineResourceSource != null) {
+            germlineResourceSource.close();
+        }
         if (writer != null) {
             try {
                 writer.close();
@@ -203,8 +239,8 @@ public class CollectSTRSlippageCounts extends ReadWalker {
         if (finishedContigs.contains(contig)) {
             throw new UserException.BadInput("Reads must be sorted by coordinate, but reads on contig " + contig + " are not together");
         }
-        scanner = new RepeatScanner(BufferedReferenceBases.of(reference, contig, REFERENCE_BUFFER_SIZE),
-                maxRepeatUnitLength, minRepeatUnits, minRepeatLength);
+        contigReference = BufferedReferenceBases.of(reference, contig, REFERENCE_BUFFER_SIZE);
+        scanner = new RepeatScanner(contigReference, maxRepeatUnitLength, minRepeatUnits, minRepeatLength);
         lastReadStart = 0;
     }
 
@@ -218,8 +254,14 @@ public class CollectSTRSlippageCounts extends ReadWalker {
         if (repeat.getFragmentCount() == 0) {
             return;
         }
+        final List<Integer> alts = repeat.mostCommonAlts(ANNOTATED_ALTS);
+        final List<VariantContext> resourceVariants = germlineResourceSource == null || alts.isEmpty() ? Collections.emptyList() :
+                germlineResourceSource.queryAndPrefetch(resourceInterval(contigReference, repeat));
+        final List<Double> alleleFrequencies = alts.stream()
+                .map(alt -> resourceAlleleFrequency(contigReference, repeat, resourceVariants, alt))
+                .collect(Collectors.toList());
         try {
-            writer.writeRecord(repeat);
+            writer.writeRecord(new Row(repeat, alts, alleleFrequencies));
             repeatsWritten++;
         } catch (final IOException e) {
             throw new UserException.CouldNotCreateOutputFile(outputTable, "could not write to the STR slippage counts table", e);
@@ -237,6 +279,68 @@ public class CollectSTRSlippageCounts extends ReadWalker {
         }
         final int changeInUnits = Math.max(-MAX_BINNED_CHANGE, Math.min(MAX_BINNED_CHANGE, changeInBases / unitLength));
         return changeInUnits + MAX_BINNED_CHANGE;
+    }
+
+    /**
+     * The interval in which a germline resource would put a change in an STR's length: resources put indels as far left
+     * as they can go, which is before the STR if the bases before it continue its pattern, after an anchor base
+     */
+    @VisibleForTesting
+    static SimpleInterval resourceInterval(final BufferedReferenceBases contigReference, final Repeat repeat) {
+        int anchor = Math.max(repeat.getStart() - 1, 1);
+        while (anchor > 1 && Nucleotide.same(contigReference.byteAt(anchor), contigReference.byteAt(anchor + repeat.getUnit().length()))) {
+            anchor--;
+        }
+        return new SimpleInterval(repeat.getContig(), anchor, repeat.getEnd());
+    }
+
+    /**
+     * The population allele frequency in a germline resource of the allele that changes an STR's length by
+     * {@code changeInUnits}, or NaN if the resource doesn't have it.  A resource allele matches if it turns the reference
+     * into the same sequence, however the resource represents it.
+     */
+    @VisibleForTesting
+    static double resourceAlleleFrequency(final BufferedReferenceBases contigReference, final Repeat repeat,
+                                          final List<VariantContext> resourceVariants, final int changeInUnits) {
+        if (resourceVariants.isEmpty() || -changeInUnits > repeat.getUnits()) {
+            return Double.NaN;
+        }
+
+        // compare sequences over a window covering the STR and every resource variant, since multiallelic records can
+        // extend past the STR
+        final int windowStart = Math.min(repeat.getStart(), resourceVariants.stream().mapToInt(VariantContext::getStart).min().getAsInt());
+        final int windowEnd = Math.max(repeat.getEnd(), resourceVariants.stream().mapToInt(VariantContext::getEnd).max().getAsInt());
+        final byte[] window = new byte[windowEnd - windowStart + 1];
+        contigReference.copyBytesAt(windowStart, window, 0, window.length);
+        final byte[] upperCaseWindow = new String(window).toUpperCase().getBytes();
+
+        final int offsetOfRepeat = repeat.getStart() - windowStart;
+        final String unit = repeat.getUnit();
+        final byte[] expected = changeInUnits < 0 ? replace(upperCaseWindow, offsetOfRepeat, -changeInUnits * unit.length(), new byte[0]) :
+                replace(upperCaseWindow, offsetOfRepeat, 0, unit.repeat(changeInUnits).getBytes());
+        for (final VariantContext variant : resourceVariants) {
+            final int offset = variant.getStart() - windowStart;
+            final byte[] ref = variant.getReference().getBases();
+            if (!Arrays.equals(ref, 0, ref.length, upperCaseWindow, offset, offset + ref.length)) {
+                continue;   // the resource disagrees with the reference
+            }
+            final List<Double> alleleFrequencies = variant.getAttributeAsDoubleList(VCFConstants.ALLELE_FREQUENCY_KEY, Double.NaN);
+            for (int n = 0; n < variant.getAlternateAlleles().size() && n < alleleFrequencies.size(); n++) {
+                if (Arrays.equals(replace(upperCaseWindow, offset, ref.length, variant.getAlternateAllele(n).getBases()), expected)) {
+                    return alleleFrequencies.get(n);
+                }
+            }
+        }
+        return Double.NaN;
+    }
+
+    // the bases with length of them starting at offset replaced by the replacement
+    private static byte[] replace(final byte[] bases, final int offset, final int length, final byte[] replacement) {
+        final byte[] result = new byte[bases.length - length + replacement.length];
+        System.arraycopy(bases, 0, result, 0, offset);
+        System.arraycopy(replacement, 0, result, offset, replacement.length);
+        System.arraycopy(bases, offset + length, result, offset + replacement.length, bases.length - offset - length);
+        return result;
     }
 
     /**
@@ -322,6 +426,7 @@ public class CollectSTRSlippageCounts extends ReadWalker {
         private final String unit;
         private final int units;
         private final int[] counts = new int[COUNT_COLUMNS.size()];
+        private final Map<Integer, Integer> altCounts = new HashMap<>();    // fragments by non-zero change of whole units
         private final Set<String> countedFragments = new HashSet<>();
 
         Repeat(final String contig, final int start, final String unit, final int units) {
@@ -362,11 +467,31 @@ public class CollectSTRSlippageCounts extends ReadWalker {
             }
             final int changeInBases = (right.getLeft() - left.getLeft()) - (rightAnchor - leftAnchor);
             counts[bin(changeInBases, unit.length())]++;
+            if (changeInBases != 0 && changeInBases % unit.length() == 0) {
+                altCounts.merge(changeInBases / unit.length(), 1, Integer::sum);
+            }
             return true;
+        }
+
+        /**
+         * Up to {@code n} non-zero changes of whole units with the most fragments, most first, with ties going to the
+         * smaller change and then to the deletion
+         */
+        List<Integer> mostCommonAlts(final int n) {
+            return altCounts.entrySet().stream()
+                    .sorted(Comparator.<Map.Entry<Integer, Integer>>comparingInt(entry -> -entry.getValue())
+                            .thenComparingInt(entry -> Math.abs(entry.getKey()))
+                            .thenComparingInt(Map.Entry::getKey))
+                    .limit(n)
+                    .map(Map.Entry::getKey)
+                    .collect(Collectors.toList());
         }
     }
 
-    private static final class SlippageCountsWriter extends TableWriter<Repeat> {
+    // an STR with its most common non-zero changes of whole units and their allele frequencies in the germline resource
+    private record Row(Repeat repeat, List<Integer> alts, List<Double> alleleFrequencies) { }
+
+    private static final class SlippageCountsWriter extends TableWriter<Row> {
         private static final TableColumnCollection COLUMNS = new TableColumnCollection(columnNames());
 
         SlippageCountsWriter(final Path output) throws IOException {
@@ -376,11 +501,13 @@ public class CollectSTRSlippageCounts extends ReadWalker {
         private static List<String> columnNames() {
             final List<String> names = new ArrayList<>(List.of("contig", "start", "end", "unit", "units"));
             names.addAll(COUNT_COLUMNS);
+            names.addAll(ALT_COLUMNS);
             return names;
         }
 
         @Override
-        protected void composeLine(final Repeat repeat, final DataLine dataLine) {
+        protected void composeLine(final Row row, final DataLine dataLine) {
+            final Repeat repeat = row.repeat();
             dataLine.set("contig", repeat.getContig())
                     .set("start", repeat.getStart())
                     .set("end", repeat.getEnd())
@@ -388,6 +515,11 @@ public class CollectSTRSlippageCounts extends ReadWalker {
                     .set("units", repeat.getUnits());
             for (int bin = 0; bin < COUNT_COLUMNS.size(); bin++) {
                 dataLine.set(COUNT_COLUMNS.get(bin), repeat.getCounts()[bin]);
+            }
+            for (int n = 0; n < ANNOTATED_ALTS; n++) {
+                final boolean exists = n < row.alts().size();
+                dataLine.set(ALT_COLUMNS.get(2 * n), exists ? row.alts().get(n) : 0)
+                        .set(ALT_COLUMNS.get(2 * n + 1), exists ? row.alleleFrequencies().get(n) : Double.NaN);
             }
         }
     }
