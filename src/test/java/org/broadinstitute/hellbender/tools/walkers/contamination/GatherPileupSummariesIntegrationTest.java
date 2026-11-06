@@ -5,7 +5,13 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
+import org.broadinstitute.hellbender.tools.copynumber.arguments.CopyNumberArgumentValidationUtils;
+import org.broadinstitute.hellbender.tools.copynumber.formats.collections.AllelicCountCollection;
+import org.broadinstitute.hellbender.tools.copynumber.formats.records.AllelicCount;
 import org.broadinstitute.hellbender.tools.walkers.SplitIntervals;
+import org.broadinstitute.hellbender.utils.Nucleotide;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -15,7 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
-
+import java.util.Collections;
 import java.util.List;
 import java.util.Random;
 import java.util.stream.IntStream;
@@ -76,6 +82,41 @@ public class GatherPileupSummariesIntegrationTest extends CommandLineProgramTest
         Assert.assertTrue(IntStream.range(0, scanned.size()-1).allMatch(i ->
                 contigsOrdered.indexOf(scanned.get(i).getContig()) < contigsOrdered.indexOf(scanned.get(i+1).getContig()) ||
                         (contigsOrdered.indexOf(scanned.get(i).getContig()) == contigsOrdered.indexOf(scanned.get(i+1).getContig()) && scanned.get(i).getStart() <= scanned.get(i+1).getStart())));
+    }
+
+    @Test
+    public void testAllelicCountsOutput() {
+        // two scatters, given out of order, the first with a site that no reads cover, and an empty scatter
+        final File emptyScatter = createTempFile("pileupSummary", ".tsv");
+        PileupSummary.writeToFile("sample1", Collections.emptyList(), emptyScatter);
+        final File firstScatter = createTempFile("pileupSummary", ".tsv");
+        PileupSummary.writeToFile("sample1", Arrays.asList(
+                new PileupSummary("1", 100, 10, 5, 1, 0.3, Nucleotide.A, Nucleotide.G),
+                new PileupSummary("1", 200, 0, 0, 0, 0.1, Nucleotide.C, Nucleotide.T)), firstScatter);
+        final File secondScatter = createTempFile("pileupSummary", ".tsv");
+        PileupSummary.writeToFile("sample1", Arrays.asList(
+                new PileupSummary("14", 50, 7, 8, 0, 0.5, Nucleotide.G, Nucleotide.A)), secondScatter);
+
+        final File combinedPileupSummary = createTempFile("combined", ".tsv");
+        final File allelicCounts = createTempFile("allelic-counts", ".tsv");
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .add(StandardArgumentDefinitions.SEQUENCE_DICTIONARY_NAME, FULL_HG19_DICT)
+                .add(StandardArgumentDefinitions.INPUT_SHORT_NAME, secondScatter.getAbsolutePath())
+                .add(StandardArgumentDefinitions.INPUT_SHORT_NAME, emptyScatter.getAbsolutePath())
+                .add(StandardArgumentDefinitions.INPUT_SHORT_NAME, firstScatter.getAbsolutePath())
+                .add(StandardArgumentDefinitions.OUTPUT_SHORT_NAME, combinedPileupSummary.getAbsolutePath())
+                .add(GatherPileupSummaries.ALLELIC_COUNTS_OUTPUT_LONG_NAME, allelicCounts.getAbsolutePath());
+        runCommandLine(args.getArgsList(), GatherPileupSummaries.class.getSimpleName());
+
+        // alt counts include other alts, as in CollectAllelicCounts
+        final AllelicCountCollection result = new AllelicCountCollection(allelicCounts);
+        Assert.assertEquals(result.getMetadata().getSampleName(), "sample1");
+        Assert.assertTrue(CopyNumberArgumentValidationUtils.isSameDictionary(result.getMetadata().getSequenceDictionary(),
+                ReferenceUtils.loadFastaDictionary(new File(FULL_HG19_DICT))));
+        Assert.assertEquals(result.getRecords(), Arrays.asList(
+                new AllelicCount(new SimpleInterval("1", 100, 100), 10, 6, Nucleotide.A, Nucleotide.G),
+                new AllelicCount(new SimpleInterval("1", 200, 200), 0, 0, Nucleotide.C, Nucleotide.T),
+                new AllelicCount(new SimpleInterval("14", 50, 50), 7, 8, Nucleotide.G, Nucleotide.A)));
     }
 
     @Test

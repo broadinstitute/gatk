@@ -1,0 +1,16 @@
+{
+  "Mutect2.gatk_docker": "__GATK_DOCKER__",
+  "Mutect2.intervals": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/ice_targets_sample-chr20.interval_list",
+  "Mutect2.ref_fasta": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.fasta",
+  "Mutect2.ref_fai": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.fasta.fai",
+  "Mutect2.ref_dict": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/human_g1k_v37.chr-20.truncated.dict",
+  "Mutect2.tumor_reads": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/SM-74P4M-v1-chr20-downsampled.deduplicated.bam",
+  "Mutect2.tumor_reads_index": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/SM-74P4M-v1-chr20-downsampled.deduplicated.bam.bai",
+  "Mutect2.normal_reads": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/SM-74NEG-v1-chr20-downsampled.deduplicated.cram",
+  "Mutect2.normal_reads_index": "/home/runner/work/gatk/gatk/src/test/resources/large/cnv_somatic_workflows_test_files/SM-74NEG-v1-chr20-downsampled.deduplicated.cram.crai",
+  "Mutect2.common_variants_vcf": "/home/runner/work/gatk/gatk/scripts/m2_cromwell_tests/m2_segmentation_test_sites.vcf",
+  "Mutect2.common_variants_vcf_idx": "/home/runner/work/gatk/gatk/scripts/m2_cromwell_tests/m2_segmentation_test_sites.vcf.idx",
+  "Mutect2.scatter_count": 2,
+  "Mutect2.preemptible": 2,
+  "Mutect2.compress_vcfs": false
+}

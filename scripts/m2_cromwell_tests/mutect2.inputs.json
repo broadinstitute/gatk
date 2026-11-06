@@ -15,10 +15,10 @@
 
   "Mutect2.pon": "gs://gatk-best-practices/somatic-b37/Mutect2-exome-panel.vcf",
   "Mutect2.pon_idx": "gs://gatk-best-practices/somatic-b37/Mutect2-exome-panel.vcf.idx",
-  "Mutect2.gnomad": "gs://gatk-best-practices/somatic-b37/af-only-gnomad.raw.sites.vcf",
-  "Mutect2.gnomad_idx": "gs://gatk-best-practices/somatic-b37/af-only-gnomad.raw.sites.vcf.idx",
-  "Mutect2.variants_for_contamination": "gs://gatk-best-practices/somatic-b37/small_exac_common_3.vcf",
-  "Mutect2.variants_for_contamination_idx": "gs://gatk-best-practices/somatic-b37/small_exac_common_3.vcf.idx",
+  "Mutect2.germline_resource": "gs://gatk-best-practices/somatic-b37/af-only-gnomad.raw.sites.vcf",
+  "Mutect2.germline_resource_idx": "gs://gatk-best-practices/somatic-b37/af-only-gnomad.raw.sites.vcf.idx",
+  "Mutect2.common_variants_vcf": "gs://gatk-best-practices/somatic-b37/small_exac_common_3.vcf",
+  "Mutect2.common_variants_vcf_idx": "gs://gatk-best-practices/somatic-b37/small_exac_common_3.vcf.idx",
   "Mutect2.realignment_index_bundle": "gs://gatk-test-data/mutect2/Homo_sapiens_assembly38.index_bundle"
 
 }

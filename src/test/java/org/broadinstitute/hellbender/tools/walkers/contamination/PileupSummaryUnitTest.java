@@ -3,12 +3,15 @@ package org.broadinstitute.hellbender.tools.walkers.contamination;
 import htsjdk.samtools.SAMSequenceDictionary;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.ReferenceFileSource;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
 import java.util.Arrays;
 import java.util.List;
 
@@ -39,6 +42,52 @@ public class PileupSummaryUnitTest extends GATKBaseTest {
         Assert.assertEquals(psCopy.get(0).getRefCount(), refCount);
         Assert.assertEquals(psCopy.get(0).getOtherAltCount(), otherAltCount);
         Assert.assertEquals(psCopy.get(0).getAlleleFrequency(), alleleFrequency);
+        Assert.assertEquals(psCopy.get(0).getRefBase(), Nucleotide.N);
+        Assert.assertEquals(psCopy.get(0).getAltBase(), Nucleotide.N);
+    }
+
+    @Test
+    public void testBases() {
+        final List<PileupSummary> ps = Arrays.asList(new PileupSummary("chr1", 1, 20, 10, 2, 0.3, Nucleotide.C, Nucleotide.T));
+
+        final File file = IOUtils.createTempFile("pileup_summary", ".table");
+        PileupSummary.writeToFile("sample", ps, file);
+        final PileupSummary psCopy = PileupSummary.readFromFile(file).getRight().get(0);
+
+        Assert.assertEquals(psCopy.getRefBase(), Nucleotide.C);
+        Assert.assertEquals(psCopy.getAltBase(), Nucleotide.T);
+    }
+
+    // tables written before the bases were recorded can still be read
+    @Test
+    public void testTableWithoutBases() throws IOException {
+        final File file = IOUtils.createTempFile("pileup_summary", ".table");
+        Files.write(file.toPath(), Arrays.asList("#<METADATA>SAMPLE=sample",
+                "contig\tposition\tref_count\talt_count\tother_alt_count\tallele_frequency",
+                "chr1\t1\t20\t10\t2\t0.3"));
+        final PileupSummary ps = PileupSummary.readFromFile(file).getRight().get(0);
+
+        Assert.assertEquals(ps.getStart(), 1);
+        Assert.assertEquals(ps.getRefCount(), 20);
+        Assert.assertEquals(ps.getAltCount(), 10);
+        Assert.assertEquals(ps.getOtherAltCount(), 2);
+        Assert.assertEquals(ps.getAlleleFrequency(), 0.3);
+        Assert.assertEquals(ps.getRefBase(), Nucleotide.N);
+        Assert.assertEquals(ps.getAltBase(), Nucleotide.N);
+    }
+
+    @Test
+    public void testReadWithFilter() {
+        final List<PileupSummary> ps = Arrays.asList(
+                new PileupSummary("chr1", 1, 20, 10, 0, 0.1),
+                new PileupSummary("chr1", 2, 20, 10, 0, 0.3),
+                new PileupSummary("chr1", 3, 20, 10, 0, 0.05));
+
+        final File file = IOUtils.createTempFile("pileup_summary", ".table");
+        PileupSummary.writeToFile("sample", ps, file);
+        final List<PileupSummary> filtered = PileupSummary.readFromFile(file, site -> site.getAlleleFrequency() < 0.2).getRight();
+
+        Assert.assertEquals(filtered.stream().mapToInt(PileupSummary::getStart).toArray(), new int[] {1, 3});
     }
 
     @DataProvider

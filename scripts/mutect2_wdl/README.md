@@ -103,10 +103,17 @@ Recommended default values (where possible) are found in ``mutect2_template.json
 - ``Mutect2.pon`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.pon_index`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.scatter_count`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2.gnomad`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2.gnomad_index`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2.variants_for_contamination`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2.variants_for_contamination_index`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2.germline_resource`` -- Please see the description of ``Mutect2_Multi.gnomad`` above in the mutect2_multi_sample.
+- ``Mutect2.germline_resource_idx`` -- Please see the description of ``Mutect2_Multi.gnomad_index`` above in the mutect2_multi_sample.
+- ``Mutect2.common_variants_vcf`` -- Please see the description of ``Mutect2_Multi.variants_for_contamination`` above in the mutect2_multi_sample.  Unless ``Mutect2.skip_model_segments`` is true, these variants are also used for segmentation, so they should cover the whole genome, not only chromosome 1 (please see "Segmentation in the mutect2 WDL" below).
+- ``Mutect2.common_variants_vcf_idx`` -- Please see the description of ``Mutect2_Multi.variants_for_contamination_index`` above in the mutect2_multi_sample.
+- ``Mutect2.gnomad``, ``Mutect2.gnomad_idx``, ``Mutect2.variants_for_contamination``, ``Mutect2.variants_for_contamination_idx`` -- (deprecated) The former names of ``Mutect2.germline_resource``, ``Mutect2.germline_resource_idx``, ``Mutect2.common_variants_vcf`` and ``Mutect2.common_variants_vcf_idx``.  They are still accepted, but will be removed in a future release.  Each is used only if the input that replaced it is not given.
+- ``Mutect2.skip_model_segments`` -- (optional, default false) Whether to skip segmenting the tumor, and the normal if there is one, with ModelSegments.  Segmentation otherwise runs whenever ``Mutect2.common_variants_vcf`` is given.  Please see "Segmentation in the mutect2 WDL" below.
+- ``Mutect2.pileups_min_population_af``, ``Mutect2.pileups_max_population_af`` -- (optional) The range of population allele frequencies of the common variants at which ``GetPileupSummaries`` collects pileups, which ModelSegments also uses.  The minimum defaults to 0.01.  The maximum defaults to 0.99 when segmenting and to ``Mutect2.contamination_max_population_af`` otherwise.  Set these rather than passing allele frequency arguments in ``Mutect2.getpileupsummaries_extra_args``, which the workflow rejects.
+- ``Mutect2.contamination_min_population_af``, ``Mutect2.contamination_max_population_af`` -- (optional, defaults 0.01 and 0.2) The range of population allele frequencies of the common variants that ``CalculateContamination`` uses.  At sites of higher allele frequency the contamination estimate depends more on the accuracy of the population allele frequencies.
+- ``Mutect2.model_segments_min_total_allele_count_tumor`` -- (optional) The minimum read depth of a site in the tumor for ModelSegments to use it.  The default is 0 if there is a matched normal, since ModelSegments then chooses the het sites from the normal, and 30 otherwise.
+- ``Mutect2.model_segments_min_total_allele_count_normal`` -- (optional, default 30) The minimum read depth of a site in the normal for ModelSegments to use it, both to choose the het sites for the tumor and to segment the normal on its own.  At this default, a normal genome sequenced to about 30x loses about half of its het sites, and a lower value keeps more of them.
+- ``Mutect2.model_segments_extra_args`` -- (optional) A string of additional command line arguments for ModelSegments.
 - ``Mutect2.is_run_orientation_bias_filter`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.is_run_oncotator`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.gatk_docker`` -- Please see parameter description above in the mutect2_multi_sample.
@@ -123,6 +130,16 @@ Recommended default values (where possible) are found in ``mutect2_template.json
 - ``Mutect2.sequence_source`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.default_config_file`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.filter_oncotator_maf`` -- (optional, default true) Whether Oncotator should remove filtered variants when rendering the MAF.  Ignored if `run_oncotator` is false. 
+
+#### Segmentation in the mutect2 WDL
+
+When ``Mutect2.common_variants_vcf`` is given, the workflow runs ``GetPileupSummaries`` at the common variants to calculate contamination.  Unless ``Mutect2.skip_model_segments`` is true, it also segments the tumor, and the normal if there is one, by allele fraction with ModelSegments, which costs little more because the same pileups provide its allelic counts.
+- ``GetPileupSummaries`` collects pileups at sites of any common allele frequency (see ``Mutect2.pileups_max_population_af``), including sites without reads so that the tumor and normal have the same sites, as ModelSegments requires.  ``CalculateContamination`` still uses only its usual range of allele frequencies (see ``Mutect2.contamination_max_population_af``).
+- When the pileups are merged, ``GatherPileupSummaries`` also writes them as allelic counts in the format of ``CollectAllelicCounts``.
+- ModelSegments segments the tumor, using the normal to choose het sites if there is one, and segments the normal on its own.  It uses only allele fractions, not copy ratios.
+- For genomes, ``Mutect2.common_variants_vcf`` should contain common SNPs throughout the genome, such as the biallelic SNPs of a gnomAD genomes resource above some allele frequency.  A resource of common exome SNPs such as ``small_exac_common_3`` is enough for contamination, but would leave ModelSegments with hets only in exons.
+
+The segmentation outputs are ``modeled_segments_tumor`` and ``modeled_segments_normal`` (ModelSegments' ``.modelFinal.seg`` files) and their plots, the allelic counts at every common site (``allelic_counts_tumor``, ``allelic_counts_normal``), the tumor's allelic counts at the het sites that ModelSegments segmented and the normal's counts at the same sites (``het_allelic_counts_tumor``, ``normal_het_allelic_counts_tumor``), and the global parameters of ModelSegments' allele fraction model (``allele_fraction_parameters_tumor``, ``allele_fraction_parameters_normal``).
 
 #### mutect2-replicate-validation
 
