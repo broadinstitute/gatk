@@ -24,6 +24,9 @@ version 1.0
 ## m2_extra_args, m2_extra_filtering_args: additional arguments for Mutect2 calling and filtering (optional)
 ## split_intervals_extra_args: additional arguments for splitting intervals before scattering (optional)
 ## run_orientation_bias_mixture_model_filter: (optional) if true, filter orientation bias sites with the read orientation artifact mixture model.
+## run_model_segments: (optional) if true, segment the tumor, and the normal if there is one, by allele fraction with ModelSegments,
+##                     using pileups at the variants for contamination.  For genomes these should be common SNPs throughout the
+##                     genome, not only in exons.
 ##
 ## ** Primary inputs **
 ## ref_fasta, ref_fai, ref_dict: reference genome, index, and dictionary
@@ -86,13 +89,11 @@ workflow Mutect2 {
         File? germline_resource_idx
         File? variants_for_contamination
         File? variants_for_contamination_idx
-        File? common_hets_for_segmentation
 
         # extra arguments
         String? m2_extra_args
         String? m2_extra_filtering_args
         String? getpileupsummaries_extra_args
-        String? collect_allelic_counts_extra_args
         String? split_intervals_extra_args
         Int? model_segments_min_total_allele_count
         String? model_segments_extra_args
@@ -102,6 +103,7 @@ workflow Mutect2 {
         String? realignment_extra_args
         File? dragstr_model
         Boolean run_orientation_bias_mixture_model_filter = false
+        Boolean run_model_segments = false
         Boolean make_bamout = false
         Boolean compress_vcfs = false
         File? gga_vcf
@@ -155,6 +157,14 @@ workflow Mutect2 {
     #TODO: do we need to change this disk size now that NIO is always going to happen (for the google backend only)
     Int m2_per_scatter_size = (tumor_reads_size + normal_reads_size) + ref_size + germline_resource_vcf_size + m2_output_size + disk_pad
 
+    # ModelSegments uses the pileups at the variants for contamination, converted to allelic counts when they are merged
+    Boolean segment = run_model_segments && defined(variants_for_contamination)
+    Boolean calculate_contamination = defined(variants_for_contamination) && (make_permutect_test_dataset || (!skip_filtering))
+
+    # When segmenting, the pileups include sites of higher allele frequency and sites without reads, so we restrict
+    # CalculateContamination to the allele frequencies that GetPileupSummaries otherwise uses
+    String contamination_extra_args = if segment then "--minimum-population-allele-frequency 0.01 --maximum-population-allele-frequency 0.2" else ""
+
     call SplitIntervals {
         input:
             intervals = intervals,
@@ -186,10 +196,9 @@ workflow Mutect2 {
                 max_retries = max_retries,
                 m2_extra_args = m2_extra_args,
                 getpileupsummaries_extra_args = getpileupsummaries_extra_args,
-                collect_allelic_counts_extra_args = collect_allelic_counts_extra_args,
                 variants_for_contamination = variants_for_contamination,
                 variants_for_contamination_idx = variants_for_contamination_idx,
-                common_hets_for_segmentation = common_hets_for_segmentation,
+                pileups_for_segmentation = segment,
                 dragstr_model = dragstr_model,
                 make_bamout = make_bamout,
                 run_ob_filter = run_orientation_bias_mixture_model_filter,
@@ -243,26 +252,61 @@ workflow Mutect2 {
 
     call MergeStats { input: stats = M2.stats, runtime_params = standard_runtime }
 
-    if(defined(common_hets_for_segmentation)) {
-        call MergeAllelicCounts as MergeTumorAllelicCounts {
-                input:
-                    input_tables = M2.tumor_allelic_counts,
-                    runtime_params = standard_runtime
+    # When generating Permutect test data we need the minor allele fraction (MAF) segmentation from CalculateContamination,
+    # even if we are skipping filtering.  Note also that we run CalculateContamination witht he normal as a "tumor"
+    # in order to get normal MAF segments.
+    if (calculate_contamination || segment) {
+        call MergePileupSummaries as MergeTumorPileups {
+            input:
+                input_tables = flatten(M2.tumor_pileups),
+                output_name = "tumor-pileups",
+                ref_dict = ref_dict,
+                write_allelic_counts = segment,
+                runtime_params = standard_runtime
         }
 
-        if (defined(normal_reads)) {
-            call MergeAllelicCounts as MergeNormalAllelicCounts {
+        if (defined(normal_reads)){
+            call MergePileupSummaries as MergeNormalPileups {
                 input:
-                    input_tables = M2.normal_allelic_counts,
+                    input_tables = flatten(M2.normal_pileups),
+                    output_name = "normal-pileups",
+                    ref_dict = ref_dict,
+                    write_allelic_counts = segment,
                     runtime_params = standard_runtime
             }
 
-            Int model_segments_normal_disk = ceil(size(MergeNormalAllelicCounts.merged_table, "GB")) + emergency_extra_disk
+            if (make_permutect_test_dataset) {
+                call CalculateContamination as GetNormalMAFSegments {
+                    input:
+                        tumor_pileups = select_first([MergeNormalPileups.merged_table]),
+                        extra_args = contamination_extra_args,
+                        runtime_params = standard_runtime
+                }
+            }
+        }
+
+        if (calculate_contamination) {
+            call CalculateContamination {
+                input:
+                    tumor_pileups = MergeTumorPileups.merged_table,
+                    normal_pileups = MergeNormalPileups.merged_table,
+                    extra_args = contamination_extra_args,
+                    runtime_params = standard_runtime
+            }
+        }
+    }
+
+    if (segment) {
+        File tumor_allelic_counts = select_first([MergeTumorPileups.allelic_counts])
+
+        if (defined(normal_reads)) {
+            File normal_allelic_counts = select_first([MergeNormalPileups.allelic_counts])
+            Int model_segments_normal_disk = ceil(size(normal_allelic_counts, "GB")) + emergency_extra_disk
             String normal_entity = "normal"
             call ModelSegments as ModelSegmentsNormal {
                 input:
                     entity_id = normal_entity,
-                    allelic_counts = MergeNormalAllelicCounts.merged_table,
+                    allelic_counts = normal_allelic_counts,
                     min_total_allele_count = model_segments_min_total_allele_count,
                     model_segments_extra_args = model_segments_extra_args,
                     gatk_override = gatk_override,
@@ -281,14 +325,14 @@ workflow Mutect2 {
             }
         }
 
-        Int model_segments_normal_portion = if defined(normal_reads) then ceil(size(MergeNormalAllelicCounts.merged_table, "GB")) else 0
-        Int model_segments_tumor_disk = ceil(size(MergeTumorAllelicCounts.merged_table, "GB")) + model_segments_normal_portion + emergency_extra_disk
+        Int model_segments_normal_portion = if defined(normal_reads) then ceil(size(normal_allelic_counts, "GB")) else 0
+        Int model_segments_tumor_disk = ceil(size(tumor_allelic_counts, "GB")) + model_segments_normal_portion + emergency_extra_disk
         String tumor_entity = "tumor"
         call ModelSegments as ModelSegmentsTumor {
             input:
                 entity_id = tumor_entity,
-                allelic_counts = MergeTumorAllelicCounts.merged_table,
-                normal_allelic_counts = MergeNormalAllelicCounts.merged_table,
+                allelic_counts = tumor_allelic_counts,
+                normal_allelic_counts = normal_allelic_counts,
                 min_total_allele_count = model_segments_min_total_allele_count,
                 model_segments_extra_args = model_segments_extra_args,
                 gatk_override = gatk_override,
@@ -304,44 +348,6 @@ workflow Mutect2 {
                 ref_dict = ref_dict,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker
-        }
-    }
-
-    # When generating Permutect test data we need the minor allele fraction (MAF) segmentation from CalculateContamination,
-    # even if we are skipping filtering.  Note also that we run CalculateContamination witht he normal as a "tumor"
-    # in order to get normal MAF segments.
-    if (defined(variants_for_contamination) && (make_permutect_test_dataset || (!skip_filtering))) {
-        call MergePileupSummaries as MergeTumorPileups {
-            input:
-                input_tables = flatten(M2.tumor_pileups),
-                output_name = "tumor-pileups",
-                ref_dict = ref_dict,
-                runtime_params = standard_runtime
-        }
-
-        if (defined(normal_reads)){
-            call MergePileupSummaries as MergeNormalPileups {
-                input:
-                    input_tables = flatten(M2.normal_pileups),
-                    output_name = "normal-pileups",
-                    ref_dict = ref_dict,
-                    runtime_params = standard_runtime
-            }
-
-            if (make_permutect_test_dataset) {
-                call CalculateContamination as GetNormalMAFSegments {
-                    input:
-                        tumor_pileups = select_first([MergeNormalPileups.merged_table]),
-                        runtime_params = standard_runtime
-                }
-            }
-        }
-
-        call CalculateContamination {
-            input:
-                tumor_pileups = MergeTumorPileups.merged_table,
-                normal_pileups = MergeNormalPileups.merged_table,
-                runtime_params = standard_runtime
         }
     }
 
@@ -423,8 +429,8 @@ workflow Mutect2 {
         File? modeled_segments_plot_normal = PlotModeledSegmentsNormal.modeled_segments_plot
 
         # allelic counts at every common site, including those that look homozygous, eg from loss of heterozygosity
-        File? allelic_counts_tumor = MergeTumorAllelicCounts.merged_table
-        File? allelic_counts_normal = MergeNormalAllelicCounts.merged_table
+        File? allelic_counts_tumor = tumor_allelic_counts
+        File? allelic_counts_normal = normal_allelic_counts
         # tumor allelic counts at the het sites that ModelSegments segmented, which are chosen in the normal if there is one,
         # and the normal's allelic counts at the same sites, which are empty without a normal
         File? het_allelic_counts_tumor = ModelSegmentsTumor.het_allelic_counts
@@ -496,7 +502,6 @@ task M2 {
         File? germline_resource_idx
         String? m2_extra_args
         String? getpileupsummaries_extra_args
-        String? collect_allelic_counts_extra_args
         Boolean? make_bamout
         Boolean? run_ob_filter
         Boolean compress_vcfs
@@ -504,7 +509,7 @@ task M2 {
         File? gga_vcf_idx
         File? variants_for_contamination
         File? variants_for_contamination_idx
-        File? common_hets_for_segmentation
+        Boolean pileups_for_segmentation = false
         File? dragstr_model
 
         File? gatk_override
@@ -533,6 +538,10 @@ task M2 {
 
     String output_stats = output_vcf + ".stats"
 
+    # For segmentation, sites of any common allele frequency, and sites without reads so that the tumor and normal have the
+    # same sites, as ModelSegments requires
+    String segmentation_pileup_args = if pileups_for_segmentation then "--maximum-population-allele-frequency 0.99 --include-uncovered-sites" else ""
+
     # Mem is in units of GB but our command and memory runtime values are in MB
     Int machine_mem = if defined(mem) then mem * 1000 else 3500
     Int command_mem = machine_mem - 500
@@ -554,7 +563,6 @@ task M2 {
         gga_vcf_idx: {localization_optional: true}
         variants_for_contamination: {localization_optional: true}
         variants_for_contamination_idx: {localization_optional: true}
-        common_hets_for_segmentation: {localization_optional: true}
         permutect_training_dataset_truth_vcf: {localization_optional: true}
         permutect_training_dataset_truth_vcf_idx: {localization_optional: true}
     }
@@ -571,8 +579,6 @@ task M2 {
         touch test-dataset.txt
         touch contigs.table
         touch read-groups.table
-        touch tumor_allelic_counts.tsv
-        touch normal_allelic_counts.tsv
 
         if [[ ! -z "~{normal_reads}" ]]; then
             gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{normal_reads} -O normal_names.txt -encode \
@@ -612,53 +618,30 @@ task M2 {
         # If the tool errors, no table is created and the glob yields an empty array.
         set +e
 
+        # When the pileups are also for segmentation, any failure other than a command line error, for which GATK exits
+        # with code 1, would silently leave this scatter's sites out of the segmentation, so it fails the task.  The empty
+        # intersection is a command line error, and any other would fail every scatter, leaving no pileups to merge.
         if [[ ! -z "~{variants_for_contamination}" ]]; then
             gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{tumor_reads} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
                 -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O tumor-pileups.table ~{getpileupsummaries_extra_args} \
-                ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
-
+                ~{segmentation_pileup_args} ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
+            pileups_exit_code=$?
+            if [[ "~{pileups_for_segmentation}" == "true" && $pileups_exit_code -gt 1 ]]; then
+                exit $pileups_exit_code
+            fi
 
             if [[ ! -z "~{normal_reads}" ]]; then
                 gatk --java-options "-Xmx~{command_mem}m" GetPileupSummaries -R ~{ref_fasta} -I ~{normal_reads} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
                     -V ~{variants_for_contamination} -L ~{variants_for_contamination} -O normal-pileups.table ~{getpileupsummaries_extra_args} \
-                    ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
-            fi
-        fi
-
-        # CollectAllelicCounts
-
-        # As with GetPileupSummaries, an empty intersection of the common hets and the intervals for this scatter is an
-        # error, for which GATK exits with code 1 and leaves the empty allelic counts table created above, which simply
-        # doesn't contribute to the merged table downstream.  Other command line errors also exit with code 1, but they
-        # leave every scatter's table empty, so that MergeAllelicCounts fails.  Any other failure would silently leave
-        # this scatter's hets out of the segmentation, so it fails the task.
-        if [[ ! -z "~{common_hets_for_segmentation}" ]]; then
-            gatk --java-options "-Xmx~{command_mem}m" CollectAllelicCounts \
-                -R ~{ref_fasta} -I ~{tumor_reads} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
-                -L ~{common_hets_for_segmentation} \
-                ~{collect_allelic_counts_extra_args} \
-                -O tumor_allelic_counts.tsv \
-                ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
-            allelic_counts_exit_code=$?
-            if [[ $allelic_counts_exit_code -gt 1 ]]; then
-                exit $allelic_counts_exit_code
-            fi
-
-            if [[ ! -z "~{normal_reads}" ]]; then
-                gatk --java-options "-Xmx~{command_mem}m" CollectAllelicCounts \
-                    -R ~{ref_fasta} -I ~{normal_reads} ~{"--interval-set-rule INTERSECTION -L " + intervals} \
-                    -L ~{common_hets_for_segmentation} \
-                    ~{collect_allelic_counts_extra_args} \
-                    -O normal_allelic_counts.tsv \
-                    ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
-                allelic_counts_exit_code=$?
-                if [[ $allelic_counts_exit_code -gt 1 ]]; then
-                    exit $allelic_counts_exit_code
+                    ~{segmentation_pileup_args} ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
+                pileups_exit_code=$?
+                if [[ "~{pileups_for_segmentation}" == "true" && $pileups_exit_code -gt 1 ]]; then
+                    exit $pileups_exit_code
                 fi
             fi
         fi
 
-        # apart from CollectAllelicCounts, the script only fails if Mutect2 itself fails
+        # apart from GetPileupSummaries for segmentation, the script only fails if Mutect2 itself fails
         exit $m2_exit_code
     >>>
 
@@ -680,8 +663,6 @@ task M2 {
         File f1r2_counts = "f1r2.tar.gz"
         Array[File] tumor_pileups = glob("*tumor-pileups.table")
         Array[File] normal_pileups = glob("*normal-pileups.table")
-        File tumor_allelic_counts = "tumor_allelic_counts.tsv"
-        File normal_allelic_counts = "normal_allelic_counts.tsv"
         File permutect_training_dataset = "training-dataset.txt"
         File permutect_test_dataset = "test-dataset.txt"
         File permutect_contigs_table = "contigs.table"
@@ -802,6 +783,7 @@ task MergePileupSummaries {
       Array[File] input_tables
       String output_name
       File ref_dict
+      Boolean write_allelic_counts = false
       Runtime runtime_params
     }
 
@@ -809,10 +791,14 @@ task MergePileupSummaries {
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
 
+        # the allelic counts for ModelSegments are empty unless requested, so that the output always exists
+        touch ~{output_name}.allelic_counts.tsv
+
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherPileupSummaries \
         --sequence-dictionary ~{ref_dict} \
         -I ~{sep=' -I ' input_tables} \
-        -O ~{output_name}.tsv
+        -O ~{output_name}.tsv \
+        ~{if write_allelic_counts then "--allelic-counts-output " + output_name + ".allelic_counts.tsv" else ""}
     }
 
     runtime {
@@ -827,52 +813,7 @@ task MergePileupSummaries {
 
     output {
         File merged_table = "~{output_name}.tsv"
-    }
-}
-
-task MergeAllelicCounts {
-    input {
-        Array[File] input_tables
-        Runtime runtime_params
-    }
-
-    command {
-        set -e
-
-        # header of the first nonempty file, since a scatter whose intervals contain no common hets leaves an empty file
-        first_table=""
-        for file in ~{sep=' ' input_tables}; do
-            if [[ -s $file ]]; then
-                first_table=$file
-                break
-            fi
-        done
-        if [[ -z "$first_table" ]]; then
-            echo "Every allelic counts table is empty: either the common hets don't intersect the intervals or CollectAllelicCounts had a command line error in every scatter" >&2
-            exit 1
-        fi
-
-        grep '^[#@]' $first_table > merged.tsv
-        grep -v '^[#@]' $first_table | head -n 1 >> merged.tsv
-
-        for file in ~{sep=' ' input_tables}; do
-            # tail -n +2 skips the CONTIG   POSITION. . . line
-            grep -v '^[#@]' $file | tail -n +2 >> merged.tsv
-        done
-    }
-
-    runtime {
-        docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
-        memory: runtime_params.machine_mem + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
-        maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
-    }
-
-    output {
-        File merged_table = "merged.tsv"
+        File allelic_counts = "~{output_name}.allelic_counts.tsv"
     }
 }
 
@@ -917,6 +858,7 @@ task CalculateContamination {
       String? intervals
       File tumor_pileups
       File? normal_pileups
+      String? extra_args
       Runtime runtime_params
     }
 
@@ -926,7 +868,7 @@ task CalculateContamination {
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
 
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" CalculateContamination -I ~{tumor_pileups} \
-        -O contamination.table --tumor-segmentation segments.table ~{"-matched " + normal_pileups}
+        -O contamination.table --tumor-segmentation segments.table ~{"-matched " + normal_pileups} ~{extra_args}
     }
 
     runtime {

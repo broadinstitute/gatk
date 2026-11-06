@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.contamination;
 
+import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.math3.distribution.BinomialDistribution;
 import org.apache.commons.math3.distribution.UniformRealDistribution;
 import org.apache.commons.math3.random.RandomGenerator;
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -151,6 +153,47 @@ public class CalculateContaminationIntegrationTest extends CommandLineProgramTes
 
         final double calculatedContamination = ContaminationRecord.readFromFile(contaminationTable).get(0).getContamination();
         Assert.assertEquals(calculatedContamination, contamination, 0.01);
+    }
+
+    // restricting the range of allele frequencies is the same as leaving the other sites out of the pileups
+    @Test
+    public void testAlleleFrequencyRange() {
+        final double minAlleleFrequency = 0.07;
+        final double maxAlleleFrequency = 0.15;
+        final File normal = NA12891_1_PCT_NA12892_99_PCT;
+        final File contaminated = NA12891_8_PCT_NA12892_92_PCT;
+
+        final File restrictedTable = createTempFile("contamination", ".table");
+        runCommandLine(new ArgumentsBuilder()
+                .addInput(contaminated)
+                .add(CalculateContamination.MATCHED_NORMAL_SHORT_NAME, normal)
+                .add(GetPileupSummaries.MIN_SITE_AF_LONG_NAME, minAlleleFrequency)
+                .add(GetPileupSummaries.MAX_SITE_AF_LONG_NAME, maxAlleleFrequency)
+                .addOutput(restrictedTable));
+
+        final File subsetTable = createTempFile("contamination", ".table");
+        runCommandLine(new ArgumentsBuilder()
+                .addInput(sitesInRange(contaminated, minAlleleFrequency, maxAlleleFrequency))
+                .add(CalculateContamination.MATCHED_NORMAL_SHORT_NAME, sitesInRange(normal, minAlleleFrequency, maxAlleleFrequency))
+                .addOutput(subsetTable));
+
+        final ContaminationRecord restricted = ContaminationRecord.readFromFile(restrictedTable).get(0);
+        final ContaminationRecord subset = ContaminationRecord.readFromFile(subsetTable).get(0);
+        Assert.assertEquals(restricted.getContamination(), subset.getContamination());
+        Assert.assertEquals(restricted.getError(), subset.getError());
+    }
+
+    // a copy of the pileups with only the sites whose allele frequencies are in the range
+    private File sitesInRange(final File pileups, final double minAlleleFrequency, final double maxAlleleFrequency) {
+        final Pair<String, List<PileupSummary>> sampleAndSites = PileupSummary.readFromFile(pileups);
+        final List<PileupSummary> sitesInRange = sampleAndSites.getRight().stream()
+                .filter(site -> minAlleleFrequency < site.getAlleleFrequency() && site.getAlleleFrequency() < maxAlleleFrequency)
+                .collect(Collectors.toList());
+        Assert.assertTrue(sitesInRange.size() < sampleAndSites.getRight().size());
+
+        final File result = createTempFile("pileups", ".table");
+        PileupSummary.writeToFile(sampleAndSites.getLeft(), sitesInRange, result);
+        return result;
     }
 
     @Test

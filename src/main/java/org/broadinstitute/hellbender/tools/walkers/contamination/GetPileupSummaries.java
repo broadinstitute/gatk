@@ -81,16 +81,16 @@ import java.util.List;
  * case in which sites and variants differ is when the variants resources is a large file and the sites is an interval list subset from that file.
  *
  * <p>
- * GetPileupSummaries tabulates results into six columns as shown below.
- * The alt_count and allele_frequency correspond to the ALT allele in the germline resource.
+ * GetPileupSummaries tabulates results into eight columns as shown below.
+ * The alt_count, allele_frequency and alt_base correspond to the ALT allele in the germline resource.
  * </p>
  *
  * <pre>
- * contig	position	ref_count	alt_count	other_alt_count	allele_frequency
- * chr6	29942512	9	0	0	0.063
- * chr6	29942517	13	1	0	0.062
- * chr6	29942525	13	7	0	0.063
- * chr6	29942547	36	0	0	0.077
+ * contig	position	ref_count	alt_count	other_alt_count	allele_frequency	ref_base	alt_base
+ * chr6	29942512	9	0	0	0.063	G	C
+ * chr6	29942517	13	1	0	0.062	C	A
+ * chr6	29942525	13	7	0	0.063	G	C
+ * chr6	29942547	36	0	0	0.077	G	C
  * </pre>
  *
  * <p>
@@ -98,7 +98,16 @@ import java.util.List;
  * is set to 0.2, which limits the sites the tool considers to those in the variants resource file that have
  * AF of 0.2 or less. Likewise, the default minimum population AF ({@code --minimum-population-allele-frequency}
  * or {@code -min-af}) is set to 0.01, which limits the sites the tool considers to those in the variants resource
- * file that have AF of 0.01 or more.
+ * file that have AF of 0.01 or more.  {@link CalculateContamination} accepts the same arguments, so one can collect
+ * a wider range of sites here, for example to use as allelic counts for ModelSegments via
+ * {@link GatherPileupSummaries}, and restrict the contamination estimate to the usual range there.
+ * </p>
+ *
+ * <p>
+ * By default the output omits sites with no reads.  With {@code --include-uncovered-sites} it includes them with
+ * counts of zero, so that samples run with the same variants and intervals have exactly the same sites, as ModelSegments
+ * requires of a case sample and its matched normal.  {@link CalculateContamination} ignores sites with low coverage
+ * in any case.
  * </p>
  *
  * <p>
@@ -120,7 +129,7 @@ public class GetPileupSummaries extends LocusWalker {
     public static final String MIN_SITE_AF_LONG_NAME = "minimum-population-allele-frequency";
     public static final String MAX_SITE_AF_SHORT_NAME = "max-af";
     public static final String MIN_SITE_AF_SHORT_NAME = "min-af";
-
+    public static final String INCLUDE_UNCOVERED_SITES_LONG_NAME = "include-uncovered-sites";
 
     private static final double DEFAULT_MIN_POPULATION_AF = 0.01;
     private static final double DEFAULT_MAX_POPULATION_AF = 0.2;
@@ -143,6 +152,10 @@ public class GetPileupSummaries extends LocusWalker {
             shortName = MAX_SITE_AF_SHORT_NAME,
             doc = "Maximum population allele frequency of sites to consider.", optional = true)
     private double maxPopulationAlleleFrequency = DEFAULT_MAX_POPULATION_AF;
+
+    @Argument(fullName = INCLUDE_UNCOVERED_SITES_LONG_NAME,
+            doc = "Include sites with no reads, with counts of zero, so that samples run with the same variants and intervals have the same sites.", optional = true)
+    private boolean includeUncoveredSites = false;
 
     private boolean sawVariantsWithoutAlleleFrequency = false;
     private boolean sawVariantsWithAlleleFrequency = false;
@@ -167,6 +180,11 @@ public class GetPileupSummaries extends LocusWalker {
     @Override
     public boolean requiresFeatures() {
         return true;
+    }
+
+    @Override
+    public boolean emitEmptyLoci() {
+        return includeUncoveredSites;
     }
 
     @Override

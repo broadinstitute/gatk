@@ -59,8 +59,8 @@ echo "Running M2 WDL through cromwell (Tumor-only)"
 sudo "$JAVA_HOME/bin/java" -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2.wdl -i $WORKING_DIR/test_m2_wdl_mod_to.json -m $WORKING_DIR/test_m2_wdl_to.metadata
 
 # The reads of the tests above don't overlap their intervals, so this test runs on the data of the CNV somatic WES tests,
-# with their common SNPs as the common hets for segmentation.  Since sudo resets PATH, "sudo java" would run the
-# runner's default Java rather than the Java 17 that setup-java installed.
+# with the common gnomAD SNPs in their targets as the variants for contamination and segmentation.  Since sudo resets
+# PATH, "sudo java" would run the runner's default Java rather than the Java 17 that setup-java installed.
 echo "Running M2 WDL through cromwell with segmentation (T/N)"
 sudo "$JAVA_HOME/bin/java" -jar $CROMWELL_JAR run $WORKING_DIR/gatk/scripts/mutect2_wdl/mutect2.wdl -i $WORKING_DIR/test_m2_wdl_segments_mod.json -m $WORKING_DIR/test_m2_wdl_segments.metadata
 

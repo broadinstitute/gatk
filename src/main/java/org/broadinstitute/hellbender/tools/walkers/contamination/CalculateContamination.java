@@ -16,6 +16,7 @@ import picard.cmdline.programgroups.DiagnosticsAndQCProgramGroup;
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
 /**
@@ -60,6 +61,16 @@ import java.util.stream.Collectors;
  * <p>
  *     The resulting table provides the fraction contamination, one line per sample, e.g. SampleID--TAB--Contamination.
  *     The file has no header.
+ * </p>
+ *
+ * <p>
+ *     By default the tool uses every site in its input.  The {@code --minimum-population-allele-frequency} and
+ *     {@code --maximum-population-allele-frequency} arguments, which mean the same as in {@link GetPileupSummaries},
+ *     restrict it to sites in a range of population allele frequencies, as if {@link GetPileupSummaries} had left
+ *     out the others.  This allows one set of pileups with a wide range of sites to serve other purposes, such as
+ *     allelic counts for ModelSegments, while the contamination estimate uses the usual range of 0.01 to 0.2.  At a hom
+ *     alt site a contaminating read is ref with probability one minus the allele frequency, so at sites of higher
+ *     allele frequency the estimate depends more on the accuracy of the population allele frequencies.
  * </p>
  *
  */
@@ -111,15 +122,30 @@ public class CalculateContamination extends CommandLineProgram {
             doc="The maximum coverage relative to the mean.", optional = true)
     private final double highCoverageRatioThreshold = DEFAULT_HIGH_COVERAGE_RATIO_THRESHOLD;
 
+    @Argument(fullName = GetPileupSummaries.MIN_SITE_AF_LONG_NAME,
+            shortName = GetPileupSummaries.MIN_SITE_AF_SHORT_NAME,
+            doc = "Use only sites with population allele frequency greater than this.  By default there is no minimum.", optional = true)
+    private Double minPopulationAlleleFrequency = null;
+
+    @Argument(fullName = GetPileupSummaries.MAX_SITE_AF_LONG_NAME,
+            shortName = GetPileupSummaries.MAX_SITE_AF_SHORT_NAME,
+            doc = "Use only sites with population allele frequency less than this.  By default there is no maximum.", optional = true)
+    private Double maxPopulationAlleleFrequency = null;
+
     @Override
     public Object doWork() {
-        final Pair<String, List<PileupSummary>> sampleAndsites = PileupSummary.readFromFile(inputPileupSummariesTable);
+        // sites outside the allele frequency range are left out entirely, as if GetPileupSummaries had not output them
+        final Predicate<PileupSummary> inAlleleFrequencyRange = site ->
+                (minPopulationAlleleFrequency == null || minPopulationAlleleFrequency < site.getAlleleFrequency()) &&
+                        (maxPopulationAlleleFrequency == null || site.getAlleleFrequency() < maxPopulationAlleleFrequency);
+
+        final Pair<String, List<PileupSummary>> sampleAndsites = PileupSummary.readFromFile(inputPileupSummariesTable, inAlleleFrequencyRange);
         final String sample = sampleAndsites.getLeft();
         final List<PileupSummary> sites = filterSitesByCoverage(sampleAndsites.getRight());
 
         // used the matched normal to genotype (i.e. find hom alt sites) if available
         final List<PileupSummary> genotypingSites = matchedPileupSummariesTable == null ? sites :
-                filterSitesByCoverage(PileupSummary.readFromFile(matchedPileupSummariesTable).getRight());
+                filterSitesByCoverage(PileupSummary.readFromFile(matchedPileupSummariesTable, inAlleleFrequencyRange).getRight());
 
         final ContaminationModel genotypingModel = new ContaminationModel(genotypingSites);
 
