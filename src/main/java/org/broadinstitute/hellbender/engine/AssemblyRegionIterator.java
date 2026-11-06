@@ -54,12 +54,13 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
 
     /**
      * Constructs an AssemblyRegionIterator over a provided read shard
-     *  @param readShard MultiIntervalShard containing the reads that will go into the assembly regions.
-     *                  Must have a MAPPED filter set on it.
-     * @param readHeader header for the reads
-     * @param reference source of reference bases (may be null)
-     * @param features source of arbitrary features (may be null)
-     * @param evaluator evaluator used to determine whether a locus is active
+     *
+     * @param readShard   MultiIntervalShard containing the reads that will go into the assembly regions.
+     *                    Must have a MAPPED filter set on it.
+     * @param readHeader  header for the reads
+     * @param reference   source of reference bases (may be null)
+     * @param features    source of arbitrary features (may be null)
+     * @param evaluator   evaluator used to determine whether a locus is active
      */
     public AssemblyRegionIterator(final MultiIntervalShard<GATKRead> readShard,
                                   final SAMFileHeader readHeader,
@@ -87,7 +88,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         this.pendingRegions = new ArrayDeque<>();
         this.readCachingIterator = new ReadCachingIterator(readShard.iterator());
         this.readCache = new ArrayDeque<>();
-        this.activityProfile = new BandPassActivityProfile(assemblyRegionArgs.maxProbPropagationDistance, assemblyRegionArgs.activeProbThreshold, BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, readHeader);
+        this.activityProfile = ActivityProfile.create(assemblyRegionArgs, readHeader);
         this.pendingAlignmentData = trackPileups ? new ArrayDeque<>() : null;
 
         // We wrap our LocusIteratorByState inside an IntervalAlignmentContextIterator so that we get empty loci
