@@ -18,6 +18,7 @@ class TestBulkIngestGenomes(unittest.TestCase):
         else:
             # Should not raise when terra_notebook_utils is installed.
             import terra_notebook_utils as tnu  # pyright: ignore[reportMissingImports]  # noqa: F401
+            from firecloud import fiss, api  # pyright: ignore[reportMissingImports]  # noqa: F401
             self.assertIs(_import_terra_table("test"), tnu.table)
 
     def test_get_column_values(self):
