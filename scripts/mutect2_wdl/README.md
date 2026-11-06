@@ -105,8 +105,8 @@ Recommended default values (where possible) are found in ``mutect2_template.json
 - ``Mutect2.scatter_count`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.germline_resource`` -- Please see the description of ``Mutect2_Multi.gnomad`` above in the mutect2_multi_sample.
 - ``Mutect2.germline_resource_idx`` -- Please see the description of ``Mutect2_Multi.gnomad_index`` above in the mutect2_multi_sample.
-- ``Mutect2.variants_for_contamination`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2.variants_for_contamination_index`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2.common_variants_vcf`` -- Please see the description of ``Mutect2_Multi.variants_for_contamination`` above in the mutect2_multi_sample.
+- ``Mutect2.common_variants_vcf_idx`` -- Please see the description of ``Mutect2_Multi.variants_for_contamination_index`` above in the mutect2_multi_sample.
 - ``Mutect2.is_run_orientation_bias_filter`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.is_run_oncotator`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.gatk_docker`` -- Please see parameter description above in the mutect2_multi_sample.
