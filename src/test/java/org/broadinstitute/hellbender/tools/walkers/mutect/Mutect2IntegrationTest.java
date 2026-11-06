@@ -8,6 +8,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.collections4.SetUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -335,6 +336,14 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         Assert.assertTrue(altAllelesByPosition.get(10020042).basesMatch(Allele.ALT_C)); //tumor G->C, normal G->A
         Assert.assertTrue(altAllelesByPosition.get(10020124).basesMatch(Allele.ALT_G)); //tumor A->G, normal A->T
+    }
+
+    // Mutect2 builds its own downsampler, so the inherited depth cap must be rejected rather than silently ignored
+    @Test(expectedExceptions = CommandLineException.class, expectedExceptionsMessageRegExp = ".*max-effective-depth is not supported by Mutect2.*")
+    public void testMaxEffectiveDepthIsRejected() {
+        final File output = createTempFile("output", ".vcf");
+        runMutect2(DREAM_4_TUMOR, output, "20:10000000-10010000", b37Reference, Optional.empty(),
+                args -> args.add(AssemblyRegionArgumentCollection.MAX_EFFECTIVE_DEPTH_LONG_NAME, 100));
     }
 
     // test on an artificial bam with several contrived MNPs
