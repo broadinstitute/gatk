@@ -99,6 +99,7 @@ workflow GvsOppositeHaplotypePLP {
                 plp_haps = PhasePLPSites.plp_haps,
                 reference = GetReference.reference,
                 requester_pays_project = requester_pays_project,
+                indel_padding_bp = indel_padding_bp,
                 cpu = shard_cpu,
                 disk_gb = shard_disk_gb,
                 preemptible = shard_preemptible,
@@ -111,6 +112,7 @@ workflow GvsOppositeHaplotypePLP {
             pairs = ScanShard.pairs,
             undetermined = ScanShard.undetermined,
             unmatched_start_vids = ScanShard.unmatched_start_vids,
+            classified_unmatched = ScanShard.classified_unmatched,
             shard_stats = ScanShard.stats,
             prepare_stats = PrepareShards.stats,
             plp_stats = PhasePLPSites.stats,
@@ -121,6 +123,7 @@ workflow GvsOppositeHaplotypePLP {
         File pairs = GatherResults.all_pairs
         File undetermined = GatherResults.all_undetermined
         File unmatched_start_vids = GatherResults.all_unmatched_start_vids
+        File classified_unmatched = GatherResults.all_classified_unmatched
         File unmatched_plp_vids = PhasePLPSites.unmatched_plp_vids
         File plp_haps = PhasePLPSites.plp_haps
         File summary = GatherResults.summary
@@ -384,13 +387,22 @@ task PhasePLPSites {
                 --output-type b --output plp.bcf 2> realign.log
         cat split.log realign.log
 
-        python3 - ~{plp_vids} plp.bcf vcf_sample_count.txt realign.log <<'PYTHON_HEREDOC'
+        python3 - ~{plp_vids} plp.bcf vcf_sample_count.txt split.log realign.log <<'PYTHON_HEREDOC'
         import gzip
         import json
         import subprocess
         import sys
 
-        plp_vids_path, bcf, sample_count_path, realign_log = sys.argv[1:]
+        plp_vids_path, bcf, sample_count_path, split_log, realign_log = sys.argv[1:]
+
+
+        def norm_counts(path):
+            """The 'Lines total/split/joined/realigned/...' summary bcftools norm writes to stderr, as a dict."""
+            for line in open(path):
+                if line.startswith("Lines"):
+                    _, names, values = line.split()
+                    return dict(zip(names.rstrip(":").split("/"), map(int, values.split("/"))))
+            return {}
 
 
         def hap_of(gt):
@@ -446,9 +458,17 @@ task PhasePLPSites {
             return len(ref) != len(alt)
 
 
+        split, realign = norm_counts(split_log), norm_counts(realign_log)
         stats = {
             "vcf_samples": int(open(sample_count_path).read()),
+            # Raw VCF records read, how many were multi-allelic, and how many split records left-alignment or
+            # trimming changed. A nonzero `records_realigned` means the VCF was not already normalized.
+            "records_read": split.get("total", 0),
+            "records_multiallelic": split.get("split", 0),
+            "records_realigned": realign.get("realigned", 0),
             "plp_vids": len(plp),
+            "plp_snvs": sum(1 for v in plp if not is_indel(v)),
+            "plp_indels": sum(1 for v in plp if is_indel(v)),
             "plp_vids_found": len(found),
             "plp_snvs_unmatched": sum(1 for v in plp - found if not is_indel(v)),
             "plp_indels_unmatched": sum(1 for v in plp - found if is_indel(v)),
@@ -486,6 +506,7 @@ task ScanShard {
         File plp_haps
         Reference reference
         String? requester_pays_project
+        Int indel_padding_bp
         Int cpu
         Int disk_gb
         Int preemptible
@@ -550,10 +571,12 @@ task ScanShard {
             cat split.log realign.log
         else
             # Nothing to pair against, so skip the VCF entirely. The join-rate stats are then absent for this shard.
-            touch realign.log
+            touch split.log realign.log
         fi
 
-        python3 - start_vids.tsv ~{plp_vids} ~{plp_haps} start.bcf realign.log <<'PYTHON_HEREDOC'
+        python3 - start_vids.tsv ~{plp_vids} ~{plp_haps} start.bcf split.log realign.log ~{indel_padding_bp} \
+            <<'PYTHON_HEREDOC'
+        import bisect
         import gzip
         import json
         import os
@@ -561,7 +584,18 @@ task ScanShard {
         import sys
         from collections import defaultdict
 
-        start_vids_path, plp_vids_path, plp_haps_path, bcf, realign_log = sys.argv[1:]
+        (start_vids_path, plp_vids_path, plp_haps_path, bcf, split_log, realign_log,
+         indel_padding) = sys.argv[1:]
+        indel_padding = int(indel_padding)
+
+
+        def norm_counts(path):
+            """The 'Lines total/split/joined/realigned/...' summary bcftools norm writes to stderr, as a dict."""
+            for line in open(path):
+                if line.startswith("Lines"):
+                    _, names, values = line.split()
+                    return dict(zip(names.rstrip(":").split("/"), map(int, values.split("/"))))
+            return {}
 
 
         def hap_of(gt):
@@ -631,16 +665,21 @@ task ScanShard {
 
         stats = defaultdict(int)
         have_bcf = os.path.exists(bcf)
-        found = set()
-        if have_bcf:
-            found = {key(*fields) for fields in query("%CHROM\\t%POS\\t%REF\\t%ALT\\n")} & start_genes.keys()
+        site_records = list(query("%CHROM\\t%POS\\t%REF\\t%ALT\\n")) if have_bcf else []
+        found = {key(*fields) for fields in site_records} & start_genes.keys()
+        unmatched = sorted(start_genes.keys() - found) if have_bcf else []
         with open("unmatched_start_vids.tsv", "w") as f:
-            for vid in start_genes.keys() - found:
+            for vid in unmatched:
                 stats["start_indels_unmatched" if is_indel(vid) else "start_snvs_unmatched"] += 1
-                if have_bcf:
-                    f.write(f"{vid}\n")
+                f.write(f"{vid}\n")
         stats["start_vids"] = len(start_genes)
+        stats["start_snvs"] = sum(1 for v in start_genes if not is_indel(v))
+        stats["start_indels"] = sum(1 for v in start_genes if is_indel(v))
         stats["start_vids_found"] = len(found)
+        split, realign = norm_counts(split_log), norm_counts(realign_log)
+        stats["records_read"] = split.get("total", 0)
+        stats["records_multiallelic"] = split.get("split", 0)
+        stats["records_realigned"] = realign.get("realigned", 0)
 
         seen = set()
         with gzip.open("pairs.tsv.gz", "wt") as pairs, gzip.open("undetermined.tsv.gz", "wt") as undetermined:
@@ -677,6 +716,44 @@ task ScanShard {
 
         stats["ref_mismatches"] = sum(1 for line in open(realign_log) if line.startswith("REF_MISMATCH"))
         stats["scanned"] = have_bcf
+
+        # Why each unmatched vid did not match, judged against the shard's own normalized sites. start.bcf keeps
+        # every site in the shard's regions even where no carrier has an alt allele, so this needs no further VCF
+        # reads.
+        by_pos = defaultdict(list)
+        indels_by_pos = []
+        for _, pos, ref, alt in site_records:
+            by_pos[int(pos)].append(f"{ref}>{alt}")
+            if len(ref) != len(alt):
+                indels_by_pos.append((int(pos), len(alt) - len(ref)))
+        indels_by_pos.sort()
+
+
+        def classify(vid):
+            """'other_alleles_at_position' when the VCF has a record at the vid's position with other alleles;
+            for indels, 'same_length_indel_nearby' when an indel of the same length change sits within the padding
+            (indel length survives normalization, so this suggests a representation difference left-alignment did
+            not resolve); otherwise 'no_record_at_position'."""
+            _, pos, ref, alt = vid.split("-")
+            pos = int(pos)
+            if by_pos.get(pos):
+                return "other_alleles_at_position", by_pos[pos]
+            if len(ref) != len(alt):
+                lo = bisect.bisect_left(indels_by_pos, (pos - indel_padding, -(1 << 40)))
+                hi = bisect.bisect_right(indels_by_pos, (pos + indel_padding, 1 << 40))
+                nearby = [str(p) for p, ilen in indels_by_pos[lo:hi] if ilen == len(alt) - len(ref)]
+                if nearby:
+                    return "same_length_indel_nearby", nearby
+            return "no_record_at_position", []
+
+
+        with open("classified_unmatched.tsv", "w") as out:
+            for vid in unmatched:
+                kind = "indel" if is_indel(vid) else "snv"
+                category, detail = classify(vid)
+                stats[f"unmatched_{kind}_{category}"] += 1
+                out.write(f"{vid}\t{kind}\t{category}\t{','.join(detail[:10])}\n")
+
         with open("shard_stats.json", "w") as f:
             json.dump(stats, f, indent=2)
         PYTHON_HEREDOC
@@ -695,6 +772,7 @@ task ScanShard {
         File pairs = "pairs.tsv.gz"
         File undetermined = "undetermined.tsv.gz"
         File unmatched_start_vids = "unmatched_start_vids.tsv"
+        File classified_unmatched = "classified_unmatched.tsv"
         File stats = "shard_stats.json"
     }
 }
@@ -704,6 +782,7 @@ task GatherResults {
         Array[File] pairs
         Array[File] undetermined
         Array[File] unmatched_start_vids
+        Array[File] classified_unmatched
         Array[File] shard_stats
         File prepare_stats
         File plp_stats
@@ -720,6 +799,8 @@ task GatherResults {
         printf 'vid\tgene_id\tsample\tplp_vids\n' | gzip > undetermined.tsv.gz
         cat ~{sep=' ' undetermined} >> undetermined.tsv.gz
         cat ~{sep=' ' unmatched_start_vids} | gzip > unmatched_start_vids.tsv.gz
+        { printf 'vid\ttype\tcategory\tnormalized_records_at_position_or_nearby_indel_positions\n'
+          cat ~{sep=' ' classified_unmatched}; } | gzip > classified_unmatched.tsv.gz
 
         python3 - ~{prepare_stats} ~{plp_stats} ~{sep=' ' shard_stats} <<'PYTHON_HEREDOC'
         import json
@@ -733,12 +814,20 @@ task GatherResults {
             shards.update(json.load(open(path)))
 
         prepare.pop("shards")
-        found = shards["start_vids_found"]
+
+
+        def rate(numerator, denominator):
+            return numerator / denominator if denominator else None
+
+
         summary = {
             "prepare": prepare,
             "plp": plp,
-            "shards": dict(shards),
-            "start_vid_match_rate": found / shards["start_vids"] if shards["start_vids"] else None,
+            "shards": dict(sorted(shards.items())),
+            "start_vid_match_rate": rate(shards["start_vids_found"], shards["start_vids"]),
+            "start_snv_match_rate": rate(shards["start_snvs"] - shards["start_snvs_unmatched"], shards["start_snvs"]),
+            "start_indel_match_rate": rate(shards["start_indels"] - shards["start_indels_unmatched"],
+                                           shards["start_indels"]),
         }
         with open("summary.json", "w") as f:
             json.dump(summary, f, indent=2)
@@ -757,6 +846,7 @@ task GatherResults {
         File all_pairs = "pairs.tsv.gz"
         File all_undetermined = "undetermined.tsv.gz"
         File all_unmatched_start_vids = "unmatched_start_vids.tsv.gz"
+        File all_classified_unmatched = "classified_unmatched.tsv.gz"
         File summary = "summary.json"
     }
 }
