@@ -2004,12 +2004,21 @@ task DeleteParquetFiles {
 
     # `gcloud storage rm` can exit non-zero after a successful delete, e.g. GcsNotFoundError when its
     # own retry finds the object gone, or a glob matching nothing on a task retry (VS-2053). So rm
-    # failures are tolerated, and the check below decides: success if no "*.parquet" object remains.
-    # Quarantined objects no longer end in ".parquet", so the check ignores them.
+    # failures are tolerated, and the check below decides: success if nothing that the chosen strategy
+    # deletes remains. Each strategy checks exactly what it deletes, so the check leaves quarantined
+    # objects alone for the same reason the delete does.
     if [ "~{use_alternate_delete_strategy}" = "false" ]; then
+      # The quarantine suffix keeps quarantined objects out of this glob.
+      CHECK_URLS=("${OUTPUT_GCS_DIR}/"'**/*.parquet')
       gcloud storage rm --recursive ~{"--billing-project " + billing_project_id} "${OUTPUT_GCS_DIR}/"'**/*.parquet' \
         || echo "WARNING: gcloud storage rm reported errors; checking below what remains." >&2
     else
+      # The fixed list of table directories, not parquet_dirs.txt, so that a directory left out by a
+      # failed listing is still checked. The quarantine directory is not in this list.
+      CHECK_URLS=()
+      for table_dir in vet ref_ranges sample_chromosome_ploidy vcf_header_lines_scratch; do
+        CHECK_URLS+=("${OUTPUT_GCS_DIR}/${table_dir}/"'**')
+      done
       # List the contents of the vet and ref_ranges directories for subsequent deletion in the loop below.
       # On a retry these directories may already be gone, so a failed listing is tolerated here.
       echo "Listing directories under ${OUTPUT_GCS_DIR}/vet/ and ${OUTPUT_GCS_DIR}/ref_ranges/ ${OUTPUT_GCS_DIR}/sample_chromosome_ploidy/ for deletion..."
@@ -2034,11 +2043,12 @@ task DeleteParquetFiles {
     fi
 
     # Decide the outcome by what remains. Note the use of `gcloud storage objects list` rather than
-    # `gcloud storage ls`
+    # `gcloud storage ls`: on no match `ls` exits 1, the same as a real error, while `objects list`
+    # exits 0 with empty output. A listing error still fails the task under errexit.
     gcloud storage objects list ~{"--billing-project " + billing_project_id} --format='value(name)' \
-      "${OUTPUT_GCS_DIR}/"'**/*.parquet' > remaining_parquet.txt
+      "${CHECK_URLS[@]}" > remaining_parquet.txt
     if [ -s remaining_parquet.txt ]; then
-      echo "ERROR: $(wc -l < remaining_parquet.txt) Parquet file(s) under ${OUTPUT_GCS_DIR}/ were not deleted, for example:" >&2
+      echo "ERROR: $(wc -l < remaining_parquet.txt) object(s) under ${OUTPUT_GCS_DIR}/ were not deleted, for example:" >&2
       head -n 10 remaining_parquet.txt >&2
       exit 1
     fi
