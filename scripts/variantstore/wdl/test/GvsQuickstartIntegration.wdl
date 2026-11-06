@@ -36,11 +36,10 @@ workflow GvsQuickstartIntegration {
         Int? maximum_alternate_alleles
         File? gatk_override
         Boolean use_parquet_ingest = true
-        # VS-1989 independent post-load structural checks, forwarded to every Parquet-ingest sub-workflow
-        # (the VCF VETS/VQSR/exome/BGE calls and the Beta GvsJointVariantCalling call) so an integration
-        # run can exercise them; e.g. set parquet_allow_flagged_vet_loads = true to waive the screens and
-        # let deletion proceed despite a flag.
-        Float parquet_vet_duplication_threshold = 1.6
+        # VS-1989 / VS-2032 independent post-load structural checks, forwarded to every Parquet-ingest
+        # sub-workflow (the VCF VETS/VQSR/exome/BGE calls and the Beta GvsJointVariantCalling call) so
+        # an integration run can exercise them; e.g. set parquet_allow_flagged_vet_loads = true to
+        # waive the truncation screen and let deletion proceed despite its flag.
         Float parquet_vet_truncation_threshold = 1.6
         Boolean parquet_allow_flagged_vet_loads = false
         Boolean parquet_fail_on_quarantine = true
@@ -189,7 +188,6 @@ workflow GvsQuickstartIntegration {
                 submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 use_parquet_ingest = use_parquet_ingest,
-                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
                 parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
                 parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
                 parquet_fail_on_quarantine = parquet_fail_on_quarantine,
@@ -221,7 +219,6 @@ workflow GvsQuickstartIntegration {
                 submission_id = submission_id,
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 use_parquet_ingest = use_parquet_ingest,
-                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
                 parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
                 parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
                 parquet_fail_on_quarantine = parquet_fail_on_quarantine,
@@ -282,7 +279,6 @@ workflow GvsQuickstartIntegration {
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 target_interval_list = target_interval_list,
                 use_parquet_ingest = use_parquet_ingest,
-                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
                 parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
                 parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
                 parquet_fail_on_quarantine = parquet_fail_on_quarantine,
@@ -337,7 +333,6 @@ workflow GvsQuickstartIntegration {
                 maximum_alternate_alleles = maximum_alternate_alleles,
                 target_interval_list = target_interval_list,
                 use_parquet_ingest = use_parquet_ingest,
-                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
                 parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
                 parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
                 parquet_fail_on_quarantine = parquet_fail_on_quarantine,
@@ -394,7 +389,6 @@ workflow GvsQuickstartIntegration {
                 collect_variant_calling_metrics = collect_variant_calling_metrics,
                 use_parquet_ingest = use_parquet_ingest,
                 parquet_output_gcs_dir = parquet_output_gcs_dir,
-                parquet_vet_duplication_threshold = parquet_vet_duplication_threshold,
                 parquet_vet_truncation_threshold = parquet_vet_truncation_threshold,
                 parquet_allow_flagged_vet_loads = parquet_allow_flagged_vet_loads,
                 parquet_fail_on_quarantine = parquet_fail_on_quarantine,

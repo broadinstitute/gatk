@@ -13,70 +13,59 @@ failure classes that matter most before the source Parquet is deleted:
   * a duplicated load -- a partition holds *more* rows than the source, which presence-testing can
     never see.
 
-The functions here ask a different question -- "how many rows?" -- through two cheap BigQuery
-metadata reads that share no code with the loader predicate:
+The functions here ask a different question -- "how many rows?" -- through cheap BigQuery reads
+that share no code with the loader predicate:
 
   * ``INFORMATION_SCHEMA.PARTITIONS.total_rows`` for the superpartitioned ``vet_%`` / ``ref_ranges_%``
     families (partition metadata is a flat ~10 MB regardless of callset size; ``partition_id`` *is*
     the ``sample_id`` because these tables are integer-range partitioned on ``sample_id`` with step
-    1), and
+    1),
   * a per-sample ``COUNT(*)`` and ``COUNT(DISTINCT chromosome)`` on the regular ploidy table (scans
-    two columns, ~100 MB on a 500k-sample callset).
+    two columns, ~100 MB on a 500k-sample callset), and
+  * the row count each source Parquet file declares in its own footer, read by BigQuery through an
+    external table over the files (VS-2032; see ``get_parquet_footer_row_counts``).
 
 The crux of the independence is ``total_rows`` vs. ``total_logical_bytes``: a partition that is
 present but partial or duplicated has a wrong row count, which these checks catch and the loader
 predicate cannot.
 
-Scope notes (VS-1989):
-  * The exact footer-vs-BigQuery per-sample comparison (the gold-standard loss+duplication detector
-    from the ticket description) is deferred to VS-2032, not rejected, and is deferred on scope
-    rather than on cost -- it is cheap. BigQuery reads the Parquet footers itself, so an external
-    table over the source files answering ``COUNT(*)`` grouped by the ``_FILE_NAME`` pseudo-column
-    yields per-file row counts from footer metadata at zero bytes billed, needing no Parquet reader,
-    no image change and no client-side read path; VS-2032 carries the measurements. What defers it
-    is the interaction with what is already here: an exact
-    per-sample check makes the ``vet`` duplication screen below, its threshold input, its waiver and
-    its gate redundant or ambiguous, and settling that means re-qualifying them. Do not repeat the
-    two older rationales: that pyarrow cannot be had on musl (it has published
-    ``musllinux_1_2_x86_64`` wheels since 20.0.0, and ``build_base.Dockerfile`` is stale on this
-    point), or that the read I/O is prohibitive at AoU scale (it is cents, and moot here anyway).
-    On the loss side this would catch little that the checks here do not, but on the duplication side
-    it is the detector ``ref_ranges`` lacks entirely (next bullet) and would make the ``vet``
-    duplication screen exact rather than a ratio heuristic. A partial *load* cannot occur: BigQuery
-    load jobs are atomic (``load_parquet_to_bq.py`` loads each batch via ``load_table_from_uri``
-    with ``WRITE_APPEND``, and a failed job commits nothing), so a present partition is either
-    complete, empty (caught by completeness), or duplicated -- and duplicated is caught only for
-    ``vet``, by the duplication screen; for ``ref_ranges`` nothing catches it (next bullet). The one
-    residual truncation source
-    is a Parquet file generated upstream with too few rows -- and there the footer count and the
-    BigQuery count agree, so footer-vs-BigQuery would pass it too. That case is instead surfaced
-    cheaply by ``assess_truncation_screen``, a below-median heuristic on its own threshold (equal to
-    the duplication screen's by default, but only the duplication side has been calibrated); catching
-    it exactly would need a gVCF-level variant count, which is out of scope. Note that the footer
-    comparison shares that blind spot: ``num_rows`` is the file's own self-report, so it closes the
-    double-*load* gap (footer N vs. partition 2N) and not the doubled-*file* gap (footer 2N vs.
-    partition 2N, which reads as agreement). Coordinate with VS-2032 before implementing it here.
-  * ``ref_ranges`` has no cheap per-sample duplication signal -- its row count tracks GQ-band
-    transitions, not genome length, and legitimate samples reach many times the median -- so only
-    whole-sample presence is verified for it and the gap is recorded rather than papered over.
-    Recording it is not detecting it: a ``ref_ranges`` partition loaded twice reaches the callset
-    unnoticed today, and closing that is VS-2032, where the footer comparison above is the proposed
-    mechanism. The other detector that works is exact: ``COUNT(*)`` vs.
-    ``COUNT(DISTINCT packed_ref_data)`` per sample, which costs a full per-sample scan rather than a
-    partition-metadata read and so is out of scope here. Comparing a sample's row count against its
-    counterpart in the parent callset was
-    also considered and rejected: a child callset is seeded by copying its parent, so a defect
-    already present in the parent is copied forward identically and reads as agreement, not
-    disagreement. Cross-generation comparison can only catch a change introduced at or after the
-    copy -- never a defect the parent already had -- so it is not a substitute for a real detector
-    and is not implemented. Do not re-attempt either approach without re-reading this note.
+Scope notes:
+  * The footer comparison (``assess_footer_row_counts``, VS-2032) is the exact per-sample loss and
+    duplication detector. For each ``(table, sample_id)`` it compares the sum of ``num_rows`` across
+    the sample's Parquet footers against what BigQuery holds for it, and any disagreement, in either
+    direction, flags the sample with no threshold involved. It covers ``vet``, ``ref_ranges`` and
+    ploidy alike, so it replaces the ratio-to-median ``vet`` duplication screen VS-1989 shipped and
+    gives ``ref_ranges`` the duplication detector it otherwise has none of: that family admits no
+    count-ratio heuristic, since its row count tracks GQ-band transitions rather than genome length
+    and legitimate samples reach many times the median.
+  * It is free. BigQuery answers ``COUNT(*)`` grouped by ``_FILE_NAME`` from footer metadata, so no
+    data column is read and nothing is billed however many files there are; it needs no Parquet
+    reader, no image change and no client-side read path. Do not repeat the two older rationales for
+    deferring it: that pyarrow cannot be had on musl (it has published ``musllinux_1_2_x86_64`` wheels
+    since 20.0.0, and ``build_base.Dockerfile`` is stale on this point), or that the read I/O is
+    prohibitive at AoU scale (a footer fetch is one or two ranged GETs, cents for ~1M objects, and
+    moot anyway since BigQuery does the reading).
+  * Its limit: ``num_rows`` is the file's own self-report, so the comparison is exact with respect to
+    *loading* and not with respect to *generation*. The same file loaded twice reads footer N against
+    partition 2N and is caught; a file written upstream with doubled rows reads footer 2N against
+    partition 2N and passes as agreement. Truncation has the same shape: a file generated with too
+    few rows agrees with its partition. That upstream case is surfaced, heuristically, by
+    ``assess_truncation_screen``, a below-median ``vet`` screen; catching it exactly would need a
+    gVCF-level count, which is out of scope. A partial *load* cannot occur: BigQuery load jobs are
+    atomic (``load_parquet_to_bq.py`` loads each batch via ``load_table_from_uri`` with
+    ``WRITE_APPEND``, and a failed job commits nothing).
+  * Two other detectors were considered for ``ref_ranges`` and not adopted. ``COUNT(*)`` vs.
+    ``COUNT(DISTINCT packed_ref_data)`` per sample is exact, but a full scan of the dataset's largest
+    table rather than a metadata read. Comparing a sample's row count against its counterpart in the
+    parent callset cannot work: a child callset is seeded by copying its parent, so a defect already
+    present in the parent is copied forward identically and reads as agreement. Do not re-attempt
+    either without re-reading this note.
   * Ploidy cardinality is not a ``ref_ranges`` detector, and must not be read as one. What it sees is
-    a doubled load of the *ploidy* file; because a sample's vet, ref_ranges and ploidy files are
-    written in one pass (see ``DEFAULT_CO_PRODUCED_FAMILIES``), a flag is evidence about that pass
-    rather than a readout of what landed in ``ref_ranges``. A ``ref_ranges`` partition doubled on its
-    own -- the gap in the bullet above -- is invisible to it. And the reading holds only where a
-    sample's ploidy rows were written at ingest: a later backfill writes one row per chromosome by
-    construction, so it satisfies the check whatever the data families hold. See
+    a doubled *ploidy* file or load; because a sample's vet, ref_ranges and ploidy files are written
+    in one pass (see ``DEFAULT_CO_PRODUCED_FAMILIES``), a flag is evidence about that pass rather than
+    a readout of what landed in ``ref_ranges``. It is kept alongside the footer comparison because it
+    sees the one thing footers cannot: a ploidy file written upstream with a repeated chromosome. And
+    the reading holds only where a sample's ploidy rows were written at ingest; see
     ``PLOIDY_BACKFILL_CAVEAT``.
 """
 
@@ -98,10 +87,20 @@ from parse_and_group_files import _validate_table_prefixes
 
 log = logging.getLogger(__name__)
 
-# Families for which a per-sample row-count-to-median duplication screen produces a usable signal.
+# Families for which a per-sample row-count-to-median truncation screen produces a usable signal.
 # Only ``vet`` qualifies (tight distribution); ``ref_ranges`` is deliberately excluded (see module
 # docstring). Callers may override.
-DEFAULT_DUPLICATION_SCREEN_FAMILIES = ["vet"]
+DEFAULT_TRUNCATION_SCREEN_FAMILIES = ["vet"]
+
+# Families whose source Parquet footers are compared, per sample, against the rows BigQuery holds
+# (VS-2032). Each is a directory directly under the Parquet output dir, which GenerateParquetFiles
+# uploads to as ``<family>/[<table_number>/]<file>.parquet``. vcf_header_lines_scratch is not a member:
+# its table is a scratch table drained by a later step, so its row count is not a stable target.
+DEFAULT_FOOTER_CHECKED_FAMILIES = ["vet", "ref_ranges", "sample_chromosome_ploidy"]
+
+# Name the external table over the source Parquet goes by within the footer query. Local to that one
+# query job; nothing is created in any dataset.
+FOOTER_EXTERNAL_TABLE = "source_parquet"
 
 # Regular (non-superpartitioned) tables held to cardinality consistency by the cardinality check.
 # The check is exact and per-sample: COUNT(*) must equal COUNT(DISTINCT chromosome), which a
@@ -120,20 +119,14 @@ DEFAULT_CARDINALITY_TABLE_PREFIXES = ["sample_chromosome_ploidy"]
 # not required to have them and passes; see assess_cross_family_consistency.
 DEFAULT_CO_PRODUCED_FAMILIES = ["vet", "ref_ranges", "sample_chromosome_ploidy"]
 
-# Default ratio-to-median above which a vet sample is flagged as a possible duplicate. Miguel's
-# Foxtrot calibration found vet tight enough that 1.2x is safe against false positives; 1.6x is a
-# conservative default that still catches a doubled sample (~2.0x).
-DEFAULT_VET_DUPLICATION_THRESHOLD = 1.6
-
 # Default ratio-to-median at or below whose reciprocal a vet sample is flagged as possibly truncated:
-# the floor is baseline / threshold, so 1.6 here means 0.625x. Deliberately a separate knob from the
-# duplication threshold even though the two currently share a value, because the evidence behind them
-# is not the same. The Foxtrot calibration measured the high side only (2 samples of 540,545 at 1.6x);
-# nothing has been measured below the median, and a variant-count distribution has no reason to be
-# symmetric in ratio space -- the upper tail is bounded by biology while the lower tail absorbs
-# low-coverage samples, smaller callable fractions, and more aggressive GQ dropping. Mirroring 1.6 is
-# therefore a provisional default, not a derived one, and it must be tunable without moving the high
-# side. Set to 0 to disable the truncation screen entirely (see run_structural_checks). VS-1989.
+# the floor is baseline / threshold, so 1.6 here means 0.625x. It mirrors the 1.6x ceiling of the
+# retired duplication screen, which the Foxtrot calibration measured on the high side only (2 samples
+# of 540,545); nothing has been measured below the median, and a variant-count distribution has no
+# reason to be symmetric in ratio space -- the upper tail is bounded by biology while the lower tail
+# absorbs low-coverage samples, smaller callable fractions, and more aggressive GQ dropping. 1.6 is
+# therefore a provisional default, not a derived one. Set to 0 to disable the truncation screen
+# entirely (see run_structural_checks). VS-1989.
 DEFAULT_VET_TRUNCATION_THRESHOLD = 1.6
 
 # Sentinel value of the truncation threshold meaning "do not run the truncation screen at all".
@@ -141,7 +134,7 @@ TRUNCATION_SCREEN_DISABLED = 0
 
 PLOIDY_BACKFILL_CAVEAT = (
     "This check covers the ploidy table's own rows and nothing else -- it is not a vet or ref_ranges "
-    "duplication detector, and ref_ranges has none today (see VS-2032). Even for ploidy it is only "
+    "duplication detector; the footer row count comparison is (VS-2032). Even for ploidy it is only "
     "meaningful where a sample's rows were written at ingest: a later backfill writes one row per "
     "chromosome by construction, so a backfilled sample satisfies "
     "COUNT(*) == COUNT(DISTINCT chromosome) whatever happened at load time. Do not read a green "
@@ -256,6 +249,133 @@ def get_ploidy_row_counts(project_id, dataset_name, ploidy_table):
         raise
 
 
+def footer_source_uri(output_gcs_dir, family):
+    """
+    Return the external table source URI covering one family's Parquet under ``output_gcs_dir``.
+
+    A trailing wildcard matches across ``/``, so ``<dir>/vet/*.parquet`` spans every ``vet/<NNN>/``
+    subdirectory. Both halves of the scoping matter. The ``<family>/`` component keeps the URI out of
+    ``<dir>/quarantine/`` and any sibling directory; a callset-wide wildcard has been observed to match
+    a sibling callset and double-count. The ``.parquet`` suffix excludes ``.parquet.quarantined``
+    objects and the verification diagnostics JSON.
+    """
+    if not output_gcs_dir.startswith("gs://"):
+        raise ValueError(f"output_gcs_dir must be a gs:// URI (got {output_gcs_dir!r})")
+    return f"{output_gcs_dir.rstrip('/')}/{family}/*.parquet"
+
+
+def get_parquet_footer_row_counts(project_id, output_gcs_dir, families):
+    """
+    Return ``{gcs_uri: num_rows}`` for every Parquet file under each family's directory, as each
+    file's own footer declares it.
+
+    BigQuery reads the footers itself: ``COUNT(*)`` over an external table, grouped by the
+    ``_FILE_NAME`` pseudo-column, is answered from footer metadata without touching a data column, so
+    the query bills zero bytes however many files it covers. One query per family, because the
+    families have different schemas and an external table takes one.
+
+    Callers must pass only families that have files: BigQuery fails a query whose wildcard URI matches
+    nothing.
+    """
+    if not families:
+        return {}
+
+    client = bigquery.Client(project=project_id)
+    query = (f"SELECT _FILE_NAME AS file_name, COUNT(*) AS num_rows "
+             f"FROM {FOOTER_EXTERNAL_TABLE} GROUP BY file_name")
+    file_rows = {}
+    for family in families:
+        external = bigquery.ExternalConfig("PARQUET")
+        external.source_uris = [footer_source_uri(output_gcs_dir, family)]
+        job_config = bigquery.QueryJobConfig(table_definitions={FOOTER_EXTERNAL_TABLE: external})
+        try:
+            job = client.query(query, job_config=job_config)
+            rows = list(job.result())
+        except Exception as e:
+            log.error(f"ERROR: Could not read Parquet footer row counts for {family} from "
+                      f"{external.source_uris[0]}: {e}")
+            raise
+        for row in rows:
+            file_rows[row.file_name] = row.num_rows
+        # Logged because the zero cost is a measured property, not a guarantee: a change to how
+        # BigQuery plans this query would show up here first.
+        log.info(f"Read footer row counts for {len(rows)} {family} Parquet file(s) "
+                 f"(bytes billed: {job.total_bytes_billed}, slot ms: {job.slot_millis})")
+    return file_rows
+
+
+def assess_footer_row_counts(file_rows, gcs_pairs_to_files, partition_rows, regular_counts,
+                             footer_families, superpartitioned_table_prefixes,
+                             regular_table_prefixes):
+    """
+    Compare, per ``(table, sample_id)``, the rows the sample's source Parquet footers declare against
+    the rows BigQuery holds for it (VS-2032). Disagreement in either direction is exact: more rows in
+    BigQuery is a duplicated load, fewer is a lost one. No threshold is involved.
+
+    ``file_rows`` is ``{gcs_uri: num_rows}`` from ``get_parquet_footer_row_counts``. Only files in the
+    GCS listing (``gcs_pairs_to_files``) are counted, so a file written under the output dir after
+    discovery cannot inflate a sample's sum; such files are reported as ``unlisted_files`` and
+    otherwise ignored. A listed file the footer query returned no row for -- unreadable, or a valid
+    file with zero rows, which ``GROUP BY _FILE_NAME`` cannot tell apart -- cannot be counted, so its
+    sample cannot be cleared: it is reported under ``unread`` and flagged alongside the mismatches.
+
+    Ingest writes exactly one file per family per sample, so more than one listed file for a pair is
+    flagged on its own under ``multiple_files``. Summing would otherwise pass a sample loaded once
+    from each of two files, e.g. after a re-run at a different scatter width renamed its file.
+
+    A sample with no BigQuery rows at all compares against 0. That is also a completeness failure,
+    which fails the load outright; it is reported here too rather than special-cased.
+
+    Returns an overall ``ok``, ``flagged_samples`` (every sample with a mismatch, unread file or
+    multiple files in any family), and a per-family breakdown.
+    """
+    bigquery_rows = {(table_name, sample_id): total_rows or 0
+                     for table_name, sample_id, total_rows in partition_rows}
+    for prefix, counts in regular_counts.items():
+        for sample_id, val in counts.items():
+            bigquery_rows[(prefix, sample_id)] = _extract_count_info(val)[0] or 0
+
+    per_family = {fam: {"ok": True, "pairs_checked": 0, "mismatched": [], "unread": [],
+                        "multiple_files": []}
+                  for fam in footer_families}
+    listed = set()
+    for (table_name, sample_id), files in sorted(gcs_pairs_to_files.items()):
+        fam = family_for_table(table_name, superpartitioned_table_prefixes)
+        if fam is None and table_name in regular_table_prefixes:
+            fam = table_name
+        if fam not in per_family:
+            continue
+        listed.update(files)
+        result = per_family[fam]
+        result["pairs_checked"] += 1
+        if len(files) > 1:
+            result["multiple_files"].append({"table": table_name, "sample_id": sample_id,
+                                             "files": sorted(files)})
+        unread = sorted(f for f in files if f not in file_rows)
+        if unread:
+            result["unread"].append({"table": table_name, "sample_id": sample_id, "files": unread})
+            continue
+        footer = sum(file_rows[f] for f in files)
+        in_bigquery = bigquery_rows.get((table_name, sample_id), 0)
+        if footer != in_bigquery:
+            result["mismatched"].append({"table": table_name, "sample_id": sample_id,
+                                         "footer_rows": footer, "bigquery_rows": in_bigquery})
+
+    flagged = set()
+    for result in per_family.values():
+        result["ok"] = not result["mismatched"] and not result["unread"] and not result["multiple_files"]
+        flagged.update(m["sample_id"] for m in result["mismatched"])
+        flagged.update(u["sample_id"] for u in result["unread"])
+        flagged.update(m["sample_id"] for m in result["multiple_files"])
+
+    return {
+        "ok": not flagged,
+        "flagged_samples": sorted(flagged),
+        "unlisted_files": sorted(set(file_rows) - listed),
+        "per_family": per_family,
+    }
+
+
 def assess_family_completeness(partition_rows, regular_counts, expected_by_family,
                                superpartitioned_table_prefixes, regular_table_prefixes):
     """
@@ -277,12 +397,8 @@ def assess_family_completeness(partition_rows, regular_counts, expected_by_famil
         fam = family_for_table(table_name, superpartitioned_table_prefixes)
         if fam is None:
             continue
-        # Nonzero partition row count check. Per VS-1989 design (see module docstring Scope notes),
-        # exact per-file Parquet footer reads are intentionally deferred due to pyarrow dependency and
-        # scale limits at 400k+ samples. BigQuery load jobs commit atomically; partial/truncated data is
-        # screened downstream via assess_truncation_screen on vet. Ploidy has no truncation screen:
-        # assess_cardinality detects duplication exactly and deliberately screens nothing on the low
-        # side (see its docstring).
+        # Presence only. Whether a present partition holds the right number of rows is the footer
+        # comparison's question (assess_footer_row_counts).
         if total_rows and total_rows > 0:
             present_by_family[fam].add(sample_id)
         else:
@@ -437,100 +553,29 @@ def assess_cardinality(counts, expected_samples):
     }
 
 
-def assess_duplication_screen(partition_rows, family, expected_samples,
-                              superpartitioned_table_prefixes, threshold):
-    """
-    Flag samples in ``family`` whose ``total_rows`` is at least ``threshold`` times the callset
-    median -- a heuristic screen for duplication. Returns the flagged samples in ``flagged_samples``;
-    the caller decides whether those samples' Parquet is quarantined from deletion (the default) or
-    deleted with everything else (``allow_flagged_vet_loads``). A flag is scoped to the samples named
-    here and never to the run.
-
-    Only meaningful for families with a tight per-sample distribution (``vet``); callers must not
-    apply it to ``ref_ranges``.
-    """
-    # The baseline population is this run's expected samples, NOT every sample in the dataset, so a
-    # sample loaded by an earlier run contributes no cohort consensus here. That is a property of the
-    # batch rather than of the callset, and it is why a small incremental top-up degenerates: N=1 has
-    # no cohort at all and flags unconditionally below, and N=2 takes its baseline from one of the two
-    # values it saw. ``partition_rows`` is already unscoped (see get_partition_row_counts), so drawing
-    # the baseline from the whole callset would cost no additional BigQuery read -- it is left scoped
-    # pending a decision on mixed-assay datasets. VS-2027; operator workarounds are in
-    # scripts/variantstore/parquet_loading/README.md.
-    expected = set(expected_samples)
-    rows_by_sample = {
-        sample_id: total_rows
-        for table_name, sample_id, total_rows in partition_rows
-        if family_for_table(table_name, superpartitioned_table_prefixes) == family
-        and sample_id in expected
-        and total_rows and total_rows > 0
-    }
-
-    if not rows_by_sample:
-        return {"family": family, "threshold": threshold, "median": None, "baseline": None,
-                "samples_screened": 0, "outliers": [], "singleton_flagged": False,
-                "flagged_samples": []}
-
-    median = statistics.median(rows_by_sample.values())
-    # In a two-sample load, median averages the two values, diluting a 2x duplicate to 1.333x
-    # (which misses the default 1.6x threshold). Use the lower value as the duplication baseline.
-    baseline = min(rows_by_sample.values()) if len(rows_by_sample) == 2 else median
-
-    outliers = []
-    if baseline > 0:
-        for sid, rows in rows_by_sample.items():
-            ratio = rows / baseline
-            if ratio >= threshold:
-                outliers.append({"sample_id": sid, "rows": rows, "ratio": round(ratio, 3)})
-    outliers.sort(key=lambda d: d["ratio"], reverse=True)
-
-    singleton_flagged = len(rows_by_sample) == 1
-
-    return {
-        "family": family,
-        "threshold": threshold,
-        "median": median,
-        "baseline": baseline,
-        "samples_screened": len(rows_by_sample),
-        "outliers": outliers,
-        "singleton_flagged": singleton_flagged,
-        # The samples this screen objects to, and so the samples whose Parquet is quarantined rather
-        # than deleted. A singleton load has no peers to compare against, so the screen cannot clear
-        # the one sample it saw and names it instead of an outlier set.
-        "flagged_samples": (sorted(rows_by_sample) if singleton_flagged
-                            else sorted(o["sample_id"] for o in outliers)),
-    }
-
-
 def assess_truncation_screen(partition_rows, family, expected_samples,
                              superpartitioned_table_prefixes, threshold):
     """
-    Flag samples in ``family`` whose ``total_rows`` is at most ``median / threshold`` -- the low-side
-    counterpart of ``assess_duplication_screen`` and a heuristic screen for a grossly truncated
-    partition. Returns the flagged samples in ``flagged_samples``; the caller decides whether those
-    samples' Parquet is quarantined from deletion (the default) or deleted with everything else
-    (``allow_flagged_vet_loads``). A flag is scoped to the samples named here and never to the run.
+    Flag samples in ``family`` whose ``total_rows`` is at most ``median / threshold`` -- a heuristic
+    screen for a grossly truncated partition. Returns the flagged samples in ``flagged_samples``; the
+    caller decides whether those samples' Parquet is quarantined from deletion (the default) or deleted
+    with everything else (``allow_flagged_vet_loads``). A flag is scoped to the samples named here and
+    never to the run.
 
-    ``threshold`` is this screen's own, passed separately from the duplication screen's even though
-    the two share a default value. They are not equally evidenced: the Foxtrot calibration measured
-    the high side only, so mirroring 1.6 into a 0.625x floor is an assumption of symmetry rather than
-    a measurement, and a variant-count distribution has no reason to be symmetric in ratio space --
-    the upper tail is bounded by biology while the lower tail absorbs low-coverage samples, smaller
-    callable fractions, and more aggressive GQ dropping. Keeping the knobs separate is what lets the
-    low side be recalibrated, or turned off with ``TRUNCATION_SCREEN_DISABLED``, without disturbing
-    the calibrated high side. See VS-1989.
+    The default threshold is provisional. It mirrors the 1.6x ceiling of the retired duplication
+    screen, which the Foxtrot calibration measured on the high side only, so the 0.625x floor is an
+    assumption of symmetry rather than a measurement -- and a variant-count distribution has no reason
+    to be symmetric in ratio space: the upper tail is bounded by biology while the lower tail absorbs
+    low-coverage samples, smaller callable fractions, and more aggressive GQ dropping. Pass
+    ``TRUNCATION_SCREEN_DISABLED`` to turn it off. See VS-1989.
 
-    This is the only cheap detector for the one truncation source the rest of the row-count gate
-    misses: a Parquet file generated upstream with far fewer rows than its peers. Truncation cannot
-    arise from the load itself -- BigQuery load jobs are atomic (``load_parquet_to_bq.py`` loads each
-    batch via ``load_table_from_uri`` with ``WRITE_APPEND``, and a failed job commits nothing), so a
-    present partition is either complete, empty (zero rows, caught by completeness), or duplicated
-    (caught by the duplication screen), never partially committed. A load-vs-source row comparison
-    (the deferred footer-vs-BigQuery check) would therefore add cost -- a footer read per file, a new
-    pyarrow dependency -- without catching anything this does not: where a source Parquet is itself
-    truncated, its footer count and the BigQuery count agree, so that comparison would pass it too.
-    Catching the upstream case exactly would need a gVCF-level count, which is out of scope; a
-    below-peers heuristic is what remains, and that is this.
+    This is the only detector for the one truncation source the footer comparison misses: a Parquet
+    file generated upstream with far fewer rows than its peers. Its footer count and its BigQuery
+    count agree, so ``assess_footer_row_counts`` passes it. Truncation cannot arise from the load
+    itself -- BigQuery load jobs are atomic (``load_parquet_to_bq.py`` loads each batch via
+    ``load_table_from_uri`` with ``WRITE_APPEND``, and a failed job commits nothing). Catching the
+    upstream case exactly would need a gVCF-level count, which is out of scope; a below-peers
+    heuristic is what remains, and that is this.
 
     Only meaningful for families with a tight per-sample distribution (``vet``); callers must not apply
     it to ``ref_ranges``, whose row count varies by orders of magnitude between legitimate samples.
@@ -544,8 +589,14 @@ def assess_truncation_screen(partition_rows, family, expected_samples,
                 "baseline": None, "samples_screened": 0, "outliers": [], "singleton_flagged": False,
                 "flagged_samples": []}
 
-    # Run-scoped baseline population, with the same small-batch consequence as the duplication screen
-    # above; see the comment there and VS-2027.
+    # The baseline population is this run's expected samples, NOT every sample in the dataset, so a
+    # sample loaded by an earlier run contributes no cohort consensus here. That is a property of the
+    # batch rather than of the callset, and it is why a small incremental top-up degenerates: N=1 has
+    # no cohort at all and flags unconditionally below, and N=2 takes its baseline from one of the two
+    # values it saw. ``partition_rows`` is already unscoped (see get_partition_row_counts), so drawing
+    # the baseline from the whole callset would cost no additional BigQuery read -- it is left scoped
+    # pending a decision on mixed-assay datasets. VS-2027; operator workarounds are in
+    # scripts/variantstore/parquet_loading/README.md.
     expected = set(expected_samples)
     rows_by_sample = {
         sample_id: total_rows
@@ -591,20 +642,23 @@ def assess_truncation_screen(partition_rows, family, expected_samples,
     }
 
 
-def run_structural_checks(project_id, dataset_name, expected_by_family,
+def run_structural_checks(project_id, dataset_name, expected_by_family, gcs_pairs_to_files,
+                          output_gcs_dir,
                           superpartitioned_table_prefixes=None, regular_table_prefixes=None,
-                          vet_duplication_threshold=DEFAULT_VET_DUPLICATION_THRESHOLD,
                           vet_truncation_threshold=DEFAULT_VET_TRUNCATION_THRESHOLD,
                           allow_flagged_vet_loads=False,
-                          duplication_screen_families=None,
+                          truncation_screen_families=None,
                           cardinality_table_prefixes=None,
-                          co_produced_families=None):
+                          co_produced_families=None,
+                          footer_checked_families=None):
     """
     Run the independent structural checks and return a result dict.
 
     ``expected_by_family`` maps a family name (a superpartitioned prefix such as ``vet`` /
     ``ref_ranges``, or a regular table name such as ``sample_chromosome_ploidy``) to the set of
-    ``sample_id`` values GCS says should be loaded for it.
+    ``sample_id`` values GCS says should be loaded for it. ``gcs_pairs_to_files`` maps each
+    ``(table_name, sample_id)`` in the GCS listing to its Parquet URIs, and ``output_gcs_dir`` is the
+    directory those files were discovered under; the footer comparison needs both.
 
     ``regular_table_prefixes`` are the non-superpartitioned per-sample tables checked for completeness
     (every expected sample present with > 0 rows). ``cardinality_table_prefixes`` is the subset of
@@ -618,59 +672,47 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
     made and what that leaves undetected.
 
     The returned dict carries flat booleans read shallowly downstream (``completeness_ok``,
-    ``cardinality_ok``, ``cross_family_ok``, ``duplication_flagged``, ``truncation_flagged``) plus a
-    nested ``details`` block for humans and logs. ``completeness_ok``, ``cardinality_ok`` and
+    ``cardinality_ok``, ``cross_family_ok``, ``row_count_mismatch_flagged``, ``truncation_flagged``)
+    plus a nested ``details`` block for humans and logs. ``completeness_ok``, ``cardinality_ok`` and
     ``cross_family_ok`` are the exact signals that gate ``all_loaded`` (and so the fail-loud abort).
-    ``vet_duplication_threshold`` and ``vet_truncation_threshold`` are separate knobs with the same
-    default: the Foxtrot calibration measured only the high side, so the low-side floor
-    (``baseline / vet_truncation_threshold``) is a provisional mirror that must be movable on its own.
-    Pass ``TRUNCATION_SCREEN_DISABLED`` for the latter to switch the truncation screen off while
-    leaving the calibrated duplication screen running.
 
-    The duplication and truncation screens never
-    affect ``all_loaded``, and they no longer gate deletion for the run either: they contribute
-    ``flagged_samples``, the union of the samples they object to, whose Parquet the caller quarantines
-    out of the bulk delete's reach so it survives for inspection. The rest of the callset is deleted
-    normally. ``duplication_flagged`` and ``truncation_flagged`` remain as per-screen summaries for
-    logs and workflow outputs. When ``allow_flagged_vet_loads`` is true the screens are waived and
-    ``flagged_samples`` is not acted on, so flagged Parquet is deleted with everything else;
-    ``allow_flagged_vet_loads`` is carried through unchanged so the log summary can say so.
+    The footer comparison and the truncation screen never affect ``all_loaded``, and do not gate
+    deletion for the run either: they name samples, whose Parquet the caller quarantines out of the
+    bulk delete's reach so it survives for inspection, and the rest of the callset is deleted normally.
+    ``flagged_samples`` is the union of both. ``row_count_mismatch_samples`` is the footer comparison's
+    share on its own, because the two are not alike: the footer comparison is exact and cannot be
+    waived, while the truncation screen is a heuristic that ``allow_flagged_vet_loads`` waives. The
+    waiver is applied by the caller; it is carried through here unchanged so the log summary can say
+    so. Pass ``TRUNCATION_SCREEN_DISABLED`` as ``vet_truncation_threshold`` to switch the truncation
+    screen off.
     """
     # Reject a nonsensical ratio before any BigQuery read. A value <= 1 makes ordinary samples satisfy
-    # the outlier condition (>= threshold * median for duplication, <= median / threshold for
-    # truncation), so the screen would flag half the callset; 0 additionally divides by zero in the
-    # truncation screen. Fail fast with an actionable message rather than crash mid-verification or
-    # silently flag everything.
-    def _validate_threshold(name, value, disable_sentinel=None):
-        try:
-            ok = math.isfinite(value) and value > 1
-        except TypeError:
-            ok = False
-        if not ok and not (disable_sentinel is not None and value == disable_sentinel):
-            disable_hint = (f", or exactly {disable_sentinel} to disable the screen"
-                            if disable_sentinel is not None else "")
-            raise ValueError(
-                f"{name} must be a finite number > 1{disable_hint} (got {value!r}); a ratio <= 1 "
-                "flags ordinary samples, and 0 divides by zero in the truncation screen."
-            )
-
-    _validate_threshold("vet_duplication_threshold", vet_duplication_threshold)
-    # The truncation threshold alone accepts a disable sentinel: it is the uncalibrated one, so an
-    # operator who finds it flagging ordinary samples needs a way to switch it off that does not also
-    # switch off the calibrated duplication screen. VS-1989.
-    _validate_threshold("vet_truncation_threshold", vet_truncation_threshold,
-                        disable_sentinel=TRUNCATION_SCREEN_DISABLED)
+    # the outlier condition (<= median / threshold), so the screen would flag half the callset. Fail
+    # fast with an actionable message rather than silently flag everything. The disable sentinel lets
+    # an operator who finds the uncalibrated screen flagging ordinary samples switch it off. VS-1989.
+    try:
+        threshold_ok = math.isfinite(vet_truncation_threshold) and vet_truncation_threshold > 1
+    except TypeError:
+        threshold_ok = False
+    if not threshold_ok and vet_truncation_threshold != TRUNCATION_SCREEN_DISABLED:
+        raise ValueError(
+            f"vet_truncation_threshold must be a finite number > 1, or exactly "
+            f"{TRUNCATION_SCREEN_DISABLED} to disable the screen (got {vet_truncation_threshold!r}); "
+            "a ratio <= 1 flags ordinary samples."
+        )
 
     if superpartitioned_table_prefixes is None:
         superpartitioned_table_prefixes = ["vet", "ref_ranges"]
     if regular_table_prefixes is None:
         regular_table_prefixes = ["sample_chromosome_ploidy"]
-    if duplication_screen_families is None:
-        duplication_screen_families = DEFAULT_DUPLICATION_SCREEN_FAMILIES
+    if truncation_screen_families is None:
+        truncation_screen_families = DEFAULT_TRUNCATION_SCREEN_FAMILIES
     if cardinality_table_prefixes is None:
         cardinality_table_prefixes = DEFAULT_CARDINALITY_TABLE_PREFIXES
     if co_produced_families is None:
         co_produced_families = DEFAULT_CO_PRODUCED_FAMILIES
+    if footer_checked_families is None:
+        footer_checked_families = DEFAULT_FOOTER_CHECKED_FAMILIES
 
     partition_rows = get_partition_row_counts(
         project_id, dataset_name, superpartitioned_table_prefixes
@@ -724,71 +766,44 @@ def run_structural_checks(project_id, dataset_name, expected_by_family,
         cardinality[prefix] = result
         cardinality_ok = cardinality_ok and result["ok"]
 
-    # Duplication and truncation screens on the usable superpartitioned families only (vet): same
-    # families, opposite sides of the median, and a threshold each -- equal by default but separately
-    # settable, because only the high side has been calibrated. ref_ranges is recorded as
-    # intentionally unchecked. The truncation screen is the low-side mirror -- it catches a grossly under-rowed
-    # partition, the one truncation source a row-count gate can produce cheaply (see
-    # assess_truncation_screen for why an exact load-vs-source comparison would add nothing here).
-    duplication = {}
+    # Footer comparison (VS-2032), exact and per sample. Limited to the configured families, and of
+    # those to the ones with files this run: a wildcard URI that matches nothing fails the query.
+    configured_footer_families = [f for f in footer_checked_families if f in configured_families]
+    footer_families_with_files = [f for f in configured_footer_families if expected_by_family.get(f)]
+    file_rows = get_parquet_footer_row_counts(project_id, output_gcs_dir, footer_families_with_files)
+    footer = assess_footer_row_counts(
+        file_rows, gcs_pairs_to_files, partition_rows, regular_counts,
+        configured_footer_families, superpartitioned_table_prefixes, regular_table_prefixes,
+    )
+
+    # Truncation screen on the usable superpartitioned families only (vet). ref_ranges is excluded: its
+    # row count varies by orders of magnitude between legitimate samples (see the module docstring).
     truncation = {}
-    for family in duplication_screen_families:
+    for family in truncation_screen_families:
         if family in superpartitioned_table_prefixes:
-            duplication[family] = assess_duplication_screen(
-                partition_rows, family, expected_by_family.get(family, set()),
-                superpartitioned_table_prefixes, vet_duplication_threshold,
-            )
             truncation[family] = assess_truncation_screen(
                 partition_rows, family, expected_by_family.get(family, set()),
                 superpartitioned_table_prefixes, vet_truncation_threshold,
             )
-    unscreened = {
-        "checked": False,
-        "reason": ("These families have no duplication detector today: a partition loaded twice "
-                   "passes every check here. A row-count ratio screen like vet's does not work for "
-                   "them, since row count tracks GQ-band transitions, not genome length. The exact "
-                   "footer-vs-partition row count comparison is deferred to VS-2032. See the module "
-                   "docstring."),
-        "families": sorted(f for f in superpartitioned_table_prefixes if f not in duplication),
-    }
-
-    # The screens are heuristic, so a flag names the samples to hold back for inspection rather than
-    # condemning the run: the caller quarantines these samples' Parquet and deletes the rest. The
-    # union is over every screen because a sample flagged by either side is equally unexplained.
-    flagged_samples = sorted(
-        {sid
-         for screen in (duplication, truncation)
-         for result in screen.values()
-         for sid in result["flagged_samples"]}
+    truncation_flagged_samples = sorted(
+        {sid for result in truncation.values() for sid in result["flagged_samples"]}
     )
-    # The duplication union on its own, reported alongside the overall one because the two screens are
-    # not equally trustworthy: the duplication threshold was calibrated against Foxtrot (2 flagged of
-    # 540,545) while the truncation threshold has only been measured on its high side. Callers that act
-    # on a flag more forcefully than by quarantining -- GvsImportGenomes aborts the run -- key on this
-    # subset so an uncalibrated heuristic is not what fails a completed ingest.
-    duplication_flagged_samples = sorted(
-        {sid
-         for result in duplication.values()
-         for sid in result["flagged_samples"]}
-    )
-    duplication_flagged = any(d["flagged_samples"] for d in duplication.values())
-    truncation_flagged = any(t["flagged_samples"] for t in truncation.values())
 
     return {
         "completeness_ok": completeness["ok"],
         "cardinality_ok": cardinality_ok,
         "cross_family_ok": cross_family["ok"],
-        "duplication_flagged": duplication_flagged,
-        "truncation_flagged": truncation_flagged,
-        "flagged_samples": flagged_samples,
-        "duplication_flagged_samples": duplication_flagged_samples,
+        "row_count_mismatch_flagged": not footer["ok"],
+        "truncation_flagged": bool(truncation_flagged_samples),
+        "flagged_samples": sorted(set(footer["flagged_samples"]) | set(truncation_flagged_samples)),
+        "row_count_mismatch_samples": footer["flagged_samples"],
+        "truncation_flagged_samples": truncation_flagged_samples,
         "allow_flagged_vet_loads": allow_flagged_vet_loads,
         "details": {
             "family_completeness": completeness,
             "cross_family_consistency": cross_family,
             "cardinality": cardinality,
-            "duplication_screen": duplication,
+            "footer_row_counts": footer,
             "truncation_screen": truncation,
-            "duplication_unscreened": unscreened,
         },
     }

@@ -18,9 +18,12 @@
 #       localhost. Used by the GitHub Actions workflow (VS-1983).
 #
 # Optional environment overrides:
-#   EMULATOR_IMAGE   BigQuery emulator image (default ghcr.io/goccy/bigquery-emulator:0.8).
-#   EMULATOR_PORT    Host port for the emulator in native mode (default 9050).
-#   PYTHON_BIN       Python interpreter for native mode (default python3).
+#   EMULATOR_IMAGE     BigQuery emulator image (default ghcr.io/goccy/bigquery-emulator:0.8).
+#   EMULATOR_PLATFORM  Platform for the emulator container (default: the Docker daemon's native
+#                      architecture, e.g. linux/arm64 on Apple Silicon). Test containers in docker
+#                      mode stay linux/amd64, since they exercise the shipped image.
+#   EMULATOR_PORT      Host port for the emulator in native mode (default 9050).
+#   PYTHON_BIN         Python interpreter for native mode (default python3).
 #
 # Exit status is non-zero if any test file fails or the emulator does not start.
 
@@ -47,6 +50,10 @@ VARIANTSTORE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
 # Pinned to a specific emulator release: Override if needed.
 EMULATOR_IMAGE="${EMULATOR_IMAGE:-ghcr.io/goccy/bigquery-emulator:0.8}"
+# The emulator runs at the daemon's native architecture: the amd64 build crashes under qemu (e.g. Colima
+# without Rosetta) with "growslice: len out of range" (VS-2056). Explicit because a bare `docker run`
+# reuses whatever architecture a previously pulled tag points to.
+EMULATOR_PLATFORM="${EMULATOR_PLATFORM:-linux/$(docker version --format '{{.Server.Arch}}')}"
 EMULATOR_PORT="${EMULATOR_PORT:-9050}"
 PYTHON_BIN="${PYTHON_BIN:-python3}"
 # $$-suffixed so concurrent runs (e.g. a local build while CI runs) do not collide.
@@ -69,11 +76,11 @@ trap cleanup_emulator EXIT
 # the host python client can reach it at localhost.
 if [[ "${MODE}" == "docker" ]]; then
     docker network create "${EMULATOR_NETWORK}" > /dev/null
-    docker run -d --platform linux/amd64 --name "${EMULATOR_NAME}" --network "${EMULATOR_NETWORK}" \
+    docker run -d --platform "${EMULATOR_PLATFORM}" --name "${EMULATOR_NAME}" --network "${EMULATOR_NETWORK}" \
         "${EMULATOR_IMAGE}" --project="${EMULATOR_PROJECT}" --dataset="${EMULATOR_DATASET}" > /dev/null
     EMULATOR_ENDPOINT="http://${EMULATOR_NAME}:9050"
 else
-    docker run -d --platform linux/amd64 --name "${EMULATOR_NAME}" -p "${EMULATOR_PORT}:9050" \
+    docker run -d --platform "${EMULATOR_PLATFORM}" --name "${EMULATOR_NAME}" -p "${EMULATOR_PORT}:9050" \
         "${EMULATOR_IMAGE}" --project="${EMULATOR_PROJECT}" --dataset="${EMULATOR_DATASET}" > /dev/null
     EMULATOR_ENDPOINT="http://localhost:${EMULATOR_PORT}"
 fi
@@ -93,7 +100,7 @@ if [[ "${emulator_ready}" -ne 1 ]]; then
     docker logs "${EMULATOR_NAME}" >&2 || true
     exit 1
 fi
-echo "BigQuery emulator is up (mode=${MODE}, endpoint=${EMULATOR_ENDPOINT})."
+echo "BigQuery emulator is up (platform=${EMULATOR_PLATFORM}, mode=${MODE}, endpoint=${EMULATOR_ENDPOINT})."
 
 # Run each test file. The GVS_HEADER_IT_* env vars are consumed only by the header-load integration
 # test; other test files ignore them.
