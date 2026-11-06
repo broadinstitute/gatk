@@ -29,8 +29,9 @@ public final class MummerExecutor {
 
     public static final String MUMMER_X86_64_MAC_BINARIES_ZIPFILE = "MUMmer-4.0.0rc1_mac_x64_64.zip";
     public static final String MUMMER_X86_64_LINUX_BINARIES_ZIPFILE = "MUMmer-4.0.0rc1_linux_x64_64.zip";
-    // TODO: Need to recompile MUMmer 4.0.0rc1 for native M1 architecture as well
-    // TODO: (however the Mac Intel build should be runnable on M1 platforms with x86 emulation)
+    // Native aarch64 (Apple Silicon) Mac build. The zip is produced by recompiling MUMmer 4.0.0rc1
+    // for arm64 (see docs/arm64/native-libs.md) and dropping it next to the x86 zips on the classpath.
+    public static final String MUMMER_AARCH64_MAC_BINARIES_ZIPFILE = "MUMmer-4.0.0rc1_mac_aarch64.zip";
 
     private static final Logger logger = LogManager.getLogger(MummerExecutor.class);
     private File mummerExecutableDirectory;
@@ -52,7 +53,17 @@ public final class MummerExecutor {
     }
 
     private String selectCorrectMummerDistributionForPlatform() {
-        if ( NativeUtils.runningOnMac() && NativeUtils.runningOn64BitX86Architecture() ) {
+        if ( NativeUtils.runningOnMac() && NativeUtils.runningOnAarch64Architecture() ) {
+            if ( getClass().getResource(MUMMER_AARCH64_MAC_BINARIES_ZIPFILE) != null ) {
+                logger.info("Using the aarch64 (Apple Silicon) Mac OS build of MUMmer");
+                return MUMMER_AARCH64_MAC_BINARIES_ZIPFILE;
+            }
+            throw new UserException("Unable to run MUMmer aligner: a native aarch64 (Apple Silicon) MUMmer " +
+                    "distribution has not yet been bundled with GATK. Build it as described in docs/arm64/native-libs.md " +
+                    "and place " + MUMMER_AARCH64_MAC_BINARIES_ZIPFILE + " on the classpath, or run GATK under x86_64 " +
+                    "Rosetta emulation for CompareReferences --mode FULL_ALIGNMENT.");
+        }
+        else if ( NativeUtils.runningOnMac() && NativeUtils.runningOn64BitX86Architecture() ) {
             logger.info("Using the x86_64 Mac OS build of MUMmer");
             return MUMMER_X86_64_MAC_BINARIES_ZIPFILE;
         }

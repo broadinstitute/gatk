@@ -4,7 +4,9 @@ import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
+import org.broadinstitute.hellbender.utils.NativeUtils;
 import org.testng.Assert;
+import org.testng.SkipException;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
@@ -54,6 +56,12 @@ public class RampedHaplotypeCallerIntegrationTest extends CommandLineProgramTest
     // THis test has been disabled due to issues with the ZipFilesystem comparisons operations.
     @Test(dataProvider = "offrampTestData")
     public void testOfframp(final String type, final String expectedFilename) throws Exception {
+        // The ramp dumps compare PairHMM likelihood matrices exactly (no tolerance); these doubles
+        // differ by ~1 ULP across CPU architectures (Java Math.* is not bit-identical across platforms),
+        // so the x86-generated reference does not bit-match on other architectures. Run on x86 only.
+        if (!NativeUtils.runningOn64BitX86Architecture()) {
+            throw new SkipException("HaplotypeCaller ramp likelihood-matrix dumps are x86-reference-specific (Java Math.* FP differs ~1 ULP across architectures).");
+        }
         final File input = new File(largeFileTestDir, "input_jukebox_for_test.bam");
         final File output = createTempFile("output", ".vcf");
         final File offramp = createTempFile("offramp", ".zip");
