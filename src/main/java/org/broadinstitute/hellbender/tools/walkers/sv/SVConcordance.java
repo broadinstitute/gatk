@@ -318,9 +318,14 @@ public final class SVConcordance extends AbstractConcordanceWalker {
         return builder.make();
     }
 
+    /**
+     * Truth/eval pairing is done by the {@link StratifiedConcordanceEngine}, which clusters truth and eval records
+     * independently of how the base walker pairs them.  Never pairing records ensures each truth and eval record is
+     * passed to {@link #apply} (and therefore added to the engine) exactly once.
+     */
     @Override
-    protected boolean areVariantsAtSameLocusConcordant(final VariantContext truth, final VariantContext eval) {
-        return true;
+    protected boolean shouldVariantsBeMatched(final VariantContext truth, final VariantContext eval) {
+        return false;
     }
 
     protected VCFHeader createHeader(final VCFHeader header) {
