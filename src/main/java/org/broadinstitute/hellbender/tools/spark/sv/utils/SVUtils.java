@@ -280,7 +280,7 @@ public final class SVUtils {
         for (int i = 0; i < toHash.length; i += 8) {
             long val = 0;
             for (int j = 0; j < 8 && i + j < toHash.length; j++) {
-                val = (val << 8) | toHash[i + j];
+                val = (val << 8) | (toHash[i + j] & 0xffL);
             }
             start = fnvLong64(start, val);
         }
