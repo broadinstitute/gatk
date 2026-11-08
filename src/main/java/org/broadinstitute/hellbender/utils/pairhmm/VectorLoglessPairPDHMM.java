@@ -1,6 +1,6 @@
 package org.broadinstitute.hellbender.utils.pairhmm;
 
-import com.intel.gkl.pdhmm.IntelPDHMM;
+import com.fulcrumgenomics.fgkl.pdhmm.FgklPdHmm;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.SAMUtils;
 
@@ -28,8 +28,8 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Class for performing the pair HMM for global alignment using AVX instructions
- * contained in a native shared library.
+ * Class for performing the partially determined pair HMM for global alignment using the fgkl native library, which
+ * selects the fastest SIMD kernel available on the running CPU and computes on the calling thread.
  */
 public final class VectorLoglessPairPDHMM extends LoglessPDPairHMM {
 
@@ -39,25 +39,24 @@ public final class VectorLoglessPairPDHMM extends LoglessPDPairHMM {
     private static long postProcessingTime = 0;
     private static long totalComps = 0;
 
-    private final IntelPDHMM pairPDHmm;
+    private final FgklPdHmm pairPDHmm;
 
     /**
      * Create a VectorLoglessPairHMM
      *
-     * @param args           arguments to the native GKL implementation
+     * @param args           arguments to the native implementation
+     * @throws UserException.HardwareFeatureException if no native library is available for this platform
      */
     public VectorLoglessPairPDHMM(final PDHMMNativeArguments args)
             throws UserException.HardwareFeatureException {
-        final boolean isSupported;
-
-        // Check if the native library loads (which internally checks for AVX support)
-        pairPDHmm = new IntelPDHMM();
-        isSupported = pairPDHmm.load(null); // NOTE: the temp dir defaults to Java.IO.File's temp dir
-        if (!isSupported) {
-            throw new UserException.HardwareFeatureException("Machine does not support OpenMP AVX PairHMM.");
+        pairPDHmm = new FgklPdHmm();
+        if (!pairPDHmm.load(null)) {
+            throw new UserException.HardwareFeatureException("The native PDPairHMM library is not available on this platform.");
         }
-
         pairPDHmm.initialize(args);
+        // Double precision reproduces the Java PDPairHMM's likelihoods to the precision they are reported at
+        pairPDHmm.setDoublePrecision(true);
+        logger.info("Using the native PDPairHMM with the " + pairPDHmm.backend() + " backend");
     }
 
     public void initialize(final int readMaxLength, final int haplotypeMaxLength) {
