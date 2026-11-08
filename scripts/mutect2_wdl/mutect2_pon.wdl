@@ -83,7 +83,7 @@ workflow Mutect2_Panel {
     scatter (subintervals in SplitIntervals.interval_files ) {
             call CreatePanel {
                 input:
-                    input_vcfs = Mutect2.filtered_vcf,
+                    input_vcfs = Mutect2.output_vcf,
                     intervals = subintervals,
                     ref_fasta = ref_fasta,
                     ref_fai = ref_fai,
@@ -107,8 +107,8 @@ workflow Mutect2_Panel {
     output {
         File pon = MergeVCFs.merged_vcf
         File pon_idx = MergeVCFs.merged_vcf_idx
-        Array[File] normal_calls = Mutect2.filtered_vcf
-        Array[File] normal_calls_idx = Mutect2.filtered_vcf_idx
+        Array[File] normal_calls = Mutect2.output_vcf
+        Array[File] normal_calls_idx = Mutect2.output_vcf_idx
     }
 }
 
