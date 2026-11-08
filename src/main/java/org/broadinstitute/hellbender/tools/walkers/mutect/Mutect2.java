@@ -2,6 +2,7 @@ package org.broadinstitute.hellbender.tools.walkers.mutect;
 
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.variant.variantcontext.writer.VariantContextWriter;
+import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.ArgumentCollection;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -17,6 +18,7 @@ import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollecti
 import org.broadinstitute.hellbender.engine.spark.Mutect2AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
+import org.broadinstitute.hellbender.tools.walkers.contamination.PileupSummaryCollector;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
@@ -271,6 +273,10 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
     @Override
     public void onTraversalStart() {
+        if (MTAC.commonVariantsForPileupSummaries != null) {
+            PileupSummaryCollector.validateHeader((VCFHeader) getHeaderForFeatures(MTAC.commonVariantsForPileupSummaries));
+        }
+
         VariantAnnotatorEngine annotatorEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), null, Collections.emptyList(), false, false);
         m2Engine = new Mutect2Engine(MTAC, assemblyRegionArgs, createOutputBamIndex, createOutputBamMD5, getHeaderForReads(),
                 getBestAvailableSequenceDictionary(), referenceArguments.getReferenceSpecifier(), annotatorEngine);
@@ -354,6 +360,17 @@ public final class Mutect2 extends AssemblyRegionWalker {
                 assemblyRegionArgs.activityProfileType != ActivityProfile.ProfileType.MUTECT2) {
             throw new CommandLineException.BadArgumentValue(AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME,
                     "requires --" + AssemblyRegionArgumentCollection.ACTIVITY_PROFILE_TYPE_LONG_NAME + " " + ActivityProfile.ProfileType.MUTECT2);
+        }
+
+        // pileup summaries need the common variants, which are for nothing else
+        final boolean pileupSummariesRequested = MTAC.tumorPileupSummaries != null || MTAC.normalPileupSummaries != null;
+        if (pileupSummariesRequested && MTAC.commonVariantsForPileupSummaries == null) {
+            throw new CommandLineException.MissingArgument(M2ArgumentCollection.COMMON_VARIANTS_FOR_PILEUP_SUMMARIES_LONG_NAME,
+                    "pileup summaries require common variants");
+        } else if (!pileupSummariesRequested && MTAC.commonVariantsForPileupSummaries != null) {
+            throw new CommandLineException.BadArgumentValue(M2ArgumentCollection.COMMON_VARIANTS_FOR_PILEUP_SUMMARIES_LONG_NAME,
+                    "the common variants are only used for pileup summaries, which require --" + M2ArgumentCollection.TUMOR_PILEUP_SUMMARIES_LONG_NAME +
+                            " or --" + M2ArgumentCollection.NORMAL_PILEUP_SUMMARIES_LONG_NAME);
         }
         return null;
     }

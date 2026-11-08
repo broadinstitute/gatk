@@ -103,6 +103,14 @@ import java.util.List;
  * summary file please adjust the {@code --minimum-mapping-quality} parameter according to your input files.
  * </p>
  *
+ * <p>
+ * Mutect2 can tabulate the same pileup summaries for its tumor and normal while it calls variants, saving a pass over the
+ * reads, with {@code --common-variants-for-pileup-summaries} and {@code --tumor-pileup-summaries} or
+ * {@code --normal-pileup-summaries}.  It applies this tool's read filters to the reads that Mutect2 keeps, so its counts can
+ * be slightly lower: Mutect2 also downsamples reads that start at the same position, filters reads shorter than 30 bases, and
+ * clips artifacts near inverted tandem repeats.
+ * </p>
+ *
  */
 @CommandLineProgramProperties(
         summary = "Tabulates pileup metrics for inferring contamination",
@@ -116,9 +124,9 @@ public class GetPileupSummaries extends LocusWalker {
     public static final String MAX_SITE_AF_SHORT_NAME = "max-af";
     public static final String MIN_SITE_AF_SHORT_NAME = "min-af";
 
-    private static final double DEFAULT_MIN_POPULATION_AF = 0.01;
-    private static final double DEFAULT_MAX_POPULATION_AF = 0.2;
-    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 50;
+    public static final double DEFAULT_MIN_POPULATION_AF = 0.01;
+    public static final double DEFAULT_MAX_POPULATION_AF = 0.2;
+    public static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 50;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -162,8 +170,15 @@ public class GetPileupSummaries extends LocusWalker {
 
     @Override
     public List<ReadFilter> getDefaultReadFilters() {
+        return makeDefaultReadFilters(DEFAULT_MINIMUM_MAPPING_QUALITY);
+    }
+
+    /**
+     * The default read filters of this tool, which Mutect2 also applies to the reads of its pileup summaries
+     */
+    public static List<ReadFilter> makeDefaultReadFilters(final int minimumMappingQuality) {
         final List<ReadFilter> filters = new ArrayList<>();
-        filters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
+        filters.add(new MappingQualityReadFilter(minimumMappingQuality));
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO);
         filters.add(ReadFilterLibrary.MAPPED);

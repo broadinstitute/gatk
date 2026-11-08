@@ -10,6 +10,7 @@ import org.broadinstitute.hellbender.cmdline.ReadFilterArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.contamination.GetPileupSummaries;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.FlowBasedAlignmentArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
@@ -54,6 +55,12 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String PCR_INDEL_QUAL_LONG_NAME = "pcr-indel-qual";
     public static final String MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION = "base-qual-correction-factor";
     public static final String F1R2_TAR_GZ_NAME = "f1r2-tar-gz";
+    public static final String COMMON_VARIANTS_FOR_PILEUP_SUMMARIES_LONG_NAME = "common-variants-for-pileup-summaries";
+    public static final String TUMOR_PILEUP_SUMMARIES_LONG_NAME = "tumor-pileup-summaries";
+    public static final String NORMAL_PILEUP_SUMMARIES_LONG_NAME = "normal-pileup-summaries";
+    public static final String PILEUP_SUMMARIES_MIN_POPULATION_AF_LONG_NAME = "pileup-summaries-min-population-af";
+    public static final String PILEUP_SUMMARIES_MAX_POPULATION_AF_LONG_NAME = "pileup-summaries-max-population-af";
+    public static final String PILEUP_SUMMARIES_MIN_MAPPING_QUALITY_LONG_NAME = "pileup-summaries-min-mapping-quality";
 
     public static final double DEFAULT_AF_FOR_TUMOR_ONLY_CALLING = 5e-8;
     public static final double DEFAULT_AF_FOR_TUMOR_NORMAL_CALLING = 1e-6;
@@ -107,6 +114,30 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
 
     @Argument(fullName = F1R2_TAR_GZ_NAME, doc = "If specified, collect F1R2 counts and output files into this tar.gz file", optional = true)
     public File f1r2TarGz;
+
+    /**
+     * Common germline variants, such as a subset of gnomAD, with population allele frequencies (AF) in the INFO field, at
+     * whose biallelic SNPs Mutect2 tabulates the pileup summaries of the tumor and the normal for CalculateContamination, as
+     * GetPileupSummaries does, while it calls variants.  The pileup summaries apply the read filters of GetPileupSummaries
+     * to the reads that Mutect2 keeps after its own filtering, downsampling and clipping.
+     */
+    @Argument(fullName = COMMON_VARIANTS_FOR_PILEUP_SUMMARIES_LONG_NAME, doc = "Common germline variants with population allele frequencies (AF), at which to tabulate pileup summaries", optional = true)
+    public FeatureInput<VariantContext> commonVariantsForPileupSummaries;
+
+    @Argument(fullName = TUMOR_PILEUP_SUMMARIES_LONG_NAME, doc = "If specified, write the pileup summaries of the tumor at the common variants to this table", optional = true)
+    public File tumorPileupSummaries;
+
+    @Argument(fullName = NORMAL_PILEUP_SUMMARIES_LONG_NAME, doc = "If specified, write the pileup summaries of the normal at the common variants to this table", optional = true)
+    public File normalPileupSummaries;
+
+    @Argument(fullName = PILEUP_SUMMARIES_MIN_POPULATION_AF_LONG_NAME, doc = "Minimum population allele frequency of the common variants in the pileup summaries", optional = true)
+    public double pileupSummariesMinPopulationAF = GetPileupSummaries.DEFAULT_MIN_POPULATION_AF;
+
+    @Argument(fullName = PILEUP_SUMMARIES_MAX_POPULATION_AF_LONG_NAME, doc = "Maximum population allele frequency of the common variants in the pileup summaries", optional = true)
+    public double pileupSummariesMaxPopulationAF = GetPileupSummaries.DEFAULT_MAX_POPULATION_AF;
+
+    @Argument(fullName = PILEUP_SUMMARIES_MIN_MAPPING_QUALITY_LONG_NAME, doc = "Minimum mapping quality of reads in the pileup summaries", optional = true)
+    public int pileupSummariesMinMappingQuality = GetPileupSummaries.DEFAULT_MINIMUM_MAPPING_QUALITY;
 
     // As of GATK 4.1, any sample not specified as the normal is considered a tumor sample
     @DeprecatedFeature
