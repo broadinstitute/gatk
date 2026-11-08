@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.contamination;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -13,14 +12,9 @@ import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -144,10 +138,7 @@ public class GetPileupSummaries extends LocusWalker {
             doc = "Maximum population allele frequency of sites to consider.", optional = true)
     private double maxPopulationAlleleFrequency = DEFAULT_MAX_POPULATION_AF;
 
-    private boolean sawVariantsWithoutAlleleFrequency = false;
-    private boolean sawVariantsWithAlleleFrequency = false;
-
-    PileupSummary.PileupSummaryTableWriter writer;
+    private PileupSummaryCollector collector;
 
     @Override
     public boolean requiresReads() {
@@ -188,71 +179,29 @@ public class GetPileupSummaries extends LocusWalker {
 
     @Override
     public void onTraversalStart() {
-        final boolean alleleFrequencyInHeader = ((VCFHeader) getHeaderForFeatures(variants)).getInfoHeaderLines().stream()
-                .anyMatch(line -> line.getID().equals(VCFConstants.ALLELE_FREQUENCY_KEY));
-        if (!alleleFrequencyInHeader) {
-            throw new UserException.BadInput("Population vcf does not have an allele frequency (AF) info field in its header.");
-        }
+        PileupSummaryCollector.validateHeader((VCFHeader) getHeaderForFeatures(variants));
 
-        try {
-            writer = new PileupSummary.PileupSummaryTableWriter(IOUtils.fileToPath(outputTable));
-            final String sampleName = ReadUtils.getSamplesFromHeader(getHeaderForReads()).stream().findFirst().get();
-            writer.writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sampleName);
-        } catch (IOException ex) {
-            throw new UserException.CouldNotCreateOutputFile(outputTable, ex);
-        }
-
+        // the engine has already filtered the reads, and the table counts the reads of every sample under the first sample's name
+        collector = new PileupSummaryCollector(variants, minPopulationAlleleFrequency, maxPopulationAlleleFrequency);
+        final String sampleName = ReadUtils.getSamplesFromHeader(getHeaderForReads()).stream().findFirst().get();
+        collector.addTable(outputTable, sampleName, read -> true);
     }
 
     @Override
     public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
-        final List<VariantContext> vcs = featureContext.getValues(variants);
-        if (vcs.isEmpty()) {
-            return;
-        }
-        final VariantContext vc = vcs.get(0);
-
-        if ( vc.isBiallelic() && vc.isSNP() && alleleFrequencyInRange(vc) ) {
-            final ReadPileup pileup = alignmentContext.getBasePileup();
-            try {
-                writer.writeRecord(new PileupSummary(vc, pileup));
-            } catch (final IOException ex) {
-                throw new UserException(String.format("Encountered an IO exception while writing to %s", outputTable));
-            }
-        }
+        collector.process(alignmentContext, featureContext);
     }
 
     @Override
     public Object onTraversalSuccess() {
-        if (sawVariantsWithoutAlleleFrequency && !sawVariantsWithAlleleFrequency) {
-            throw new UserException.BadInput("No variants in population vcf had an allele frequency (AF) field.");
-        }
-
+        collector.validateAlleleFrequencies();
         return "SUCCESS";
     }
 
     @Override
     public void closeTool() {
-        try {
-            if (writer != null) {
-                writer.close();
-            }
-        } catch (IOException ex) {
-            throw new UserException(String.format("Encountered an IO exception while closing %s", outputTable));
-        }
-    }
-
-    private boolean alleleFrequencyInRange(final VariantContext vc) {
-        if (!vc.hasAttribute(VCFConstants.ALLELE_FREQUENCY_KEY)) {
-            if (!sawVariantsWithoutAlleleFrequency) {
-                logger.warn(String.format("Variant context at %s:%d lacks allele frequency (AF) field.", vc.getContig(), vc.getStart()));
-                sawVariantsWithoutAlleleFrequency = true;
-            }
-            return false;
-        } else {
-            sawVariantsWithAlleleFrequency = true;
-            final double alleleFrequency = vc.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, -1.0);
-            return minPopulationAlleleFrequency < alleleFrequency && alleleFrequency < maxPopulationAlleleFrequency;
+        if (collector != null) {
+            collector.close();
         }
     }
 }
