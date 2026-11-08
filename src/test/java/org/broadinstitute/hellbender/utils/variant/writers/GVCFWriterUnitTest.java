@@ -55,6 +55,49 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testHeaderDeclaresMinDPWithoutFloorBlocks() {
+        final VCFHeader header = new VCFHeader();
+        new GVCFWriter(new MockVcfWriter(), standardPartition, false).writeHeader(header);
+        Assert.assertNotNull(header.getFormatHeaderLine(GATKVCFConstants.MIN_DP_FORMAT_KEY));
+    }
+
+    @Test
+    public void testHeaderOmitsMinDPWithFloorBlocks() {
+        final VCFHeader header = new VCFHeader();
+        new GVCFWriter(new MockVcfWriter(), standardPartition, true).writeHeader(header);
+        Assert.assertNull(header.getFormatHeaderLine(GATKVCFConstants.MIN_DP_FORMAT_KEY));
+    }
+
+    @Test
+    public void testFloorBlocksRemovesMinDPFromARecordWrittenAsIs() {
+        final MockVcfWriter mockWriter = new MockVcfWriter();
+        final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, true);
+        writer.add(makeNoCallRecordWithMinDP());
+        writer.close();
+        Assert.assertEquals(mockWriter.emitted.size(), 1);
+        final Genotype written = mockWriter.emitted.get(0).getGenotype(0);
+        Assert.assertFalse(written.hasExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY));
+        Assert.assertEquals(written.getPL(), new int[]{20, 0, 135});
+    }
+
+    @Test
+    public void testRecordWrittenAsIsKeepsMinDPWithoutFloorBlocks() {
+        final MockVcfWriter mockWriter = new MockVcfWriter();
+        final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition, false);
+        writer.add(makeNoCallRecordWithMinDP());
+        writer.close();
+        Assert.assertEquals(mockWriter.emitted.size(), 1);
+        Assert.assertEquals(mockWriter.emitted.get(0).getGenotype(0).getExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY), 18);
+    }
+
+    // A no-call reference record whose PLs don't favour hom-ref, which the writer passes through instead of banding
+    private static VariantContext makeNoCallRecordWithMinDP() {
+        final Genotype g = new GenotypeBuilder(SAMPLE_NAME, Arrays.asList(Allele.NO_CALL, Allele.NO_CALL))
+                .DP(18).GQ(9).PL(new int[]{20, 0, 135}).attribute(GATKVCFConstants.MIN_DP_FORMAT_KEY, 18).make();
+        return new VariantContextBuilder("test", CHR1, 100, 120, ALLELES).attribute(VCFConstants.END_KEY, 120).genotypes(g).make();
+    }
+
+    @Test
     public void testHeaderSetting(){
         final MockVcfWriter mockWriter = new MockVcfWriter();
         final GVCFWriter writer = new GVCFWriter(mockWriter, standardPartition);
