@@ -11,7 +11,6 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IGVUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
-import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 
 import java.io.IOException;
@@ -141,7 +140,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
     }
 
     protected ReadsDownsampler createDownsampler() {
-        return assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ? new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, getHeaderForReads(), nonRandomDownsamplingMode) : null;
+        return assemblyRegionArgs.createReadsDownsampler(getHeaderForReads(), nonRandomDownsamplingMode);
     }
 
     /**

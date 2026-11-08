@@ -16,7 +16,6 @@ import org.broadinstitute.hellbender.tools.DownsampleableSparkReadShard;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileStateRange;
-import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -82,8 +81,7 @@ public class FindAssemblyRegionsSpark {
             final ReferenceDataSource reference = referenceFileName == null ? null : new ReferenceFileSource(IOUtils.getPath(SparkFiles.get(referenceFileName)));
             final FeatureManager features = bFeatureManager == null ? null : bFeatureManager.getValue();
             final AssemblyRegionEvaluator assemblyRegionEvaluator = supplierBroadcast.getValue().get(); // one AssemblyRegionEvaluator instance per Spark partition
-            final ReadsDownsampler readsDownsampler = assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ?
-                    new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, header) : null;
+            final ReadsDownsampler readsDownsampler = assemblyRegionArgs.createReadsDownsampler(header);
 
             Iterator<Iterator<AssemblyRegionWalkerContext>> iterators = Utils.stream(shardedReadIterator)
                     .map(shardedRead -> new ShardToMultiIntervalShardAdapter<>(
@@ -161,8 +159,7 @@ public class FindAssemblyRegionsSpark {
         // 5. Convert shards to assembly regions. Reads downsampling is done again here. Note it will only be
         // consistent with the downsampling done in step 1 when https://github.com/broadinstitute/gatk/issues/5437 is in.
         JavaRDD<AssemblyRegion> assemblyRegions = assemblyRegionShardedReads.mapPartitions((FlatMapFunction<Iterator<Shard<GATKRead>>, AssemblyRegion>) shardedReadIterator -> {
-            final ReadsDownsampler readsDownsampler = assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ?
-                    new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, header) : null;
+            final ReadsDownsampler readsDownsampler = assemblyRegionArgs.createReadsDownsampler(header);
             return Utils.stream(shardedReadIterator)
                     .map(shardedRead -> toAssemblyRegion(shardedRead, header, readsDownsampler)).iterator();
         });
@@ -184,8 +181,7 @@ public class FindAssemblyRegionsSpark {
             
             return Utils.stream(shardedReadIterator)
                     .map(shardedRead -> {
-                        final ReadsDownsampler readsDownsampler = assemblyRegionArgs.maxReadsPerAlignmentStart > 0 ?
-                                new PositionalDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, header) : null;
+                        final ReadsDownsampler readsDownsampler = assemblyRegionArgs.createReadsDownsampler(header);
                         return new ShardToMultiIntervalShardAdapter<>(
                                 new DownsampleableSparkReadShard(
                                         new ShardBoundary(shardedRead.getInterval(), shardedRead.getPaddedInterval()), shardedRead, readsDownsampler));
