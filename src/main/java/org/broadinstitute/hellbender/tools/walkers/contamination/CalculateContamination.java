@@ -68,7 +68,7 @@ import java.util.stream.Collectors;
  *     {@code --maximum-population-allele-frequency} arguments, which mean the same as in {@link GetPileupSummaries},
  *     restrict it to sites in a range of population allele frequencies, as if {@link GetPileupSummaries} had left
  *     out the others.  This allows one set of pileups with a wide range of sites to serve other purposes, such as
- *     allelic counts for ModelSegments, while the contamination estimate uses the usual range of 0.01 to 0.2.  At a hom
+ *     segmentation by allele fraction, while the contamination estimate uses the usual range of 0.01 to 0.2.  At a hom
  *     alt site a contaminating read is ref with probability one minus the allele frequency, so at sites of higher
  *     allele frequency the estimate depends more on the accuracy of the population allele frequencies.
  * </p>
