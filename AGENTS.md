@@ -730,6 +730,32 @@ timestamps with the cluster's autoscaler log in Cloud Logging
 filtered on `resource.labels.cluster_name`). The log survives the cluster's
 deletion for the 30-day retention period.
 
+## Changing a Dataproc machine type is more than a name swap
+
+`run_in_hail_cluster.py` starts clusters through `hailctl dataproc start`, and
+two constraints apply to any machine type passed to it. Both pass `womtool
+validate` and fail only when the cluster is created.
+
+1. **hailctl only knows the families in its `MACHINE_MEM` table.** It looks the
+   type up there to size Spark memory, so an unlisted type fails with a
+   `KeyError`. As of Hail 0.2.134 (`hail_version` in `GvsUtils.wdl`) the table
+   covers n1, n2, n2d, e2, c2, m1 and m2, but not C3, C3D or any 4th-generation
+   family. Read the pinned version's table before proposing a type.
+2. **Valid local SSD counts depend on the machine family and vCPU count.** n1
+   accepts one SSD at any size, but N2 and N2D machines with 32 vCPUs reject 1
+   and accept only 0, 2, 4, 8, 16 or 24. So an n2d-highmem-32 master fails to
+   create alongside n2d-highmem-8 workers, which accept 1:
+   `Number of local SSDs for an instance of type n2d-highmem-32 should be one
+   of [0, 2, 4, 8, 16, 24], while [1] is requested`. The master therefore has
+   its own count, `--num-master-local-ssds` (`num_master_local_ssds` on
+   `GvsCreateVDS` and `GvsCreateVATfromVDS`), which defaults to the workers'
+   count (VS-2055). Look up the allowed counts for both shapes in the Compute
+   Engine local SSD documentation before changing either one.
+
+The memory per vCPU differs too: an n2d-highmem-8 has 64 GB against an
+n1-highmem-8's 52 GB. So a run on a new family is not a like-for-like
+comparison of Spark settings tuned on n1.
+
 ## Interpolated multi-line text defeats both heredoc conventions
 
 The dedent described above is computed on the command *after* interpolation. A
