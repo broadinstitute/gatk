@@ -106,12 +106,12 @@ public class PileupSummary implements Locatable {
     }
 
     // Takes a list of PileupSummaryTable files and write them all in one output file in order
-    public static void writeToFile(final List<File> inputFiles, final File output) {
+    public static void writeToFile(final List<Path> inputFiles, final File output) {
         boolean headerWritten = false;
         String sample = "";
         try ( PileupSummaryTableWriter writer = new PileupSummaryTableWriter(output.toPath()) ) {
-            for (final File inputFile : inputFiles){
-                try ( PileupSummaryTableReader reader = new PileupSummaryTableReader(inputFile.toPath())){
+            for (final Path inputFile : inputFiles){
+                try ( PileupSummaryTableReader reader = new PileupSummaryTableReader(inputFile)){
                     if (! headerWritten){
                         sample = reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG);
                         writer.writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
@@ -151,8 +151,8 @@ public class PileupSummary implements Locatable {
     }
 
     // the first site of a table, if it has any, without reading the others
-    public static Optional<PileupSummary> readFirstSite(final File tableFile) {
-        try( PileupSummaryTableReader reader = new PileupSummaryTableReader(IOUtils.fileToPath(tableFile)) ) {
+    public static Optional<PileupSummary> readFirstSite(final Path tableFile) {
+        try( PileupSummaryTableReader reader = new PileupSummaryTableReader(tableFile) ) {
             return reader.stream().findFirst();
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", tableFile));
