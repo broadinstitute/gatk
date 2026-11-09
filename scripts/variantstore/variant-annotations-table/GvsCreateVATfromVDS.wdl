@@ -26,6 +26,8 @@ workflow GvsCreateVATfromVDS {
         Boolean generate_vep_and_loftee_annotations = true
         Boolean leave_hail_cluster_running_at_end = false
         Boolean use_tiny_dataproc_cluster = false
+        String worker_machine_type = "n1-highmem-8"
+        String master_machine_type = "n1-highmem-32"
         Boolean use_tiny_vep_annotation_load_runtime = false
         Int? merge_vcfs_disk_size_override
         Int? split_intervals_disk_size_override
@@ -85,6 +87,12 @@ workflow GvsCreateVATfromVDS {
         }
         generate_vep_and_loftee_annotations: {
             help: "If true (the default), run VEP + LOFTEE and load the resulting annotations into the VAT. Set to false to skip VEP + LOFTEE annotation entirely, which can significantly reduce runtime and cost for large callsets (500K+ samples). The VAT BigQuery schema is unchanged regardless of this setting; VEP/LOFTEE columns will simply be null when disabled."
+        }
+        worker_machine_type: {
+            help: "Machine type for the workers of the Dataproc cluster that generates the sites-only VCF from the VDS. Defaults to n1-highmem-8. Must be a type listed in hailctl's MACHINE_MEM table for the Hail version in use, or cluster creation fails with a KeyError; as of Hail 0.2.134 that covers the n1, n2, n2d, e2, c2, m1 and m2 families but not C3, C3D or any 4th-generation family. Unused when 'sites_only_vcf' is supplied."
+        }
+        master_machine_type: {
+            help: "Machine type for the master of the Dataproc cluster that generates the sites-only VCF from the VDS. Defaults to n1-highmem-32. Subject to the same hailctl MACHINE_MEM restriction as 'worker_machine_type'. Not affected by 'use_tiny_dataproc_cluster', which only changes worker counts. Unused when 'sites_only_vcf' is supplied."
         }
     }
 
@@ -249,6 +257,8 @@ workflow GvsCreateVATfromVDS {
             call GenerateSitesOnlyVcf {
                 input:
                     use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
+                    worker_machine_type = worker_machine_type,
+                    master_machine_type = master_machine_type,
                     vds_path = select_first([vds_path]),
                     workspace_project = effective_google_project,
                     hail_version = effective_hail_version,
@@ -531,6 +541,8 @@ task GenerateSitesOnlyVcf {
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
+        String worker_machine_type
+        String master_machine_type
 
         String cloud_sdk_docker
     }
@@ -591,6 +603,8 @@ task GenerateSitesOnlyVcf {
             --account ${account_name} \
             ~{true='--use-tiny-dataproc-cluster' false='' use_tiny_dataproc_cluster} \
             --region ~{region} \
+            --worker-machine-type ~{worker_machine_type} \
+            --master-machine-type ~{master_machine_type} \
             --workspace-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \

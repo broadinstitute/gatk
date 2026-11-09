@@ -26,6 +26,9 @@ workflow GvsQuickstartVATIntegration {
         String? variants_nirvana_docker
         String? gatk_docker
         Boolean use_manual_clinvar_update = false
+        # Dataproc machine types for the sites-only VCF cluster (VS-2055). Left unset, GvsCreateVATfromVDS's n1 defaults apply.
+        String? worker_machine_type
+        String? master_machine_type
     }
     String project_id = "gvs-internal"
 
@@ -87,6 +90,8 @@ workflow GvsQuickstartVATIntegration {
             variants_docker = effective_variants_docker,
             variants_nirvana_docker = effective_variants_nirvana_docker,
             use_manual_clinvar_update = use_manual_clinvar_update,
+            worker_machine_type = worker_machine_type,
+            master_machine_type = master_machine_type,
     }
 
     # Intentionally unused: runs for its side effect of validating the VAT; its output is not consumed downstream.
