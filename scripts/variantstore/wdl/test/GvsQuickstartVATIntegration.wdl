@@ -27,8 +27,9 @@ workflow GvsQuickstartVATIntegration {
         String? gatk_docker
         Boolean use_manual_clinvar_update = false
         # Dataproc machine types for the sites-only VCF cluster (VS-2055). Left unset, GvsCreateVATfromVDS's n1 defaults apply.
-        String? worker_machine_type
-        String? master_machine_type
+        # TODO VS-2055: temporary n2d defaults for testing on the branch; remove the defaults before merge.
+        String? worker_machine_type = "n2d-highmem-8"
+        String? master_machine_type = "n2d-highmem-32"
     }
     String project_id = "gvs-internal"
 

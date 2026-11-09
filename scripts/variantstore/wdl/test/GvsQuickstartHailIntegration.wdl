@@ -45,8 +45,9 @@ workflow GvsQuickstartHailIntegration {
         # Parquet ingest is supported; defaults to false for legacy test compatibility.
         Boolean use_parquet_ingest = false
         # Dataproc machine types for the VDS creation cluster (VS-2055). Left unset, GvsCreateVDS's n1 defaults apply.
-        String? worker_machine_type
-        String? master_machine_type
+        # TODO VS-2055: temporary n2d defaults for testing on the branch; remove the defaults before merge.
+        String? worker_machine_type = "n2d-highmem-8"
+        String? master_machine_type = "n2d-highmem-32"
     }
 
     String project_id = "gvs-internal"
