@@ -278,11 +278,15 @@ workflow Mutect2 {
         }
     }
 
-    call MergeVCFs {
+    call MergeMutect2Outputs {
         input:
             input_vcfs = M2.unfiltered_vcf,
             input_vcf_indices = M2.unfiltered_vcf_idx,
             compress_vcfs = compress_vcfs,
+            stats = M2.stats,
+            tumor_pileups = flatten(M2.tumor_pileups),
+            normal_pileups = flatten(M2.normal_pileups),
+            ref_dict = ref_dict,
             runtime_params = standard_runtime
     }
 
@@ -298,46 +302,26 @@ workflow Mutect2 {
         }
     }
 
-    call MergeStats { input: stats = M2.stats, runtime_params = standard_runtime }
-
-    # Mutect2 tabulates pileup summaries at the common variants, which are merged for the outputs and for
+    # Mutect2 tabulates pileup summaries at the common variants, which MergeMutect2Outputs merges for the outputs and for
     # CalculateContamination.  When generating Permutect test data we need the minor allele fraction (MAF) segmentation
     # from CalculateContamination, even if we are skipping filtering.  Note also that we run CalculateContamination with
     # the normal as a "tumor" in order to get normal MAF segments.
     if (defined(common_variants_vcf_or_alias)) {
-        call MergePileupSummaries as MergeTumorPileups {
-            input:
-                input_tables = flatten(M2.tumor_pileups),
-                output_name = "tumor-pileups",
-                ref_dict = ref_dict,
-                runtime_params = standard_runtime
-        }
-
-        if (defined(normal_reads)){
-            call MergePileupSummaries as MergeNormalPileups {
+        if (defined(normal_reads) && make_permutect_test_dataset) {
+            call CalculateContamination as GetNormalMAFSegments {
                 input:
-                    input_tables = flatten(M2.normal_pileups),
-                    output_name = "normal-pileups",
-                    ref_dict = ref_dict,
+                    tumor_pileups = select_first([MergeMutect2Outputs.merged_normal_pileups]),
+                    min_population_af = contamination_min_population_af,
+                    max_population_af = contamination_max_population_af,
                     runtime_params = standard_runtime
-            }
-
-            if (make_permutect_test_dataset) {
-                call CalculateContamination as GetNormalMAFSegments {
-                    input:
-                        tumor_pileups = select_first([MergeNormalPileups.merged_table]),
-                        min_population_af = contamination_min_population_af,
-                        max_population_af = contamination_max_population_af,
-                        runtime_params = standard_runtime
-                }
             }
         }
 
         if (calculate_contamination) {
             call CalculateContamination {
                 input:
-                    tumor_pileups = MergeTumorPileups.merged_table,
-                    normal_pileups = MergeNormalPileups.merged_table,
+                    tumor_pileups = select_first([MergeMutect2Outputs.merged_tumor_pileups]),
+                    normal_pileups = MergeMutect2Outputs.merged_normal_pileups,
                     min_population_af = contamination_min_population_af,
                     max_population_af = contamination_max_population_af,
                     runtime_params = standard_runtime
@@ -368,16 +352,16 @@ workflow Mutect2 {
                 ref_fai = ref_fai,
                 ref_dict = ref_dict,
                 intervals = intervals,
-                unfiltered_vcf = MergeVCFs.merged_vcf,
-                unfiltered_vcf_idx = MergeVCFs.merged_vcf_idx,
+                unfiltered_vcf = MergeMutect2Outputs.merged_vcf,
+                unfiltered_vcf_idx = MergeMutect2Outputs.merged_vcf_idx,
                 compress_vcfs = compress_vcfs,
-                mutect_stats = MergeStats.merged_stats,
+                mutect_stats = MergeMutect2Outputs.merged_stats,
                 contamination_table = CalculateContamination.contamination_table,
                 maf_segments = CalculateContamination.maf_segments,
                 artifact_priors_tar_gz = LearnReadOrientationModel.artifact_prior_table,
                 m2_extra_filtering_args = m2_extra_filtering_args,
                 runtime_params = standard_runtime,
-                disk_space = ceil(size(MergeVCFs.merged_vcf, "GB") * 4) + disk_pad
+                disk_space = ceil(size(MergeMutect2Outputs.merged_vcf, "GB") * 4) + disk_pad
         }
 
         if (defined(realignment_index_bundle)) {
@@ -401,10 +385,10 @@ workflow Mutect2 {
     }
 
     output {
-        File output_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf, MergeVCFs.merged_vcf])
-        File output_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx,MergeVCFs.merged_vcf_idx])
+        File output_vcf = select_first([FilterAlignmentArtifacts.filtered_vcf, Filter.filtered_vcf, MergeMutect2Outputs.merged_vcf])
+        File output_vcf_idx = select_first([FilterAlignmentArtifacts.filtered_vcf_idx, Filter.filtered_vcf_idx, MergeMutect2Outputs.merged_vcf_idx])
         File? filtering_stats = Filter.filtering_stats
-        File mutect_stats = MergeStats.merged_stats
+        File mutect_stats = MergeMutect2Outputs.merged_stats
         File? contamination_table = CalculateContamination.contamination_table
 
         File? bamout = MergeBamOuts.merged_bam_out
@@ -416,8 +400,8 @@ workflow Mutect2 {
         File? permutect_test_dataset = ConcatenatePermutectTestData.concatenated
         File permutect_contigs_table = select_first(M2.permutect_contigs_table)
         File permutect_read_groups_table = select_first(M2.permutect_read_groups_table)
-        File? tumor_pileups = MergeTumorPileups.merged_table
-        File? normal_pileups = MergeNormalPileups.merged_table
+        File? tumor_pileups = MergeMutect2Outputs.merged_tumor_pileups
+        File? normal_pileups = MergeMutect2Outputs.merged_normal_pileups
     }
 }
 
@@ -618,24 +602,51 @@ task M2 {
     }
 }
 
-task MergeVCFs {
+# Merges the scattered outputs of M2 other than the bamouts, which need a bigger disk: the VCFs, the stats and, when
+# there are common variants, the tumor's and normal's pileup summaries.  A merged table of pileups exists only if
+# there are tables to merge.
+task MergeMutect2Outputs {
     input {
       Array[File] input_vcfs
       Array[File] input_vcf_indices
       Boolean compress_vcfs
+      Array[File]+ stats
+      Array[File] tumor_pileups = []
+      Array[File] normal_pileups = []
+      File ref_dict
       Runtime runtime_params
     }
 
     String output_vcf = if compress_vcfs then "merged.vcf.gz" else "merged.vcf"
     String output_vcf_idx = output_vcf + if compress_vcfs then ".tbi" else ".idx"
 
-    # using MergeVcfs instead of GatherVcfs so we can create indices
-    # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
-    command {
+    # GatherPileupSummaries streams the pileups from the bucket on Terra
+    parameter_meta {
+        tumor_pileups: {localization_optional: true}
+        normal_pileups: {localization_optional: true}
+    }
+
+    command <<<
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+
+        # using MergeVcfs instead of GatherVcfs so we can create indices
+        # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" MergeVcfs -I ~{sep=' -I ' input_vcfs} -O ~{output_vcf}
-    }
+
+        gatk --java-options "-Xmx~{runtime_params.command_mem}m" MergeMutectStats \
+            -stats ~{sep=" -stats " stats} -O merged.stats
+
+        if [ ~{length(tumor_pileups)} -gt 0 ]; then
+            gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherPileupSummaries \
+                --sequence-dictionary ~{ref_dict} -I ~{sep=' -I ' tumor_pileups} -O tumor-pileups.tsv
+        fi
+
+        if [ ~{length(normal_pileups)} -gt 0 ]; then
+            gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherPileupSummaries \
+                --sequence-dictionary ~{ref_dict} -I ~{sep=' -I ' normal_pileups} -O normal-pileups.tsv
+        fi
+    >>>
 
     runtime {
         docker: runtime_params.gatk_docker
@@ -650,6 +661,9 @@ task MergeVCFs {
     output {
         File merged_vcf = "~{output_vcf}"
         File merged_vcf_idx = "~{output_vcf_idx}"
+        File merged_stats = "merged.stats"
+        File? merged_tumor_pileups = "tumor-pileups.tsv"
+        File? merged_normal_pileups = "normal-pileups.tsv"
     }
 }
 
@@ -692,70 +706,6 @@ task MergeBamOuts {
     output {
         File merged_bam_out = "bamout.bam"
         File merged_bam_out_index = "bamout.bai"
-    }
-}
-
-
-task MergeStats {
-    input {
-      Array[File]+ stats
-      Runtime runtime_params
-    }
-
-    command {
-        set -e
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
-
-
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" MergeMutectStats \
-            -stats ~{sep=" -stats " stats} -O merged.stats
-    }
-
-    runtime {
-        docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
-        memory: runtime_params.machine_mem + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
-        maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
-    }
-
-    output {
-        File merged_stats = "merged.stats"
-    }
-}
-
-task MergePileupSummaries {
-    input {
-      Array[File] input_tables
-      String output_name
-      File ref_dict
-      Runtime runtime_params
-    }
-
-    command {
-        set -e
-        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
-
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherPileupSummaries \
-        --sequence-dictionary ~{ref_dict} \
-        -I ~{sep=' -I ' input_tables} \
-        -O ~{output_name}.tsv
-    }
-
-    runtime {
-        docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
-        memory: runtime_params.machine_mem + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
-        maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
-    }
-
-    output {
-        File merged_table = "~{output_name}.tsv"
     }
 }
 
