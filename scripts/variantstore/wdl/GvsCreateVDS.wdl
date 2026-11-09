@@ -19,6 +19,7 @@ workflow GvsCreateVDS {
         Float? master_memory_fraction
         String worker_machine_type = "n1-highmem-8"
         String master_machine_type = "n1-highmem-32"
+        Int? num_master_local_ssds
 
         String? git_branch_or_tag
         String? hail_version
@@ -63,6 +64,9 @@ workflow GvsCreateVDS {
         }
         master_machine_type: {
             help: "Machine type for the Dataproc cluster's master. Defaults to n1-highmem-32. Subject to the same hailctl MACHINE_MEM restriction as `worker_machine_type`. Not affected by `use_tiny_dataproc_cluster`, which only changes worker counts."
+        }
+        num_master_local_ssds: {
+            help: "Local SSDs on the master, if different from the workers' 1. Valid counts depend on machine family and vCPU count: N2 and N2D machines with 32 vCPUs reject 1 and accept 0, 2, 4, 8, 16 or 24, so an n2d-highmem-32 master needs this set. Left unset, the master gets the same count as the workers."
         }
     }
 
@@ -136,6 +140,7 @@ workflow GvsCreateVDS {
             master_memory_fraction = master_memory_fraction,
             worker_machine_type = worker_machine_type,
             master_machine_type = master_machine_type,
+            num_master_local_ssds = num_master_local_ssds,
     }
 
     output {
@@ -166,6 +171,7 @@ task CreateVds {
         Float? master_memory_fraction
         String worker_machine_type
         String master_machine_type
+        Int? num_master_local_ssds
 
         String workspace_project
         String workspace_bucket
@@ -235,6 +241,7 @@ task CreateVds {
             --region ~{region} \
             --worker-machine-type ~{worker_machine_type} \
             --master-machine-type ~{master_machine_type} \
+            ~{'--num-master-local-ssds ' + num_master_local_ssds} \
             --workspace-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \

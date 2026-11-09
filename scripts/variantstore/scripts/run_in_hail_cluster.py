@@ -393,8 +393,14 @@ def delete_failed_cluster(cluster_name, region, workspace_project):
 def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_type, region, use_tiny_dataproc_cluster, workspace_project,
                    script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end, cluster_max_idle_minutes, cluster_max_age_minutes, master_memory_fraction,
                    num_primary_workers=DEFAULT_NUM_WORKERS, max_secondary_workers=DEFAULT_MAX_SECONDARY,
-                   zones=None, num_local_ssds=1,
+                   zones=None, num_local_ssds=1, num_master_local_ssds=None,
                    create_attempts_per_zone=CREATE_ATTEMPTS_PER_ZONE):
+
+    # The master gets its own count because Compute Engine's valid local SSD counts depend on
+    # machine family and vCPU count, so a count that suits the workers can be invalid for the
+    # master. N2 and N2D machines with 32 vCPUs reject 1 (allowed: 0, 2, 4, 8, 16, 24), which
+    # made an n2d-highmem-32 master fail to create alongside n2d-highmem-8 workers (VS-2055).
+    master_local_ssds = num_local_ssds if num_master_local_ssds is None else num_master_local_ssds
 
     cluster_max_idle_arg = f"--max-idle {cluster_max_idle_minutes}m" if cluster_max_idle_minutes else ""
     cluster_max_age_arg = f"--max-age {cluster_max_age_minutes}m" if cluster_max_age_minutes else ""
@@ -438,7 +444,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
              --service-account {account}
              {cluster_max_idle_arg}
              {cluster_max_age_arg}
-             --num-master-local-ssds {num_local_ssds}
+             --num-master-local-ssds {master_local_ssds}
              --num-worker-local-ssds {num_local_ssds} 
              --master-boot-disk-type=pd-ssd
              --worker-boot-disk-type=pd-ssd
@@ -664,6 +670,12 @@ if __name__ == "__main__":
                              'SSD availability is zone-specific and a common stockout '
                              'cause, so a workload that does not spill shuffle to disk can '
                              'set 0 to widen the usable zones. Defaults to 1.')
+    parser.add_argument('--num-master-local-ssds', type=int, required=False, default=None,
+                        help='Local SSDs attached to the master, overriding --num-local-ssds '
+                             'for the master only. Needed when the master machine type does '
+                             'not accept the worker count: N2 and N2D machines with 32 vCPUs '
+                             'reject 1 and accept 0, 2, 4, 8, 16 or 24. Defaults to the value '
+                             'of --num-local-ssds.')
 
     args = parser.parse_args()
 
@@ -686,4 +698,5 @@ if __name__ == "__main__":
                    zones=args.zones,
                    create_attempts_per_zone=args.create_attempts_per_zone,
                    num_local_ssds=args.num_local_ssds,
+                   num_master_local_ssds=args.num_master_local_ssds,
                    )

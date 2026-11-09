@@ -15,6 +15,7 @@ import pathlib
 import sys
 import types
 import unittest
+from unittest import mock
 
 
 def _stub(name, **attributes):
@@ -410,6 +411,60 @@ class TestRetryPolicy(unittest.TestCase):
     def test_a_single_attempt_budget_preserves_the_old_behavior(self):
         self.assertFalse(
             self.should_retry(REAL_STOCKOUT, 0, [None], attempts_per_zone=1))
+
+
+class TestLocalSsdCounts(unittest.TestCase):
+    """The master and workers can need different local SSD counts.
+
+    Compute Engine's valid counts depend on family and vCPU count: an n2d-highmem-32 master
+    rejects the 1 that suits n2d-highmem-8 workers (VS-2055). These run run_in_cluster with
+    process creation stubbed out and inspect the hailctl command it would have run.
+    """
+
+    def _start_command(self, **kwargs):
+        commands = []
+
+        class _SucceedingPipe:
+            def read(self):
+                return ''
+
+            def close(self):
+                return None
+
+        def fake_popen(command):
+            commands.append(command)
+            return _SucceedingPipe()
+
+        with mock.patch.object(runner.os, 'popen', fake_popen), \
+                mock.patch.object(runner, 'create_autoscaling_policy',
+                                  return_value=('policy', 2)), \
+                mock.patch.object(runner, 'run_in_existing_cluster'):
+            runner.run_in_cluster(
+                cluster_name='c', account='a', worker_machine_type='n2d-highmem-8',
+                master_machine_type='n2d-highmem-32', region='us-central1',
+                use_tiny_dataproc_cluster=True, workspace_project='p', script_path='s.py',
+                secondary_script_path_list=[], script_arguments_json_path='args.json',
+                leave_cluster_running_at_end=False, cluster_max_idle_minutes=None,
+                cluster_max_age_minutes=None, master_memory_fraction=0.8, **kwargs)
+
+        starts = [c for c in commands if 'hailctl dataproc start' in c]
+        self.assertEqual(1, len(starts), msg=commands)
+        return starts[0]
+
+    def test_master_follows_the_worker_count_by_default(self):
+        command = self._start_command(num_local_ssds=1)
+        self.assertIn('--num-master-local-ssds 1', command)
+        self.assertIn('--num-worker-local-ssds 1', command)
+
+    def test_master_count_can_differ_from_the_workers(self):
+        command = self._start_command(num_local_ssds=1, num_master_local_ssds=2)
+        self.assertIn('--num-master-local-ssds 2', command)
+        self.assertIn('--num-worker-local-ssds 1', command)
+
+    def test_zero_is_honored_rather_than_treated_as_unset(self):
+        """0 is falsy, so an `or` fallback would silently give the master the worker count."""
+        command = self._start_command(num_local_ssds=1, num_master_local_ssds=0)
+        self.assertIn('--num-master-local-ssds 0', command)
 
 
 if __name__ == '__main__':

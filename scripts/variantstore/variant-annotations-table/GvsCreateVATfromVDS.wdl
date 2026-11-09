@@ -28,6 +28,7 @@ workflow GvsCreateVATfromVDS {
         Boolean use_tiny_dataproc_cluster = false
         String worker_machine_type = "n1-highmem-8"
         String master_machine_type = "n1-highmem-32"
+        Int? num_master_local_ssds
         Boolean use_tiny_vep_annotation_load_runtime = false
         Int? merge_vcfs_disk_size_override
         Int? split_intervals_disk_size_override
@@ -93,6 +94,9 @@ workflow GvsCreateVATfromVDS {
         }
         master_machine_type: {
             help: "Machine type for the master of the Dataproc cluster that generates the sites-only VCF from the VDS. Defaults to n1-highmem-32. Subject to the same hailctl MACHINE_MEM restriction as 'worker_machine_type'. Not affected by 'use_tiny_dataproc_cluster', which only changes worker counts. Unused when 'sites_only_vcf' is supplied."
+        }
+        num_master_local_ssds: {
+            help: "Local SSDs on the master of the sites-only VCF cluster, if different from the workers' 1. Valid counts depend on machine family and vCPU count: N2 and N2D machines with 32 vCPUs reject 1 and accept 0, 2, 4, 8, 16 or 24, so an n2d-highmem-32 master needs this set. Left unset, the master gets the same count as the workers. Unused when 'sites_only_vcf' is supplied."
         }
     }
 
@@ -259,6 +263,7 @@ workflow GvsCreateVATfromVDS {
                     use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
                     worker_machine_type = worker_machine_type,
                     master_machine_type = master_machine_type,
+                    num_master_local_ssds = num_master_local_ssds,
                     vds_path = select_first([vds_path]),
                     workspace_project = effective_google_project,
                     hail_version = effective_hail_version,
@@ -543,6 +548,7 @@ task GenerateSitesOnlyVcf {
         Float? master_memory_fraction
         String worker_machine_type
         String master_machine_type
+        Int? num_master_local_ssds
 
         String cloud_sdk_docker
     }
@@ -605,6 +611,7 @@ task GenerateSitesOnlyVcf {
             --region ~{region} \
             --worker-machine-type ~{worker_machine_type} \
             --master-machine-type ~{master_machine_type} \
+            ~{'--num-master-local-ssds ' + num_master_local_ssds} \
             --workspace-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \

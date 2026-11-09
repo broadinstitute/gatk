@@ -48,6 +48,9 @@ workflow GvsQuickstartHailIntegration {
         # TODO VS-2055: temporary n2d defaults for testing on the branch; remove the defaults before merge.
         String? worker_machine_type = "n2d-highmem-8"
         String? master_machine_type = "n2d-highmem-32"
+        # An n2d-highmem-32 master rejects 1 local SSD; see GvsCreateVDS's num_master_local_ssds.
+        # TODO VS-2055: temporary default to match the n2d master above; remove before merge.
+        Int? num_master_local_ssds = 2
     }
 
     String project_id = "gvs-internal"
@@ -141,6 +144,7 @@ workflow GvsQuickstartHailIntegration {
             cluster_max_idle_minutes = 60,
             worker_machine_type = worker_machine_type,
             master_machine_type = master_machine_type,
+            num_master_local_ssds = num_master_local_ssds,
     }
 
     # Intentionally unused: runs for its side effect of validating VDS tieout; its output is not consumed downstream.
