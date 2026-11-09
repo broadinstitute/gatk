@@ -135,6 +135,8 @@ workflow Mutect2 {
         Boolean make_permutect_training_dataset = false
         Boolean make_permutect_test_dataset = false
         Boolean skip_filtering = false
+        # skip CalculateContamination even when filtering, eg when another tool estimates contamination from the pileups
+        Boolean skip_calculate_contamination = false
 
 
         # runtime
@@ -210,7 +212,7 @@ workflow Mutect2 {
     #TODO: do we need to change this disk size now that NIO is always going to happen (for the google backend only)
     Int m2_per_scatter_size = (tumor_reads_size + normal_reads_size) + ref_size + germline_resource_vcf_size + m2_output_size + disk_pad
 
-    Boolean calculate_contamination = defined(common_variants_vcf_or_alias) && (make_permutect_test_dataset || (!skip_filtering))
+    Boolean calculate_contamination = defined(common_variants_vcf_or_alias) && !skip_filtering && !skip_calculate_contamination
     Float pileups_max_af = select_first([pileups_max_population_af, contamination_max_population_af])
 
     call SplitIntervals {
@@ -303,29 +305,15 @@ workflow Mutect2 {
     }
 
     # Mutect2 tabulates pileup summaries at the common variants, which MergeMutect2Outputs merges for the outputs and for
-    # CalculateContamination.  When generating Permutect test data we need the minor allele fraction (MAF) segmentation
-    # from CalculateContamination, even if we are skipping filtering.  Note also that we run CalculateContamination with
-    # the normal as a "tumor" in order to get normal MAF segments.
-    if (defined(common_variants_vcf_or_alias)) {
-        if (defined(normal_reads) && make_permutect_test_dataset) {
-            call CalculateContamination as GetNormalMAFSegments {
-                input:
-                    tumor_pileups = select_first([MergeMutect2Outputs.merged_normal_pileups]),
-                    min_population_af = contamination_min_population_af,
-                    max_population_af = contamination_max_population_af,
-                    runtime_params = standard_runtime
-            }
-        }
-
-        if (calculate_contamination) {
-            call CalculateContamination {
-                input:
-                    tumor_pileups = select_first([MergeMutect2Outputs.merged_tumor_pileups]),
-                    normal_pileups = MergeMutect2Outputs.merged_normal_pileups,
-                    min_population_af = contamination_min_population_af,
-                    max_population_af = contamination_max_population_af,
-                    runtime_params = standard_runtime
-            }
+    # CalculateContamination, whose contamination and minor allele fraction segments FilterMutectCalls uses
+    if (calculate_contamination) {
+        call CalculateContamination {
+            input:
+                tumor_pileups = select_first([MergeMutect2Outputs.merged_tumor_pileups]),
+                normal_pileups = MergeMutect2Outputs.merged_normal_pileups,
+                min_population_af = contamination_min_population_af,
+                max_population_af = contamination_max_population_af,
+                runtime_params = standard_runtime
         }
     }
 
@@ -394,7 +382,6 @@ workflow Mutect2 {
         File? bamout = MergeBamOuts.merged_bam_out
         File? bamout_index = MergeBamOuts.merged_bam_out_index
         File? maf_segments = CalculateContamination.maf_segments
-        File? normal_maf_segments = GetNormalMAFSegments.maf_segments
         File? read_orientation_model_params = LearnReadOrientationModel.artifact_prior_table
         File? permutect_training_dataset = ConcatenatePermutectTrainingData.concatenated
         File? permutect_test_dataset = ConcatenatePermutectTestData.concatenated
