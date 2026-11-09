@@ -17,6 +17,8 @@ workflow GvsCreateVDS {
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
+        String worker_machine_type = "n1-highmem-8"
+        String master_machine_type = "n1-highmem-32"
 
         String? git_branch_or_tag
         String? hail_version
@@ -55,6 +57,12 @@ workflow GvsCreateVDS {
         }
         hail_wheel: {
             help: "Optional Hail wheel. Cannot define both this parameter and `hail_version`."
+        }
+        worker_machine_type: {
+            help: "Machine type for the Dataproc cluster's primary and secondary workers. Defaults to n1-highmem-8. Must be a type listed in hailctl's MACHINE_MEM table for the Hail version in use, or cluster creation fails with a KeyError; as of Hail 0.2.134 that covers the n1, n2, n2d, e2, c2, m1 and m2 families but not C3, C3D or any 4th-generation family."
+        }
+        master_machine_type: {
+            help: "Machine type for the Dataproc cluster's master. Defaults to n1-highmem-32. Subject to the same hailctl MACHINE_MEM restriction as `worker_machine_type`. Not affected by `use_tiny_dataproc_cluster`, which only changes worker counts."
         }
     }
 
@@ -126,6 +134,8 @@ workflow GvsCreateVDS {
             cluster_max_idle_minutes = cluster_max_idle_minutes,
             cluster_max_age_minutes = cluster_max_age_minutes,
             master_memory_fraction = master_memory_fraction,
+            worker_machine_type = worker_machine_type,
+            master_machine_type = master_machine_type,
     }
 
     output {
@@ -154,6 +164,8 @@ task CreateVds {
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
+        String worker_machine_type
+        String master_machine_type
 
         String workspace_project
         String workspace_bucket
@@ -221,6 +233,8 @@ task CreateVds {
             --account ${account_name} \
             ~{true='--use-tiny-dataproc-cluster' false='' use_tiny_dataproc_cluster} \
             --region ~{region} \
+            --worker-machine-type ~{worker_machine_type} \
+            --master-machine-type ~{master_machine_type} \
             --workspace-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
