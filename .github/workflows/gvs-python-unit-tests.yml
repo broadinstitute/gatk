@@ -40,8 +40,6 @@ jobs:
       - name: install dependencies
         run: |
           python -m pip install --upgrade pip
-          # setuptools is constrained to match build_docker.sh (see fiss issue #192).
-          pip install 'setuptools<80.3.0'
           # requirements.txt is the test-safe dependency set the unit tests import. Production-only
           # deps (terra-notebook-utils) live in requirements-prod.txt and are not needed here.
           pip install -r requirements.txt
