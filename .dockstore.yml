@@ -303,7 +303,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - ng_vs_2053_gcs_transient_errors
          tags:
              - /.*/
    - name: GvsBeta
@@ -359,7 +358,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - ng_vs_2053_gcs_transient_errors
          tags:
              - /.*/
    - name: GvsIngestTieout
