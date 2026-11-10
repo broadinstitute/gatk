@@ -27,6 +27,7 @@ workflow GvsCreateParticipantMappingFromVDS {
         # Wider clusters have been unstable.
         Int max_secondary_workers = 200
         Int num_local_ssds = 1
+        Int? num_master_local_ssds
         String worker_machine_type = "n1-highmem-8"
         String master_machine_type = "n1-highmem-32"
         Boolean use_tiny_dataproc_cluster = false
@@ -71,6 +72,9 @@ workflow GvsCreateParticipantMappingFromVDS {
         }
         hail_wheel: {
             help: "Optional Hail wheel file. Cannot define both this parameter and `hail_version`."
+        }
+        num_master_local_ssds: {
+            help: "Local SSDs on the master, if different from num_local_ssds. Valid counts depend on machine family and vCPU count: N2 and N2D machines with 32 vCPUs reject 1 and accept 0, 2, 4, 8, 16 or 24, so an n2d-highmem-32 master needs this set. Left unset, the master gets num_local_ssds."
         }
     }
 
@@ -130,6 +134,7 @@ workflow GvsCreateParticipantMappingFromVDS {
             num_primary_workers = num_primary_workers,
             max_secondary_workers = max_secondary_workers,
             num_local_ssds = num_local_ssds,
+            num_master_local_ssds = num_master_local_ssds,
             worker_machine_type = worker_machine_type,
             master_machine_type = master_machine_type,
             use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
@@ -247,6 +252,7 @@ task CreateMappingInputs {
         Int num_primary_workers
         Int max_secondary_workers
         Int num_local_ssds
+        Int? num_master_local_ssds
         String worker_machine_type
         String master_machine_type
         Boolean use_tiny_dataproc_cluster
@@ -313,8 +319,9 @@ task CreateMappingInputs {
             --num-primary-workers ~{num_primary_workers} \
             --max-secondary-workers ~{max_secondary_workers} \
             --region ~{region} \
-            --zones ~{cluster_zones} \
+            --zones '~{cluster_zones}' \
             --num-local-ssds ~{num_local_ssds} \
+            ~{'--num-master-local-ssds ' + num_master_local_ssds} \
             --worker-machine-type ~{worker_machine_type} \
             --master-machine-type ~{master_machine_type} \
             --workspace-project ~{workspace_project} \

@@ -29,6 +29,9 @@ workflow GvsCreateVATfromVDS {
         String worker_machine_type = "n1-highmem-8"
         String master_machine_type = "n1-highmem-32"
         Int? num_master_local_ssds
+        # Compute Engine stockouts are per-zone, and Dataproc's default placement picks one zone and fails rather than
+        # moving on. "auto" tries every zone in the region.
+        String cluster_zones = "auto"
         Boolean use_tiny_vep_annotation_load_runtime = false
         Int? merge_vcfs_disk_size_override
         Int? split_intervals_disk_size_override
@@ -97,6 +100,9 @@ workflow GvsCreateVATfromVDS {
         }
         num_master_local_ssds: {
             help: "Local SSDs on the master of the sites-only VCF cluster, if different from the workers' 1. Valid counts depend on machine family and vCPU count: N2 and N2D machines with 32 vCPUs reject 1 and accept 0, 2, 4, 8, 16 or 24, so an n2d-highmem-32 master needs this set. Left unset, the master gets the same count as the workers. Unused when 'sites_only_vcf' is supplied."
+        }
+        cluster_zones: {
+            help: "Comma-separated zones to try in order when creating the Dataproc cluster, or auto for every zone in the region. A stockout is a per-zone condition, so a create that fails for capacity is retried in the next zone rather than failing the workflow. Set to an empty string to keep Dataproc's own placement, which picks one zone and does not retry. Unused when 'sites_only_vcf' is supplied."
         }
     }
 
@@ -264,6 +270,7 @@ workflow GvsCreateVATfromVDS {
                     worker_machine_type = worker_machine_type,
                     master_machine_type = master_machine_type,
                     num_master_local_ssds = num_master_local_ssds,
+                    cluster_zones = cluster_zones,
                     vds_path = select_first([vds_path]),
                     workspace_project = effective_google_project,
                     hail_version = effective_hail_version,
@@ -549,6 +556,7 @@ task GenerateSitesOnlyVcf {
         String worker_machine_type
         String master_machine_type
         Int? num_master_local_ssds
+        String cluster_zones
 
         String cloud_sdk_docker
     }
@@ -612,6 +620,7 @@ task GenerateSitesOnlyVcf {
             --worker-machine-type ~{worker_machine_type} \
             --master-machine-type ~{master_machine_type} \
             ~{'--num-master-local-ssds ' + num_master_local_ssds} \
+            --zones '~{cluster_zones}' \
             --workspace-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \

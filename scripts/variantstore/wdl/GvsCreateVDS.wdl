@@ -20,6 +20,9 @@ workflow GvsCreateVDS {
         String worker_machine_type = "n1-highmem-8"
         String master_machine_type = "n1-highmem-32"
         Int? num_master_local_ssds
+        # Compute Engine stockouts are per-zone, and Dataproc's default placement picks one zone and fails rather than
+        # moving on. "auto" tries every zone in the region.
+        String cluster_zones = "auto"
 
         String? git_branch_or_tag
         String? hail_version
@@ -67,6 +70,9 @@ workflow GvsCreateVDS {
         }
         num_master_local_ssds: {
             help: "Local SSDs on the master, if different from the workers' 1. Valid counts depend on machine family and vCPU count: N2 and N2D machines with 32 vCPUs reject 1 and accept 0, 2, 4, 8, 16 or 24, so an n2d-highmem-32 master needs this set. Left unset, the master gets the same count as the workers."
+        }
+        cluster_zones: {
+            help: "Comma-separated zones to try in order when creating the Dataproc cluster, or auto for every zone in the region. A stockout is a per-zone condition, so a create that fails for capacity is retried in the next zone rather than failing the workflow. Set to an empty string to keep Dataproc's own placement, which picks one zone and does not retry."
         }
     }
 
@@ -141,6 +147,7 @@ workflow GvsCreateVDS {
             worker_machine_type = worker_machine_type,
             master_machine_type = master_machine_type,
             num_master_local_ssds = num_master_local_ssds,
+            cluster_zones = cluster_zones,
     }
 
     output {
@@ -172,6 +179,7 @@ task CreateVds {
         String worker_machine_type
         String master_machine_type
         Int? num_master_local_ssds
+        String cluster_zones
 
         String workspace_project
         String workspace_bucket
@@ -242,6 +250,7 @@ task CreateVds {
             --worker-machine-type ~{worker_machine_type} \
             --master-machine-type ~{master_machine_type} \
             ~{'--num-master-local-ssds ' + num_master_local_ssds} \
+            --zones '~{cluster_zones}' \
             --workspace-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
