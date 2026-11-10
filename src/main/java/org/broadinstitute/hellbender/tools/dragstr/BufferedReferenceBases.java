@@ -18,7 +18,7 @@ import org.broadinstitute.hellbender.utils.param.ParamUtils;
  *     This complements any buffering that might be provided by the underlying {@link ReferenceDataSource}.
  * </p>
  */
-final class BufferedReferenceBases {
+public final class BufferedReferenceBases {
     private final String contigID;
     private final long length;
     private int bufferSize;
@@ -67,7 +67,7 @@ final class BufferedReferenceBases {
         return length;
     }
 
-    final int copyBytesAt(final long position, final byte[] dest, final int offset, final int requestLength) {
+    public int copyBytesAt(final long position, final byte[] dest, final int offset, final int requestLength) {
         final long lastPosition = Math.min(length, position + requestLength - 1);
         long p;
         int o;
@@ -77,7 +77,7 @@ final class BufferedReferenceBases {
         return (int) (lastPosition - position + 1);
     }
 
-    byte byteAt(final long location) {
+    public byte byteAt(final long location) {
         if (location < bufferStart) {
             if (location < 0) {
                 throw new IllegalArgumentException("invalid location outside range: " + location);
