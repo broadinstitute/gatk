@@ -8,12 +8,14 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.tools.walkers.SplitIntervals;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.FilterMutectCalls;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2;
 import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArgumentCollection;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -158,6 +160,49 @@ public class LearnReadOrientationModelIntegrationTest extends CommandLineProgram
 
         Assert.assertTrue(new File(extractedPriorsDir, sample1 + LearnReadOrientationModel.ARTIFACT_PRIOR_EXTENSION).exists());
         Assert.assertTrue(new File(extractedPriorsDir, sample2 + LearnReadOrientationModel.ARTIFACT_PRIOR_EXTENSION).exists());
+    }
+
+    // F1R2 counts from older versions of GATK have one alt table per sample, not one per sample and reference context
+    @Test
+    public void testAltTableNotSplitByContext() throws IOException {
+        final String sample = "SAMPLE";
+        final File extractedDir = collectSyntheticF1R2Counts(sample);
+        final List<File> altTables = F1R2CountsCollector.getAltTablesFromExtractedTar(extractedDir);
+        final List<AltSiteRecord> records = LearnReadOrientationModel.gatherAltSiteRecords(altTables);
+        altTables.forEach(File::delete);
+        try (final AltSiteRecord.AltSiteRecordTableWriter writer = new AltSiteRecord.AltSiteRecordTableWriter(
+                new File(extractedDir, sample + F1R2CountsCollector.ALT_TABLE_EXTENSION).toPath(), sample)) {
+            writer.writeAllRecords(records);
+        }
+        Assert.assertThrows(UserException.BadInput.class, () -> runLearnReadOrientationModel(extractedDir));
+    }
+
+    @Test
+    public void testAltTableWithoutHistograms() throws IOException {
+        final File extractedDir = collectSyntheticF1R2Counts("SAMPLE");
+        try (final AltSiteRecord.AltSiteRecordTableWriter writer = new AltSiteRecord.AltSiteRecordTableWriter(
+                new File(extractedDir, "OTHER.ACT" + F1R2CountsCollector.ALT_TABLE_EXTENSION).toPath(), "OTHER")) {
+            writer.writeRecord(new AltSiteRecord("ACT", 10, 5, 5, 3, Nucleotide.G));
+        }
+        Assert.assertThrows(UserException.BadInput.class, () -> runLearnReadOrientationModel(extractedDir));
+    }
+
+    // run CollectF1R2Counts on a synthetic bam and return the directory of its extracted output
+    private File collectSyntheticF1R2Counts(final String sample) throws IOException {
+        final File countsTarGz = createTempFile("counts", ".tar.gz");
+        runCommandLine(new ArgumentsBuilder().addReference(hg19_chr1_1M_Reference)
+                .addInput(CollectF1R2CountsIntegrationTest.createSyntheticSam(70, 30, sample)).addOutput(countsTarGz),
+                CollectF1R2Counts.class.getSimpleName());
+        final File extractedDir = createTempDir("extracted");
+        IOUtils.extractTarGz(countsTarGz.toPath(), extractedDir.toPath());
+        return extractedDir;
+    }
+
+    private void runLearnReadOrientationModel(final File extractedCountsDir) throws IOException {
+        final File countsTarGz = createTempFile("counts", ".tar.gz");
+        IOUtils.writeTarGz(countsTarGz.getAbsolutePath(), extractedCountsDir.listFiles());
+        runCommandLine(new ArgumentsBuilder().addInput(countsTarGz).addOutput(createTempFile("priors", ".tar.gz")),
+                LearnReadOrientationModel.class.getSimpleName());
     }
 
     // make sure that nothing goes wrong if the target territory is so small that no data exists for some contexts
