@@ -17,9 +17,12 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
+import org.broadinstitute.hellbender.tools.walkers.contamination.GetPileupSummaries;
+import org.broadinstitute.hellbender.tools.walkers.contamination.PileupSummary;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCaller;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PileupDetectionArgumentCollection;
@@ -378,6 +381,51 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         // every variant on this interval in this sample is in gnomAD
         Assert.assertTrue(numVariantsPassingFilters < 2);
+    }
+
+    // Without downsampling or clipping, Mutect2 keeps every read that passes the filters of GetPileupSummaries, so its
+    // pileup summaries are exactly those of GetPileupSummaries run on the tumor and normal separately
+    @Test
+    public void testPileupSummariesMatchGetPileupSummaries() throws IOException {
+        // unlike the other DREAM bams, these cover hundreds of the gnomAD sites in this interval
+        final File tumor = new File(DREAM_BAMS_DIR, "tumor.bam");
+        final File normal = new File(DREAM_BAMS_DIR, "normal.bam");
+        final String interval = "20:10000000-10100000";
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final File tumorPileups = createTempFile("tumor-pileups", ".table");
+        final File normalPileups = createTempFile("normal-pileups", ".table");
+
+        runMutect2(tumor, normal, unfilteredVcf, interval, b37Reference, Optional.empty(),
+                args -> args.add(M2ArgumentCollection.COMMON_VARIANTS_FOR_PILEUP_SUMMARIES_LONG_NAME, GNOMAD)
+                        .add(M2ArgumentCollection.TUMOR_PILEUP_SUMMARIES_LONG_NAME, tumorPileups)
+                        .add(M2ArgumentCollection.NORMAL_PILEUP_SUMMARIES_LONG_NAME, normalPileups)
+                        .add(M2ArgumentCollection.PILEUP_SUMMARIES_MAX_POPULATION_AF_LONG_NAME, 0.9)
+                        .add(AssemblyRegionArgumentCollection.MAX_STARTS_LONG_NAME, 0)
+                        .addFlag(M2ArgumentCollection.IGNORE_ITR_ARTIFACTS_LONG_NAME));
+
+        for (final Pair<File, File> bamAndPileups : List.of(Pair.of(tumor, tumorPileups), Pair.of(normal, normalPileups))) {
+            final File expectedPileups = createTempFile("expected-pileups", ".table");
+            final ArgumentsBuilder args = new ArgumentsBuilder()
+                    .addInput(bamAndPileups.getLeft())
+                    .addVCF(GNOMAD)
+                    .addIntervals(GNOMAD)
+                    .addInterval(interval)
+                    .add(IntervalArgumentCollection.INTERVAL_SET_RULE_LONG_NAME, IntervalSetRule.INTERSECTION)
+                    .add(GetPileupSummaries.MAX_SITE_AF_SHORT_NAME, 0.9)
+                    .addOutput(expectedPileups);
+            runCommandLine(args, GetPileupSummaries.class.getSimpleName());
+
+            // so that the test doesn't pass trivially
+            Assert.assertTrue(PileupSummary.readFromFile(expectedPileups).getRight().size() > 100);
+            Assert.assertEquals(Files.readAllLines(bamAndPileups.getRight().toPath()), Files.readAllLines(expectedPileups.toPath()));
+        }
+    }
+
+    @Test(expectedExceptions = UserException.BadInput.class)
+    public void testNormalPileupSummariesRequireNormal() {
+        runMutect2(DREAM_1_TUMOR, createTempFile("unfiltered", ".vcf"), "20:10000000-10010000", b37Reference, Optional.empty(),
+                args -> args.add(M2ArgumentCollection.COMMON_VARIANTS_FOR_PILEUP_SUMMARIES_LONG_NAME, GNOMAD)
+                        .add(M2ArgumentCollection.NORMAL_PILEUP_SUMMARIES_LONG_NAME, createTempFile("normal-pileups", ".table")));
     }
 
     @Test
