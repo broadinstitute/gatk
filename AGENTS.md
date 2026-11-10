@@ -1166,6 +1166,19 @@ as a real answer. When a loop over revisions reports that none of them contain
 something you expect to be there, check the command ran before believing the
 result.
 
+## A space-separated file list in a zsh variable is one word
+
+zsh does not split an unquoted `$VAR` on whitespace, unlike bash. So after
+`F="a.wdl b.wdl"`, both `for f in $F` and `tool $F` see a single argument,
+`a.wdl b.wdl`. The loop runs once, and a tool that takes files fails with a
+"No such file or directory" error naming the whole string. Use an array:
+`F=(a.wdl b.wdl)`, then `for f in $F` or `tool $F`.
+
+Worse than the failure, a loop body that pipes through `tail` or `grep` can
+print almost nothing, which looks like a clean pass. In VS-2055 a `womtool
+validate` loop over seven WDLs printed the joined path once and no verdicts.
+Check that the output names every file before reading it as a pass.
+
 ## Prove a rebuilt image carries the code, do not infer it
 
 The Variants-image rebuild rule above has a verification step that costs one
