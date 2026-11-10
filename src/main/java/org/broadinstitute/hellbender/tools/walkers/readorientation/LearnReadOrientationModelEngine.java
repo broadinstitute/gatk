@@ -37,11 +37,8 @@ public class LearnReadOrientationModelEngine {
 
     private final List<AltSiteRecord> altDesignMatrix;
 
-    /**
-     * N by K matrix of posterior probabilities of latent variable z, where N is the number of alt sites,
-     * evaluated at the current estimates of the mixture weights
-     */
-    private final RealMatrix altResponsibilities;
+    // K-dimensional sum over alt sites of the posterior probabilities of latent variable z, computed in the E step
+    private double[] effectiveAltCountsFromDesignMatrix;
 
     private final Map<Triple<Integer, Nucleotide, ReadOrientation>, double[]> responsibilitiesOfAltDepth1Sites;
 
@@ -128,8 +125,6 @@ public class LearnReadOrientationModelEngine {
         // multiply by the number of counts for that depth
         this.refResponsibilities = new Array2DRowRealMatrix(maxDepth, F1R2FilterConstants.NUM_STATES);
 
-        this.altResponsibilities = new Array2DRowRealMatrix(altDesignMatrix.size(), F1R2FilterConstants.NUM_STATES);
-
         // Store responsibilities for each depth and the F1R2/F2R1 of the one alt read
         this.responsibilitiesOfAltDepth1Sites = new HashMap<>();
         this.refAllele = F1R2FilterUtils.getMiddleBase(referenceContext);
@@ -187,14 +182,15 @@ public class LearnReadOrientationModelEngine {
             refResponsibilities.setRow(i, computeResponsibilities(refAllele, refAllele, 0, 0, depth, artifactPriors, false));
         }
 
-        // Compute the responsibilities of alt sites
-        for (int n = 0; n < altDesignMatrix.size(); n++) {
-            final AltSiteRecord example = altDesignMatrix.get(n);
-            final int depth = example.getDepth();
-            final int altDepth = example.getAltCount();
-            final int altF1R2 = example.getAltF1R2();
-
-            altResponsibilities.setRow(n, computeResponsibilities(refAllele, example.getAltAllele(), altDepth, altF1R2, depth, artifactPriors, false));
+        // Compute the responsibilities of alt sites.  Within an E step, where the artifact priors are fixed, these depend only on
+        // the alt allele, alt depth, alt F1R2 depth, and depth, so we compute them once for each distinct combination.
+        // The M step only needs their sum, so we don't store them for each alt site
+        final Map<AltSiteKey, double[]> responsibilitiesByKey = new HashMap<>();
+        effectiveAltCountsFromDesignMatrix = new double[F1R2FilterConstants.NUM_STATES];
+        for (final AltSiteRecord example : altDesignMatrix) {
+            final AltSiteKey key = new AltSiteKey(example.getAltAllele(), example.getAltCount(), example.getAltF1R2(), example.getDepth());
+            MathUtils.addToArrayInPlace(effectiveAltCountsFromDesignMatrix, responsibilitiesByKey.computeIfAbsent(key, k ->
+                    computeResponsibilities(refAllele, k.altAllele(), k.altDepth(), k.altF1R2(), k.depth(), artifactPriors, false)));
         }
 
         // Compute the responsibilities of alt sites with depth=1
@@ -223,7 +219,6 @@ public class LearnReadOrientationModelEngine {
      */
     private double[] takeMstep(final double[] pseudocounts) {
         // First we compute the effective counts of each state, N_k in the docs. We do this separately over alt and ref sites
-        final double[] effectiveAltCountsFromDesignMatrix = MathUtils.sumArrayFunction(0, altDesignMatrix.size(), n -> altResponsibilities.getRow(n));
         double[] effectiveAltCountsFromHistograms = new double[F1R2FilterConstants.NUM_STATES];
 
         for (Histogram<Integer> histogram : altDepthOneHistograms){
@@ -293,7 +288,7 @@ public class LearnReadOrientationModelEngine {
     private static double computeLogPosterior(final int altDepth, final int altF1R2Depth, final int depth,
                                               final double statePrior, final BetaDistributionShape afPseudoCounts,
                                               final BetaDistributionShape f1r2PseudoCounts){
-        Utils.validateArg(MathUtils.isValidProbability(statePrior), String.format("statePrior must be a probability but got %f", statePrior));
+        Utils.validateArg(MathUtils.isValidProbability(statePrior), () -> String.format("statePrior must be a probability but got %f", statePrior));
 
         return Math.log(statePrior)
                 + new BetaBinomialDistribution(null, afPseudoCounts.getAlpha(), afPseudoCounts.getBeta(), depth).logProbability(altDepth)
@@ -336,11 +331,6 @@ public class LearnReadOrientationModelEngine {
     }
 
     @VisibleForTesting
-    public double[] getAltResonsibilities(final int rowNum){
-        return altResponsibilities.getRow(rowNum);
-    }
-
-    @VisibleForTesting
     public double[] getAltDepth1Resonsibilities(final int rowNum){
         return null;
     }
@@ -372,4 +362,6 @@ public class LearnReadOrientationModelEngine {
     private Triple<Integer, Nucleotide, ReadOrientation> createKey(final int depth, final Nucleotide altAllele, final ReadOrientation orientation){
         return new ImmutableTriple<>(depth, altAllele, orientation);
     }
+
+    private record AltSiteKey(Nucleotide altAllele, int altDepth, int altF1R2, int depth) { }
 }
