@@ -25,6 +25,19 @@ public class ReblockingGVCFWriter extends GVCFWriter {
 
 
     /**
+     * Flush the buffered reference blocks that end before {@code nextInput}, the input record about to be reblocked,
+     * and write the finished ones. The output is unchanged; see
+     * {@link ReblockingGVCFBlockCombiner#flushBlocksEndingBefore(String, int)}. The input must be coordinate-sorted,
+     * which this does not check: the caller must reject unsorted input, as {@code ReblockGVCF} does.
+     *
+     * @throws IllegalStateException if a block to flush ends before the output so far, which sorted input cannot cause
+     */
+    public void flushBlocksEndingBefore(final Locatable nextInput) {
+        ((ReblockingGVCFBlockCombiner)gvcfBlockCombiner).flushBlocksEndingBefore(nextInput.getContig(), nextInput.getStart());
+        output();
+    }
+
+    /**
      * Return the position of the end of the variant contexts already output by the writer
      * @return may be null
      */

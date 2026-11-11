@@ -59,7 +59,7 @@ import java.util.stream.IntStream;
  *
  * <h3>Input</h3>
  * <p>
- * A HaplotypeCaller-produced GVCF to reblock
+ * A coordinate-sorted, HaplotypeCaller-produced GVCF to reblock
  * </p>
  *
  * <h3>Output</h3>
@@ -89,6 +89,8 @@ import java.util.stream.IntStream;
  *
  * <h3>Caveats</h3>
  * <p>Only single-sample GVCF files produced by HaplotypeCaller can be used as input for this tool.</p>
+ * <p>The input must be coordinate-sorted. The tool stops with an error at a record that starts before the previous
+ *    record on its contig, or that returns to a contig the input has already left.</p>
  * <p>Annotations and header lines that are uninformative for single-sample will be dropped: 
  *       MLEAC, MLEAF, DS, ExcessHet, HaplotypeScore, InbreedingCoeff, AS_InbreedingCoeff
  * <p>Note that when uncalled alleles are dropped, the original GQ may increase.  Use --keep-all-alts if GQ accuracy is a concern.</p>
@@ -212,6 +214,23 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
     @VisibleForTesting
     ReblockingGVCFWriter vcfWriter;
+
+    /**
+     * Test-only switch, always on in production: whether to flush the buffered reference blocks that end before each
+     * input record before reblocking it. The flush keeps the writer's buffer small and does not change the output;
+     * turning it off lets tests check that.
+     */
+    @VisibleForTesting
+    boolean flushRefBlocksBeforeEachInput = true;
+
+    // The contig and start of the previous input record, and the contigs the input has left, to check that the input
+    // is coordinate-sorted
+    private String previousContig = null;
+    private int previousStart = 0;
+    private final Set<String> finishedContigs = new HashSet<>();
+
+    private static final String SORTED_INPUT_REQUIRED = "The input GVCFs must be coordinate-sorted: sort each --"
+            + StandardArgumentDefinitions.VARIANT_LONG_NAME + " input, for example with SortVcf, and run again.";
 
     @Override
     public boolean useVariantAnnotations() { return true;}
@@ -340,8 +359,38 @@ public final class ReblockGVCF extends MultiVariantWalker {
         if (!variant.hasAllele(Allele.NON_REF_ALLELE)) {
             throw new UserException("Variant Context at " + variant.getContig() + ":" + variant.getStart() + " does not contain a <NON-REF> allele. This tool is only intended for use with GVCFs.");
         }
+        checkInputIsSorted(variant);
+        if (flushRefBlocksBeforeEachInput) {
+            vcfWriter.flushBlocksEndingBefore(variant);
+        }
         VariantContext newVC = formatAnnotationsToRemove.size() > 0 ? removeVCFFormatAnnotations(variant) : variant;
         regenotypeVC(newVC);
+    }
+
+    /**
+     * The flush before each input record relies on no later record on the same contig starting before it, so
+     * out-of-order input would silently change the output. This rejects a record that starts before the previous record
+     * on its contig, or that returns to a contig the input has already left. Records may share a start, as when several
+     * inputs are merged. A returning contig must be rejected even though the writer flushes all its blocks when the
+     * contig changes: records on the other contig may all be dropped before they reach the writer, which then still
+     * holds blocks on the earlier contig.
+     */
+    private void checkInputIsSorted(final VariantContext variant) {
+        final String contig = variant.getContig();
+        if (contig.equals(previousContig)) {
+            if (variant.getStart() < previousStart) {
+                throw new UserException.BadInput("The input record at " + contig + ":" + variant.getStart()
+                        + " starts before the previous input record at " + previousContig + ":" + previousStart + ". " + SORTED_INPUT_REQUIRED);
+            }
+        } else if (finishedContigs.contains(contig)) {
+            throw new UserException.BadInput("The input record at " + contig + ":" + variant.getStart() + " returns to contig "
+                    + contig + " after the input moved on to other contigs (previous input record at " + previousContig + ":"
+                    + previousStart + "). " + SORTED_INPUT_REQUIRED);
+        } else if (previousContig != null) {
+            finishedContigs.add(previousContig);
+        }
+        previousContig = contig;
+        previousStart = variant.getStart();
     }
 
     /**

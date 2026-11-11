@@ -4,6 +4,7 @@ import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.vcf.*;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
@@ -24,6 +25,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -749,7 +751,8 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
 
     // The hom-ref record at 13675306, which has deletion alleles, becomes a reference block to 13675330 that the later
     // records split. The head and the tail of the split share one PL array, so lowering the tail's PLs used to change the
-    // head's PLs as well.
+    // head's PLs as well. This runs without the early flush, which writes the head before the tail is lowered and so
+    // would hide the bug.
     @Test
     public void testSplitReferenceBlockKeepsItsPLs() {
         final File input = getTestFile("reblockEdgeCase.vcf");
@@ -762,7 +765,7 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                 .add("do-qual-approx", true)
                 .addOutput(output);
 
-        runCommandLine(args);
+        runReblockGVCF(args, false);
 
         final List<VariantContext> outVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
         final VariantContext head = outVCs.stream().filter(vc -> vc.getStart() == 13675306).findFirst()
@@ -775,5 +778,97 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
                 Assert.assertEquals(g.getGQ(), GATKVariantContextUtils.calculateGQFromPLs(g.getPL()), vc.toString());
             }
         }
+    }
+
+    // Unsorted input would make the early flush write reference blocks that a later record should have trimmed
+    @DataProvider(name = "unsortedInputs")
+    public Object[][] unsortedInputs() {
+        return new Object[][]{
+                {"unsortedVariant.g.vcf", "", "chr20:1000700"},  // a SNP inside a reference block, after a later block
+                {"unsortedRefBlock.g.vcf", "", "chr20:1000500"},  // a reference block inside another, after a later block
+                // the same SNP after a GQ0 reference block on chr21 that -drop-low-quals drops before it reaches the writer
+                {"revisitedContig.g.vcf", " -drop-low-quals -do-qual-approx ", "chr20:1000700"}
+        };
+    }
+
+    @Test(dataProvider = "unsortedInputs")
+    public void testUnsortedInputIsAnError(final String inputName, final String extraArgs, final String outOfOrderPosition) {
+        final ArgumentsBuilder args = new ArgumentsBuilder().addReference(hg38Reference).add("V", getTestFile(inputName))
+                .addOutput(createTempFile("reblocked", ".g.vcf"));
+        if (!extraArgs.isBlank()) {
+            args.addRaw(extraArgs.trim());
+        }
+        // the walker wraps the exception
+        final GATKException wrapper = Assert.expectThrows(GATKException.class, () -> runCommandLine(args));
+        final UserException.BadInput e = ExceptionUtils.throwableOfType(wrapper, UserException.BadInput.class);
+        Assert.assertNotNull(e, "no UserException.BadInput");
+        Assert.assertTrue(e.getMessage().contains(outOfOrderPosition), e.getMessage());
+        Assert.assertTrue(e.getMessage().contains("coordinate-sorted"), e.getMessage());
+    }
+
+    // Inputs for checking that the early flush does not change the output, each with its reference. Between them they
+    // have reference blocks abutting and overlapping variants, deletions that run past the following records,
+    // low-quality deletions that become reference blocks, hom-ref records that become split reference blocks, records
+    // without PLs, more than one contig, and several inputs merged with records sharing a start.
+    private List<Pair<List<File>, String>> earlyFlushInputs() {
+        final List<Pair<List<File>, String>> inputs = new ArrayList<>();
+        for (final String name : Arrays.asList("overlappingDeletions.hc.g.vcf", "overlappingDels2.vcf", "dropGQ0Dels.g.vcf",
+                "prod.chr20snippet.withRawMQ.g.vcf", "prodWgsInput.g.vcf", "prodWesInput.g.vcf", "regressionTests.vcf",
+                "noCallGTs.g.vcf", "testLeftContigBoundary.g.vcf", "dragen.g.vcf", "reblockEdgeCase.vcf",
+                "HG002.snippet.g.vcf", "nonRefAD.g.vcf", "testFirstPositionOnContigNotDropped.g.vcf", "gvcfWithNoPRI.vcf",
+                "nonRefCall.vcf.gz", "alreadyReblocked.chr22snippet.vcf")) {
+            inputs.add(Pair.of(Collections.singletonList(getTestFile(name)), hg38Reference));
+        }
+        inputs.add(Pair.of(Collections.singletonList(getTestFile("reblock_cleanup_bug_variant.g.vcf")), pf_reference));
+        inputs.add(Pair.of(Arrays.asList(getTestFile("chr20.shard0.g.vcf"), getTestFile("chr20.shard1.g.vcf"),
+                getTestFile("chr20.shard2.g.vcf"), getTestFile("chr20.shard3.g.vcf")), hg38Reference));
+        return inputs;
+    }
+
+    @DataProvider(name = "earlyFlushCases")
+    public Object[][] earlyFlushCases() {
+        final String dropLowQuals = " -drop-low-quals -do-qual-approx ";
+        final List<String> argSets = Arrays.asList("", WARP_PROD_REBLOCKING_ARGS, dropLowQuals);
+        // With -drop-low-quals these write no records, so the comparison would check nothing: all the records in them
+        // are no-calls with all-zero PLs
+        final Set<String> noRecordsWhenDroppingLowQuals = new HashSet<>(Arrays.asList("testLeftContigBoundary.g.vcf", "gvcfWithNoPRI.vcf"));
+        final List<Object[]> cases = new ArrayList<>();
+        for (final Pair<List<File>, String> inputs : earlyFlushInputs()) {
+            for (final String extraArgs : argSets) {
+                if (extraArgs.equals(dropLowQuals) && noRecordsWhenDroppingLowQuals.contains(inputs.getLeft().get(0).getName())) {
+                    continue;
+                }
+                cases.add(new Object[]{inputs.getLeft(), inputs.getRight(), extraArgs});
+            }
+        }
+        return cases.toArray(new Object[0][]);
+    }
+
+    // Flushing the reference blocks that end before each input record must not change the output
+    @Test(dataProvider = "earlyFlushCases")
+    public void testEarlyFlushDoesNotChangeOutput(final List<File> inputs, final String reference, final String extraArgs) throws IOException {
+        final List<String> withFlush = reblockLines(inputs, reference, extraArgs, true);
+        final List<String> withoutFlush = reblockLines(inputs, reference, extraArgs, false);
+        Assert.assertTrue(withFlush.stream().anyMatch(line -> !line.startsWith("#")), "no records in the output");
+        Assert.assertEquals(withFlush, withoutFlush);
+    }
+
+    private List<String> reblockLines(final List<File> inputs, final String reference, final String extraArgs,
+                                      final boolean flushRefBlocksBeforeEachInput) throws IOException {
+        final File output = createTempFile("reblocked", ".g.vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder().addReference(reference).addOutput(output)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
+        inputs.forEach(input -> args.add("V", input));
+        if (!extraArgs.isBlank()) {
+            args.addRaw(extraArgs.trim());
+        }
+        runReblockGVCF(args, flushRefBlocksBeforeEachInput);
+        return Files.readAllLines(output.toPath());
+    }
+
+    private static void runReblockGVCF(final ArgumentsBuilder args, final boolean flushRefBlocksBeforeEachInput) {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        reblocker.flushRefBlocksBeforeEachInput = flushRefBlocksBeforeEachInput;
+        reblocker.instanceMain(args.getArgsArray());
     }
 }

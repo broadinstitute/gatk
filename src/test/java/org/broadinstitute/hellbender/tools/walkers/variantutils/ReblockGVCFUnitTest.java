@@ -45,6 +45,33 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
     private final static int EXAMPLE_DP = 18;
     public static final int DEFAULT_START = 10;
 
+    private static VariantContext refBlock(final int start, final int end, final int gq) {
+        final Genotype g = new GenotypeBuilder("sample1", Arrays.asList(SHORT_REF, SHORT_REF)).GQ(gq).DP(10).PL(new int[]{0, gq, 10 * gq}).make();
+        return new VariantContextBuilder("test", "1", start, end, Arrays.asList(SHORT_REF, Allele.NON_REF_ALLELE))
+                .attribute(VCFConstants.END_KEY, end).genotypes(g).make();
+    }
+
+    @DataProvider
+    public Object[][] flushOrNot() {
+        return new Object[][]{{true}, {false}};
+    }
+
+    // Before reblocking an input record, the writer flushes the buffered reference blocks that end before it
+    @Test(dataProvider = "flushOrNot")
+    public void testReferenceBlocksEndingBeforeTheNextInputAreFlushed(final boolean flush) {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        reblocker.vcfWriter = new ReblockingGVCFWriter(new MockVcfWriter(), Arrays.asList(20, 100), true, null, new ReblockingOptions());
+        reblocker.flushRefBlocksBeforeEachInput = flush;
+        reblocker.apply(refBlock(100, 199, 50), null, null, null);
+        reblocker.apply(refBlock(200, 299, 10), null, null, null);
+        reblocker.apply(refBlock(300, 399, 50), null, null, null);
+        if (flush) {
+            Assert.assertEquals(reblocker.vcfWriter.getVcfOutputEnd().getEnd(), 299);
+        } else {
+            Assert.assertNull(reblocker.vcfWriter.getVcfOutputEnd());
+        }
+    }
+
     @Test
     public void testCleanUpHighQualityVariant() {
         final ReblockGVCF reblocker = new ReblockGVCF();
