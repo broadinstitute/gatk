@@ -626,6 +626,9 @@ task CreateManifestAndOptionallyCopyOutputs {
     memory: "3 GB"
     disks: "local-disk 500 HDD"
     preemptible: 3
+    # A transient GCS error that outlasts gcloud's own retries fails the copy (VS-2053). Retrying is
+    # safe: the copy overwrites its destinations and the manifest is rebuilt from this task's inputs.
+    maxRetries: 3
     cpu: 1
   }
 }

@@ -773,6 +773,12 @@ unless its `runtime` block sets `maxRetries`. The repo's convention is
 exit, so a genuine failure is also attempted four times before it fails. Retries
 run on fresh VMs, so each one costs the full task.
 
+A task that deletes GCS objects should judge success by what remains, not by
+`gcloud storage rm`'s exit status, which can be non-zero after a successful
+delete or on a retry (VS-2053). List what remains with `gcloud storage objects
+list --format='value(name)'`: it exits 0 with empty output when nothing matches,
+while `gcloud storage ls` exits 1, the same as for a real error.
+
 # Documentation Conventions
 
 ## Markdown tables must be rectangular
