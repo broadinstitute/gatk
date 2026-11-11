@@ -59,6 +59,11 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
     private final ReadStateManager readStates;
 
     /**
+     * The samples in the order in which readStates iterates over them, which is the order of their elements in each pileup
+     */
+    private final ReadPileup.SampleOrder samplesInPileupOrder;
+
+    /**
      * Should we include reads in the pileup which are aligned with a deletion operator to the reference?
      */
     private final boolean includeReadsWithDeletionAtLoci;
@@ -196,6 +201,9 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
         this.includeReadsWithDeletionAtLoci = includeReadsWithDeletionAtLoci;
         this.includeReadsWithNsAtLoci = includeReadsWithNsAtLoci;
         this.readStates = new ReadStateManager(samIterator, samples, downsamplingInfo, header);
+        final List<String> samplesInOrder = new ArrayList<>();
+        readStates.forEach(sampleStatePair -> samplesInOrder.add(sampleStatePair.getKey()));
+        this.samplesInPileupOrder = new ReadPileup.SampleOrder(samplesInOrder);
     }
 
     /**
@@ -291,10 +299,14 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
             // We don't need to keep the pileup elements separated by sample within this method,
             // since they are just going to get combined into one monolithic pileup anyway
             // when we construct the final ReadPileup below. This optimization speeds up the
-            // HaplotypeCaller by quite a bit!
+            // HaplotypeCaller by quite a bit!  Each sample's elements are contiguous, so we record
+            // where they start, which lets the pileup be split by sample without looking up reads' samples.
             final List<PileupElement> allPileupElements = new ArrayList<>(100);
+            final int[] sampleStarts = new int[samplesInPileupOrder.size() + 1];
+            int sampleIndex = 0;
 
             for (final Map.Entry<String, PerSampleReadStateManager> sampleStatePair : readStates) {
+                sampleStarts[sampleIndex++] = allPileupElements.size();
                 final PerSampleReadStateManager readState = sampleStatePair.getValue();
                 final Iterator<AlignmentStateMachine> iterator = readState.iterator();
 
@@ -317,10 +329,12 @@ public final class LocusIteratorByState implements Iterator<AlignmentContext> {
                     }
                 }
             }
+            sampleStarts[sampleIndex] = allPileupElements.size();
 
             readStates.updateReadStates(); // critical - must be called after we get the current state offsets and location
             if (!allPileupElements.isEmpty()) { // if we got reads with non-D/N over the current position, we are done
-                nextAlignmentContext = new AlignmentContext(location, new ReadPileup(location, allPileupElements));
+                nextAlignmentContext = new AlignmentContext(location,
+                        new ReadPileup(location, allPileupElements, samplesInPileupOrder, sampleStarts));
             }
         }
     }
