@@ -57,6 +57,11 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
     protected final byte minBaseQualityToUseInAssembly;
     protected List<MultiDeBruijnVertex> referencePath = null;
     protected boolean alreadyBuilt = false;
+    /**
+     * Each vertex's {@link ChainNode}, which indexes its outgoing edges by base.  It exists only while
+     * buildGraphIfNecessary() threads sequences, when the graph changes only by extendChainByOne() adding edges.
+     */
+    private transient Map<MultiDeBruijnVertex, ChainNode> chainNodes = null;
     // --------------------------------------------------------------------------------
     // state variables, initialized in setToInitialState()
     // --------------------------------------------------------------------------------
@@ -295,9 +300,10 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         }
 
         // loop over all of the bases in sequence, extending the graph by one base at each point, as appropriate
-        MultiDeBruijnVertex vertex = startingVertex;
+        ChainNode node = chainNodes.computeIfAbsent(startingVertex, ChainNode::new);
         for (int i = startPos + 1; i <= seqForKmers.stop - kmerSize; i++) {
-            vertex = extendChainByOne(vertex, seqForKmers.sequence, i, seqForKmers.count, seqForKmers.isRef);
+            node = extendChainByOne(node, seqForKmers.sequence, i, seqForKmers.count, seqForKmers.isRef);
+            final MultiDeBruijnVertex vertex = node.vertex;
             if (seqForKmers.isRef) {
                 referencePath.add(vertex);
             }
@@ -337,6 +343,7 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
         }
 
         // go through the pending sequences, and add them to the graph
+        chainNodes = new HashMap<>();
         for (final List<SequenceForKmers> sequencesForSample : pending.values()) {
             for (final SequenceForKmers sequenceForKmers : sequencesForSample) {
                 threadSequence(sequenceForKmers);
@@ -350,6 +357,8 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
                 e.flushSingleSampleMultiplicity();
             }
         }
+        // later changes to the graph don't maintain the nodes
+        chainNodes = null;
 
         // clear the pending reads pile to conserve memory
         if (shouldRemoveReadsAfterGraphConstruction()) {
@@ -999,34 +1008,79 @@ public abstract class AbstractReadThreadingGraph extends BaseGraph<MultiDeBruijn
      * Workhorse routine of the assembler.  Given a sequence whose last vertex is anchored in the graph, extend
      * the graph one bp according to the bases in sequence.
      *
-     * @param prevVertex a non-null vertex where sequence was last anchored in the graph
+     * @param prevNode   the non-null node of the vertex where sequence was last anchored in the graph
      * @param sequence   the sequence we're threading through the graph
      * @param kmerStart  the start of the current kmer in graph we'd like to add
      * @param count      the number of observations of this kmer in graph (can be > 1 for GGA)
      * @param isRef      is this the reference sequence?
-     * @return a non-null vertex connecting prevVertex to in the graph based on sequence
+     * @return the non-null node of the vertex connecting prevVertex to in the graph based on sequence
      */
-    protected MultiDeBruijnVertex extendChainByOne(final MultiDeBruijnVertex prevVertex, final byte[] sequence, final int kmerStart, final int count, final boolean isRef) {
-        final Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(prevVertex);
-
+    private ChainNode extendChainByOne(final ChainNode prevNode, final byte[] sequence, final int kmerStart, final int count, final boolean isRef) {
         final int nextPos = kmerStart + kmerSize - 1;
-        for (final MultiSampleEdge outgoingEdge : outgoingEdges) {
-            final MultiDeBruijnVertex target = getEdgeTarget(outgoingEdge);
-            if (target.getSuffix() == sequence[nextPos]) {
+        final int baseIndex = threadingBaseIndex(sequence[nextPos]);
+        if (baseIndex != -1) {
+            final MultiSampleEdge outgoingEdge = prevNode.edges[baseIndex];
+            if (outgoingEdge != null) {
                 // we've got a match in the chain, so simply increase the count of the edge by 1 and continue
                 outgoingEdge.incMultiplicity(count);
-                return target;
+                return prevNode.targets[baseIndex];
+            }
+        } else {
+            // the nodes only index A, C, G and T, so look for any other base among the outgoing edges
+            for (final MultiSampleEdge outgoingEdge : outgoingEdgesOf(prevNode.vertex)) {
+                final MultiDeBruijnVertex target = getEdgeTarget(outgoingEdge);
+                if (target.getSuffix() == sequence[nextPos]) {
+                    outgoingEdge.incMultiplicity(count);
+                    return chainNodes.computeIfAbsent(target, ChainNode::new);
+                }
             }
         }
 
         // none of our outgoing edges had our unique suffix base, so we check for an opportunity to merge back in
         final Kmer kmer = new Kmer(sequence, kmerStart, kmerSize);
-        final MultiDeBruijnVertex mergeVertex = getNextKmerVertexForChainExtension(kmer, isRef, prevVertex);
+        final MultiDeBruijnVertex mergeVertex = getNextKmerVertexForChainExtension(kmer, isRef, prevNode.vertex);
 
         // either use our merge vertex, or create a new one in the chain
         final MultiDeBruijnVertex nextVertex = mergeVertex == null ? createVertex(kmer) : mergeVertex;
-        addEdge(prevVertex, nextVertex, ((MyEdgeFactory) getEdgeFactory()).createEdge(isRef, count));
-        return nextVertex;
+        final MultiSampleEdge newEdge = ((MyEdgeFactory) getEdgeFactory()).createEdge(isRef, count);
+        addEdge(prevNode.vertex, nextVertex, newEdge);
+        final ChainNode nextNode = chainNodes.computeIfAbsent(nextVertex, ChainNode::new);
+        // nextVertex's kmer ends in sequence[nextPos], for which prevNode had no edge, so newEdge is its first
+        if (baseIndex != -1) {
+            prevNode.edges[baseIndex] = newEdge;
+            prevNode.targets[baseIndex] = nextNode;
+        }
+        return nextNode;
+    }
+
+    /**
+     * The index of a base among A, C, G and T, or -1 for any other byte (including lowercase bases, since the graph
+     * matches bases exactly)
+     */
+    protected static int threadingBaseIndex(final byte base) {
+        switch (base) {
+            case 'A': return 0;
+            case 'C': return 1;
+            case 'G': return 2;
+            case 'T': return 3;
+            default: return -1;
+        }
+    }
+
+    /**
+     * A vertex's outgoing edges, indexed by the last base (A, C, G or T) of their targets, with the targets' own nodes, so
+     * that threading a sequence through the graph follows array entries instead of looking up graph structure.  While
+     * the graph is built a vertex never has two outgoing edges whose targets end in the same base, because
+     * extendChainByOne() follows an existing edge rather than add a second one.
+     */
+    private static final class ChainNode {
+        private final MultiDeBruijnVertex vertex;
+        private final MultiSampleEdge[] edges = new MultiSampleEdge[4];
+        private final ChainNode[] targets = new ChainNode[4];
+
+        private ChainNode(final MultiDeBruijnVertex vertex) {
+            this.vertex = vertex;
+        }
     }
 
     /**
