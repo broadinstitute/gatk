@@ -35,8 +35,9 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
     private MultiSampleEdge SYMBOLIC_END_EDGE;
 
     private Map<MultiDeBruijnVertex, ThreadingTree> readThreadingJunctionTrees = new HashMap<>();
-    // vertices with an outgoing edge into a vertex of in-degree > 1; fixed once the graph is final
-    private Set<MultiDeBruijnVertex> verticesWarrantingJunctionTrees = Collections.emptySet();
+    // Each vertex's VertexSuccessors, for threading reads into junction trees.  generateJunctionTrees() builds them once the
+    // graph is final and drops them when it finishes.
+    private transient Map<MultiDeBruijnVertex, VertexSuccessors> vertexSuccessors = null;
 
     // TODO should this be constructed here or elsewhere
     private final Set<Kmer> kmers = new HashSet<>();
@@ -138,33 +139,69 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
      *
      * If a node has an in-degree > 1, then it has a junction tree added to the previous node.
      *
-     * @param prevVertex Current vertex to extend off of
+     * @param prev The successors of the current vertex to extend off of
      * @param sequence Sequence of kmers to extend
      * @param kmerStart index of where the current kmer starts
      * @param alterTrees flag to control if we actually put anything into junction trees as a result of this path
-     * @return The next vertex in the sequence. Null if the corresponding edge doesn't exist.
+     * @return The successors of the next vertex in the sequence. Null if the corresponding edge doesn't exist.
      */
-    protected MultiDeBruijnVertex extendJunctionThreadingByOne(final MultiDeBruijnVertex prevVertex, final byte[] sequence, final int kmerStart, final JunctionTreeThreadingHelper nodesHelper, final boolean alterTrees) {
-        final Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(prevVertex);
-
+    private VertexSuccessors extendJunctionThreadingByOne(final VertexSuccessors prev, final byte[] sequence, final int kmerStart, final JunctionTreeThreadingHelper nodesHelper, final boolean alterTrees) {
         final int nextPos = kmerStart + kmerSize - 1;
-        for (final MultiSampleEdge outgoingEdge : outgoingEdges) {
-            final MultiDeBruijnVertex target = getEdgeTarget(outgoingEdge);
-            if (target.getSuffix() == sequence[nextPos]) {
-                if (alterTrees) {
-                    // Only want to create a new tree if we walk into a node that meets our junction tree criteria
-                    // NOTE: we do this deciding on our path
-                    nodesHelper.addTreeIfNecessary(prevVertex);
-
-                    // If this node has an out-degree > 1, add the edge we took to existing trees
-                    if (outgoingEdges.size() != 1) {
-                        nodesHelper.addEdgeToJunctionTreeNodes(outgoingEdge);
-                    }
+        final int baseIndex = threadingBaseIndex(sequence[nextPos]);
+        MultiSampleEdge outgoingEdge = null;
+        VertexSuccessors next = null;
+        if (baseIndex != -1) {
+            outgoingEdge = prev.edges[baseIndex];
+            next = prev.targets[baseIndex];
+        } else {
+            // VertexSuccessors only index A, C, G and T, so look for any other base among the outgoing edges
+            for (final MultiSampleEdge edge : outgoingEdgesOf(prev.vertex)) {
+                if (getEdgeTarget(edge).getSuffix() == sequence[nextPos]) {
+                    outgoingEdge = edge;
+                    next = vertexSuccessors.get(getEdgeTarget(edge));
+                    break;
                 }
-                return target;
             }
         }
-        return null;
+
+        if (outgoingEdge == null) {
+            return null;
+        }
+        if (alterTrees) {
+            // Only want to create a new tree if we walk into a node that meets our junction tree criteria
+            // NOTE: we do this deciding on our path
+            nodesHelper.addTreeIfNecessary(prev);
+
+            // If this node has an out-degree > 1, add the edge we took to existing trees
+            if (prev.outDegree != 1) {
+                nodesHelper.addEdgeToJunctionTreeNodes(outgoingEdge);
+            }
+        }
+        return next;
+    }
+
+    /**
+     * A vertex's outgoing edges, indexed by the last base (A, C, G or T) of their targets, with the targets' own
+     * VertexSuccessors, so that threading a read through the final graph follows array entries instead of looking up graph
+     * structure.  Where several outgoing edges' targets end in the same base, only the first in the order of
+     * outgoingEdgesOf() is kept, since that's the edge a scan of outgoingEdgesOf() for the base would find.
+     */
+    private static final class VertexSuccessors {
+        private final MultiDeBruijnVertex vertex;
+        private final MultiSampleEdge[] edges = new MultiSampleEdge[4];
+        private final VertexSuccessors[] targets = new VertexSuccessors[4];
+        private final int outDegree;
+        // if the out-degree is 1, the successors of the only target
+        private VertexSuccessors onlyTarget = null;
+        // The current criteria, if any outgoing edge from a particular vertex leads to a vertex with inDegree > 1, then it warrants a tree. Or if it is the reference start vertex.
+        // NOTE: this check is necessary to handle the edge cases that may arise when a vertex has multiple exit paths but happens to lead to a vetex that needs a junction tree
+        private final boolean warrantsJunctionTree;
+
+        private VertexSuccessors(final MultiDeBruijnVertex vertex, final int outDegree, final boolean warrantsJunctionTree) {
+            this.vertex = vertex;
+            this.outDegree = outDegree;
+            this.warrantsJunctionTree = warrantsJunctionTree;
+        }
     }
 
     /**
@@ -429,14 +466,41 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
         addVertex(SYMBOLIC_END_VETEX);
         SYMBOLIC_END_EDGE = addEdge(getReferenceSinkVertex(), SYMBOLIC_END_VETEX);
 
-        // The graph doesn't change while reads are threaded, so decide once per vertex whether it warrants a junction
-        // tree instead of re-deriving it from the graph at every kmer of every read
-        verticesWarrantingJunctionTrees = vertexSet().stream()
-                .filter(v -> outgoingEdgesOf(v).stream().anyMatch(edge -> inDegreeOf(getEdgeTarget(edge)) > 1))
-                .collect(Collectors.toSet());
+        // The graph doesn't change while reads are threaded, so index each vertex's outgoing edges and decide whether it
+        // warrants a junction tree once, instead of querying the graph at every kmer of every read
+        vertexSuccessors = new HashMap<>();
+        for (final MultiDeBruijnVertex v : vertexSet()) {
+            final Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(v);
+            vertexSuccessors.put(v, new VertexSuccessors(v, outgoingEdges.size(),
+                    outgoingEdges.stream().anyMatch(edge -> inDegreeOf(getEdgeTarget(edge)) > 1)));
+        }
+        for (final VertexSuccessors successors : vertexSuccessors.values()) {
+            for (final MultiSampleEdge edge : outgoingEdgesOf(successors.vertex)) {
+                final MultiDeBruijnVertex target = getEdgeTarget(edge);
+                final int baseIndex = threadingBaseIndex(target.getSuffix());
+                if (baseIndex != -1 && successors.edges[baseIndex] == null) {
+                    successors.edges[baseIndex] = edge;
+                    successors.targets[baseIndex] = vertexSuccessors.get(target);
+                }
+                if (successors.outDegree == 1) {
+                    successors.onlyTarget = vertexSuccessors.get(target);
+                }
+            }
+        }
 
         readThreadingJunctionTrees = new HashMap<>();
         pending.values().stream().flatMap(Collection::stream).forEach(this::threadSequenceForJunctionTree);
+        vertexSuccessors = null;
+    }
+
+    // the VertexSuccessors of a vertex in the graph, or null for a null vertex
+    private VertexSuccessors successorsOf(final MultiDeBruijnVertex vertex) {
+        if (vertex == null) {
+            return null;
+        }
+        final VertexSuccessors successors = vertexSuccessors.get(vertex);
+        Utils.validate(successors != null, () -> "vertex " + vertex + " is not in the graph");
+        return successors;
     }
 
     /**
@@ -471,27 +535,23 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
             return;
         }
 
-        final MultiDeBruijnVertex startingVertex = kmerToVertexMap.get(new Kmer(seqForKmers.sequence, startPos, kmerSize));
+        final VertexSuccessors startingVertex = successorsOf(kmerToVertexMap.get(new Kmer(seqForKmers.sequence, startPos, kmerSize)));
 
         // loop over all of the bases in sequence, extending the graph by one base at each point, as appropriate
-        MultiDeBruijnVertex lastVertex = startingVertex;
+        VertexSuccessors lastVertex = startingVertex;
         boolean hasToRediscoverKmer = false;
         for ( int i = startPos + 1; i <= seqForKmers.stop - kmerSize; i++ ) {
-            MultiDeBruijnVertex vertex;
+            VertexSuccessors vertex;
             if (!hasToRediscoverKmer) {
                 vertex = extendJunctionThreadingByOne(lastVertex, seqForKmers.sequence, i, nodeHelper, true);
             } else {
                 Kmer kmer = new Kmer(seqForKmers.sequence, i, kmerSize);
-                vertex = kmerToVertexMap.get(kmer);
+                vertex = successorsOf(kmerToVertexMap.get(kmer));
             }
 
             // If we missed the vertex, attempt to recover the path from the graph if there is no ambiguity
             if (vertex == null && !hasToRediscoverKmer) {
-                final Set<MultiSampleEdge> outgoingEdges = outgoingEdgesOf(lastVertex);
-                MultiDeBruijnVertex tentativeVertex = null;
-                if (outgoingEdges.size()==1) {
-                    tentativeVertex = getEdgeTarget(outgoingEdges.stream().findFirst().get());
-                }
+                VertexSuccessors tentativeVertex = lastVertex.onlyTarget;
                 // Loop over the tentative path until the end of the read, we have walked over kmersize bases, or there is another missing path in the graph respectively
                 for (int j = i+1; j <= seqForKmers.stop - kmerSize &&
                                 j <= i + kmerSize &&
@@ -500,7 +560,7 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
                 }
                 // If tentativeVertex is not null then we will be able to successfully traverse the read through the graph
                 if (tentativeVertex != null) {
-                    vertex = getEdgeTarget(outgoingEdges.stream().findFirst().get());
+                    vertex = lastVertex.onlyTarget;
                 }
             }
 
@@ -515,7 +575,7 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
         }
 
         // As a final step, if the last vetex happens to be the ref-stop vertex then we want to append a symbolic node to the junciton trees
-        if (lastVertex == getReferenceSinkVertex()) {
+        if (lastVertex.vertex == getReferenceSinkVertex()) {
             nodeHelper.addEdgeToJunctionTreeNodes(SYMBOLIC_END_EDGE);
         }
     }
@@ -721,13 +781,6 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
     private class JunctionTreeThreadingHelper {
         final List<ThreadingNode> trackedNodes = new ArrayList<>(3);
 
-        // Helper method used to determine whether a vertex meets the criteria to hold a junction tree
-        // The current criteria, if any outgoing edge from a particular vertex leads to a vertex with inDegree > 1, then it warrants a tree. Or if it is the reference start vertex.
-        // NOTE: this check is necessary to handle the edge cases that may arise when a vertex has multiple exit paths but happens to lead to a vetex that needs a junction tree
-        private boolean vertexWarrantsJunctionTree(final MultiDeBruijnVertex vertex) {
-            return verticesWarrantingJunctionTrees.contains(vertex);
-        }
-
         // Helper method that adds a single edge to all of the nodes in nodesToExtend.
         private void addEdgeToJunctionTreeNodes(final MultiSampleEdge outgoingEdge) {
             List<ThreadingNode> newNodes = trackedNodes.stream().map(n -> n.addEdge(outgoingEdge)).collect(Collectors.toList());
@@ -741,8 +794,9 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
         }
 
         // Adds a junction tree prevVertex if the vertex warrants a junction tree
-        private void addTreeIfNecessary(MultiDeBruijnVertex prevVertex) {
-            if (vertexWarrantsJunctionTree(prevVertex)) {
+        private void addTreeIfNecessary(final VertexSuccessors prev) {
+            if (prev.warrantsJunctionTree) {
+                final MultiDeBruijnVertex prevVertex = prev.vertex;
                 trackedNodes.add(readThreadingJunctionTrees.computeIfAbsent(prevVertex, k -> new ThreadingTree(prevVertex)).getAndIncrementRootNode());
             }
         }
