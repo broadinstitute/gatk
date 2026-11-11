@@ -467,13 +467,13 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
             return new ActivityProfileState(ref.getInterval(), 1.0);
         }
 
-        final byte refBase = ref.getBase();
         final SimpleInterval refInterval = ref.getInterval();
 
         if( context == null || context.getBasePileup().isEmpty() ) {
             return new ActivityProfileState(refInterval, 0.0);
         }
 
+        final byte refBase = ref.getBase();
         final ReadPileup pileup = context.getBasePileup();
         if (MTAC.pileupDetectionArgs.usePileupDetection) {
             pileup.forEach(p -> PileupBasedAlleles.addMismatchPercentageToRead(p.getRead(), header, ref));
