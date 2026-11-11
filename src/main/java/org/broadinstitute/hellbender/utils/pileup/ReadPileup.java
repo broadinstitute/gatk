@@ -28,6 +28,13 @@ public class ReadPileup implements Iterable<PileupElement> {
     private final Locatable loc;
     private final List<PileupElement> pileupElements;
 
+    // Optional index of the elements by the samples of their reads, for pileups whose elements are grouped by sample, such
+    // as those from LocusIteratorByState.  The elements of indexedSamples.get(n) (null for reads without a read group or
+    // sample name) are those from sampleStarts[n] (inclusive) to sampleStarts[n + 1] (exclusive).  Both are null for a
+    // pileup without an index, whose per-sample methods look up the sample of each read.
+    private final SampleOrder indexedSamples;
+    private final int[] sampleStarts;
+
     /** Constant used by samtools to downgrade a quality for overlapping reads that disagrees in their base. */
     public static final double SAMTOOLS_OVERLAP_LOW_CONFIDENCE = 0.8;
 
@@ -39,6 +46,31 @@ public class ReadPileup implements Iterable<PileupElement> {
     public ReadPileup(final Locatable loc, final List<PileupElement> pileup) {
         this.loc = loc;
         this.pileupElements = pileup;
+        this.indexedSamples = null;
+        this.sampleStarts = null;
+    }
+
+    /**
+     * Create a new pileup at loc whose elements are grouped by the samples of their reads, so that splitting it by sample
+     * takes no per-read work.  The elements of samples.get(n) are those from index sampleStarts[n] (inclusive) to
+     * sampleStarts[n + 1] (exclusive).  The caller must ensure that every element's read belongs to its sample according to
+     * {@link ReadUtils#getSampleName}, with a null sample for reads without a read group or sample name.
+     * Note: This constructor keeps an alias to the given list and array.
+     */
+    public ReadPileup(final Locatable loc, final List<PileupElement> pileup, final SampleOrder samples, final int[] sampleStarts) {
+        Utils.nonNull(pileup);
+        Utils.nonNull(samples);
+        Utils.nonNull(sampleStarts);
+        Utils.validateArg(sampleStarts.length == samples.size() + 1, "there must be one more sample start than samples");
+        Utils.validateArg(sampleStarts[0] == 0 && sampleStarts[samples.size()] == pileup.size(),
+                "sample starts must begin at 0 and end at the size of the pileup");
+        for (int n = 0; n < samples.size(); n++) {
+            Utils.validateArg(sampleStarts[n] <= sampleStarts[n + 1], "sample starts must be non-decreasing");
+        }
+        this.loc = loc;
+        this.pileupElements = pileup;
+        this.indexedSamples = samples;
+        this.sampleStarts = sampleStarts;
     }
 
     /**
@@ -55,6 +87,8 @@ public class ReadPileup implements Iterable<PileupElement> {
 
         this.loc = loc;
         this.pileupElements = allElements;
+        this.indexedSamples = null;
+        this.sampleStarts = null;
     }
 
     /**
@@ -93,6 +127,8 @@ public class ReadPileup implements Iterable<PileupElement> {
 
         this.loc = loc;
         pileupElements = pile;
+        indexedSamples = null;
+        sampleStarts = null;
     }
 
     /**
@@ -165,10 +201,73 @@ public class ReadPileup implements Iterable<PileupElement> {
     /**
      * Make a new pileup from elements whose reads belong to the given sample.
      * Passing null sample as an argument retrieves reads whose read group or sample name is {@code null}
+     * For a pileup indexed by sample, such as one from LocusIteratorByState, this takes no per-read work.
      * NOTE: the new pileup will not be independent of the old one (no deep copy of the underlying data is performed).
      */
     public ReadPileup getPileupForSample(final String sample, final SAMFileHeader header) {
+        if (indexedSamples != null) {
+            final int n = indexedSamples.indexOf(sample);
+            return n == -1 ? new ReadPileup(loc) : getPileupForIndexedSample(n);
+        }
         return makeFilteredPileup(pe -> Objects.equals(ReadUtils.getSampleName(pe.getRead(), header), sample));
+    }
+
+    /**
+     * Make a new pileup from elements whose reads belong to samples that pass the filter, keeping their order.  A null
+     * sample stands for reads without a read group or sample name, and the filter must depend only on the sample.
+     * For a pileup indexed by sample, such as one from LocusIteratorByState, this takes no per-read work, and when every
+     * element passes it returns this pileup itself.
+     * NOTE: the new pileup will not be independent of the old one (no deep copy of the underlying data is performed).
+     */
+    public ReadPileup getPileupForSamples(final Predicate<String> sampleFilter, final SAMFileHeader header) {
+        Utils.nonNull(sampleFilter);
+        if (indexedSamples == null) {
+            return makeFilteredPileup(pe -> sampleFilter.test(ReadUtils.getSampleName(pe.getRead(), header)));
+        }
+
+        final int nSamples = indexedSamples.size();
+        final boolean[] kept = new boolean[nSamples];
+        int nKeptSamples = 0;
+        int nKeptElements = 0;
+        int lastKeptSample = -1;
+        for (int n = 0; n < nSamples; n++) {
+            // a sample without elements has nothing to keep or drop
+            if (sampleStarts[n] < sampleStarts[n + 1] && sampleFilter.test(indexedSamples.get(n))) {
+                kept[n] = true;
+                nKeptSamples++;
+                nKeptElements += sampleStarts[n + 1] - sampleStarts[n];
+                lastKeptSample = n;
+            }
+        }
+
+        if (nKeptElements == size()) {
+            return this;
+        } else if (nKeptSamples == 0) {
+            return new ReadPileup(loc);
+        } else if (nKeptSamples == 1) {
+            return getPileupForIndexedSample(lastKeptSample);
+        }
+
+        // copy the elements of the kept samples, in order, and index the copy by those samples
+        final List<PileupElement> elements = new ArrayList<>(nKeptElements);
+        final List<String> samples = new ArrayList<>(nKeptSamples);
+        final int[] starts = new int[nKeptSamples + 1];
+        for (int n = 0; n < nSamples; n++) {
+            if (kept[n]) {
+                starts[samples.size()] = elements.size();
+                samples.add(indexedSamples.get(n));
+                elements.addAll(pileupElements.subList(sampleStarts[n], sampleStarts[n + 1]));
+            }
+        }
+        starts[nKeptSamples] = elements.size();
+        return new ReadPileup(loc, elements, new SampleOrder(samples), starts);
+    }
+
+    // the elements of indexedSamples.get(n), as a view of this pileup's elements indexed by that sample
+    private ReadPileup getPileupForIndexedSample(final int n) {
+        final int start = sampleStarts[n];
+        final int end = sampleStarts[n + 1];
+        return new ReadPileup(loc, pileupElements.subList(start, end), SampleOrder.ofSingleSample(indexedSamples.get(n)), new int[] {0, end - start});
     }
 
     /**
@@ -184,6 +283,16 @@ public class ReadPileup implements Iterable<PileupElement> {
      * Note: contains null if a read has a null read group or a null sample name.
      */
     public Set<String> getSamples(final SAMFileHeader header) {
+        if (indexedSamples != null) {
+            // add the samples in order of first appearance, as below, so that the set iterates in the same order
+            final Set<String> samples = new HashSet<>();
+            for (int n = 0; n < indexedSamples.size(); n++) {
+                if (sampleStarts[n] < sampleStarts[n + 1]) {
+                    samples.add(indexedSamples.get(n));
+                }
+            }
+            return samples;
+        }
         return getElementStream().map(pe -> pe.getRead()).map(r -> ReadUtils.getSampleName(r, header)).collect(Collectors.toSet());
     }
 
@@ -529,5 +638,51 @@ public class ReadPileup implements Iterable<PileupElement> {
             quals[i] = (byte) (33 + quals[i]);  //as per SAM spec
         }
         return new String(quals);
+    }
+
+    /**
+     * An immutable list of distinct samples with constant-time lookup of each sample's position, for indexing pileups by
+     * sample.  A null sample stands for reads without a read group or sample name.  Build one for many pileups, as
+     * LocusIteratorByState does, since construction takes time proportional to the number of samples.
+     */
+    public static final class SampleOrder {
+        private final List<String> samples;
+        private final Map<String, Integer> positions;
+
+        public SampleOrder(final List<String> samples) {
+            Utils.nonNull(samples);
+            final Map<String, Integer> positions = new HashMap<>();
+            for (int n = 0; n < samples.size(); n++) {
+                final String sample = samples.get(n);
+                Utils.validateArg(positions.put(sample, n) == null, () -> "sample " + sample + " appears more than once");
+            }
+            this.samples = Collections.unmodifiableList(new ArrayList<>(samples));
+            this.positions = Collections.unmodifiableMap(positions);
+        }
+
+        private SampleOrder(final String sample) {
+            this.samples = Collections.singletonList(sample);
+            this.positions = Collections.singletonMap(sample, 0);
+        }
+
+        private static SampleOrder ofSingleSample(final String sample) {
+            return new SampleOrder(sample);
+        }
+
+        public int size() {
+            return samples.size();
+        }
+
+        public String get(final int n) {
+            return samples.get(n);
+        }
+
+        /**
+         * @return the position of the sample, or -1 if it isn't one of these samples
+         */
+        public int indexOf(final String sample) {
+            final Integer position = positions.get(sample);
+            return position == null ? -1 : position;
+        }
     }
 }
