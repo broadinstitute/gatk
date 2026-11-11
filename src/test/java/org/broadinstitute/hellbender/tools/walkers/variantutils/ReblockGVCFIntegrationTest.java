@@ -23,6 +23,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -744,5 +745,48 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
             }
         }
         Assert.assertTrue(foundNoCallSite);
+    }
+
+    // An input whose header declares XX with the given count, and a het SNP with an uncalled ALT, so the alleles are subset
+    private File inputWithFormatField(final String xxNumber, final String xxValue) throws IOException {
+        final File input = createTempFile("formatField", ".g.vcf");
+        Files.write(input.toPath(), Arrays.asList(
+                "##fileformat=VCFv4.2",
+                "##ALT=<ID=NON_REF,Description=\"Represents any possible alternative allele at this location\">",
+                "##FORMAT=<ID=AD,Number=R,Type=Integer,Description=\"Allelic depths\">",
+                "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Read depth\">",
+                "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype quality\">",
+                "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">",
+                "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Phred-scaled genotype likelihoods\">",
+                "##FORMAT=<ID=XX,Number=" + xxNumber + ",Type=Integer,Description=\"A test field\">",
+                "##INFO=<ID=DP,Number=1,Type=Integer,Description=\"Read depth\">",
+                "##contig=<ID=chr20,length=64444167>",
+                "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tsample1",
+                "chr20\t10000000\t.\tG\tC,T,<NON_REF>\t500\t.\tDP=20\tGT:AD:DP:GQ:PL:XX\t0/1:10,10,0,0:20:99:500,0,500,600,600,1100,600,600,1100,1100:" + xxValue));
+        return input;
+    }
+
+    // Reblocks the input and returns its SNP at chr20:10000000
+    private VariantContext reblockedSnp(final File input) {
+        final File output = createTempFile("reblocked", ".g.vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder().addReference(hg38_reference_20_21).add("V", input).addOutput(output);
+        runCommandLine(args);
+        final VariantContext snp = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight().stream()
+                .filter(vc -> vc.getStart() == 10000000).findFirst()
+                .orElseThrow(() -> new AssertionError("no record at chr20:10000000"));
+        Assert.assertEquals(snp.getAlternateAlleles().size(), 2, snp.toString());
+        return snp;
+    }
+
+    // Which FORMAT fields are dropped when the alleles are subset comes from each run's own input header, not from earlier runs
+    @Test
+    public void testAlleleBasedLengthAnnotationsAreNotSharedBetweenRuns() throws IOException {
+        final File allelesLengthXX = inputWithFormatField("R", "1,2,3,4");
+        final File fixedLengthXX = inputWithFormatField("1", "7");
+
+        // XX has a value per allele here, so subsetting the alleles drops it
+        Assert.assertFalse(reblockedSnp(allelesLengthXX).getGenotype(0).hasExtendedAttribute("XX"));
+        // XX has one value here, so subsetting the alleles must keep it, though the run before declared it per allele
+        Assert.assertEquals(reblockedSnp(fixedLengthXX).getGenotype(0).getExtendedAttribute("XX"), "7");
     }
 }
