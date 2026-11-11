@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
@@ -115,5 +116,60 @@ public class Mutect2ActivityProfileUnitTest extends GATKBaseTest {
     public void testRegions(final String description, final int numStates, final Sites sites, final double germlineFraction,
                             final int maxPhasingDistance, final boolean forceConversion, final List<String> expected) {
         Assert.assertEquals(popRegions(numStates, sites, germlineFraction, maxPhasingDistance, forceConversion), expected, description);
+    }
+
+    // somatic variants at 200 and 600 and a germline variant at 230, with the alt alleles Mutect2Engine::isActive reports
+    private static Map<Integer, ActivityProfileState> activeStates() {
+        return Map.of(200, activeState(200, SOMATIC, ActivityProfileState.AltAlleleType.G),
+                230, activeState(230, GERMLINE, ActivityProfileState.AltAlleleType.T),
+                600, activeState(600, SOMATIC, ActivityProfileState.AltAlleleType.INSERTION));
+    }
+
+    private static ActivityProfileState activeState(final int offset, final ActivityProfileState.Type type, final ActivityProfileState.AltAlleleType altAlleleType) {
+        return new ActivityProfileState(new SimpleInterval(CONTIG, START + offset, START + offset), 1.0, type, null, Map.of(altAlleleType, 10.0));
+    }
+
+    private static List<AssemblyRegion> popRegionsWithActiveStates(final ActivityProfile profile, final AssemblyRegionArgumentCollection args,
+                                                                    final Map<Integer, ActivityProfileState> activeStates) {
+        for (int offset = 0; offset < 1000; offset++) {
+            final SimpleInterval loc = new SimpleInterval(CONTIG, START + offset, START + offset);
+            profile.add(activeStates.getOrDefault(offset, new ActivityProfileState(loc, 0.0, NONE, null)));
+        }
+        return profile.popReadyAssemblyRegions(0, args.minAssemblyRegionSize, args.maxAssemblyRegionSize, true);
+    }
+
+    // Each region records the states of the active loci that formed it, along with their alt alleles, which lets Mutect2
+    // tell when a region is active because of a lone SNV
+    @Test
+    public void testRegionsRecordActiveStates() {
+        final AssemblyRegionArgumentCollection args = new AssemblyRegionArgumentCollection();
+        args.genotypeGermlineSitesFraction = 0.0;
+        final Map<Integer, ActivityProfileState> activeStates = activeStates();
+        final List<AssemblyRegion> regions = popRegionsWithActiveStates(new Mutect2ActivityProfile(args, HEADER), args, activeStates);
+
+        final List<AssemblyRegion> activeRegions = regions.stream().filter(AssemblyRegion::isActive).collect(Collectors.toList());
+        Assert.assertEquals(activeRegions.size(), 2);
+        assertSameStates(activeRegions.get(0).getActiveStates(), List.of(activeStates.get(200), activeStates.get(230)));
+        assertSameStates(activeRegions.get(1).getActiveStates(), List.of(activeStates.get(600)));
+        Assert.assertEquals(activeRegions.get(1).getActiveStates().get(0).getAltAlleleTypes(), Set.of(ActivityProfileState.AltAlleleType.INSERTION));
+
+        regions.stream().filter(region -> !region.isActive()).forEach(region -> Assert.assertTrue(region.getActiveStates().isEmpty()));
+    }
+
+    // the band-pass profile's states are smoothed copies of those added, so its regions record none
+    @Test
+    public void testBandPassRegionsRecordNoActiveStates() {
+        final AssemblyRegionArgumentCollection args = new AssemblyRegionArgumentCollection();
+        final BandPassActivityProfile profile = new BandPassActivityProfile(args.maxProbPropagationDistance, args.activeProbThreshold,
+                BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, HEADER);
+        final List<AssemblyRegion> regions = popRegionsWithActiveStates(profile, args, activeStates());
+
+        Assert.assertTrue(regions.stream().anyMatch(AssemblyRegion::isActive));
+        regions.forEach(region -> Assert.assertTrue(region.getActiveStates().isEmpty()));
+    }
+
+    private static void assertSameStates(final List<ActivityProfileState> actual, final List<ActivityProfileState> expected) {
+        Assert.assertEquals(actual.size(), expected.size());
+        IntStream.range(0, actual.size()).forEach(n -> Assert.assertSame(actual.get(n), expected.get(n)));
     }
 }

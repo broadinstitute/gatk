@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
@@ -23,6 +24,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 
 public final class AssemblyRegionUnitTest extends GATKBaseTest {
@@ -287,5 +290,21 @@ public final class AssemblyRegionUnitTest extends GATKBaseTest {
         final AssemblyRegion region = new AssemblyRegion(regionLoc, true, extension, header);
         final AssemblyRegion trimmed = region.trim(desiredSpan, desiredSpan);
         Assert.assertEquals(trimmed.getSpan(), expectedAssemblyRegion, "Incorrect region");
+    }
+
+    @Test
+    public void testActiveStates() {
+        final SimpleInterval span = new SimpleInterval(contig, 100, 150);
+        Assert.assertTrue(new AssemblyRegion(span, true, 10, header).getActiveStates().isEmpty());
+
+        final List<ActivityProfileState> activeStates = IntStream.of(105, 120, 140)
+                .mapToObj(position -> new ActivityProfileState(new SimpleInterval(contig, position, position), 1.0, ActivityProfileState.Type.SOMATIC, null))
+                .collect(Collectors.toList());
+        final AssemblyRegion region = new AssemblyRegion(span, true, 10, header, activeStates);
+        Assert.assertEquals(region.getActiveStates(), activeStates);
+
+        // trimming keeps the states in the new active span
+        final SimpleInterval trimmedSpan = new SimpleInterval(contig, 110, 145);
+        Assert.assertEquals(region.trim(trimmedSpan, trimmedSpan).getActiveStates(), activeStates.subList(1, 3));
     }
 }

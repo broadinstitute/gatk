@@ -11,8 +11,11 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.Arrays;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
 
 public final class ActivityProfileStateUnitTest {
     private SAMSequenceDictionary sequenceDictionary;
@@ -69,5 +72,35 @@ public final class ActivityProfileStateUnitTest {
     public void testError2(){
         final String chr = sequenceDictionary.getSequence(0).getSequenceName();
         new ActivityProfileState(new SimpleInterval(chr, 10, 11), 0.1, null, 1.0);
+    }
+
+    @Test
+    public void testAltAlleleLogOdds() {
+        final SimpleInterval loc = new SimpleInterval(sequenceDictionary.getSequence(0).getSequenceName(), 10, 10);
+
+        // states that don't report alt alleles have none
+        Assert.assertTrue(new ActivityProfileState(loc, 1.0).getAltAlleleLogOdds().isEmpty());
+        Assert.assertTrue(new ActivityProfileState(loc, 1.0, ActivityProfileState.Type.SOMATIC, null).getAltAlleleTypes().isEmpty());
+
+        // the state keeps its own copy of the reported alt alleles
+        final Map<ActivityProfileState.AltAlleleType, Double> logOdds = new EnumMap<>(ActivityProfileState.AltAlleleType.class);
+        logOdds.put(ActivityProfileState.AltAlleleType.G, 12.0);
+        logOdds.put(ActivityProfileState.AltAlleleType.DELETION, 5.0);
+        final ActivityProfileState state = new ActivityProfileState(loc, 1.0, ActivityProfileState.Type.SOMATIC, null, logOdds);
+        logOdds.put(ActivityProfileState.AltAlleleType.T, 7.0);
+
+        Assert.assertEquals(state.getAltAlleleLogOdds(), Map.of(ActivityProfileState.AltAlleleType.G, 12.0, ActivityProfileState.AltAlleleType.DELETION, 5.0));
+        Assert.assertEquals(state.getAltAlleleTypes(), EnumSet.of(ActivityProfileState.AltAlleleType.G, ActivityProfileState.AltAlleleType.DELETION));
+    }
+
+    @Test
+    public void testSubstitutedBase() {
+        Assert.assertEquals(ActivityProfileState.AltAlleleType.A.substitutedBase(), (byte) 'A');
+        Assert.assertEquals(ActivityProfileState.AltAlleleType.C.substitutedBase(), (byte) 'C');
+        Assert.assertEquals(ActivityProfileState.AltAlleleType.G.substitutedBase(), (byte) 'G');
+        Assert.assertEquals(ActivityProfileState.AltAlleleType.T.substitutedBase(), (byte) 'T');
+        Assert.assertEquals(ActivityProfileState.AltAlleleType.INSERTION.substitutedBase(), (byte) 0);
+        Assert.assertEquals(ActivityProfileState.AltAlleleType.DELETION.substitutedBase(), (byte) 0);
+        Assert.assertEquals(ActivityProfileState.AltAlleleType.OTHER.substitutedBase(), (byte) 0);
     }
 }

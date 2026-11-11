@@ -331,7 +331,9 @@ public class ActivityProfile {
         final Pair<Integer, Boolean> sizeAndActivity = findSizeAndActivityOfRegion(minRegionSize, maxRegionSize);
         final SimpleInterval firstLoc = stateList.get(0).getLoc();
         final SimpleInterval regionLoc = new SimpleInterval(firstLoc.getContig(), firstLoc.getStart(), firstLoc.getStart() + sizeAndActivity.getLeft() - 1);
-        stateList.subList(0, sizeAndActivity.getLeft()).clear();
+        final List<ActivityProfileState> regionStates = stateList.subList(0, sizeAndActivity.getLeft());
+        final List<ActivityProfileState> activeStates = activeStatesToRecord(regionStates);
+        regionStates.clear();
 
         // update the start and stop locations as necessary
         if ( stateList.isEmpty() ) {
@@ -340,7 +342,19 @@ public class ActivityProfile {
             regionStartLoc = stateList.get(0).getLoc();
         }
 
-        return new AssemblyRegion(regionLoc, sizeAndActivity.getRight(), assemblyRegionExtension, samHeader);
+        return new AssemblyRegion(regionLoc, sizeAndActivity.getRight(), assemblyRegionExtension, samHeader, activeStates);
+    }
+
+    /**
+     * The states of a new region's active loci to record in the region (see {@link AssemblyRegion#getActiveStates}), which
+     * by default is none.  A profile can record states only if its state list holds the states its client added, which
+     * isn't true of, for example, {@link BandPassActivityProfile}, whose states are derived by smoothing.
+     *
+     * @param regionStates the states that make up the new region, which must not be retained
+     * @return a new list of states to record
+     */
+    protected List<ActivityProfileState> activeStatesToRecord(final List<ActivityProfileState> regionStates) {
+        return Collections.emptyList();
     }
 
     /**

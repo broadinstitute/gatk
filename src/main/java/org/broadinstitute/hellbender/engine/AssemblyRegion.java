@@ -9,6 +9,8 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadCoordinateComparator;
@@ -76,13 +78,27 @@ public final class AssemblyRegion implements Locatable {
     private List<AlignmentAndReferenceContext> alignmentData = new ArrayList<>();
 
     /**
+     * The activity states of the active loci in the active span, if the activity profile that formed this region records
+     * them (see {@link ActivityProfile#activeStatesToRecord}), otherwise empty
+     */
+    private final List<ActivityProfileState> activeStates;
+
+    /**
      * Create a new AssemblyRegion containing no reads
      *  @param activeSpan the span of this active region
      * @param isActive indicates whether this is an active region, or an inactive one
      * @param padding the active region padding to use for this active region
      */
     public AssemblyRegion(final SimpleInterval activeSpan, final boolean isActive, final int padding, final SAMFileHeader header) {
-        this(activeSpan, makePaddedSpan(activeSpan, padding, header), isActive, header);
+        this(activeSpan, isActive, padding, header, Collections.emptyList());
+    }
+
+    /**
+     * As above, also recording the activity states of the region's active loci
+     */
+    public AssemblyRegion(final SimpleInterval activeSpan, final boolean isActive, final int padding, final SAMFileHeader header,
+                          final List<ActivityProfileState> activeStates) {
+        this(activeSpan, makePaddedSpan(activeSpan, padding, header), isActive, header, activeStates);
     }
 
     private static SimpleInterval makePaddedSpan(final SimpleInterval activeSpan, final int padding, final SAMFileHeader header) {
@@ -101,6 +117,14 @@ public final class AssemblyRegion implements Locatable {
      * @param isActive indicates whether this is an active region, or an inactive one
      */
     public AssemblyRegion(final SimpleInterval activeSpan, final SimpleInterval paddedSpan, final boolean isActive, final SAMFileHeader header) {
+        this(activeSpan, paddedSpan, isActive, header, Collections.emptyList());
+    }
+
+    /**
+     * As above, also recording the activity states of the region's active loci
+     */
+    public AssemblyRegion(final SimpleInterval activeSpan, final SimpleInterval paddedSpan, final boolean isActive, final SAMFileHeader header,
+                          final List<ActivityProfileState> activeStates) {
         this.header = Utils.nonNull(header);
         this.activeSpan = Utils.nonNull(activeSpan);
         this.paddedSpan = Utils.nonNull(paddedSpan);
@@ -111,6 +135,15 @@ public final class AssemblyRegion implements Locatable {
         reads = new ArrayList<>();
         hardClippedPileupReads = new ArrayList<>();
         this.isActive = isActive;
+        this.activeStates = activeStates.isEmpty() ? Collections.emptyList() : Collections.unmodifiableList(new ArrayList<>(activeStates));
+    }
+
+    /**
+     * The activity states of the active loci in this region's active span, if the activity profile that formed this region
+     * records them (see {@link ActivityProfile#activeStatesToRecord}), otherwise empty
+     */
+    public List<ActivityProfileState> getActiveStates() {
+        return activeStates;
     }
 
     /**
@@ -260,7 +293,9 @@ public final class AssemblyRegion implements Locatable {
         final SimpleInterval newActiveSpan = getSpan().intersect(span);
         final SimpleInterval newPaddedSpan = getPaddedSpan().intersect(paddedSpan);
 
-        final AssemblyRegion result = new AssemblyRegion( newActiveSpan, newPaddedSpan, isActive, header );
+        final List<ActivityProfileState> trimmedActiveStates = activeStates.stream()
+                .filter(state -> newActiveSpan.contains(state.getLoc())).collect(Collectors.toList());
+        final AssemblyRegion result = new AssemblyRegion( newActiveSpan, newPaddedSpan, isActive, header, trimmedActiveStates );
 
         final List<GATKRead> trimmedReads = reads.stream()
                 .map(read -> {GATKRead clipped = ReadClipper.hardClipToRegion(read, newPaddedSpan.getStart(), newPaddedSpan.getEnd());

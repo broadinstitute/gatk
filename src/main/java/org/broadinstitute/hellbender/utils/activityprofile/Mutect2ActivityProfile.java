@@ -7,7 +7,9 @@ import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collection;
 import java.util.Collections;
+import java.util.List;
 import java.util.Random;
+import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 /**
@@ -40,6 +42,15 @@ public class Mutect2ActivityProfile extends ActivityProfile {
     @Override
     protected Collection<ActivityProfileState> processState(final ActivityProfileState justAddedState) {
         return Collections.singletonList(justAddedState);
+    }
+
+    /**
+     * Since this profile doesn't transform states, its state list holds the states Mutect2Engine::isActive returned, so a
+     * region can record its active loci, which make up the cluster that formed it, along with their alt allele types.
+     */
+    @Override
+    protected List<ActivityProfileState> activeStatesToRecord(final List<ActivityProfileState> regionStates) {
+        return regionStates.stream().filter(state -> state.isActiveProb() >= activeProbThreshold).collect(Collectors.toList());
     }
 
     // if two active loci are separated by this distance or less, they go in the same AssemblyRegion

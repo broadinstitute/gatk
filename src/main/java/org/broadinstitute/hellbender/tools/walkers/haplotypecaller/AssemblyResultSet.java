@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.vcf.VCFConstants;
@@ -782,12 +784,25 @@ public final class AssemblyResultSet {
 
         final Haplotype insertedHaplotype = baseHaplotype.insertAllele(event.refAllele(), event.altAllele(), event.getStart());
         if (insertedHaplotype != null) { // can be null if the requested allele can't be inserted into the haplotype
-            final Cigar cigar = CigarUtils.calculateCigar(refHaplotype.getBases(), insertedHaplotype.getBases(), aligner, haplotypeToReferenceSWParameters, SWOverhangStrategy.INDEL);
+            // An SNV substituted into the reference haplotype aligns to it base for base, which is what Smith-Waterman finds
+            // whenever a mismatch scores better than the alternative of a one-base deletion plus a one-base insertion
+            final Cigar cigar = baseHaplotype.isReference() && event.isSNP() && mismatchBeatsDeletionPlusInsertion(haplotypeToReferenceSWParameters) ?
+                    new Cigar(Collections.singletonList(new CigarElement(insertedHaplotype.length(), CigarOperator.M))) :
+                    CigarUtils.calculateCigar(refHaplotype.getBases(), insertedHaplotype.getBases(), aligner, haplotypeToReferenceSWParameters, SWOverhangStrategy.INDEL);
             insertedHaplotype.setCigar(cigar);
             insertedHaplotype.setGenomeLocation(refHaplotype.getGenomeLocation());
             insertedHaplotype.setAlignmentStartHapwrtRef(refHaplotype.getAlignmentStartHapwrtRef());
 
         }
         return insertedHaplotype;
+    }
+
+    /**
+     * Does Smith-Waterman with these parameters align a single substituted base as a mismatch rather than as a one-base
+     * deletion and a one-base insertion?  A one-base gap costs the gap-open penalty, and every other base matches either way.
+     */
+    @VisibleForTesting
+    static boolean mismatchBeatsDeletionPlusInsertion(final SWParameters parameters) {
+        return parameters.getMismatchPenalty() > 2 * parameters.getGapOpenPenalty();
     }
 }
