@@ -5,6 +5,11 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 
+import java.util.Collections;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.Set;
+
 /**
  * Captures the probability that a specific locus in the genome represents an "active" site containing
  * real variation.
@@ -14,6 +19,9 @@ public final class ActivityProfileState {
     private double activeProb;
     private final Type resultState;
     private final Number resultValue;
+    // the kinds of alt allele that the evidence at this locus supports, each with its log odds, if the caller reports them,
+    // otherwise empty
+    private final Map<AltAlleleType, Double> altAlleleLogOdds;
     // TODO this is used to store the original isActive() prob (before smoothing) fast genotyping likelihood determination score which is used as a heuristic in DRAGEN-GATK for pileup-calling
     private double originalActiveProb = 0.0;
 
@@ -73,6 +81,37 @@ public final class ActivityProfileState {
     }
 
     /**
+     * Kinds of alt allele that the evidence at a locus can support: a substitution of one of the four bases, an insertion
+     * or deletion immediately after the locus (or a deletion spanning it), or anything else, such as a non-ACGT base or
+     * a high-quality soft clip
+     */
+    public enum AltAlleleType {
+        A, C, G, T, INSERTION, DELETION, OTHER;
+
+        /**
+         * @return the substituted base if this is a substitution of A, C, G, or T, otherwise 0
+         */
+        public byte substitutedBase() {
+            return ordinal() < 4 ? (byte) name().charAt(0) : 0;
+        }
+    }
+
+    /**
+     * @return the kinds of alt allele that the evidence at this locus supports, if the caller reported them, otherwise empty
+     */
+    public Set<AltAlleleType> getAltAlleleTypes() {
+        return altAlleleLogOdds.keySet();
+    }
+
+    /**
+     * @return the kinds of alt allele that the evidence at this locus supports, each with the caller's log odds (natural
+     * log) that it is present, if the caller reported them, otherwise empty
+     */
+    public Map<AltAlleleType, Double> getAltAlleleLogOdds() {
+        return altAlleleLogOdds;
+    }
+
+    /**
      * Create a new ActivityProfileState at loc with probability of being active of activeProb
      *
      * @param loc the position of the result profile (for debugging purposes)
@@ -93,6 +132,17 @@ public final class ActivityProfileState {
      * @param activeProb the probability of being active (between 0 and 1)
      */
     public ActivityProfileState(final SimpleInterval loc, final double activeProb, final Type resultState, final Number resultValue) {
+        this(loc, activeProb, resultState, resultValue, Collections.emptyMap());
+    }
+
+    /**
+     * As above, also recording the kinds of alt allele that the evidence at this locus supports
+     *
+     * @param altAlleleLogOdds the kinds of alt allele supported at this locus, which may be none, each with its log odds
+     */
+    public ActivityProfileState(final SimpleInterval loc, final double activeProb, final Type resultState, final Number resultValue,
+                                final Map<AltAlleleType, Double> altAlleleLogOdds) {
+        Utils.nonNull(altAlleleLogOdds);
         if ( loc.size() != 1 ) {
             throw new IllegalArgumentException("Location for an ActivityProfileState must have to size 1 bp but saw " + loc);
         }
@@ -104,6 +154,7 @@ public final class ActivityProfileState {
         setIsActiveProb(activeProb);
         this.resultState = resultState;
         this.resultValue = resultValue;
+        this.altAlleleLogOdds = altAlleleLogOdds.isEmpty() ? Collections.emptyMap() : Collections.unmodifiableMap(new EnumMap<>(altAlleleLogOdds));
     }
 
     /**

@@ -362,6 +362,12 @@ public final class Mutect2 extends AssemblyRegionWalker {
                     "requires --" + AssemblyRegionArgumentCollection.ACTIVITY_PROFILE_TYPE_LONG_NAME + " " + ActivityProfile.ProfileType.MUTECT2);
         }
 
+        // skipping assembly for lone SNVs needs each region's active loci, which only the Mutect2 activity profile records
+        if (MTAC.skipAssemblyForLoneSnvs && assemblyRegionArgs.activityProfileType != ActivityProfile.ProfileType.MUTECT2) {
+            throw new CommandLineException.BadArgumentValue(M2ArgumentCollection.SKIP_ASSEMBLY_FOR_LONE_SNVS_LONG_NAME,
+                    "requires --" + AssemblyRegionArgumentCollection.ACTIVITY_PROFILE_TYPE_LONG_NAME + " " + ActivityProfile.ProfileType.MUTECT2);
+        }
+
         // pileup summaries need the common variants, which are for nothing else
         final boolean pileupSummariesRequested = MTAC.tumorPileupSummaries != null || MTAC.normalPileupSummaries != null;
         if (pileupSummariesRequested && MTAC.commonVariantsForPileupSummaries == null) {

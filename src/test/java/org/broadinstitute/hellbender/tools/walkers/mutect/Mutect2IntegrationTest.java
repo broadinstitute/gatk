@@ -11,6 +11,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.collections4.SetUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
@@ -302,6 +303,53 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 args -> args.addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME));
         Assert.assertTrue(VariantContextTestUtils.streamVcf(callsWithoutGermline).count() < VariantContextTestUtils.streamVcf(callsWithGermline).count() / 2,
                 "most germline sites were called without genotyping germline sites");
+    }
+
+    // Skipping assembly in regions made active by a lone SNV, as in most active regions of this germline sample, changes
+    // calls only where assembly would have found other, weaker variation, so confident calls are unchanged.  With an
+    // impossibly high floor on the SNV's log odds, it never skips assembly.
+    @Test
+    public void testSkipAssemblyForLoneSnvs() {
+        final File tumor = new File(NA12878_20_21_WGS_bam);
+        final String interval = "20:10000000-10100000";
+        final Function<ArgumentsBuilder, ArgumentsBuilder> genotypeGermlineSites = args -> args.addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME);
+        final Function<ArgumentsBuilder, ArgumentsBuilder> skipAssembly = args -> args.addFlag(M2ArgumentCollection.SKIP_ASSEMBLY_FOR_LONE_SNVS_LONG_NAME);
+
+        final File withAssembly = createTempFile("with-assembly", ".vcf");
+        final File skippingAssembly = createTempFile("skipping-assembly", ".vcf");
+        final File withHighFloor = createTempFile("with-high-floor", ".vcf");
+        runMutect2(tumor, withAssembly, interval, b37Reference, Optional.of(GNOMAD), genotypeGermlineSites);
+        runMutect2(tumor, skippingAssembly, interval, b37Reference, Optional.of(GNOMAD), genotypeGermlineSites, skipAssembly);
+        runMutect2(tumor, withHighFloor, interval, b37Reference, Optional.of(GNOMAD), genotypeGermlineSites, skipAssembly,
+                args -> args.add(M2ArgumentCollection.LONE_SNV_MIN_TUMOR_LOD_LONG_NAME, 1000));
+
+        final Map<String, Double> tlodsWithAssembly = tlodsByAllele(withAssembly);
+        final Map<String, Double> tlodsSkippingAssembly = tlodsByAllele(skippingAssembly);
+        Assert.assertEquals(tlodsByAllele(withHighFloor), tlodsWithAssembly);
+
+        for (final Map<String, Double> tlods : List.of(tlodsWithAssembly, tlodsSkippingAssembly)) {
+            tlods.forEach((allele, tlod) -> {
+                if (tlod >= 10) {
+                    Assert.assertTrue(tlodsWithAssembly.containsKey(allele) && tlodsSkippingAssembly.containsKey(allele), allele + " was not called in both runs");
+                }
+            });
+        }
+    }
+
+    @Test(expectedExceptions = CommandLineException.class)
+    public void testSkipAssemblyForLoneSnvsRequiresMutect2ActivityProfile() {
+        runMutect2(new File(NA12878_20_21_WGS_bam), createTempFile("unfiltered", ".vcf"), "20:10000000-10010000", b37Reference, Optional.empty(),
+                args -> args.addFlag(M2ArgumentCollection.SKIP_ASSEMBLY_FOR_LONE_SNVS_LONG_NAME)
+                        .add(AssemblyRegionArgumentCollection.ACTIVITY_PROFILE_TYPE_LONG_NAME, ActivityProfile.ProfileType.BAND_PASS));
+    }
+
+    // TLOD of each alt allele in a Mutect2 VCF, keyed by "contig:position:ref>alt"
+    private static Map<String, Double> tlodsByAllele(final File vcf) {
+        return VariantContextTestUtils.streamVcf(vcf).flatMap(vc -> {
+                    final double[] tlods = VariantContextGetters.getAttributeAsDoubleArray(vc, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY);
+                    return IntStream.range(0, tlods.length).mapToObj(n -> Pair.of(vc.getContig() + ":" + vc.getStart() + ":" +
+                            vc.getReference().getBaseString() + ">" + vc.getAlternateAllele(n).getBaseString(), tlods[n]));
+                }).collect(Collectors.toMap(Pair::getLeft, Pair::getRight));
     }
 
     // Generating Permutect training data implies genotyping germline sites, and the germline fraction controls how many

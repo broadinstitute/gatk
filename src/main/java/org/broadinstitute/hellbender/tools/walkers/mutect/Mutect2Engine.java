@@ -136,6 +136,11 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
     private PileupQualBuffer tumorPileupQualBuffer;
     private PileupQualBuffer normalPileupQualBuffer;
+    // at candidate loci, separates insertions, deletions and soft clips in order to report the kinds of alt alleles
+    private PileupQualBuffer altAlleleTypeBuffer;
+    // active regions reaching assembly, and those among them in which we skipped assembly for a lone SNV
+    private long numActiveRegions = 0;
+    private long numRegionsSkippingAssembly = 0;
 
     /**
      * Create and initialize a new HaplotypeCallerEngine given a collection of HaplotypeCaller arguments, a reads header,
@@ -161,6 +166,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
         tumorPileupQualBuffer = new PileupQualBuffer(MTAC.activeRegionMultipleSubstitutionBaseQualCorrection);
         normalPileupQualBuffer = new PileupQualBuffer(MTAC.activeRegionMultipleSubstitutionBaseQualCorrection);
+        altAlleleTypeBuffer = new PileupQualBuffer(MTAC.activeRegionMultipleSubstitutionBaseQualCorrection, true);
 
         // optimize set operations for the common cases of no normal and one normal
         if (MTAC.normalSamples.isEmpty()) {
@@ -308,7 +314,13 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
                 .flatMap(vc -> GATKVariantContextUtils.splitVariantContextToEvents(vc, false, GenotypeAssignmentMethod.BEST_MATCH_TO_ORIGINAL, false).stream())
                 .collect(Collectors.toList());
 
-        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false, MTAC.fbargs, false);
+        // In a region made active by a lone SNV, bypass assembly, which still prepares the region and the reference haplotype,
+        // and add the SNV as if it were a given allele, which substitutes it into the reference haplotype
+        final Optional<Event> loneSnv = MTAC.skipAssemblyForLoneSnvs ? loneSnv(originalAssemblyRegion) : Optional.empty();
+        numActiveRegions++;
+        numRegionsSkippingAssembly += loneSnv.isPresent() ? 1 : 0;
+        final AssemblyResultSet untrimmedAssemblyResult = AssemblyBasedCallerUtils.assembleReads(originalAssemblyRegion, MTAC, header, samplesList, logger, referenceReader, assemblyEngine, aligner, false, MTAC.fbargs, loneSnv.isPresent());
+        loneSnv.ifPresent(snv -> untrimmedAssemblyResult.addGivenAlleles(Collections.singletonList(snv), MTAC.maxMnpDistance, aligner, MTAC.getHaplotypeToReferenceSWParameters()));
         ReadThreadingAssembler.addAssembledVariantsToEventMapOutput(untrimmedAssemblyResult, assembledEventMapVariants, MTAC.maxMnpDistance, assembledEventMapVcfOutputWriter);
         final LongHomopolymerHaplotypeCollapsingEngine haplotypeCollapsing = untrimmedAssemblyResult.getHaplotypeCollapsingEngine();
 
@@ -494,6 +506,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
     @Override
     public void close() {
+        if (MTAC.skipAssemblyForLoneSnvs) {
+            logger.info(String.format("Skipped assembly for a lone SNV in %d of %d active regions", numRegionsSkippingAssembly, numActiveRegions));
+        }
         pileupSummaryCollector.ifPresent(PileupSummaryCollector::close);
         likelihoodCalculationEngine.close();
         aligner.close();
@@ -536,13 +551,19 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
             return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.NONE, null);
         }
 
+        // To skip assembly in regions made active by a lone SNV, we report the kinds of alt allele at candidate loci, which the
+        // Mutect2 activity profile (required for skipping assembly) records in each region.  Only candidate loci get this
+        // second pass over the pileup.
+        final Map<ActivityProfileState.AltAlleleType, Double> altAlleleLogOdds = MTAC.skipAssemblyForLoneSnvs ?
+                altAlleleLogOdds(tumorPileup, refBase) : Collections.emptyMap();
+
         // Germline sites are not inherently active.  The Mutect2 activity profile uses them to phase with nearby somatic sites
         // and keeps a fraction of germline-only clusters when genotyping germline sites, which generating Permutect training
         // data implies.  Other activity profiles see only probabilities, so for them germline sites are inactive unless we
         // genotype germline sites, in which case they are candidates like any other site.
         if (isGermlineSite(pileup, refBase, refInterval, features, bestTumorAltAllele)) {
             if (usesMutect2ActivityProfile) {
-                return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.GERMLINE, null);
+                return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.GERMLINE, null, altAlleleLogOdds);
             } else if (!MTAC.genotypeGermlineSites) {
                 return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.GERMLINE, null);
             }
@@ -551,14 +572,46 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         // likewise, panel of normals sites are not inherently active, but the Mutect2 activity profile uses them for phasing.
         // We genotype them when generating Permutect training data, which uses them as examples of artifacts.
         if (!MTAC.genotypePonSites && !features.getValues(MTAC.pon, new SimpleInterval(context.getContig(), (int) context.getPosition(), (int) context.getPosition())).isEmpty()) {
-            return new ActivityProfileState(refInterval, usesMutect2ActivityProfile ? 1.0 : 0.0, ActivityProfileState.Type.ARTIFACT, null);
+            return new ActivityProfileState(refInterval, usesMutect2ActivityProfile ? 1.0 : 0.0, ActivityProfileState.Type.ARTIFACT, null, altAlleleLogOdds);
         }
 
         // if a site is active, count it toward the total of callable sites even if its depth is below the threshold
         if (pileup.size() < minCallableDepth) {
             callableSites.increment();
         }
-        return new ActivityProfileState( refInterval, 1.0, ActivityProfileState.Type.SOMATIC, null);
+        return new ActivityProfileState( refInterval, 1.0, ActivityProfileState.Type.SOMATIC, null, altAlleleLogOdds);
+    }
+
+    /**
+     * The kinds of alt allele in the tumor pileup whose evidence alone gives log odds of at least the initial threshold, i.e.
+     * that would each make this locus a candidate on their own, with those log odds.  Unlike the pileup quality buffers
+     * that decide activity, which pool insertions, deletions and soft clips as indels, this distinguishes insertions and
+     * deletions.
+     */
+    private Map<ActivityProfileState.AltAlleleType, Double> altAlleleLogOdds(final ReadPileup tumorPileup, final byte refBase) {
+        altAlleleTypeBuffer.accumulateQuals(tumorPileup, refBase, MTAC.pcrSnvQual);
+        return altAlleleTypeBuffer.altAlleleLogOddsAboveThreshold(tumorPileup.size(), MTAC.getInitialLogOdds());
+    }
+
+    /**
+     * If this region is active because of a single locus, whose tumor pileup supports a substitution of one base, with log
+     * odds of at least the lone SNV minimum, and no other alt allele, that SNV.  Requires the Mutect2 activity profile,
+     * which records each region's active loci.
+     */
+    private Optional<Event> loneSnv(final AssemblyRegion region) {
+        final List<ActivityProfileState> activeStates = region.getActiveStates();
+        if (activeStates.size() != 1 || activeStates.get(0).getAltAlleleTypes().size() != 1) {
+            return Optional.empty();
+        }
+        final ActivityProfileState state = activeStates.get(0);
+        final Map.Entry<ActivityProfileState.AltAlleleType, Double> altAllele = state.getAltAlleleLogOdds().entrySet().iterator().next();
+        final byte altBase = altAllele.getKey().substitutedBase();
+        final SimpleInterval locus = state.getLoc();
+        final byte refBase = referenceReader.getSubsequenceAt(locus.getContig(), locus.getStart(), locus.getEnd()).getBases()[0];
+        if (altBase == 0 || altAllele.getValue() < MTAC.getLoneSnvMinLogOdds() || !BaseUtils.isRegularBase(refBase) || refBase == altBase) {
+            return Optional.empty();
+        }
+        return Optional.of(new Event(locus.getContig(), locus.getStart(), Allele.create(refBase, true), Allele.create(altBase, false)));
     }
 
     /**
@@ -743,19 +796,38 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
     }
 
     /**
-     * A resuable container class to accumulate qualities for each type of SNV and indels (all indels combined)
+     * A resuable container class to accumulate qualities for each type of SNV and indels (all indels combined, unless the
+     * buffer splits them into insertions, deletions and soft clips)
      */
     private static class PileupQualBuffer {
         private static final int OTHER_SUBSTITUTION = 4;
         private static final int INDEL = 5;
+        // in a buffer that splits indels, index 5 holds insertions only
+        private static final int INSERTION = 5;
+        private static final int DELETION = 6;
+        private static final int SOFT_CLIP = 7;
+        // the kind of alt allele for each index of a buffer that splits indels
+        private static final ActivityProfileState.AltAlleleType[] ALT_ALLELE_TYPES = {
+                ActivityProfileState.AltAlleleType.A, ActivityProfileState.AltAlleleType.C, ActivityProfileState.AltAlleleType.G,
+                ActivityProfileState.AltAlleleType.T, ActivityProfileState.AltAlleleType.OTHER, ActivityProfileState.AltAlleleType.INSERTION,
+                ActivityProfileState.AltAlleleType.DELETION, ActivityProfileState.AltAlleleType.OTHER};
 
         private static double MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION;
 
-        // indices 0-3 are A,C,G,T; 4 is other substitution (just in case it's some exotic protocol); 5 is indel
-        private List<ByteArrayList> buffers = IntStream.range(0,6).mapToObj(n -> new ByteArrayList()).collect(Collectors.toList());
+        private final boolean splitIndels;
+
+        // indices 0-3 are A,C,G,T; 4 is other substitution (just in case it's some exotic protocol); 5 is indel, or, if indels
+        // are split, 5 is insertion, 6 is deletion and 7 is soft clip
+        private List<ByteArrayList> buffers;
 
         public PileupQualBuffer(final double multipleSubstitutionQualCorrection) {
+            this(multipleSubstitutionQualCorrection, false);
+        }
+
+        public PileupQualBuffer(final double multipleSubstitutionQualCorrection, final boolean splitIndels) {
             MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION = multipleSubstitutionQualCorrection;
+            this.splitIndels = splitIndels;
+            buffers = IntStream.range(0, splitIndels ? 8 : 6).mapToObj(n -> new ByteArrayList()).collect(Collectors.toList());
         }
 
         public void accumulateQuals(final ReadPileup pileup, final byte refBase, final int pcrErrorQual) {
@@ -765,9 +837,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
             for (final PileupElement pe : pileup) {
                 final int indelLength = getCurrentOrFollowingIndelLength(pe);
                 if (indelLength > 0) {
-                    accumulateIndel(indelQual(indelLength));
+                    buffers.get(!splitIndels ? INDEL : (pe.isDeletion() || pe.isBeforeDeletionStart() ? DELETION : INSERTION)).add(indelQual(indelLength));
                 } else if (isNextToUsefulSoftClip(pe)) {
-                    accumulateIndel(indelQual(1));
+                    buffers.get(splitIndels ? SOFT_CLIP : INDEL).add(indelQual(1));
                 } else if (pe.getBase() != refBase && pe.getQual() > MINIMUM_BASE_QUALITY) {
                     final GATKRead read = pe.getRead();
                     final int mateStart = (!read.isProperlyPaired() || read.mateIsUnmapped()) ? Integer.MAX_VALUE : read.getMateStart();
@@ -790,6 +862,27 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
             return ImmutablePair.of(bestIndex, buffers.get(bestIndex));
         }
 
+        /**
+         * For a buffer that splits indels: the kinds of alt allele whose qualities alone give log odds of at least the
+         * threshold, with those log odds.  Other substitutions and soft clips are both OTHER, which gets the larger.
+         *
+         * @param pileupSize the number of elements in the accumulated pileup
+         */
+        public Map<ActivityProfileState.AltAlleleType, Double> altAlleleLogOddsAboveThreshold(final int pileupSize, final double logOddsThreshold) {
+            Utils.validate(splitIndels, "alt allele log odds require a buffer that splits indels");
+            final Map<ActivityProfileState.AltAlleleType, Double> result = new EnumMap<>(ActivityProfileState.AltAlleleType.class);
+            for (int n = 0; n < buffers.size(); n++) {
+                final ByteArrayList quals = buffers.get(n);
+                if (!quals.isEmpty()) {
+                    final double logOdds = logLikelihoodRatio(pileupSize - quals.size(), quals);
+                    if (logOdds >= logOddsThreshold) {
+                        result.merge(ALT_ALLELE_TYPES[n], logOdds, Math::max);
+                    }
+                }
+            }
+            return result;
+        }
+
         public static boolean likeliestIndexIsIndel(final int index) {
             return index == INDEL;
         }
@@ -809,10 +902,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
             } else {
                 buffers.get(index).add((byte) FastMath.min(qual + MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION, QualityUtils.MAX_QUAL));
             }
-        }
-
-        private void accumulateIndel(final byte qual) {
-            buffers.get(INDEL).add(qual);
         }
 
         private void clear() {

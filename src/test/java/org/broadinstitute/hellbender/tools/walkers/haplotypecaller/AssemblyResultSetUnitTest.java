@@ -1,15 +1,27 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
+import htsjdk.samtools.Cigar;
+import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import htsjdk.samtools.SAMFileHeader;
+import htsjdk.variant.variantcontext.Allele;
+import org.apache.commons.lang3.ArrayUtils;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWOverhangStrategy;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.graphs.SeqGraph;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingGraph;
 import org.broadinstitute.hellbender.testutils.TestingReadThreadingGraph;
+import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.GenomeLocParser;
 import org.broadinstitute.hellbender.utils.RandomDNA;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.haplotype.Event;
 import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
+import org.broadinstitute.hellbender.utils.read.CigarUtils;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
+import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentConstants;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.testng.Assert;
 import org.testng.annotations.BeforeClass;
@@ -108,6 +120,65 @@ public final class AssemblyResultSetUnitTest extends GATKBaseTest {
             Assert.assertEquals(h.getGenomeLocation(), newLocation);
             Assert.assertEquals(h.getBases().length, newLocation.size());
         }
+    }
+
+    @DataProvider(name = "swParameters")
+    public Object[][] swParameters() {
+        return new Object[][] {
+                {SmithWatermanAlignmentConstants.NEW_SW_PARAMETERS, true},
+                {SmithWatermanAlignmentConstants.STANDARD_NGS, true},
+                {SmithWatermanAlignmentConstants.ORIGINAL_DEFAULT, true},
+                {new SWParameters(200, -600, -260, -11), false},
+                // a mismatch ties with a one-base deletion plus a one-base insertion
+                {new SWParameters(200, -520, -260, -11), false}
+        };
+    }
+
+    @Test(dataProvider = "swParameters")
+    public void testMismatchBeatsDeletionPlusInsertion(final SWParameters parameters, final boolean expected) {
+        Assert.assertEquals(AssemblyResultSet.mismatchBeatsDeletionPlusInsertion(parameters), expected);
+    }
+
+    // A given SNV substituted into the reference haplotype gets the cigar that Smith-Waterman would find, which is all
+    // matches whenever a mismatch beats a deletion plus an insertion
+    @Test(dataProvider = "swParameters")
+    public void testGivenSnvCigar(final SWParameters parameters, final boolean mismatchBeatsDeletionPlusInsertion) {
+        final SmithWatermanAligner aligner = SmithWatermanAligner.getAligner(SmithWatermanAligner.Implementation.FASTEST_AVAILABLE);
+        final byte[] refBases = new RandomDNA(13).nextBases(100);
+        for (int offset = 0; offset < refBases.length; offset++) {
+            for (final byte altBase : BaseUtils.BASES) {
+                if (altBase == refBases[offset]) {
+                    continue;
+                }
+                final AssemblyResultSet resultSet = referenceOnlyResultSet(refBases);
+                final Event snv = new Event("1", REFERENCE_HAPLOTYPE_START + offset, Allele.create(refBases[offset], true), Allele.create(altBase));
+                resultSet.addGivenAlleles(Collections.singletonList(snv), 0, aligner, parameters);
+
+                Assert.assertEquals(resultSet.getHaplotypeCount(), 2);
+                final Haplotype altHaplotype = resultSet.getHaplotypeList().stream().filter(h -> !h.isReference()).findFirst().get();
+                Assert.assertEquals(altHaplotype.getBases()[offset], altBase);
+                Assert.assertEquals(altHaplotype.getCigar(), CigarUtils.calculateCigar(refBases, altHaplotype.getBases(), aligner, parameters, SWOverhangStrategy.INDEL));
+                if (mismatchBeatsDeletionPlusInsertion) {
+                    Assert.assertEquals(altHaplotype.getCigar().toString(), refBases.length + "M");
+                }
+            }
+        }
+    }
+
+    private static final int REFERENCE_HAPLOTYPE_START = 2;
+
+    // an assembly result set with only a reference haplotype, as when we skip assembly, following AssemblyBasedCallerUtilsUnitTest
+    private static AssemblyResultSet referenceOnlyResultSet(final byte[] refBases) {
+        final Haplotype refHaplotype = new Haplotype(refBases, true);
+        refHaplotype.setAlignmentStartHapwrtRef(1);
+        refHaplotype.setCigar(new Cigar(Collections.singletonList(new CigarElement(refBases.length, CigarOperator.M))));
+        refHaplotype.setGenomeLocation(new SimpleInterval("1", REFERENCE_HAPLOTYPE_START, REFERENCE_HAPLOTYPE_START + refBases.length - 1));
+
+        final AssemblyResultSet resultSet = new AssemblyResultSet();
+        resultSet.setPaddedReferenceLoc(new SimpleInterval("1", 1, REFERENCE_HAPLOTYPE_START + refBases.length - 1));
+        resultSet.setFullReferenceWithPadding(ArrayUtils.addAll(new byte[] {'A'}, refBases));
+        resultSet.add(refHaplotype);
+        return resultSet;
     }
 
     @DataProvider(name="trimmingData")

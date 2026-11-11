@@ -33,6 +33,8 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String PANEL_OF_NORMALS_SHORT_NAME = "pon";
     public static final String GENOTYPE_PON_SITES_LONG_NAME = "genotype-pon-sites";
     public static final String GENOTYPE_GERMLINE_SITES_LONG_NAME = "genotype-germline-sites";
+    public static final String SKIP_ASSEMBLY_FOR_LONE_SNVS_LONG_NAME = "skip-assembly-for-lone-snvs";
+    public static final String LONE_SNV_MIN_TUMOR_LOD_LONG_NAME = "lone-snv-min-tumor-lod";
     public static final String GERMLINE_RESOURCE_LONG_NAME = "germline-resource";
     public static final String DEFAULT_AF_LONG_NAME = "af-of-alleles-not-in-resource";
     public static final String DEFAULT_AF_SHORT_NAME = "default-af";
@@ -68,6 +70,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final double DEFAULT_EMISSION_LOG_10_ODDS = 3.0;
     public static final double DEFAULT_MITO_EMISSION_LOD = 0;
     public static final double DEFAULT_INITIAL_LOG_10_ODDS = 2.0;
+    public static final double DEFAULT_LONE_SNV_MIN_TUMOR_LOG_10_ODDS = 5.0;
     public static final double DEFAULT_NORMAL_LOG_10_ODDS = 2.2;
     public static final double DEFAULT_MITO_INITIAL_LOG_10_ODDS = 0;
     public static final double DEFAULT_GVCF_LOG_10_ODDS = Double.NEGATIVE_INFINITY;
@@ -172,6 +175,32 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName= GENOTYPE_GERMLINE_SITES_LONG_NAME, doc="Call all apparent germline site even though they will ultimately be filtered.", optional = true)
     public boolean genotypeGermlineSites = false;
+
+    /**
+     * If an assembly region is active because of a single locus, and the tumor pileup there supports a substitution of one
+     * base, with log10 odds of at least --lone-snv-min-tumor-lod, and no other alt allele, skip local assembly and use the
+     * reference haplotype and the reference haplotype with that base substituted.  Requires the Mutect2 activity profile,
+     * which records each region's active loci.
+     */
+    @Advanced
+    @Argument(fullName = SKIP_ASSEMBLY_FOR_LONE_SNVS_LONG_NAME, doc = "Skip assembly in regions made active by a single SNV", optional = true)
+    public boolean skipAssemblyForLoneSnvs = false;
+
+    /**
+     * With --skip-assembly-for-lone-snvs, the minimum log10 odds of the lone SNV in the tumor pileup for skipping assembly.
+     * Weakly supported SNVs are assembled because assembly often finds no variant at all where one triggered the region,
+     * and because they include the borderline somatic candidates for which assembly matters most.
+     */
+    @Advanced
+    @Argument(fullName = LONE_SNV_MIN_TUMOR_LOD_LONG_NAME, doc = "Minimum tumor log10 odds of a lone SNV for skipping assembly", optional = true)
+    public double loneSnvMinTumorLog10Odds = DEFAULT_LONE_SNV_MIN_TUMOR_LOG_10_ODDS;
+
+    /**
+     * @return the minimum tumor log odds (natural log, as Mutect2Engine computes them) of a lone SNV for skipping assembly
+     */
+    public double getLoneSnvMinLogOdds() {
+        return MathUtils.log10ToLog(loneSnvMinTumorLog10Odds);
+    }
 
     /**
      * A resource, such as gnomAD, containing population allele frequencies of common and rare variants.
