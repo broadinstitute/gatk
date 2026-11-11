@@ -35,6 +35,8 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
     private MultiSampleEdge SYMBOLIC_END_EDGE;
 
     private Map<MultiDeBruijnVertex, ThreadingTree> readThreadingJunctionTrees = new HashMap<>();
+    // vertices with an outgoing edge into a vertex of in-degree > 1; fixed once the graph is final
+    private Set<MultiDeBruijnVertex> verticesWarrantingJunctionTrees = Collections.emptySet();
 
     // TODO should this be constructed here or elsewhere
     private final Set<Kmer> kmers = new HashSet<>();
@@ -427,6 +429,12 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
         addVertex(SYMBOLIC_END_VETEX);
         SYMBOLIC_END_EDGE = addEdge(getReferenceSinkVertex(), SYMBOLIC_END_VETEX);
 
+        // The graph doesn't change while reads are threaded, so decide once per vertex whether it warrants a junction
+        // tree instead of re-deriving it from the graph at every kmer of every read
+        verticesWarrantingJunctionTrees = vertexSet().stream()
+                .filter(v -> outgoingEdgesOf(v).stream().anyMatch(edge -> inDegreeOf(getEdgeTarget(edge)) > 1))
+                .collect(Collectors.toSet());
+
         readThreadingJunctionTrees = new HashMap<>();
         pending.values().stream().flatMap(Collection::stream).forEach(this::threadSequenceForJunctionTree);
     }
@@ -717,7 +725,7 @@ public class JunctionTreeLinkedDeBruijnGraph extends AbstractReadThreadingGraph 
         // The current criteria, if any outgoing edge from a particular vertex leads to a vertex with inDegree > 1, then it warrants a tree. Or if it is the reference start vertex.
         // NOTE: this check is necessary to handle the edge cases that may arise when a vertex has multiple exit paths but happens to lead to a vetex that needs a junction tree
         private boolean vertexWarrantsJunctionTree(final MultiDeBruijnVertex vertex) {
-            return outgoingEdgesOf(vertex).stream().anyMatch(edge -> inDegreeOf(getEdgeTarget(edge)) > 1);
+            return verticesWarrantingJunctionTrees.contains(vertex);
         }
 
         // Helper method that adds a single edge to all of the nodes in nodesToExtend.
