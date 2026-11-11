@@ -481,7 +481,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         if (pileup.size() >= minCallableDepth) {
             callableSites.increment();
         }
-        final ReadPileup tumorPileup = pileup.makeFilteredPileup(pe -> isTumorSample(ReadUtils.getSampleName(pe.getRead(), header)));
+        final ReadPileup tumorPileup = pileup.getPileupForSamples(this::isTumorSample, header);
         f1R2CountsCollector.ifPresent(collector -> collector.process(tumorPileup, ref));
         tumorPileupQualBuffer.accumulateQuals(tumorPileup, refBase, MTAC.pcrSnvQual);
         final Pair<Integer, ByteArrayList> bestTumorAltAllele = tumorPileupQualBuffer.likeliestIndexAndQuals();
@@ -494,7 +494,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         }
 
         if (hasNormal() && !MTAC.genotypeGermlineSites) {
-            final ReadPileup normalPileup = pileup.makeFilteredPileup(pe -> isNormalSample(ReadUtils.getSampleName(pe.getRead(), header)));
+            final ReadPileup normalPileup = pileup.getPileupForSamples(this::isNormalSample, header);
             normalPileupQualBuffer.accumulateQuals(normalPileup, refBase, MTAC.pcrSnvQual);
             final Pair<Integer, ByteArrayList> bestNormalAltAllele = normalPileupQualBuffer.likeliestIndexAndQuals();
             if (bestNormalAltAllele.getLeft() == bestTumorAltAllele.getLeft()) {
