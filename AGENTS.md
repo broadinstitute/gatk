@@ -730,6 +730,19 @@ timestamps with the cluster's autoscaler log in Cloud Logging
 filtered on `resource.labels.cluster_name`). The log survives the cluster's
 deletion for the 30-day retention period.
 
+The autoscaler log does not reliably show Spot preemptions. Dataproc replaces
+a preempted secondary worker, so the cluster size it records can stay at its
+maximum while workers are being lost. Count preemptions from the Compute
+Engine audit log instead:
+
+    gcloud logging read 'protoPayload.methodName="compute.instances.preempted"
+      AND protoPayload.resourceName:"<cluster name>"' \
+      --project <project> --freshness=2d --format='value(timestamp)'
+
+A preemption burst while the cluster is fully allocated looks like stalls:
+allocation dips with nothing pending, then the backlog comes back as lost work
+is recomputed.
+
 ## Changing a Dataproc machine type is more than a name swap
 
 `run_in_hail_cluster.py` starts clusters through `hailctl dataproc start`, and
@@ -755,6 +768,24 @@ validate` and fail only when the cluster is created.
 The memory per vCPU differs too: an n2d-highmem-8 has 64 GB against an
 n1-highmem-8's 52 GB. So a run on a new family is not a like-for-like
 comparison of Spark settings tuned on n1.
+
+## Compare cluster configurations over repeated runs
+
+Two identical runs of the same Hail job can differ by more than the
+configuration change being measured. In VS-2055, two n1 runs of AnVIL 3K VDS
+creation took 2h46m and 3h14m, and two n2d runs took 1h47m and 2h00m. Most of
+the n1 spread was Spot preemption: the slower run lost 106 workers while all
+200 were busy, against 2 in the faster one. The rest came from straggler
+stages at the end of the job.
+
+So a single run of each configuration does not settle a comparison. When
+asked to evaluate one, ask for at least two runs per configuration and count
+the preemptions in each, as described in "A Hail export from a wide table
+finishes on the master alone". Compare the phase where the cluster is fully
+allocated with a backlog pending, as well as the total. That phase isolates
+per-core speed, while the tail mostly reflects the autoscaling policy. Treat a
+difference as real when the worst run of one configuration still beats the
+best run of the other.
 
 ## Interpolated multi-line text defeats both heredoc conventions
 
