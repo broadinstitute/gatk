@@ -7,6 +7,7 @@ import htsjdk.variant.variantcontext.GenotypeBuilder;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextBuilder;
 import htsjdk.variant.vcf.VCFConstants;
+import org.apache.commons.lang3.ArrayUtils;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.PosteriorProbabilitiesUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
@@ -33,6 +34,10 @@ final class HomRefBlock extends GVCFBlock {
 
     private final int ploidy;
 
+    // The block lowers these in place as genotypes are added, so it must own them: it copies every array it adopts. A
+    // genotype's PL array is often shared with other genotypes (GenotypeBuilder(Genotype) keeps the same array), and
+    // PosteriorProbabilitiesUtils.parsePosteriorsIntoPhredSpace returns the genotype's own PL array when the posteriors
+    // are missing. Otherwise it returns a new array, and the copy costs one small array per block.
     private int[] minPLs = null;
     private int[] minPPs = null;
     private int minGQ = -1;
@@ -53,10 +58,10 @@ final class HomRefBlock extends GVCFBlock {
         this.ploidy = startingVC.getMaxPloidy(defaultPloidy);
         final Genotype g = startingVC.getGenotype(0);
         if (g.hasPL()) {
-            this.minPLs = g.getPL();
+            this.minPLs = ArrayUtils.clone(g.getPL());
         }
         if (g.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY)) {
-            this.minPPs = PosteriorProbabilitiesUtils.parsePosteriorsIntoPhredSpace(g);
+            this.minPPs = ArrayUtils.clone(PosteriorProbabilitiesUtils.parsePosteriorsIntoPhredSpace(g));
         }
         if (minPPs != null) {
             minGQ = GATKVariantContextUtils.calculateGQFromPLs(minPPs);
@@ -118,33 +123,28 @@ final class HomRefBlock extends GVCFBlock {
                     + this.getGQLowerBound() + ',' + this.getGQUpperBound() + ')');
         }
 
+        // A genotype without posteriors counts toward them by its PLs, as parsePosteriorsIntoPhredSpace reads missing
+        // posteriors. When the first posteriors arrive, the genotypes before them count by their PLs: the minimum PLs
+        // from before this genotype's are merged in. Genotypes with neither PLs nor posteriors do not count.
+        final boolean posteriorsStartHere = minPPs == null && genotype.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
+        final int[] earlierMinPLs = posteriorsStartHere ? ArrayUtils.clone(minPLs) : null;
+
         if( minPLs == null ) {
-            minPLs = genotype.getPL();
+            minPLs = ArrayUtils.clone(genotype.getPL());
         }
-        else { // otherwise take the min with the provided genotype's PLs
-            final int[] pls = genotype.getPL();
-            if (pls != null) {
-                if (pls.length != minPLs.length) {
-                    throw new GATKException("trying to merge different PL array sizes: " + pls.length + " != " + minPLs.length);
-                }
-                for (int i = 0; i < pls.length; i++) {
-                    minPLs[i] = Math.min(minPLs[i], pls[i]);
-                }
-            }
+        else if (genotype.hasPL()) { // otherwise take the min with the provided genotype's PLs
+            lowerToMin(minPLs, genotype.getPL(), "PL");
         }
 
-        if( genotype.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY)) {
-            if (minPPs == null ) {
-                minPPs = PosteriorProbabilitiesUtils.parsePosteriorsIntoPhredSpace(genotype);
-            }
-            else { // otherwise take the min with the provided genotype's PLs
-                final int[] pps = PosteriorProbabilitiesUtils.parsePosteriorsIntoPhredSpace(genotype);
-                if (pps.length != minPPs.length) {
-                    throw new GATKException("trying to merge different PP array sizes: " + pps.length + " != " + minPPs.length);
+        if (minPPs != null || posteriorsStartHere) {
+            final int[] pps = PosteriorProbabilitiesUtils.parsePosteriorsIntoPhredSpace(genotype);
+            if (posteriorsStartHere) {
+                minPPs = ArrayUtils.clone(pps);
+                if (minPPs != null && earlierMinPLs != null) {
+                    lowerToMin(minPPs, earlierMinPLs, "PL and PP");
                 }
-                for (int i = 0; i < pps.length; i++) {
-                    minPPs[i] = Math.min(minPPs[i], pps[i]);
-                }
+            } else if (pps != null) { // otherwise take the min with the provided genotype's posteriors
+                lowerToMin(minPPs, pps, "PP");
             }
         }
         if (minPPs != null) {
@@ -158,6 +158,21 @@ final class HomRefBlock extends GVCFBlock {
         end = newEnd;
         if (genotype.hasDP()) {
             DPs.add(Math.max(genotype.getDP(), 0)); // DP must be >= 0
+        }
+    }
+
+    /**
+     * Lowers each value of {@code mins} to the corresponding value of {@code values}.
+     *
+     * @param what the name of the values, for the error message
+     * @throws GATKException if the arrays differ in length
+     */
+    private static void lowerToMin(final int[] mins, final int[] values, final String what) {
+        if (values.length != mins.length) {
+            throw new GATKException("trying to merge different " + what + " array sizes: " + values.length + " != " + mins.length);
+        }
+        for (int i = 0; i < values.length; i++) {
+            mins[i] = Math.min(mins[i], values[i]);
         }
     }
 

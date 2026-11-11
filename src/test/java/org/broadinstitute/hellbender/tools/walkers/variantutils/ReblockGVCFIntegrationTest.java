@@ -17,6 +17,7 @@ import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
+import org.broadinstitute.hellbender.utils.variant.GATKVariantContextUtils;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -744,5 +745,35 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
             }
         }
         Assert.assertTrue(foundNoCallSite);
+    }
+
+    // The hom-ref record at 13675306, which has deletion alleles, becomes a reference block to 13675330 that the later
+    // records split. The head and the tail of the split share one PL array, so lowering the tail's PLs used to change the
+    // head's PLs as well.
+    @Test
+    public void testSplitReferenceBlockKeepsItsPLs() {
+        final File input = getTestFile("reblockEdgeCase.vcf");
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+
+        args.addReference(hg38Reference)
+                .add("V", input)
+                .add("drop-low-quals", true)
+                .add("do-qual-approx", true)
+                .addOutput(output);
+
+        runCommandLine(args);
+
+        final List<VariantContext> outVCs = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
+        final VariantContext head = outVCs.stream().filter(vc -> vc.getStart() == 13675306).findFirst()
+                .orElseThrow(() -> new AssertionError("no record at chr20:13675306"));
+        // The record's PLs for the reference and its most likely alternate allele, the 24-base deletion
+        Assert.assertEquals(head.getGenotype(0).getPL(), new int[]{0, 44, 673});
+        for (final VariantContext vc : outVCs) {
+            final Genotype g = vc.getGenotype(0);
+            if (ReblockGVCF.isHomRefBlock(vc) && g.hasPL()) {
+                Assert.assertEquals(g.getGQ(), GATKVariantContextUtils.calculateGQFromPLs(g.getPL()), vc.toString());
+            }
+        }
     }
 }

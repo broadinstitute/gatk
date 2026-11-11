@@ -12,6 +12,7 @@ import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLine;
 import htsjdk.variant.vcf.VCFStandardHeaderLines;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.tools.walkers.variantutils.PosteriorProbabilitiesUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.iterators.PushPullTransformer;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
@@ -137,12 +138,30 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
         return result;
     }
 
+    /**
+     * Whether {@code g} can join the current block: its GQ is within the block's bounds, its ploidy matches, and its
+     * PLs and posteriors have as many values as the block's. A genotype's posteriors are read as
+     * {@link HomRefBlock#add} reads them: missing posteriors are its PLs, and when posteriors first appear they are
+     * merged with the block's PLs.
+     */
     boolean genotypeCanBeMergedInCurrentBlock(final Genotype g) {
         final HomRefBlock currentHomRefBlock = (HomRefBlock)currentBlock;
-        return currentHomRefBlock != null
-                && currentHomRefBlock.withinBounds(Math.min(g.getGQ(), MAX_GENOTYPE_QUAL))
-                && currentHomRefBlock.getPloidy() == g.getPloidy()
-                && (currentHomRefBlock.getMinPLs() == null || !g.hasPL() || (currentHomRefBlock.getMinPLs().length == g.getPL().length));
+        if (currentHomRefBlock == null
+                || !currentHomRefBlock.withinBounds(Math.min(g.getGQ(), MAX_GENOTYPE_QUAL))
+                || currentHomRefBlock.getPloidy() != g.getPloidy()
+                || !sameLength(currentHomRefBlock.getMinPLs(), g.getPL())) {
+            return false;
+        }
+        final int[] blockPosteriors = currentHomRefBlock.getMinPPs() != null ? currentHomRefBlock.getMinPPs() :
+                g.hasExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY) ? currentHomRefBlock.getMinPLs() : null;
+        // the length only: HomRefBlock.add parses the posteriors
+        final int posteriorsLength = blockPosteriors == null ? -1 : PosteriorProbabilitiesUtils.posteriorsLengthInPhredSpace(g);
+        return blockPosteriors == null || posteriorsLength == -1 || blockPosteriors.length == posteriorsLength;
+    }
+
+    /** @return whether either array is null or both have the same length */
+    private static boolean sameLength(final int[] a, final int[] b) {
+        return a == null || b == null || a.length == b.length;
     }
 
     /**

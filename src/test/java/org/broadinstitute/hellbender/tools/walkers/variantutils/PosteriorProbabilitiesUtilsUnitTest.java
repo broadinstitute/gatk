@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
@@ -570,5 +571,24 @@ public final class PosteriorProbabilitiesUtilsUnitTest extends GATKBaseTest {
         assertEqualsDoubleArray(expected_three,post3,1e-5);
         assertEqualsDoubleArray(expected_four,post4,1e-5);
         assertEqualsDoubleArray(expected_five,post5,1e-5);
+    }
+
+    @DataProvider
+    public Object[][] posteriorsToMeasure() {
+        final GenotypeBuilder withPLs = new GenotypeBuilder("s1", Arrays.asList(Aref, Aref)).PL(new int[]{0, 12, 100});
+        return new Object[][]{
+                {withPLs.make()},
+                {new GenotypeBuilder("s1", Arrays.asList(Aref, Aref)).make()},
+                {new GenotypeBuilder(withPLs.make()).attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, ".,.,.").make()},
+                {new GenotypeBuilder(withPLs.make()).attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, "0,12,100,12,100,100").make()},
+                {new GenotypeBuilder(withPLs.make()).attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, "7").make()},
+                {new GenotypeBuilder(withPLs.make()).attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, Arrays.asList(0, 3, 30, 3, 30, 30)).make()},
+        };
+    }
+
+    @Test(dataProvider = "posteriorsToMeasure")
+    public void testPosteriorsLengthMatchesTheParsedPosteriors(final Genotype genotype) {
+        final int[] parsed = PosteriorProbabilitiesUtils.parsePosteriorsIntoPhredSpace(genotype);
+        Assert.assertEquals(PosteriorProbabilitiesUtils.posteriorsLengthInPhredSpace(genotype), parsed == null ? -1 : parsed.length);
     }
 }

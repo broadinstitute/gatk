@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.utils.variant.writers;
 import htsjdk.variant.variantcontext.*;
 import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.HomoSapiensConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -142,6 +143,97 @@ public class HomRefBlockUnitTest extends GATKBaseTest {
         Assert.assertNull(band2.getMinPLs());
         Assert.assertEquals(band2.getMinGQ(), getPLArray()[1]);
         Assert.assertTrue(band2.getSize() == 3);
+    }
+
+    // A genotype's PL array may be shared with genotypes in other blocks, so a block must not lower it in place
+    @Test
+    public void testBlockDoesNotModifyTheStartingGenotypesPLs() {
+        final int[] startingPLs = {0, 18, 200};
+        final VariantContext vc = new VariantContextBuilder(getVariantContext())
+                .genotypes(getValidGenotypeBuilder().GQ(18).PL(startingPLs).make()).make();
+        final HomRefBlock block = getHomRefBlock(vc);
+        block.add(vc.getStart() + 1, getValidGenotypeBuilder().GQ(12).PL(new int[]{0, 12, 300}).make());
+        Assert.assertEquals(block.getMinPLs(), new int[]{0, 12, 200});
+        Assert.assertEquals(startingPLs, new int[]{0, 18, 200});
+    }
+
+    @Test
+    public void testBlockDoesNotModifyTheFirstAddedPLs() {
+        final VariantContext vc = getVariantContext();  // no PLs
+        final HomRefBlock block = getHomRefBlock(vc);
+        final int[] firstPLs = {0, 18, 200};
+        block.add(vc.getStart() + 1, getValidGenotypeBuilder().GQ(18).PL(firstPLs).make());
+        block.add(vc.getStart() + 2, getValidGenotypeBuilder().GQ(12).PL(new int[]{0, 12, 300}).make());
+        Assert.assertEquals(block.getMinPLs(), new int[]{0, 12, 200});
+        Assert.assertEquals(firstPLs, new int[]{0, 18, 200});
+    }
+
+    // Missing posteriors are parsed as the genotype's own PL array
+    @Test
+    public void testBlockDoesNotModifyPLsReadAsPosteriors() {
+        final int[] startingPLs = {0, 18, 200};
+        final VariantContext vc = new VariantContextBuilder(getVariantContext()).genotypes(getValidGenotypeBuilder().GQ(18).PL(startingPLs)
+                .attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, ".,.,.").make()).make();
+        final HomRefBlock block = getHomRefBlock(vc);
+        block.add(vc.getStart() + 1, getValidGenotypeBuilder().GQ(12).PL(new int[]{0, 12, 100})
+                .attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, "0,12,100").make());
+        Assert.assertEquals(block.getMinPPs(), new int[]{0, 12, 100});
+        Assert.assertEquals(startingPLs, new int[]{0, 18, 200});
+    }
+
+    // The same when the posteriors start with an added genotype rather than the starting one
+    @Test
+    public void testBlockDoesNotModifyTheFirstAddedPLsReadAsPosteriors() {
+        final VariantContext vc = getVariantContext();  // neither PLs nor posteriors
+        final HomRefBlock block = getHomRefBlock(vc);
+        final int[] firstPLs = {0, 18, 200};
+        block.add(vc.getStart() + 1, getValidGenotypeBuilder().GQ(18).PL(firstPLs)
+                .attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, ".,.,.").make());
+        block.add(vc.getStart() + 2, getValidGenotypeBuilder().GQ(12).PL(new int[]{0, 12, 300})
+                .attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, "0,12,300").make());
+        Assert.assertEquals(block.getMinPPs(), new int[]{0, 12, 200});
+        Assert.assertEquals(firstPLs, new int[]{0, 18, 200});
+    }
+
+    // A genotype without posteriors counts toward the block's posteriors by its PLs, as parsePosteriorsIntoPhredSpace
+    // reads missing posteriors: here the starting posteriors are missing too, so they are its PLs
+    @Test
+    public void testGenotypeWithoutPosteriorsLowersMissingPosteriorsByItsPLs() {
+        final VariantContext vc = new VariantContextBuilder(getVariantContext()).genotypes(getValidGenotypeBuilder().GQ(18).PL(new int[]{0, 18, 200})
+                .attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, ".,.,.").make()).make();
+        final HomRefBlock block = getHomRefBlock(vc);
+        block.add(vc.getStart() + 1, getValidGenotypeBuilder().GQ(12).PL(new int[]{0, 12, 300}).make());
+        Assert.assertEquals(block.getMinPPs(), new int[]{0, 12, 200});
+        Assert.assertEquals(block.getMinGQ(), 12);
+        Assert.assertEquals(block.toVariantContext(SAMPLE_NAME, false).getGenotype(0).getGQ(), 12);
+    }
+
+    // Starting posteriors that differ from the PLs: the genotype without posteriors still counts by its PLs
+    @Test
+    public void testGenotypeWithoutPosteriorsLowersPosteriorsByItsPLs() {
+        final VariantContext vc = new VariantContextBuilder(getVariantContext()).genotypes(getValidGenotypeBuilder().GQ(15).PL(new int[]{0, 15, 150})
+                .attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, "0,19,190").make()).make();
+        final HomRefBlock block = getHomRefBlock(vc);
+        block.add(vc.getStart() + 1, getValidGenotypeBuilder().GQ(12).PL(new int[]{0, 12, 200}).make());
+        Assert.assertEquals(block.getMinPPs(), new int[]{0, 12, 190});
+        Assert.assertEquals(block.getMinPLs(), new int[]{0, 12, 150});
+        Assert.assertEquals(block.getMinGQ(), 12);
+        Assert.assertEquals(block.toVariantContext(SAMPLE_NAME, false).getGenotype(0).getGQ(), 12);
+    }
+
+    // The reverse order: genotypes without posteriors before the first with them count by the PLs they had, while the
+    // genotype that brings the posteriors counts by its posteriors only, not by its own PLs
+    @Test
+    public void testGenotypesBeforeTheFirstPosteriorsCountByTheirPLs() {
+        final VariantContext vc = new VariantContextBuilder(getVariantContext()).genotypes(getValidGenotypeBuilder().GQ(12).PL(new int[]{0, 12, 100}).make()).make();
+        final HomRefBlock block = getHomRefBlock(vc);
+        Assert.assertNull(block.getMinPPs());
+        block.add(vc.getStart() + 1, getValidGenotypeBuilder().GQ(15).PL(new int[]{0, 15, 90})
+                .attribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY, "0,30,300").make());
+        Assert.assertEquals(block.getMinPPs(), new int[]{0, 12, 100});
+        Assert.assertEquals(block.getMinPLs(), new int[]{0, 12, 90});
+        Assert.assertEquals(block.getMinGQ(), 12);
+        Assert.assertEquals(block.toVariantContext(SAMPLE_NAME, false).getGenotype(0).getGQ(), 12);
     }
 
     private static int[] getPLArray() {

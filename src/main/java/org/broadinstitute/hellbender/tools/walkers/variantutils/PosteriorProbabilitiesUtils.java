@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.collections.ListUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.ReferenceConfidenceVariantContextMerger;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
@@ -161,6 +162,21 @@ public final class PosteriorProbabilitiesUtils {
             VariantContextUtils.calculateChromosomeCounts(builder.attribute(GATKVCFConstants.GENOTYPE_PRIOR_KEY, priors), true);
         }
         return builder.make();
+    }
+
+    /**
+     * The number of values {@link #parsePosteriorsIntoPhredSpace} would return for {@code genotype}, without parsing a
+     * posteriors string. Keep the two in step.
+     *
+     * @return the number of values, or -1 where {@link #parsePosteriorsIntoPhredSpace} would return null
+     */
+    public static int posteriorsLengthInPhredSpace(final Genotype genotype) {
+        final Object PPfromVCF = genotype.getExtendedAttribute(GATKVCFConstants.PHRED_SCALED_POSTERIORS_KEY);
+        if (PPfromVCF instanceof String && ((String) PPfromVCF).charAt(0) != '.') {
+            return StringUtils.countMatches((String) PPfromVCF, ',') + 1;
+        }
+        final int[] posteriors = parsePosteriorsIntoPhredSpace(genotype);
+        return posteriors == null ? -1 : posteriors.length;
     }
 
     public static int[] parsePosteriorsIntoPhredSpace(Genotype genotype) {
