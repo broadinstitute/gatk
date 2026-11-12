@@ -5,8 +5,11 @@ over-reported carriers. Nothing here runs as part of a workflow. It is checked i
 was changed, and why — the correction was applied directly to a delivered BigQuery table, so the SQL is the only
 description of what happened to it.
 
-The production fix, so that a future callset does not need this treatment, is tracked separately (VS-2013) and belongs in
-`GvsCreateParticipantMappingTable.wdl`, `GvsMapUnmappedVIDs.wdl` and `GvsMapDroppedDuplicateVIDs.wdl`, not here.
+The production fix, so that a future callset does not need this treatment, is `GvsCreateParticipantMappingFromVDS.wdl`
+(VS-2013), which builds the mapping from the VDS. It replaced `GvsCreateParticipantMappingTable.wdl`,
+`GvsMapUnmappedVIDs.wdl` and `GvsMapDroppedDuplicateVIDs.wdl`, and the `left_alignment_fixups` and `dropped_duplicates`
+scripts they used. The files in this directory cite those by file and line; they are as of commit
+[0227bcdc4](https://github.com/broadinstitute/gatk/tree/0227bcdc43b40a2b297a64534185d02253dbdab4/scripts/variantstore).
 
 # What was wrong
 

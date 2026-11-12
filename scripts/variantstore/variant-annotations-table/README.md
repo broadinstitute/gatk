@@ -56,26 +56,17 @@ This workflow does not use the Terra Data Entity Model to run, so be sure to sel
 
 Once the VAT has been created, you will need to create a database table mapping the VIDs (Variant IDs) from that table to all the participants in the dataset that share that VID. This table is used by the AoU Researcher Workbench, and will need to be copied over to a location specified by them.
 
-1. First run `GvsCreateParticipantMappingTable.wdl` to create this participant ID mapping table and most of its data.
-   Specify the `project_id`, `dataset` and `vat_table_name` for the VAT created above. Also specify the `participant_mapping_table_name` that
-   will be created to hold the VID to participant mapping information.
-1. Next run `GvsMapUnmappedVIDs.wdl` to recover participant ID mappings for "unmapped VIDs" (a.k.a "pseudo VIDs"). These unmapped VIDs have
-   VAT table entries but no corresponding `alt_allele` entries and correspond to data that appeared in
-   input VCFs only in non-left aligned representations. During the process of creating the VAT these variants were left-aligned and thus
-   disconnected from their `alt_allele` representations. Specify the following parameters:
-   1. `project_id`, `dataset`, `vat_table_name`, `participant_mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
-   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATfromVDS.wdl`.
-   1. `unmapped_vid_mapping_table_name`: the name to use for a table that will hold the mapping information from input
-       position/ref/alt to left-aligned position/ref/alt. This should be a new table.
-1. Finally run `GvsMapDroppedDuplicateVIDs.wdl` to recover all participant ID mappings for VIDs which had multiple variant synonyms with AC != 0. The logic in `GvsCreateVATfromVDS` currently preserves a left-aligned version of the
-   synonym with the highest AC, but before running `GvsMapDroppedDuplicateVIDs.wdl` the actual participant mapping will only contain samples whose input synonym was left-aligned, which do not necessarily correspond to the synonym with highest AC.
-   Specify the following parameters:
-   1. `project_id`, `dataset`, `vat_table_name`, `participant_mapping_table_name`: use the same values as in the step above for `GvsCreateParticipantMappingTable.wdl`.
-   1. `sites_only_vcf`: the GCS path to the sites-only VCF file that was generated in the process of creating the VAT. This corresponds to the `output_file_path` output of the `CopySitesOnlyVcf` task in `GvsCreateVATfromVDS.wdl`.
-       This should be the same value as specified for the `GvsMapUnmappedVIDs.wdl` step above.
-   1. `filtered_synonyms`: the GCS path to the file of variant synonyms that were filtered as duplicates. This corresponds to the value of the `output_file` output of the `MergeDroppedSynonyms` task in `GvsCreateVATfromVDS.wdl`.
-   1. `duplicate_mapping_table_name`: the name to use for a table that will hold the mapping information from input
-      position/ref/alt to left-aligned position/ref/alt. This should be a new table.
+Run `GvsCreateParticipantMappingFromVDS.wdl` to build it. The workflow reads carriers straight from the VDS the VAT was built from, on a Dataproc cluster, and files each one under the VAT VID of its left-aligned representation, so carriers whose input gVCFs held a non-left-aligned form are mapped along with everyone else. Specify:
+
+1. `vds_path`: the VDS the VAT was built from.
+1. `project_id`, `dataset_name`: where to create the mapping tables.
+1. `fq_vat_table`: the VAT created above, as `project.dataset.table`.
+1. `fq_sample_table`: the callset's `sample_info`, as `project.dataset.table`. The workflow fails early unless the VDS holds exactly the active samples in it: none withdrawn, no controls, none it does not list, and none missing. If this check fails, stop: don't filter the samples or rerun. The VDS and VAT no longer match the callset's sample list, and that needs a team decision.
+1. `participant_mapping_table_name`: the name of the delivered view. The workflow creates `<name>_base` (`het_ids`, `hom_ids` and `hemi_ids` per VID), `<name>_realigned_inputs` (the non-left-aligned input forms realigned onto each VID, with their carrier counts) and the view `<name>`, with the `vid`, `person_ids` shape the Researcher Workbench expects. The view must not already exist. A base or realigned inputs table left by a run that failed before creating the view is dropped and rebuilt, so a relaunch with call caching needs no cleanup. Its staging tables (`<name>_pairs`, `<name>_normalized_pairs` and `<name>_key_to_vid`) expire after seven days; genome-wide the pairs table is around 77 TB.
+
+The Hail step's outputs default to a path in the workspace bucket named for the dataset and the view; set `mapping_inputs_path` to put them elsewhere. Relaunching with the same VDS and path resumes from the Hail step's checkpoint after a cluster failure. `interval` (e.g. `chr21`) restricts a test build to one contig.
+
+The workflow's last task checks the tables against the VAT and fails if any of `mismatch_outside_realigned`, `below_inside_realigned`, `hom_mismatch_outside_realigned`, `mapped_not_in_vat`, `vat_carriers_without_row`, `realigned_not_mapped`, `vids_with_duplicate_person` or `duplicate_vid_rows` is nonzero. The counts are in the `acceptance_checks` output. `above_inside_realigned` is expected to be nonzero. When more than one VDS form of a variant normalizes to the same VID, the VAT keeps only the form with the highest AC and counts only its carriers, while the mapping includes the carriers of every form. For those VIDs, a Researcher Workbench search returns more participants than the VAT's `gvs_all_sc`.
 
 ### Delivery Steps
 1. Once the VAT table is created and a TSV is exported, the AoU Researcher Workbench team should be notified of its creation and permission should be granted so that several members of the team have view permission.
