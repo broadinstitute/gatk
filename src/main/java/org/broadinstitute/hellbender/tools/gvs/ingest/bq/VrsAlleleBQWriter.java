@@ -6,7 +6,7 @@ import org.broadinstitute.hellbender.tools.gvs.ingest.VrsAlleleWriter;
 import java.io.IOException;
 
 /**
- * BigQuery writer for the {@code vrs_allele} table.
+ * BigQuery writer for the {@code vrs_allele_scratch} table.
  */
 public class VrsAlleleBQWriter extends AbstractBQWriter implements VrsAlleleWriter {
 
@@ -15,7 +15,7 @@ public class VrsAlleleBQWriter extends AbstractBQWriter implements VrsAlleleWrit
     }
 
     @Override
-    public void write(VrsAlleleRecord record) throws IOException {
-        write(toJson(record));
+    public void write(Long sampleId, VrsAlleleRecord record) throws IOException {
+        write(toJson(sampleId, record));
     }
 }

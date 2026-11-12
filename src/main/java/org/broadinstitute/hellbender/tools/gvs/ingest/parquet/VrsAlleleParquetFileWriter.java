@@ -9,7 +9,7 @@ import org.broadinstitute.hellbender.tools.gvs.ingest.VrsAlleleWriter;
 import java.io.IOException;
 
 /**
- * Parquet writer for the {@code vrs_allele} table.
+ * Parquet writer for the {@code vrs_allele_scratch} table.
  */
 public class VrsAlleleParquetFileWriter extends AbstractParquetFileWriter implements VrsAlleleWriter {
 
@@ -18,7 +18,7 @@ public class VrsAlleleParquetFileWriter extends AbstractParquetFileWriter implem
     }
 
     @Override
-    public void write(VrsAlleleRecord record) throws IOException {
-        super.write(toJson(record));
+    public void write(Long sampleId, VrsAlleleRecord record) throws IOException {
+        super.write(toJson(sampleId, record));
     }
 }

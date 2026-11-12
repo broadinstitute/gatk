@@ -189,8 +189,8 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         final List<String> fileNames = allOutputFiles.stream()
                 .map(File::getName)
                 .collect(Collectors.toList());
-        Assert.assertTrue(fileNames.stream().anyMatch(n -> n.startsWith("vrs_allele_")),
-                "Expected a vrs_allele_*.parquet file in output, got: " + fileNames);
+        Assert.assertTrue(fileNames.stream().anyMatch(n -> n.startsWith("vrs_allele_scratch_")),
+                "Expected a vrs_allele_scratch_*.parquet file in output, got: " + fileNames);
         Assert.assertTrue(fileNames.stream().anyMatch(n -> n.startsWith("vet_")),
                 "Expected a vet_*.parquet file in output");
         Assert.assertTrue(fileNames.stream().anyMatch(n -> n.startsWith("ref_ranges_")),
@@ -198,7 +198,7 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
 
         // Convert the VRS allele Parquet to TSV, then check its header and that it has at least one data row
         final File vrsFile = allOutputFiles.stream()
-                .filter(f -> f.getName().startsWith("vrs_allele_"))
+                .filter(f -> f.getName().startsWith("vrs_allele_scratch_"))
                 .findFirst()
                 .orElseThrow(() -> new AssertionError("vrs_allele file not found"));
         final File vrsTsv = new File(convertedDir, "vrs_allele.tsv");

@@ -85,7 +85,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     @Argument(fullName = "enable-vrs-ids",
             shortName = "vrs",
             doc = "compute and write VRS allele IDs into the vrs_allele_ids column of VET output, " +
-                  "and produce a vrs_allele output file. Requires a reference (--reference).",
+                  "and produce a vrs_allele_scratch output file. Requires a reference (--reference).",
             optional = true)
     public boolean enableVrsIds = false;
 
@@ -208,6 +208,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     public final MessageType vrsAlleleRowSchema = MessageTypeParser
             .parseMessageType("""
             message VrsAlleleRow {
+                required int64 sample_id;
                 required binary vrs_allele_id (UTF8);
                 required binary vrs_location_id (UTF8);
                 required binary refget_accession (UTF8);
@@ -413,7 +414,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (enableVet && vetRowsExist == Boolean.FALSE) {
             logger.info("Writing vet data for sample id = {}, name = {}", sampleId, sampleName);
             if (enableVrsIds) {
-                vrsAlleleCreator = new VrsAlleleCreator(inputVcfFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, vrsAlleleRowSchema);
+                vrsAlleleCreator = new VrsAlleleCreator(inputVcfFileName, sampleId, outputDir, outputType, projectID, datasetName, vrsAlleleRowSchema);
             }
             vetCreator = new VetCreator(inputVcfFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, variantRowSchema, enableVrsIds, vrsAlleleCreator);
         }

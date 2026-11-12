@@ -31,6 +31,7 @@ workflow GvsAssignIds {
   String vcf_header_lines_scratch_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"vcf_header_lines","type":"STRING","mode":"NULLABLE"},{"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"},{"name":"is_expected_unique","type":"BOOLEAN","mode":"REQUIRED"}]'
   String vcf_header_lines_schema_json = '[{"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}, {"name":"vcf_header_lines","type":"STRING","mode":"REQUIRED"},{"name":"is_expected_unique","type":"BOOLEAN","mode":"REQUIRED"}]'
   String vrs_allele_schema_json = '[{"name": "vrs_allele_id", "type": "STRING", "mode": "REQUIRED"},{"name": "vrs_location_id", "type": "STRING", "mode": "REQUIRED"},{"name": "refget_accession", "type": "STRING", "mode": "REQUIRED"},{"name": "ref_genome_coord_start", "type": "INTEGER", "mode": "REQUIRED"},{"name": "ref_genome_coord_end", "type": "INTEGER", "mode": "REQUIRED"},{"name": "state_type", "type": "STRING", "mode": "REQUIRED"},{"name": "state_sequence", "type": "STRING", "mode": "NULLABLE"},{"name": "state_length", "type": "INTEGER", "mode": "NULLABLE"},{"name": "state_repeat_subunit_length", "type": "INTEGER", "mode": "NULLABLE"}]'
+  String vrs_allele_scratch_schema_json = '[{"name": "sample_id", "type": "INTEGER", "mode": "REQUIRED"},{"name": "vrs_allele_id", "type": "STRING", "mode": "REQUIRED"},{"name": "vrs_location_id", "type": "STRING", "mode": "REQUIRED"},{"name": "refget_accession", "type": "STRING", "mode": "REQUIRED"},{"name": "ref_genome_coord_start", "type": "INTEGER", "mode": "REQUIRED"},{"name": "ref_genome_coord_end", "type": "INTEGER", "mode": "REQUIRED"},{"name": "state_type", "type": "STRING", "mode": "REQUIRED"},{"name": "state_sequence", "type": "STRING", "mode": "NULLABLE"},{"name": "state_length", "type": "INTEGER", "mode": "NULLABLE"},{"name": "state_repeat_subunit_length", "type": "INTEGER", "mode": "NULLABLE"}]'
   String sample_vcf_header_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"}, {"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}]'
   String sample_load_status_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
   String sample_chromosome_ploidy_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "chromosome","type": "INTEGER","mode": "REQUIRED"},{"name": "ploidy","type": "INTEGER","mode": "REQUIRED"}]'
@@ -148,6 +149,23 @@ workflow GvsAssignIds {
   }
 
   if (enable_vrs_ids) {
+    # Ingest writes each sample's VRS alleles here, tagged with its sample_id so the Parquet ingest
+    # verification covers them; ProcessVrsAlleles in GvsImportGenomes merges the distinct alleles into
+    # vrs_allele and then empties this table. Same pattern as vcf_header_lines_scratch.
+    # Intentionally unused: runs for its side effect of creating the BQ table; its output is not consumed downstream.
+    #@ except: UnusedCall
+    call GvsCreateTables.CreateSingleTable as CreateVrsAlleleScratchTable {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        go = ValidateSamples.done,
+        table_name = "vrs_allele_scratch",
+        schema_json = vrs_allele_scratch_schema_json,
+        clustering_fields = "sample_id",
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
+    # One row per distinct VRS allele, keyed on vrs_allele_id; vet.vrs_allele_ids holds the per-sample association.
     # Intentionally unused: runs for its side effect of creating the BQ table; its output is not consumed downstream.
     #@ except: UnusedCall
     call GvsCreateTables.CreateSingleTable as CreateVrsAlleleTable {

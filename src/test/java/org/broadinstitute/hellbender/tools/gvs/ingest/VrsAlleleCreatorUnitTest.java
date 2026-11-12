@@ -8,8 +8,6 @@ import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
-import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
-import org.broadinstitute.hellbender.tools.gvs.common.IngestUtils;
 import org.broadinstitute.hellbender.tools.gvs.common.VrsAlleleRecord;
 import org.testng.Assert;
 import org.testng.annotations.AfterMethod;
@@ -35,12 +33,9 @@ public class VrsAlleleCreatorUnitTest {
     private static final String LOCATION_ID = "ga4gh:SL.testLoc";
     private static final String REFGET      = "SQ.IIB53T8CNeJJdUqzn9V_JnRtQadwWCbl";
 
-    private static final int sampleTableNumber =
-            IngestUtils.getTableNumber(SAMPLE_ID, IngestConstants.partitionPerTable);
-    private static final String TABLE_NUMBER = String.format("%03d", sampleTableNumber);
-
     public static final MessageType VRS_PARQUET_SCHEMA = MessageTypeParser.parseMessageType("""
             message VrsAlleleRow {
+                required int64 sample_id;
                 required binary vrs_allele_id (UTF8);
                 required binary vrs_location_id (UTF8);
                 required binary refget_accession (UTF8);
@@ -75,13 +70,13 @@ public class VrsAlleleCreatorUnitTest {
 
         private VrsAlleleCreator newCreator(CommonCode.OutputType outputType) {
                 return new VrsAlleleCreator(
-                                SAMPLE_IDENTIFIER, SAMPLE_ID, TABLE_NUMBER, outputDir,
+                                SAMPLE_IDENTIFIER, SAMPLE_ID, outputDir,
                                 outputType, PROJECT_ID, DATASET_NAME, VRS_PARQUET_SCHEMA);
         }
 
         private File expectedParquetFile() {
                 return new File(outputDir, VrsAlleleCreator.getOutputFileName(
-                                TABLE_NUMBER, SAMPLE_ID, SAMPLE_IDENTIFIER, CommonCode.OutputType.PARQUET));
+                                SAMPLE_ID, SAMPLE_IDENTIFIER, CommonCode.OutputType.PARQUET));
         }
 
         private List<Group> readRows(File file) throws IOException {
@@ -109,15 +104,15 @@ public class VrsAlleleCreatorUnitTest {
     @Test
     public void testParquetOutputFileNaming() {
         String filename = VrsAlleleCreator.getOutputFileName(
-                TABLE_NUMBER, SAMPLE_ID, SAMPLE_IDENTIFIER, CommonCode.OutputType.PARQUET);
-        Assert.assertEquals(filename, "vrs_allele_001_100_test.parquet");
+                SAMPLE_ID, SAMPLE_IDENTIFIER, CommonCode.OutputType.PARQUET);
+        Assert.assertEquals(filename, "vrs_allele_scratch_100_test.parquet");
     }
 
     @Test
     public void testOutputFileNamingDifferentSampleId() {
         String filename = VrsAlleleCreator.getOutputFileName(
-                "002", 200L, "mysample", CommonCode.OutputType.PARQUET);
-        Assert.assertEquals(filename, "vrs_allele_002_200_mysample.parquet");
+                200L, "mysample", CommonCode.OutputType.PARQUET);
+        Assert.assertEquals(filename, "vrs_allele_scratch_200_mysample.parquet");
     }
 
     // ------------------------------------------------------------------
@@ -154,6 +149,7 @@ public class VrsAlleleCreatorUnitTest {
         List<Group> rows = readRows(expectedParquetFile());
         Assert.assertEquals(rows.size(), 1);
         Group row = rows.get(0);
+        Assert.assertEquals(row.getLong("sample_id", 0), SAMPLE_ID);
         Assert.assertEquals(row.getString("vrs_allele_id", 0), ALLELE_ID);
         Assert.assertEquals(row.getString("vrs_location_id", 0), LOCATION_ID);
         Assert.assertEquals(row.getString("refget_accession", 0), REFGET);
@@ -193,6 +189,9 @@ public class VrsAlleleCreatorUnitTest {
 
         List<Group> rows = readRows(expectedParquetFile());
         Assert.assertEquals(rows.size(), 3);
+        for (Group row : rows) {
+            Assert.assertEquals(row.getLong("sample_id", 0), SAMPLE_ID);
+        }
         Assert.assertEquals(rows.get(0).getString("vrs_allele_id", 0), "ga4gh:VA.id1");
         Assert.assertEquals(rows.get(2).getString("vrs_allele_id", 0), "ga4gh:VA.id3");
     }
@@ -209,7 +208,7 @@ public class VrsAlleleCreatorUnitTest {
         creator.closeTool();
 
         String expectedFilename = VrsAlleleCreator.getOutputFileName(
-                TABLE_NUMBER, SAMPLE_ID, SAMPLE_IDENTIFIER, CommonCode.OutputType.PARQUET);
+                SAMPLE_ID, SAMPLE_IDENTIFIER, CommonCode.OutputType.PARQUET);
         File parquetFile = new File(outputDir, expectedFilename);
         Assert.assertTrue(parquetFile.exists(), "Parquet file should exist after writing");
         Assert.assertTrue(parquetFile.length() > 0, "Parquet file should not be empty");
@@ -218,7 +217,7 @@ public class VrsAlleleCreatorUnitTest {
     @Test
     public void testParquetFileAlreadyExistsThrows() throws IOException {
         String expectedFilename = VrsAlleleCreator.getOutputFileName(
-                TABLE_NUMBER, SAMPLE_ID, SAMPLE_IDENTIFIER, CommonCode.OutputType.PARQUET);
+                SAMPLE_ID, SAMPLE_IDENTIFIER, CommonCode.OutputType.PARQUET);
         File parquetFile = new File(outputDir, expectedFilename);
         Files.createFile(parquetFile.toPath());
 
