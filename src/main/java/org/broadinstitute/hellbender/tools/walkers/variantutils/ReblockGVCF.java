@@ -202,7 +202,9 @@ public final class ReblockGVCF extends MultiVariantWalker {
 
     private CachingIndexedFastaSequenceFile referenceReader;
 
-    private static final List<String> alleleBasedLengthAnnots = new ArrayList<>();
+    // The FORMAT fields of this run's input whose length depends on the alleles (A, R and G types), set by onTraversalStart.
+    // Per instance, so a field one input declares per allele is not dropped from another input that declares it otherwise.
+    private List<String> alleleBasedLengthAnnots = Collections.emptyList();
 
     public static class AlleleLengthComparator implements Comparator<Allele> {
         public int compare(Allele a1, Allele a2) {
@@ -286,13 +288,11 @@ public final class ReblockGVCF extends MultiVariantWalker {
         }
 
         //Allele length and Genotype length annotations need to be subset or removed if alleles are dropped so we need to parse the header for annotation count types
-        for(final VCFFormatHeaderLine formatHeaderLine : inputHeader.getFormatHeaderLines()) {
-            if(formatHeaderLine.getCountType().equals(VCFHeaderLineCount.A) ||
-                    formatHeaderLine.getCountType().equals(VCFHeaderLineCount.R) ||
-                    formatHeaderLine.getCountType().equals(VCFHeaderLineCount.G)) {
-                alleleBasedLengthAnnots.add(formatHeaderLine.getID());
-            }
-        }
+        alleleBasedLengthAnnots = inputHeader.getFormatHeaderLines().stream()
+                .filter(line -> line.getCountType() == VCFHeaderLineCount.A || line.getCountType() == VCFHeaderLineCount.R
+                        || line.getCountType() == VCFHeaderLineCount.G)
+                .map(VCFFormatHeaderLine::getID)
+                .toList();
 
         if ( dbsnp.dbsnp != null  ) {
             VCFStandardHeaderLines.addStandardInfoLines(headerLines, true, VCFConstants.DBSNP_KEY);
