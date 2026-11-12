@@ -13,10 +13,13 @@ import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.GATKPath;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Coverage;
+import org.broadinstitute.hellbender.tools.walkers.annotator.QualByDepth;
 import org.broadinstitute.hellbender.tools.walkers.annotator.RMSMappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_FisherStrand;
+import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_QualByDepth;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_RMSMappingQuality;
 import org.broadinstitute.hellbender.tools.walkers.annotator.allelespecific.AS_ReadPosRankSumTest;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
@@ -34,6 +37,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.io.IOException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class ReblockGVCFUnitTest extends CommandLineProgramTest {
     private final static Allele LONG_REF = Allele.create("ACTG", true);
@@ -44,6 +48,65 @@ public class ReblockGVCFUnitTest extends CommandLineProgramTest {
     private final static Allele LONG_INS = Allele.create("ATT", false);
     private final static int EXAMPLE_DP = 18;
     public static final int DEFAULT_START = 10;
+
+    @DataProvider
+    public Object[][] nonRefADCases() {
+        return new Object[][]{
+                // input AD, input DP (-1 for none), written AD, written DP, VarDP
+                {new int[]{10, 12, 4}, -1, new int[]{10, 12, 0}, 22, 22},
+                {new int[]{10, 12, 4}, 30, new int[]{10, 12, 0}, 26, 22},
+                // when every read is on the non-ref, the zeroed AD sums to 0 and VarDP falls back to the genotype's DP before zeroing
+                {new int[]{0, 0, 5}, 8, new int[]{0, 0, 0}, 3, 8},
+                {new int[]{0, 0, 5}, 5, new int[]{0, 0, 0}, 0, 5},
+        };
+    }
+
+    @Test(dataProvider = "nonRefADCases")
+    public void testNonRefADIsZeroedWithoutModifyingTheInput(final int[] inputAD, final int inputDP, final int[] writtenAD,
+                                                             final int writtenDP, final int varDP) {
+        final ReblockGVCF reblocker = new ReblockGVCF();
+        // AS_QualByDepth makes the tool write AS_VarDP as well as VarDP
+        reblocker.setAnnotationEngine(new VariantAnnotatorEngine(Arrays.asList(new QualByDepth(), new AS_QualByDepth()), null,
+                Collections.emptyList(), false, false));
+        reblocker.vcfWriter = new ReblockingGVCFWriter(new MockVcfWriter(), Arrays.asList(20, 100), true, null, new ReblockingOptions());
+        reblocker.doQualApprox = true;
+
+        // a het call whose alleles need no subsetting, so the cleaned genotype starts as the input genotype itself, sharing
+        // its AD array
+        final GenotypeBuilder gb = new GenotypeBuilder(VariantContextTestUtils.makeG("sample1", LONG_REF, DELETION, 100, 0, 200, 300, 400, 500)).AD(inputAD.clone());
+        if (inputDP >= 0) {
+            gb.DP(inputDP);
+        }
+        final VariantContext het = makeDeletionVC("nonRefAD", Arrays.asList(LONG_REF, DELETION, Allele.NON_REF_ALLELE), LONG_REF.length(), gb.make());
+        final VariantContext cleaned = reblocker.cleanUpHighQualityVariant(het);
+
+        Assert.assertEquals(cleaned.getGenotype(0).getAD(), writtenAD);
+        Assert.assertEquals(cleaned.getGenotype(0).getDP(), writtenDP);
+        Assert.assertEquals(cleaned.getAttribute(GATKVCFConstants.VARIANT_DEPTH_KEY), varDP);
+        // the per-allele depths come from the zeroed AD
+        Assert.assertEquals(cleaned.getAttribute(GATKVCFConstants.AS_VARIANT_DEPTH_KEY),
+                Arrays.stream(writtenAD).mapToObj(Integer::toString).collect(Collectors.joining(AnnotationUtils.ALLELE_SPECIFIC_RAW_DELIM)));
+        Assert.assertEquals(het.getGenotype(0).getAD(), inputAD);
+    }
+
+    @Test
+    public void testRemoveVCFFormatAnnotationsLeavesTheInputAlone() {
+        final Genotype g = new GenotypeBuilder("sample1", Arrays.asList(LONG_REF, DELETION)).AD(new int[]{10, 12}).DP(22)
+                .attribute("PRI", "0,1,2").attribute("GP", "0,3,4").make();
+        final VariantContext vc = makeDeletionVC("formatAnnotations", Arrays.asList(LONG_REF, DELETION, Allele.NON_REF_ALLELE), LONG_REF.length(), g);
+        final VariantContext removed = ReblockGVCF.removeVCFFormatAnnotations(vc, Collections.singletonList("PRI"));
+        Assert.assertFalse(removed.getGenotype(0).hasExtendedAttribute("PRI"));
+        Assert.assertTrue(removed.getGenotype(0).hasExtendedAttribute("GP"));
+        Assert.assertTrue(vc.getGenotype(0).hasExtendedAttribute("PRI"));
+    }
+
+    @Test
+    public void testRemoveNonRefADsLeavesAShortADAlone() {
+        // an AD with no entry for the non-ref allele (index 2) is returned unchanged rather than read past its end
+        final Genotype g = new GenotypeBuilder("sample1", Arrays.asList(LONG_REF, DELETION)).AD(new int[]{10, 12}).DP(22).make();
+        Assert.assertSame(ReblockGVCF.removeNonRefADs(g, 2), g);
+        Assert.assertSame(ReblockGVCF.removeNonRefADs(g, -1), g);
+    }
 
     @Test
     public void testCleanUpHighQualityVariant() {
