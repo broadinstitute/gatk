@@ -237,7 +237,7 @@ workflows:
          - master
          - ah_var_store
          - VS-1808
-         - ng_vs_1808_vrs_ids
+         - ng_vs_2058_vrs_ids_option_a
        tags:
          - /.*/
    - name: GvsPrepareRangesCallset
@@ -360,7 +360,7 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - ng_vs_1808_vrs_ids
+             - ng_vs_2058_vrs_ids_option_a
          tags:
              - /.*/
    - name: GvsIngestTieout
