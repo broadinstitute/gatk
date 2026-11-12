@@ -3,10 +3,13 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 import  org.broadinstitute.gatk.nativebindings.pairhmm.PairHMMNativeArguments;
 import org.broadinstitute.barclay.argparser.Argument;
 
+import java.io.Serializable;
+
 /**
  * Arguments for native PairHMM implementations
  */
-public class PairHMMNativeArgumentCollection {
+public class PairHMMNativeArgumentCollection implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     @Argument(fullName = "native-pair-hmm-threads", doc="How many threads should a native pairHMM implementation use", optional = true)
     private int pairHmmNativeThreads = 4;

@@ -5,10 +5,13 @@ import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
 import org.broadinstitute.hellbender.engine.GATKPath;
 
+import java.io.Serializable;
+
 /**
  * Set of arguments for configuring the pileup detection code
  */
-public final class PileupDetectionArgumentCollection {
+public final class PileupDetectionArgumentCollection implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     public static final String PILEUP_DETECTION_LONG_NAME = "pileup-detection";
     public static final String PILEUP_DETECTION_ENABLE_INDELS = "pileup-detection-enable-indel-pileup-calling";
