@@ -210,6 +210,17 @@ baked into the image (a script, an added tool, or a Python package):
    tag. Workflows resolve the image through `GetToolVersions`, so this step is what makes the rebuilt
    image actually take effect.
 
+To run one of these scripts' unit tests locally before building, without pytest
+(it is not installed on developer machines), use unittest discovery from the
+scripts directory:
+
+    cd scripts/variantstore/scripts
+    python3 -m unittest discover -s test -p test_run_in_hail_cluster.py
+
+The dotted-module form, `python3 -m unittest test.test_run_in_hail_cluster`,
+fails with `ModuleNotFoundError`, because `test/` is not a package and the
+tests import their script as a top-level module.
+
 ### Nirvana Docker Image
 
 This is an Illumina Nirvana-based Docker image build from
@@ -760,10 +771,16 @@ validate` and fail only when the cluster is created.
    create alongside n2d-highmem-8 workers, which accept 1:
    `Number of local SSDs for an instance of type n2d-highmem-32 should be one
    of [0, 2, 4, 8, 16, 24], while [1] is requested`. The master therefore has
-   its own count, `--num-master-local-ssds` (`num_master_local_ssds` on
-   `GvsCreateVDS` and `GvsCreateVATfromVDS`), which defaults to the workers'
-   count (VS-2055). Look up the allowed counts for both shapes in the Compute
+   its own count, `--num-master-local-ssds` (`num_master_local_ssds` on every
+   GVS workflow that takes machine types). Left unset it follows the workers'
+   count, except that 1 becomes 2, so the default n2d-highmem-32 master is
+   valid (VS-2055). Look up the allowed counts for both shapes in the Compute
    Engine local SSD documentation before changing either one.
+
+n2d-highmem-8 workers and an n2d-highmem-32 master have been the default
+since VS-2055, in the script and in every WDL that takes machine types,
+replacing n1. A WDL's own default overrides the script's, so changing the
+default family means editing both.
 
 The memory per vCPU differs too: an n2d-highmem-8 has 64 GB against an
 n1-highmem-8's 52 GB. So a run on a new family is not a like-for-like
@@ -1239,7 +1256,10 @@ The "Detect missing Docker image tag updates" CI check is a wrapper around
 `scripts/ci/check_docker_refresh.sh`. Running it locally saves a push-and-wait
 cycle:
 
-    scripts/ci/check_docker_refresh.sh origin/ah_var_store HEAD
+    bash scripts/ci/check_docker_refresh.sh origin/ah_var_store HEAD
+
+The script is mode 100644 in git, so invoking it directly fails with
+"permission denied". CI runs it through `bash`; do the same.
 
 Two things about it are easy to misread.
 
@@ -1258,7 +1278,7 @@ built from a scratch index so the real index is untouched:
     cp "$(git rev-parse --git-path index)" "${IDX}"
     GIT_INDEX_FILE="${IDX}" git add scripts/variantstore/wdl/GvsUtils.wdl
     C=$(git commit-tree "$(GIT_INDEX_FILE="${IDX}" git write-tree)" -p HEAD -m tmp)
-    scripts/ci/check_docker_refresh.sh origin/ah_var_store "${C}"
+    bash scripts/ci/check_docker_refresh.sh origin/ah_var_store "${C}"
 
 Nothing references the commit, so git eventually garbage-collects it.
 

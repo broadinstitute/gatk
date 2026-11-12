@@ -451,10 +451,22 @@ class TestLocalSsdCounts(unittest.TestCase):
         self.assertEqual(1, len(starts), msg=commands)
         return starts[0]
 
-    def test_master_follows_the_worker_count_by_default(self):
+    def test_a_worker_count_of_one_gives_the_master_two_by_default(self):
+        """1 is invalid for the default n2d-highmem-32 master, so it must not be inherited."""
         command = self._start_command(num_local_ssds=1)
-        self.assertIn('--num-master-local-ssds 1', command)
+        self.assertIn('--num-master-local-ssds 2', command)
         self.assertIn('--num-worker-local-ssds 1', command)
+
+    def test_master_follows_other_worker_counts_by_default(self):
+        command = self._start_command(num_local_ssds=4)
+        self.assertIn('--num-master-local-ssds 4', command)
+        self.assertIn('--num-worker-local-ssds 4', command)
+
+    def test_zero_workers_ssds_give_the_master_zero_by_default(self):
+        """Dropping SSDs to widen the usable zones must drop them from the master too."""
+        command = self._start_command(num_local_ssds=0)
+        self.assertIn('--num-master-local-ssds 0', command)
+        self.assertIn('--num-worker-local-ssds 0', command)
 
     def test_master_count_can_differ_from_the_workers(self):
         command = self._start_command(num_local_ssds=1, num_master_local_ssds=2)
@@ -462,9 +474,14 @@ class TestLocalSsdCounts(unittest.TestCase):
         self.assertIn('--num-worker-local-ssds 1', command)
 
     def test_zero_is_honored_rather_than_treated_as_unset(self):
-        """0 is falsy, so an `or` fallback would silently give the master the worker count."""
+        """0 is falsy, so an `or` fallback would silently give the master the default."""
         command = self._start_command(num_local_ssds=1, num_master_local_ssds=0)
         self.assertIn('--num-master-local-ssds 0', command)
+
+    def test_an_explicit_master_count_of_one_is_honored(self):
+        """The 1-becomes-2 rule applies only to the default, not to an explicit request."""
+        command = self._start_command(num_local_ssds=1, num_master_local_ssds=1)
+        self.assertIn('--num-master-local-ssds 1', command)
 
 
 if __name__ == '__main__':

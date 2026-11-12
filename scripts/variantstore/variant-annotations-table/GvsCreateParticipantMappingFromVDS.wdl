@@ -28,8 +28,8 @@ workflow GvsCreateParticipantMappingFromVDS {
         Int max_secondary_workers = 200
         Int num_local_ssds = 1
         Int? num_master_local_ssds
-        String worker_machine_type = "n1-highmem-8"
-        String master_machine_type = "n1-highmem-32"
+        String worker_machine_type = "n2d-highmem-8"
+        String master_machine_type = "n2d-highmem-32"
         Boolean use_tiny_dataproc_cluster = false
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
@@ -74,7 +74,7 @@ workflow GvsCreateParticipantMappingFromVDS {
             help: "Optional Hail wheel file. Cannot define both this parameter and `hail_version`."
         }
         num_master_local_ssds: {
-            help: "Local SSDs on the master, if different from num_local_ssds. Valid counts depend on machine family and vCPU count: N2 and N2D machines with 32 vCPUs reject 1 and accept 0, 2, 4, 8, 16 or 24, so an n2d-highmem-32 master needs this set. Left unset, the master gets num_local_ssds."
+            help: "Local SSDs on the master, overriding num_local_ssds. Valid counts depend on machine family and vCPU count: N2 and N2D machines with 32 vCPUs reject 1 and accept 0, 2, 4, 8, 16 or 24. Left unset, the master gets the workers' count, except that 1 becomes 2 so that the default n2d-highmem-32 master is valid; n1-highmem-32 accepts 2 as well."
         }
     }
 

@@ -26,8 +26,8 @@ workflow GvsCreateVATfromVDS {
         Boolean generate_vep_and_loftee_annotations = true
         Boolean leave_hail_cluster_running_at_end = false
         Boolean use_tiny_dataproc_cluster = false
-        String worker_machine_type = "n1-highmem-8"
-        String master_machine_type = "n1-highmem-32"
+        String worker_machine_type = "n2d-highmem-8"
+        String master_machine_type = "n2d-highmem-32"
         Int? num_master_local_ssds
         # Compute Engine stockouts are per-zone, and Dataproc's default placement picks one zone and fails rather than
         # moving on. "auto" tries every zone in the region.
@@ -93,13 +93,13 @@ workflow GvsCreateVATfromVDS {
             help: "If true (the default), run VEP + LOFTEE and load the resulting annotations into the VAT. Set to false to skip VEP + LOFTEE annotation entirely, which can significantly reduce runtime and cost for large callsets (500K+ samples). The VAT BigQuery schema is unchanged regardless of this setting; VEP/LOFTEE columns will simply be null when disabled."
         }
         worker_machine_type: {
-            help: "Machine type for the workers of the Dataproc cluster that generates the sites-only VCF from the VDS. Defaults to n1-highmem-8. Must be a type listed in hailctl's MACHINE_MEM table for the Hail version in use, or cluster creation fails with a KeyError; as of Hail 0.2.134 that covers the n1, n2, n2d, e2, c2, m1 and m2 families but not C3, C3D or any 4th-generation family. Unused when 'sites_only_vcf' is supplied."
+            help: "Machine type for the workers of the Dataproc cluster that generates the sites-only VCF from the VDS. Defaults to n2d-highmem-8. Must be a type listed in hailctl's MACHINE_MEM table for the Hail version in use, or cluster creation fails with a KeyError; as of Hail 0.2.134 that covers the n1, n2, n2d, e2, c2, m1 and m2 families but not C3, C3D or any 4th-generation family. Unused when 'sites_only_vcf' is supplied."
         }
         master_machine_type: {
-            help: "Machine type for the master of the Dataproc cluster that generates the sites-only VCF from the VDS. Defaults to n1-highmem-32. Subject to the same hailctl MACHINE_MEM restriction as 'worker_machine_type'. Not affected by 'use_tiny_dataproc_cluster', which only changes worker counts. Unused when 'sites_only_vcf' is supplied."
+            help: "Machine type for the master of the Dataproc cluster that generates the sites-only VCF from the VDS. Defaults to n2d-highmem-32. Subject to the same hailctl MACHINE_MEM restriction as 'worker_machine_type'. Not affected by 'use_tiny_dataproc_cluster', which only changes worker counts. Unused when 'sites_only_vcf' is supplied."
         }
         num_master_local_ssds: {
-            help: "Local SSDs on the master of the sites-only VCF cluster, if different from the workers' 1. Valid counts depend on machine family and vCPU count: N2 and N2D machines with 32 vCPUs reject 1 and accept 0, 2, 4, 8, 16 or 24, so an n2d-highmem-32 master needs this set. Left unset, the master gets the same count as the workers. Unused when 'sites_only_vcf' is supplied."
+            help: "Local SSDs on the master of the sites-only VCF cluster, overriding the workers' 1. Valid counts depend on machine family and vCPU count: N2 and N2D machines with 32 vCPUs reject 1 and accept 0, 2, 4, 8, 16 or 24. Left unset, the master gets the workers' count, except that 1 becomes 2 so that the default n2d-highmem-32 master is valid; n1-highmem-32 accepts 2 as well. Unused when 'sites_only_vcf' is supplied."
         }
         cluster_zones: {
             help: "Comma-separated zones to try in order when creating the Dataproc cluster, or auto for every zone in the region. A stockout is a per-zone condition, so a create that fails for capacity is retried in the next zone rather than failing the workflow. Set to an empty string to keep Dataproc's own placement, which picks one zone and does not retry. Unused when 'sites_only_vcf' is supplied."

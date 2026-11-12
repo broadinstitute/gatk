@@ -17,8 +17,8 @@ workflow GvsCreateVDS {
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
-        String worker_machine_type = "n1-highmem-8"
-        String master_machine_type = "n1-highmem-32"
+        String worker_machine_type = "n2d-highmem-8"
+        String master_machine_type = "n2d-highmem-32"
         Int? num_master_local_ssds
         # Compute Engine stockouts are per-zone, and Dataproc's default placement picks one zone and fails rather than
         # moving on. "auto" tries every zone in the region.
@@ -63,13 +63,13 @@ workflow GvsCreateVDS {
             help: "Optional Hail wheel. Cannot define both this parameter and `hail_version`."
         }
         worker_machine_type: {
-            help: "Machine type for the Dataproc cluster's primary and secondary workers. Defaults to n1-highmem-8. Must be a type listed in hailctl's MACHINE_MEM table for the Hail version in use, or cluster creation fails with a KeyError; as of Hail 0.2.134 that covers the n1, n2, n2d, e2, c2, m1 and m2 families but not C3, C3D or any 4th-generation family."
+            help: "Machine type for the Dataproc cluster's primary and secondary workers. Defaults to n2d-highmem-8. Must be a type listed in hailctl's MACHINE_MEM table for the Hail version in use, or cluster creation fails with a KeyError; as of Hail 0.2.134 that covers the n1, n2, n2d, e2, c2, m1 and m2 families but not C3, C3D or any 4th-generation family."
         }
         master_machine_type: {
-            help: "Machine type for the Dataproc cluster's master. Defaults to n1-highmem-32. Subject to the same hailctl MACHINE_MEM restriction as `worker_machine_type`. Not affected by `use_tiny_dataproc_cluster`, which only changes worker counts."
+            help: "Machine type for the Dataproc cluster's master. Defaults to n2d-highmem-32. Subject to the same hailctl MACHINE_MEM restriction as `worker_machine_type`. Not affected by `use_tiny_dataproc_cluster`, which only changes worker counts."
         }
         num_master_local_ssds: {
-            help: "Local SSDs on the master, if different from the workers' 1. Valid counts depend on machine family and vCPU count: N2 and N2D machines with 32 vCPUs reject 1 and accept 0, 2, 4, 8, 16 or 24, so an n2d-highmem-32 master needs this set. Left unset, the master gets the same count as the workers."
+            help: "Local SSDs on the master, overriding the workers' 1. Valid counts depend on machine family and vCPU count: N2 and N2D machines with 32 vCPUs reject 1 and accept 0, 2, 4, 8, 16 or 24. Left unset, the master gets the workers' count, except that 1 becomes 2 so that the default n2d-highmem-32 master is valid; n1-highmem-32 accepts 2 as well."
         }
         cluster_zones: {
             help: "Comma-separated zones to try in order when creating the Dataproc cluster, or auto for every zone in the region. A stockout is a per-zone condition, so a create that fails for capacity is retried in the next zone rather than failing the workflow. Set to an empty string to keep Dataproc's own placement, which picks one zone and does not retry."

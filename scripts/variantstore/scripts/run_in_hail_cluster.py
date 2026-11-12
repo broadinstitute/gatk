@@ -400,7 +400,13 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
     # machine family and vCPU count, so a count that suits the workers can be invalid for the
     # master. N2 and N2D machines with 32 vCPUs reject 1 (allowed: 0, 2, 4, 8, 16, 24), which
     # made an n2d-highmem-32 master fail to create alongside n2d-highmem-8 workers (VS-2055).
-    master_local_ssds = num_local_ssds if num_master_local_ssds is None else num_master_local_ssds
+    # Left unset, the master follows the workers except that 1 becomes 2: that makes the default
+    # n2d-highmem-32 master valid, and n1-highmem-32 accepts 2 as well. An explicit 0 for the
+    # workers still gives the master 0, so dropping SSDs to widen the usable zones keeps working.
+    if num_master_local_ssds is not None:
+        master_local_ssds = num_master_local_ssds
+    else:
+        master_local_ssds = 2 if num_local_ssds == 1 else num_local_ssds
 
     cluster_max_idle_arg = f"--max-idle {cluster_max_idle_minutes}m" if cluster_max_idle_minutes else ""
     cluster_max_age_arg = f"--max-age {cluster_max_age_minutes}m" if cluster_max_age_minutes else ""
@@ -627,9 +633,12 @@ if __name__ == "__main__":
 
     parser.add_argument('--cluster-name', type=str, required=True, help='Name of the Hail cluster')
     parser.add_argument('--account', type=str, help='GCP account name')
-    parser.add_argument('--worker-machine-type', type=str, required=False, default="n1-highmem-8",
+    # n2d replaced n1 as the default in VS-2055: on AnVIL 3K VDS creation it was about 37% faster
+    # and 31% cheaper. hailctl must know the family (its MACHINE_MEM table), and the master's
+    # local SSD count must be valid for its shape; see --num-master-local-ssds.
+    parser.add_argument('--worker-machine-type', type=str, required=False, default="n2d-highmem-8",
                         help='Dataproc cluster worker machine type')
-    parser.add_argument('--master-machine-type', type=str, required=False, default="n1-highmem-32",
+    parser.add_argument('--master-machine-type', type=str, required=False, default="n2d-highmem-32",
                         help='Dataproc cluster master machine type')
     parser.add_argument('--master-memory-fraction', type=float, default=0.8, help='Dataproc master memory fraction')
     parser.add_argument('--region', type=str, required=True, help='GCS region')
@@ -675,7 +684,8 @@ if __name__ == "__main__":
                              'for the master only. Needed when the master machine type does '
                              'not accept the worker count: N2 and N2D machines with 32 vCPUs '
                              'reject 1 and accept 0, 2, 4, 8, 16 or 24. Defaults to the value '
-                             'of --num-local-ssds.')
+                             'of --num-local-ssds, except that 1 becomes 2 so that the default '
+                             'n2d-highmem-32 master is valid.')
 
     args = parser.parse_args()
 

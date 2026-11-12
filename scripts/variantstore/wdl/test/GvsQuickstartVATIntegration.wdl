@@ -26,13 +26,11 @@ workflow GvsQuickstartVATIntegration {
         String? variants_nirvana_docker
         String? gatk_docker
         Boolean use_manual_clinvar_update = false
-        # Dataproc machine types for the sites-only VCF cluster (VS-2055). Left unset, GvsCreateVATfromVDS's n1 defaults apply.
-        # TODO VS-2055: temporary n2d defaults for testing on the branch; remove the defaults before merge.
-        String? worker_machine_type = "n2d-highmem-8"
-        String? master_machine_type = "n2d-highmem-32"
-        # An n2d-highmem-32 master rejects 1 local SSD; see GvsCreateVATfromVDS's num_master_local_ssds.
-        # TODO VS-2055: temporary default to match the n2d master above; remove before merge.
-        Int? num_master_local_ssds = 2
+        # Dataproc machine types and master local SSDs for the sites-only VCF cluster (VS-2055). Left unset,
+        # GvsCreateVATfromVDS's defaults apply: n2d-highmem-8 workers, an n2d-highmem-32 master, and 2 master SSDs.
+        String? worker_machine_type
+        String? master_machine_type
+        Int? num_master_local_ssds
     }
     String project_id = "gvs-internal"
 
