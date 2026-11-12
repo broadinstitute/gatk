@@ -56,6 +56,11 @@ class TestVrsAlleleSql(unittest.TestCase):
         self.assertIn("REGEXP_CONTAINS(_TABLE_SUFFIX, r'^[0-9]+$')", sql)
         self.assertIn("a.vrs_allele_id IS NULL", sql)
 
+    def test_missing_check_ignores_spanning_deletion_placeholder(self):
+        # vet.vrs_allele_ids holds '' for a `*` ALT; it has no vrs_allele row and must not be reported.
+        sql = _norm(pva.missing_vet_ids_sql(PROJECT, DATASET, SAMPLES))
+        self.assertIn("vet_id != ''", sql)
+
     def test_clean_up_is_scoped_delete(self):
         sql = _norm(pva.clean_up_scratch_sql(PROJECT, DATASET, SAMPLES))
         self.assertTrue(sql.startswith(f"DELETE FROM `{PROJECT}.{DATASET}.vrs_allele_scratch`"), sql)

@@ -33,6 +33,13 @@ public class VetCreator {
     private static final String VET_FILETYPE_PREFIX = "vet_";
     private static final String PREFIX_SEPARATOR = "_";
 
+    /**
+     * Written to {@code vrs_allele_ids} for a spanning-deletion {@code *} ALT, which VRS cannot represent.
+     * A placeholder rather than nothing, so {@code vrs_allele_ids} stays aligned entry for entry with
+     * {@code vet.alt} (BigQuery arrays cannot hold NULL).
+     */
+    public static final String NO_VRS_ALLELE_ID = "";
+
     public static boolean doRowsExistFor(CommonCode.OutputType outputType, String projectId, String datasetName, String tableNumber, Long sampleId) {
         if (outputType != CommonCode.OutputType.BQ) return false;
         return BigQueryUtils.doRowsExistFor(projectId, datasetName, VET_FILETYPE_PREFIX + tableNumber, SchemaUtils.SAMPLE_ID_FIELD_NAME, sampleId);
@@ -67,24 +74,35 @@ public class VetCreator {
         final long location = SchemaUtils.encodeLocation(variant.getContig(), start);
 
         final List<VrsAlleleRecord> vrsRecords = computeVrsAlleleRecords(variant, referenceContext);
-        final List<String> vrsAlleleIds = vrsRecords.stream()
-                .map(r -> r.vrsAlleleId)
-                .collect(java.util.stream.Collectors.toList());
 
         if (vetWriter != null) {
-            vetWriter.write(location, variant, sampleId, vrsAlleleIds);
+            vetWriter.write(location, variant, sampleId, vrsAlleleIds(vrsRecords));
         }
         if (vrsAlleleCreator != null) {
-            vrsAlleleCreator.apply(vrsRecords);
+            vrsAlleleCreator.apply(vrsRecords.stream()
+                    .filter(java.util.Objects::nonNull)
+                    .collect(java.util.stream.Collectors.toList()));
         }
     }
 
     /**
+     * The {@code vrs_allele_ids} value for a vet row: one entry per record, {@link #NO_VRS_ALLELE_ID} where
+     * the record is null (a spanning-deletion ALT).
+     */
+    static List<String> vrsAlleleIds(final List<VrsAlleleRecord> vrsRecords) {
+        return vrsRecords.stream()
+                .map(r -> r == null ? NO_VRS_ALLELE_ID : r.vrsAlleleId)
+                .collect(java.util.stream.Collectors.toList());
+    }
+
+    /**
      * Normalize each non-ref alternate allele and compute its full VRS record.
+     * The result is aligned entry for entry with the vet {@code alt} column, which drops only
+     * {@code <NON_REF>}: a spanning-deletion {@code *} ALT gets a null entry, since VRS cannot represent it.
      * Returns an empty list when VRS IDs are disabled, reference is unavailable,
      * or the contig is not a recognized chromosome.
      */
-    private List<VrsAlleleRecord> computeVrsAlleleRecords(final VariantContext variant, final org.broadinstitute.hellbender.engine.ReferenceContext referenceContext) {
+    List<VrsAlleleRecord> computeVrsAlleleRecords(final VariantContext variant, final org.broadinstitute.hellbender.engine.ReferenceContext referenceContext) {
         if (!enableVrsIds || referenceContext == null || !referenceContext.hasBackingDataSource()
                 || !RefGetAccessionProvider.isKnownContig(variant.getContig())) {
             return Collections.emptyList();
@@ -93,7 +111,11 @@ public class VetCreator {
         final List<VrsAlleleRecord> records = new ArrayList<>();
         for (final Allele altAllele : variant.getAlternateAlleles()) {
             if (altAllele.isNonRefAllele()) {
-                continue; // skip <NON_REF> and <*>
+                continue; // skip <NON_REF> and <*>, as the vet alt column does
+            }
+            if (altAllele.equals(Allele.SPAN_DEL)) {
+                records.add(null); // keeps the list aligned with vet alt, which keeps *
+                continue;
             }
             final long vrsStart = (long) variant.getStart() - 1;
             final long vrsEnd   = vrsStart + variant.getReference().length();

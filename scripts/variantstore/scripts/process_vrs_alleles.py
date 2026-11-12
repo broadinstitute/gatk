@@ -19,6 +19,9 @@ VRS_ALLELE_COLUMNS = [
     "state_repeat_subunit_length",
 ]
 
+# What ingest writes to vet.vrs_allele_ids for a spanning-deletion `*` ALT (VetCreator.NO_VRS_ALLELE_ID).
+NO_VRS_ALLELE_ID = ""
+
 # How many offending ids to show in a failure message.
 EXAMPLE_LIMIT = 10
 
@@ -95,7 +98,8 @@ def missing_vet_ids_sql(project_id, dataset_name, sample_ids):
 
     This is the check that ties the two halves together: vet.vrs_allele_ids is the per-sample
     association, vrs_allele the lookup, and a vet id with no lookup row is a dangling reference.
-    The table wildcard is restricted to the numbered vet tables.
+    The table wildcard is restricted to the numbered vet tables. A spanning-deletion `*` ALT has the
+    NO_VRS_ALLELE_ID placeholder instead of an id, so it is not a dangling reference.
     """
     return f"""
         SELECT v.sample_id, vet_id AS vrs_allele_id
@@ -104,6 +108,7 @@ def missing_vet_ids_sql(project_id, dataset_name, sample_ids):
         LEFT JOIN `{project_id}.{dataset_name}.{TARGET_TABLE}` a ON a.vrs_allele_id = vet_id
         WHERE REGEXP_CONTAINS(_TABLE_SUFFIX, r'^[0-9]+$')
           AND v.sample_id IN ({_sample_id_list(sample_ids)})
+          AND vet_id != '{NO_VRS_ALLELE_ID}'
           AND a.vrs_allele_id IS NULL
         ORDER BY v.sample_id, vrs_allele_id
         LIMIT {EXAMPLE_LIMIT}

@@ -67,7 +67,7 @@ When `enable_vrs_ids=true`, the parquet discovery logic includes the `vrs_allele
 3. `ProcessVrsAlleles` (`process_vrs_alleles.py`) then works on the samples in the scratch table:
    - It fails if any `vrs_allele_id` has rows that disagree on location or state, before merging anything.
    - It inserts the distinct alleles not already in `vrs_allele`. This is idempotent, so a re-run inserts nothing new.
-   - It fails if any `vrs_allele_ids` entry in those samples' vet rows has no `vrs_allele` row, or if `vrs_allele` holds an id more than once.
+   - It fails if any `vrs_allele_ids` entry in those samples' vet rows has no `vrs_allele` row, or if `vrs_allele` holds an id more than once. The empty-string placeholder for a `*` ALT is exempt.
    - Only then does it delete those samples' scratch rows, so a failed check leaves them for inspection.
 4. `SetIsLoadedColumn` waits for `ProcessVrsAlleles`.
 
@@ -96,7 +96,7 @@ Default is `false` for backward compatibility; existing ingests unaffected.
 When enabled, three output formats are produced (per sample):
 
 1. **vet_*.tsv** (or parquet): Standard variant extraction with two new columns:
-   - `vrs_allele_ids`: REPEATED STRING, one ID per alternate allele
+   - `vrs_allele_ids`: REPEATED STRING, one ID per entry in `alt`. A spanning-deletion `*` ALT, which VRS cannot represent, gets an empty string (`VetCreator.NO_VRS_ALLELE_ID`), so the two stay aligned.
    - `vrs_location_ids`: REPEATED STRING, one location ID per alternate allele
 
 2. **vrs_allele_scratch_*.parquet**: The sample's allele records containing:
