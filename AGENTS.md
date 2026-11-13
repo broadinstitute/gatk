@@ -1255,3 +1255,13 @@ in `GetToolVersions` as well as with the doc. In VS-2057 both pairs came out at
 12 layers / 1.29 GB for lite and 13 layers / 2.49 GB for heavy. A matching
 shape shows the right image was pushed under each tag. It does not show that
 the image holds the branch's code.
+
+To show that, run the workflow that exercises the change with `gatk_override`
+unset, so the task takes the image from `GetToolVersions`. Confirm in the
+run's metadata that `gatk_override` was unset and that `GetToolVersions`
+returned the new tag. If an earlier run tested the same code from a
+`gatk_override` jar, compare the two runs' outputs row for row, not just their
+counts. In VS-2058 an ingest on the new image (`6c0a3090`, at `82154170e`)
+produced exactly the VRS IDs of the jar run (`064fd7d1`): no ID in either
+`vrs_allele` table was missing from the other, and no `vet` row, joined on
+sample name, location, ref and alt, had different `vrs_allele_ids`.
