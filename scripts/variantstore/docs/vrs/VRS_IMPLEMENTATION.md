@@ -4,7 +4,7 @@
 
 This document describes the VRS (Variant Representation Specification) allele ID feature integrated into GATK's variant store ingest pipeline. VRS IDs provide standardized, globally-unique identifiers for genomic alleles, enabling interoperability across bioinformatics tools and databases.
 
-**Current Status**: ✅ Fully implemented and integrated end-to-end, from Java ingest tool through WDL orchestration to BigQuery loading.
+**Current status**: Implemented from the Java ingest tool through WDL orchestration to BigQuery loading, behind `enable_vrs_ids` (default `false`). The IDs have not yet been checked against vrs-python beyond a single normalizer case (VS-2059), and `alt_allele` does not carry them yet (VS-2061).
 
 ---
 
@@ -32,16 +32,16 @@ This enables downstream queries to identify and retrieve specific alleles across
 | **VrsAlleleCreator**         | Orchestrates writing of VrsAlleleRecord objects, tagged with the sample id, to vrs_allele_scratch output (Parquet or BigQuery); one instance per sample                     |
 | **VrsNormalizer**            | Implements VRS 2.0.1 normalization steps (trimming, rolling, expansion, state resolution) to produce canonical allele representation                                        |
 | **VrsIdComputer**            | Generates ga4gh:VA.* and ga4gh:SL.* identifiers from normalized alleles using RFC 8785 canonical JSON + SHA-512 digest                                                      |
-| **VrsAlleleRecord**          | POJO transport object holding `vrs_allele_id` and `vrs_location_id` for each alternate allele; supports het-vars via array storage                                          |
+| **VrsAlleleRecord**          | One `vrs_allele` row: the allele and location IDs, refget accession, normalized start and end, and the state                                                                |
 
 ### Test Classes
 
-- `VrsAlleleCreatorUnitTest` (12 tests): File naming, TSV/Parquet I/O, no-op scenarios
-- `VrsNormalizerTest` (7 tests): Trimming, rolling, expansion, state resolution for SNPs, indels, substitutions
-- `VrsIdComputerTest` (17 tests): Deterministic ID generation, format validation, coordinate/sequence variation
-- **Integration test** (in CreateVariantIngestFilesIntegrationTest): End-to-end VRS ID computation from GVCFs
-
-**Current test status**: 133 unit tests passing, integration test included
+- `VrsAlleleCreatorUnitTest`: file naming, Parquet output, no-op scenarios
+- `VrsNormalizerTest`: trimming, rolling, expansion and state resolution for SNPs, indels and substitutions
+- `VrsIdComputerTest`: deterministic ID generation and format; it does not compare IDs with known values (VS-2059)
+- `VrsAlleleRecordTest`, `RefGetAccessionProviderTest`
+- `VetCreatorUnitTest`: a spanning-deletion `*` ALT gets the placeholder and keeps `vrs_allele_ids` aligned with `alt`
+- `CreateVariantIngestFilesIntegrationTest`: end-to-end VRS ID computation from a gVCF. It needs a local reference at a hardcoded path and skips without it.
 
 ---
 
@@ -51,7 +51,7 @@ VRS ID flow is wired through three WDL workflows with consistent opt-in semantic
 
 | Workflow                     | Role                                                                                                                                                                                                                                  |
 |------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| **GvsCreateTables.wdl**      | Creates mandatory BigQuery tables (vet_*, ref_ranges); does NOT include vrs_allele (optional)                                                                                                                                         |
+| **GvsCreateTables.wdl**      | Creates the vet_* tables, whose schema now always includes `vrs_allele_ids` (empty with VRS off), and ref_ranges; the VRS tables are created in GvsAssignIds                                                                          |
 | **GvsAssignIds.wdl**         | Orchestrates sample ID assignment; conditionally creates the vrs_allele_scratch and vrs_allele tables when `enable_vrs_ids=true`                                                                                                      |
 | **GvsImportGenomes.wdl**     | Main ingestion engine; passes `enable_vrs_ids` to ingest tool, conditionally uploads vrs_allele_scratch parquet files to GCS, includes vrs_allele_scratch in parquet discovery, loading and verification, then runs ProcessVrsAlleles |
 | **GvsBulkIngestGenomes.wdl** | High-level bulk orchestrator; accepts and forwards `enable_vrs_ids` input (default: false) to both downstream workflows                                                                                                               |
@@ -93,20 +93,18 @@ Default is `false` for backward compatibility; existing ingests unaffected.
 
 ### Output Files
 
-When enabled, three output formats are produced (per sample):
+When enabled, each sample produces:
 
-1. **vet_*.tsv** (or parquet): Standard variant extraction with two new columns:
-   - `vrs_allele_ids`: REPEATED STRING, one ID per entry in `alt`. A spanning-deletion `*` ALT, which VRS cannot represent, gets an empty string (`VetCreator.NO_VRS_ALLELE_ID`), so the two stay aligned.
-   - `vrs_location_ids`: REPEATED STRING, one location ID per alternate allele
+1. **vet_*.parquet**: the standard vet file with one new column, `vrs_allele_ids`: REPEATED STRING, one ID per entry in `alt` (a comma-separated string). A spanning-deletion `*` ALT, which VRS cannot represent, gets an empty string (`VetCreator.NO_VRS_ALLELE_ID`), so the two stay aligned.
 
-2. **vrs_allele_scratch_*.parquet**: The sample's allele records containing:
+2. **vrs_allele_scratch_*.parquet**: the sample's allele records containing:
    - `sample_id`
-   - `vrs_allele_id`: Standardized identifier (ga4gh:VA.*)
-   - `vrs_location_id`: Location identifier (ga4gh:SL.*)
-   - Normalized coordinates and sequence in VRS 0-based interbase format
+   - `vrs_allele_id`: standardized identifier (ga4gh:VA.*)
+   - `vrs_location_id`: location identifier (ga4gh:SL.*)
+   - Normalized coordinates and state in VRS 0-based interbase format
 
-3. **BigQuery tables**:
-   - `vet_*` with vrs_allele_ids, vrs_location_ids columns
+These load into BigQuery as:
+   - `vet_*`, with the `vrs_allele_ids` column
    - `vrs_allele_scratch`, emptied after each ingest (see Loading and verification)
    - `vrs_allele` (shared across all samples), one row per distinct allele
 
@@ -124,7 +122,7 @@ For het-vars with multiple alternate alleles (e.g., GT=1/2 with alts ["T", "ATG"
 
 **Opt-In Semantics**: Default `false` preserves existing behavior; enabling VRS IDs incurs:
 - CPU cost for normalization and SHA-512 digest computation
-- Storage overhead: two additional columns in VET table, one additional parquet file per sample
+- Storage overhead: one additional column in the vet tables, one additional parquet file per sample
 - BigQuery load time: one additional table to load (vrs_allele_scratch), plus the ProcessVrsAlleles merge
 
 **Deduplication**: Allele records are duplicated across samples in `vrs_allele_scratch`. `ProcessVrsAlleles` deduplicates them on `vrs_allele_id` when merging into `vrs_allele`.
