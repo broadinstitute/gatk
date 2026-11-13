@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.tools.walkers;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
 import htsjdk.variant.vcf.VCFHeader;
+import htsjdk.variant.vcf.VCFHeaderLineType;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.AlleleSubsettingUtils;
@@ -347,5 +349,48 @@ public class ReferenceConfidenceVariantContextMergerUnitTest extends GATKBaseTes
                 false);
 
         Assert.assertEquals(mergedVC.getAttributeAsDouble(MAP_QUAL_RANK_SUM_KEY,-1.0), medianRankSum);
+    }
+
+    @DataProvider
+    public Object[][] getDragstrMergeCases() {
+        // values as decoded from a HaplotypeCaller DRAGEN-mode GVCF: period and repeat count, then GOP, GCP and API
+        final List<Object> info1 = Arrays.asList("2", "3");
+        final List<Object> params1 = Arrays.asList("43.3", "5.0", "26.0");
+        final List<Object> info2 = Arrays.asList("1", "6");
+        final List<Object> params2 = Arrays.asList("46.5", "10.0", "29.0");
+        return new Object[][] {
+                { Collections.singletonList(Arrays.asList(info1, params1)) },
+                { Arrays.asList(Arrays.asList(info1, params1), Arrays.asList(info1, params1)) },
+                { Arrays.asList(Arrays.asList(info1, params1), Arrays.asList(info2, params2)) },
+        };
+    }
+
+    @Test(dataProvider = "getDragstrMergeCases")
+    public void testDragstrAnnotationsAreNotMerged(final List<List<List<Object>>> perSampleInfoAndParams) {
+        // DRAGstrInfo (Number=2) and DRAGstrParams (Number=3) describe one sample's STR model at one site, so they
+        // cannot be combined across samples; flattening them into a single median value produced invalid VCF
+        final VCFHeader vcfHeader = new VCFHeader();
+        vcfHeader.addMetaDataLine(GATKVCFHeaderLines.getInfoLine(MAP_QUAL_RANK_SUM_KEY));
+        vcfHeader.addMetaDataLine(new VCFInfoHeaderLine(GATKVCFConstants.DRAGSTR_INFO_KEY, 2, VCFHeaderLineType.Integer, "Indicates the period and repeat count"));
+        vcfHeader.addMetaDataLine(new VCFInfoHeaderLine(GATKVCFConstants.DRAGSTR_PARAMS_KEY, 3, VCFHeaderLineType.Float, "Parameters used (GOP, GCP, API)"));
+
+        final List<VariantContext> toMerge = new ArrayList<>();
+        for (int i = 0; i < perSampleInfoAndParams.size(); i++) {
+            final Genotype g = new GenotypeBuilder("sample" + i, Arrays.asList(Aref, ATC)).PL(new int[]{30, 0, 30, 40, 50, 60}).make();
+            toMerge.add(new VariantContextBuilder("vc" + i, "20", 10, 10, Arrays.asList(Aref, ATC, Allele.NON_REF_ALLELE))
+                    .attribute(MAP_QUAL_RANK_SUM_KEY, "1.5")
+                    .attribute(GATKVCFConstants.DRAGSTR_INFO_KEY, perSampleInfoAndParams.get(i).get(0))
+                    .attribute(GATKVCFConstants.DRAGSTR_PARAMS_KEY, perSampleInfoAndParams.get(i).get(1))
+                    .genotypes(g).make());
+        }
+
+        final ReferenceConfidenceVariantContextMerger merger = new ReferenceConfidenceVariantContextMerger(getAnnotationEngine(), vcfHeader);
+        for (final boolean removeNonRef : new boolean[]{true, false}) {  // GenotypeGVCFs and CombineGVCFs respectively
+            final VariantContext mergedVC = merger.merge(toMerge, new SimpleInterval("20", 10, 10), (byte) 'A', removeNonRef, false);
+            Assert.assertFalse(mergedVC.hasAttribute(GATKVCFConstants.DRAGSTR_INFO_KEY), mergedVC.toString());
+            Assert.assertFalse(mergedVC.hasAttribute(GATKVCFConstants.DRAGSTR_PARAMS_KEY), mergedVC.toString());
+            // other non-reducible annotations are still merged
+            Assert.assertEquals(mergedVC.getAttributeAsDouble(MAP_QUAL_RANK_SUM_KEY, -1.0), 1.5);
+        }
     }
 }
