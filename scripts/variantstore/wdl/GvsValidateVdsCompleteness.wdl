@@ -207,7 +207,7 @@ workflow GvsValidateVdsCompleteness {
             help: "Fail the workflow if the screen flags anything, either a dropout rectangle or a globally depleted superpartition. Defaults to false, because a candidate is unproven until the adjudication SQL has been run against BigQuery and a red workflow would overstate what the run established. Set it true where nobody will read the report -- the outputs are still written and delocalized either way."
         }
         num_master_local_ssds: {
-            help: "Local SSDs on the master, overriding num_local_ssds. Valid counts depend on machine family and vCPU count: N2 and N2D machines with 32 vCPUs reject 1 and accept 0, 2, 4, 8, 16 or 24. Left unset, the master gets the workers' count, except that 1 becomes 2 so that the default n2d-highmem-32 master is valid; n1-highmem-32 accepts 2 as well."
+            help: "Local SSDs on the master, overriding num_local_ssds. Valid counts depend on machine family and vCPU count, and larger machines need more: N2D machines with 32 or 48 vCPUs reject 1 and accept 2, 4, 8, 16 or 24, but an N2 machine with 32 vCPUs needs at least 4. Left unset, the master gets the workers' count, except that 1 becomes 2, which suits the default n2d-highmem-32 master and n1-highmem-32. For any other master type, check the allowed counts in the Compute Engine local SSD documentation and set this explicitly."
         }
     }
 

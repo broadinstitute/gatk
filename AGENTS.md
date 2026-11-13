@@ -766,20 +766,23 @@ validate` and fail only when the cluster is created.
    covers n1, n2, n2d, e2, c2, m1 and m2, but not C3, C3D or any 4th-generation
    family. Read the pinned version's table before proposing a type.
 2. **Valid local SSD counts depend on the machine family and vCPU count.** n1
-   accepts one SSD at any size, but N2 and N2D machines with 32 vCPUs reject 1
-   and accept only 0, 2, 4, 8, 16 or 24. So an n2d-highmem-32 master fails to
-   create alongside n2d-highmem-8 workers, which accept 1:
+   accepts one SSD at any size, but N2 and N2D raise the minimum as vCPUs
+   grow. N2D machines with 32 or 48 vCPUs reject 1 and accept 2, 4, 8, 16 or
+   24; an N2 machine with 32 vCPUs needs at least 4. So an n2d-highmem-32
+   master fails to create alongside n2d-highmem-8 workers, which accept 1:
    `Number of local SSDs for an instance of type n2d-highmem-32 should be one
    of [0, 2, 4, 8, 16, 24], while [1] is requested`. The master therefore has
    its own count, `--num-master-local-ssds` (`num_master_local_ssds` on every
    GVS workflow that takes machine types). Left unset it follows the workers'
    count, except that 1 becomes 2, so the default n2d-highmem-32 master is
-   valid (VS-2055). Look up the allowed counts for both shapes in the Compute
-   Engine local SSD documentation before changing either one.
+   valid (VS-2055). That rule covers no other N2 or N2D master: an
+   n2-highmem-32 or an n2d-highmem-64 still fails with it. Look up the allowed
+   counts for both shapes in the Compute Engine local SSD documentation before
+   changing either one, and set the master's count explicitly.
 
 n2d-highmem-8 workers and an n2d-highmem-32 master have been the default
-since VS-2055, in the script and in every WDL that takes machine types,
-replacing n1. A WDL's own default overrides the script's, so changing the
+since VS-2055, replacing n1, in the script and in every WDL that runs
+`run_in_hail_cluster.py`, each of which takes its own machine types. A WDL's own default overrides the script's, so changing the
 default family means editing both.
 
 The memory per vCPU differs too: an n2d-highmem-8 has 64 GB against an
@@ -1270,9 +1273,6 @@ The "Detect missing Docker image tag updates" CI check is a wrapper around
 cycle:
 
     bash scripts/ci/check_docker_refresh.sh origin/ah_var_store HEAD
-
-The script is mode 100644 in git, so invoking it directly fails with
-"permission denied". CI runs it through `bash`; do the same.
 
 Two things about it are easy to misread.
 

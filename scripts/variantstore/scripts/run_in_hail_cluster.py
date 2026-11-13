@@ -398,10 +398,12 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
 
     # The master gets its own count because Compute Engine's valid local SSD counts depend on
     # machine family and vCPU count, so a count that suits the workers can be invalid for the
-    # master. N2 and N2D machines with 32 vCPUs reject 1 (allowed: 0, 2, 4, 8, 16, 24), which
-    # made an n2d-highmem-32 master fail to create alongside n2d-highmem-8 workers (VS-2055).
+    # master. N2D machines with 32 or 48 vCPUs reject 1 (allowed: 0, 2, 4, 8, 16, 24), which
+    # made an n2d-highmem-32 master fail to create alongside n2d-highmem-8 workers (VS-2055);
+    # larger N2D machines, and N2 machines from 12 vCPUs, need more still.
     # Left unset, the master follows the workers except that 1 becomes 2: that makes the default
-    # n2d-highmem-32 master valid, and n1-highmem-32 accepts 2 as well. An explicit 0 for the
+    # n2d-highmem-32 master valid, and n1-highmem-32 accepts 2 as well. Other N2 or N2D masters
+    # (n2-highmem-32 needs at least 4) must set the count explicitly. An explicit 0 for the
     # workers still gives the master 0, so dropping SSDs to widen the usable zones keeps working.
     if num_master_local_ssds is not None:
         master_local_ssds = num_master_local_ssds
@@ -682,10 +684,12 @@ if __name__ == "__main__":
     parser.add_argument('--num-master-local-ssds', type=int, required=False, default=None,
                         help='Local SSDs attached to the master, overriding --num-local-ssds '
                              'for the master only. Needed when the master machine type does '
-                             'not accept the worker count: N2 and N2D machines with 32 vCPUs '
-                             'reject 1 and accept 0, 2, 4, 8, 16 or 24. Defaults to the value '
-                             'of --num-local-ssds, except that 1 becomes 2 so that the default '
-                             'n2d-highmem-32 master is valid.')
+                             'not accept the worker count: N2D machines with 32 or 48 vCPUs '
+                             'reject 1 and accept 0, 2, 4, 8, 16 or 24, and larger N2D and '
+                             'most N2 shapes need more (n2-highmem-32 needs at least 4). '
+                             'Defaults to the value of --num-local-ssds, except that 1 becomes '
+                             '2 so that the default n2d-highmem-32 master is valid; any other '
+                             'N2 or N2D master should set this explicitly.')
 
     args = parser.parse_args()
 
