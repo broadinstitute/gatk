@@ -147,48 +147,78 @@ compressed, heavy = 13 layers / 2.49 GB compressed, the difference being a singl
 
 ## Building on Google Cloud instead
 
-The procedure above works on GCP with one adaptation to VM allocation and the two gotchas above. An
+Enough of the steps above differ on GCP that the whole procedure is given here; the two gotchas still apply. An
 `n2-standard-8` finishes both images in about half an hour, comfortably faster than the 2-vCPU Azure box.
 
-```
-gcloud compute instances create gatk-docker-build-<ticket> \
-  --project gvs-internal --zone us-central1-a \
-  --machine-type n2-standard-8 \
-  --image-family ubuntu-2204-lts --image-project ubuntu-os-cloud \
-  --boot-disk-size 300GB --boot-disk-type pd-balanced \
-  --network gvs-network \
-  --tags gatk-docker-build \
-  --scopes cloud-platform --metadata enable-oslogin=TRUE
-```
+1. From your local laptop/machine, create the VM. Write `<ticket>` in lower case with its hyphen, as in `vs-2058`: GCP
+   rejects instance names with upper-case letters, and the same name is reused in every later step.
+   ```
+   gcloud compute instances create gatk-docker-build-<ticket> \
+     --project gvs-internal --zone us-central1-a \
+     --machine-type n2-standard-8 \
+     --image-family ubuntu-2204-lts --image-project ubuntu-os-cloud \
+     --boot-disk-size 300GB --boot-disk-type pd-balanced \
+     --network gvs-network \
+     --tags gatk-docker-build \
+     --scopes cloud-platform --metadata enable-oslogin=TRUE
+   ```
+2. SSH to it through IAP. No firewall rule is needed: an organization-level firewall policy already admits IAP's
+   range (`35.235.240.0/20`) on port 22 to every VM in `gvs-internal`, while `gvs-network`'s own SSH rule admits
+   only Broad ranges.
+   ```
+   gcloud compute ssh gatk-docker-build-<ticket> --project gvs-internal --zone us-central1-a --tunnel-through-iap
+   ```
+3. On the VM, as root, install git and git-lfs, clone the branch, and start the build in the background. Long builds
+   outlive SSH sessions, and IAP tunnels drop, so do not run the script in the foreground.
+   ```
+   sudo bash
+   branch=<your branch name here>
 
-Notes specific to GCP:
+   apt-get update
+   apt-get install --assume-yes git-core git-lfs
+   git lfs install
 
-- **GCP has no Azure-style ephemeral `/mnt` data disk.** Size the boot disk instead (300 GB is ample -- a full run
-  uses about 36 GB) and the `cd /mnt` steps above work unchanged.
+   cd /mnt
+   mkdir gitrepos && cd gitrepos
+   git clone https://github.com/broadinstitute/gatk.git --depth 1 --branch ${branch} --single-branch
+   cd gatk
+
+   setsid nohup ./scripts/variantstore/azure/gatk_docker_setup.sh </dev/null > /mnt/build.log 2>&1 &
+   tail -f /mnt/build.log
+   ```
+4. Check the build actually succeeded. `gatk_docker_setup.sh` does not use `set -e`, so a failed step does not stop
+   it, and the log simply ends early. A good run ends with one line per image:
+   ```
+   grep 'tagged as' /mnt/build.log
+   ```
+5. From your local laptop/machine, log Docker on the VM in to GAR. The VM's service account cannot push to
+   `broad-dsde-methods`, so forward a short-lived token from an account that can (add `--account` if your default
+   account is not one). The token expires in about an hour and leaves no credential behind:
+   ```
+   gcloud auth print-access-token | gcloud compute ssh gatk-docker-build-<ticket> --project gvs-internal \
+     --zone us-central1-a --tunnel-through-iap --command 'read -r T; echo "$T" | sudo docker login \
+     -u oauth2accesstoken --password-stdin https://us-central1-docker.pkg.dev'
+   ```
+   Do **not** run `gcloud init` or `gcloud auth configure-docker` on the VM, as the Azure steps do. The credential
+   helper that `configure-docker` installs authenticates as the VM's service account and overrides the token login.
+6. Back on the VM, push the two tags that step 4 printed. The setup script has already tagged both images, so the
+   Azure tag/push block is not needed:
+   ```
+   docker push us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:<lite tag>
+   docker push us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:<heavy tag>
+   ```
+7. Check each pushed image's layer count and compressed size against the figures in the second gotcha above.
+8. Delete the VM. Its boot disk is deleted with it:
+   ```
+   gcloud compute instances delete gatk-docker-build-<ticket> --project gvs-internal --zone us-central1-a
+   ```
+
+Two more things specific to GCP:
+
+- **GCP has no Azure-style ephemeral `/mnt` data disk.** The boot disk is sized instead (300 GB is ample -- a full
+  run uses about 36 GB), and `/mnt` is just a directory on it.
 - **The VM needs outbound internet, and `gvs-internal` has no Cloud NAT.** If you create it with `--no-address` the
   build fails in a thoroughly confusing way: Private Google Access keeps `gcloud` and some apt mirrors working, so
   the machine looks healthy right up until the first non-Google download, where `apt-get` cannot find `git-lfs` and
   the `git clone` hangs. Either give the VM an external IP (as above, by omitting `--no-address`) or stand up Cloud
   NAT. Sanity-check with `curl -so /dev/null -w '%{http_code}' https://download.docker.com` before starting a build.
-- **SSH from outside the Broad network** needs IAP, since `gvs-network`'s SSH rule only admits Broad ranges. Add a
-  tag-scoped rule and delete it with the VM:
-  ```
-  gcloud compute firewall-rules create gatk-docker-build-iap-ssh --project gvs-internal \
-    --network gvs-network --direction INGRESS --action allow --rules tcp:22 \
-    --source-ranges 35.235.240.0/20 --target-tags gatk-docker-build
-  gcloud compute ssh gatk-docker-build-<ticket> --project gvs-internal --zone us-central1-a --tunnel-through-iap
-  ```
-- **The VM's service account cannot push to `broad-dsde-methods` GAR.** Rather than `gcloud init` on the VM, forward
-  a short-lived token from a machine that already has upload rights. It expires in about an hour and leaves no
-  credential behind:
-  ```
-  gcloud auth print-access-token | gcloud compute ssh <vm> --project gvs-internal --zone us-central1-a \
-    --tunnel-through-iap --command 'read -r T; echo "$T" | sudo docker login -u oauth2accesstoken \
-    --password-stdin https://us-central1-docker.pkg.dev'
-  ```
-  Do **not** run `gcloud auth configure-docker` if you do this -- it installs a credential helper that authenticates
-  as the VM's service account and overrides the token login.
-- Long builds outlive SSH sessions, and IAP tunnels drop. Launch under `setsid nohup ... </dev/null` writing to a log
-  file, and poll the log rather than holding a session open.
-
-Don't forget to shut down (and possibly delete) your VM once you're done! Delete the temporary firewall rule too.

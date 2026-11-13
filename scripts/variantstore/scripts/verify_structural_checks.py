@@ -96,7 +96,11 @@ DEFAULT_TRUNCATION_SCREEN_FAMILIES = ["vet"]
 # (VS-2032). Each is a directory directly under the Parquet output dir, which GenerateParquetFiles
 # uploads to as ``<family>/[<table_number>/]<file>.parquet``. vcf_header_lines_scratch is not a member:
 # its table is a scratch table drained by a later step, so its row count is not a stable target.
-DEFAULT_FOOTER_CHECKED_FAMILIES = ["vet", "ref_ranges", "sample_chromosome_ploidy"]
+# vrs_allele_scratch is also drained later, but its rows are this run's samples' alleles exactly as the
+# Parquet declares them until ProcessVrsAlleles runs, which is after this check; it is the only check that
+# can see a lost or duplicated VRS row. Only takes effect when VRS IDs are enabled, since footer families
+# are limited to the configured ones.
+DEFAULT_FOOTER_CHECKED_FAMILIES = ["vet", "ref_ranges", "sample_chromosome_ploidy", "vrs_allele_scratch"]
 
 # Name the external table over the source Parquet goes by within the footer query. Local to that one
 # query job; nothing is created in any dataset.
@@ -744,9 +748,12 @@ def run_structural_checks(project_id, dataset_name, expected_by_family, gcs_pair
     # headers and data are being loaded together (e.g. GvsQuickstartIntegration with load_vcf_headers=true).
     # Include headers in the cross-family check so a missing header Parquet cannot authorize deleting
     # an incomplete source set. Keep it excluded for a true headers-only run (no data families present).
-    header_family = "vcf_header_lines_scratch"
-    if header_family in configured_families and any(expected_by_family.get(f) for f in active_co_produced_families):
-        active_co_produced_families.append(header_family)
+    # VRS alleles are produced in the same pass as vet when VRS IDs are enabled, so the same holds for them:
+    # a sample with vet data but no VRS Parquet is a partial upload. Like headers, only when configured.
+    data_families_present = any(expected_by_family.get(f) for f in active_co_produced_families)
+    for conditional_family in ["vcf_header_lines_scratch", "vrs_allele_scratch"]:
+        if conditional_family in configured_families and data_families_present:
+            active_co_produced_families.append(conditional_family)
     cross_family = assess_cross_family_consistency(expected_by_family, active_co_produced_families)
 
     # Per-sample cardinality consistency, applied only to regular tables with a per-chromosome unique

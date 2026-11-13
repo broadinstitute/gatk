@@ -133,7 +133,7 @@ artifacts without accounting for them is a recurring source of bugs.
 - **The VAT, and therefore vids,** hold alleles that are minimized *and*
   left-aligned, via `bcftools norm -f` in `GvsCreateVATFromVDS.wdl:731`.
 
-Four consequences worth knowing before writing anything that joins across these:
+Five consequences worth knowing before writing anything that joins across these:
 
 1. Minimize before comparing. `hl.min_rep`, or trimming by hand, reduces a VDS
    allele to the intrinsic form that `alt_allele` stores.
@@ -152,6 +152,18 @@ Four consequences worth knowing before writing anything that joins across these:
    The retired synonym search keyed on it as bcftools `ILEN` over a 200bp
    window rightward from the vid's position, left-aligned being the leftmost
    equivalent form.
+5. `vet.alt` keeps the spanning-deletion `*`. `VetFieldEnum.alt` drops only
+   `<NON_REF>` (and `<*>`), and ingest skips a row only when `*` is its sole
+   real ALT (`CreateVariantIngestFiles.java:461`), so `*` reaches `vet`
+   beside a real ALT, as in `T,*`. Any per-ALT array stored next to
+   `vet.alt`, such as `vrs_allele_ids`, must keep a slot for `*`, or every
+   later entry shifts onto the wrong allele. BigQuery arrays cannot hold
+   NULL, so the slot needs a placeholder (`VetCreator.NO_VRS_ALLELE_ID`,
+   the empty string), and any check over the array must skip it. Note that
+   `vet.alt` itself is a comma-separated STRING, not an array: only
+   `vrs_allele_ids` is REPEATED. `alt_allele_positions.sql` reads
+   `SPLIT(alt, ',')[OFFSET(allele_pos - 1)]`, so anything copied from such an
+   array into `alt_allele` must use the same offset (VS-2058, VS-2061).
 
 
 # High-Level Architecture (WDLs, BigQuery, Terra)
@@ -779,6 +791,20 @@ delete or on a retry (VS-2053). List what remains with `gcloud storage objects
 list --format='value(name)'`: it exits 0 with empty output when nothing matches,
 while `gcloud storage ls` exits 1, the same as for a real error.
 
+## A task that leaves no `stderr` may have failed to localize an input
+
+When a task fails on every attempt with no `stderr` or `stdout` in its
+execution directory, and its GCP Batch job exits with code 1 about 35 seconds
+after starting with nothing in `batch_task_logs`, the command never ran.
+Cromwell's localization step failed, most often because an input file does not
+exist. `maxRetries` repeats the same failure on each attempt. The task's
+`gcs_localization.sh`, which is in the execution directory, lists every file it
+downloads; check each with `gcloud storage ls -l`, starting with
+`gatk_override`, the input most often set by hand. In VS-2058 the jar had been
+copied with `gsutil cp <jar> gvs-internal-scratch/...`, without `gs://`.
+`gsutil` treated that as a local path, wrote a 408 MB file into the working
+tree, and reported success.
+
 # Documentation Conventions
 
 ## Markdown tables must be rectangular
@@ -853,6 +879,16 @@ its definition elsewhere would turn a spelling nit into broken code.
 Like `reflow-md`, this script is deliberately extensionless so that the Dockerfile's
 `COPY *.py /app/` leaves it out of the Variants image and out of the rebuild-and-bump
 obligation. Do not rename it to `check_us_spelling.py`.
+
+## JIRA tickets follow the team template
+
+Write VS tickets to `scripts/variantstore/docs/vs_ticket_template.md`. The summary is an
+imperative action phrase, with a `[Spike]` prefix for investigations, or for a bug a
+statement of the problem. The description opens with one or two paragraphs of prose
+context, then an optional `Notes:` list for links, contacts and caveats, then `AC:` with
+concrete, testable bullets. Do not use Markdown headings. A spike says what artifact or
+decision it produces, and whether it is timeboxed. The one-line-per-paragraph rule under
+Code Review Conventions applies here too.
 
 # Code Review Conventions
 
@@ -1219,3 +1255,13 @@ in `GetToolVersions` as well as with the doc. In VS-2057 both pairs came out at
 12 layers / 1.29 GB for lite and 13 layers / 2.49 GB for heavy. A matching
 shape shows the right image was pushed under each tag. It does not show that
 the image holds the branch's code.
+
+To show that, run the workflow that exercises the change with `gatk_override`
+unset, so the task takes the image from `GetToolVersions`. Confirm in the
+run's metadata that `gatk_override` was unset and that `GetToolVersions`
+returned the new tag. If an earlier run tested the same code from a
+`gatk_override` jar, compare the two runs' outputs row for row, not just their
+counts. In VS-2058 an ingest on the new image (`6c0a3090`, at `82154170e`)
+produced exactly the VRS IDs of the jar run (`064fd7d1`): no ID in either
+`vrs_allele` table was missing from the other, and no `vet` row, joined on
+sample name, location, ref and alt, had different `vrs_allele_ids`.

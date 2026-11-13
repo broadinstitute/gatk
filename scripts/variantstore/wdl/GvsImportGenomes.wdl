@@ -36,6 +36,9 @@ workflow GvsImportGenomes {
     Int beta_customer_max_scatter = 200
 
     String reference_name = "hg38"
+    File? reference_fasta
+    File? reference_fasta_index
+    File? reference_dict
     File? interval_list
 
     Int? load_data_scatter_width
@@ -44,6 +47,7 @@ workflow GvsImportGenomes {
     # At least one of these "load" inputs must be true
     Boolean load_vet_and_ref_ranges = true
     Boolean load_vcf_headers = false
+    Boolean enable_vrs_ids = false
     String? basic_docker
     String? cloud_sdk_docker
     String? variants_docker
@@ -133,6 +137,9 @@ workflow GvsImportGenomes {
       basic_docker = effective_basic_docker,
   }
 
+  File effective_reference_fasta = select_first([reference_fasta, GetReference.reference.reference_fasta])
+  File effective_reference_fasta_index = select_first([reference_fasta_index, GetReference.reference.reference_fasta_index])
+  File effective_reference_dict = select_first([reference_dict, GetReference.reference.reference_dict])
   File effective_interval_list = select_first([interval_list, GetReference.reference.wgs_calling_interval_list])
 
   if (!load_vcf_headers && !load_vet_and_ref_ranges) {
@@ -241,6 +248,9 @@ workflow GvsImportGenomes {
           drop_state_includes_greater_than = false,
           input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
           input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
+          reference_fasta = if enable_vrs_ids then effective_reference_fasta else reference_fasta,
+          reference_fasta_index = if enable_vrs_ids then effective_reference_fasta_index else reference_fasta_index,
+          reference_dict = if enable_vrs_ids then effective_reference_dict else reference_dict,
           interval_list = effective_interval_list,
           gatk_docker = effective_gatk_docker,
           gatk_override = load_data_gatk_override,
@@ -250,6 +260,7 @@ workflow GvsImportGenomes {
           sample_map = GetUningestedSampleIds.sample_map,
           load_vet_and_ref_ranges = load_vet_and_ref_ranges,
           load_vcf_headers = load_vcf_headers,
+          enable_vrs_ids = enable_vrs_ids,
           billing_project_id = billing_project_id,
           use_compressed_references = use_compressed_references,
           parquet_output_gcs_dir = parquet_output_gcs_dir,
@@ -267,6 +278,9 @@ workflow GvsImportGenomes {
           drop_state_includes_greater_than = false,
           input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
           input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
+          reference_fasta = if enable_vrs_ids then effective_reference_fasta else reference_fasta,
+          reference_fasta_index = if enable_vrs_ids then effective_reference_fasta_index else reference_fasta_index,
+          reference_dict = if enable_vrs_ids then effective_reference_dict else reference_dict,
           interval_list = effective_interval_list,
           gatk_docker = effective_gatk_docker,
           gatk_override = load_data_gatk_override,
@@ -276,6 +290,7 @@ workflow GvsImportGenomes {
           sample_map = GetUningestedSampleIds.sample_map,
           load_vet_and_ref_ranges = load_vet_and_ref_ranges,
           load_vcf_headers = load_vcf_headers,
+            enable_vrs_ids = enable_vrs_ids,
           billing_project_id = billing_project_id,
           use_compressed_references = use_compressed_references,
           use_parquet_ingest = false,
@@ -294,10 +309,13 @@ workflow GvsImportGenomes {
 
     # Table prefixes to discover/load/verify. vcf_header_lines_scratch is included only when headers
     # were generated (its table may not exist otherwise). vet/ref_ranges/ploidy prefixes are harmless
-    # to include for a headers-only run -- no such files will be present to match.
-    Array[String] parquet_regular_prefixes = if load_vcf_headers
-      then ["sample_chromosome_ploidy", "vcf_header_lines_scratch"]
-      else ["sample_chromosome_ploidy"]
+    # to include for a headers-only run -- no such files will be present to match. Likewise
+    # vrs_allele_scratch is included only when VRS IDs were computed, since its table is created only then.
+    Array[String] parquet_regular_prefixes = flatten([
+      ["sample_chromosome_ploidy"],
+      if load_vcf_headers then ["vcf_header_lines_scratch"] else [],
+      if enable_vrs_ids then ["vrs_allele_scratch"] else []
+    ])
     Array[String] parquet_superpartitioned_prefixes = ["vet", "ref_ranges"]
 
     # Parquet belonging to a sample the footer comparison or the vet truncation screen flags is moved
@@ -307,7 +325,7 @@ workflow GvsImportGenomes {
     # DiscoverParquetFiles must not re-discover it -- so it is declared once here and threaded to both.
     #
     # The name is deliberately outside the prefixes ConfigureParquetLifecycle matches (vet/,
-    # ref_ranges/, sample_chromosome_ploidy/, vcf_header_lines_scratch/) and outside the directory list
+    # ref_ranges/, sample_chromosome_ploidy/, vcf_header_lines_scratch/, vrs_allele_scratch/) and outside the directory list
     # DeleteParquetFiles' alternate strategy walks. That is what exempts quarantined files from the
     # bucket's own 14-day Delete rule and from that strategy. Any lifecycle rule the operator has
     # configured on the bucket independently of this workflow is of course still theirs to reckon with.
@@ -465,6 +483,23 @@ workflow GvsImportGenomes {
     }
   }
 
+  # Merge the loaded VRS scratch rows into vrs_allele, check that every VRS ID this run's vet rows
+  # reference is there, then empty the scratch rows. Gated the same way as ProcessVCFHeaders: on
+  # VerifyParquetLoading, so the footer row count check sees the scratch rows before they are drained,
+  # or on the BQ Write API load.
+  if (enable_vrs_ids && load_vet_and_ref_ranges) {
+    call ProcessVrsAlleles {
+      input:
+        variants_docker = effective_variants_docker,
+        go = flatten([
+          select_all([VerifyParquetLoading.done]),
+          select_all(LoadDataViaBigQueryWriteAPI.done)
+        ]),
+        dataset_name = dataset_name,
+        project_id = project_id,
+    }
+  }
+
   if (load_vet_and_ref_ranges) {
     call SetIsLoadedColumn {
       input:
@@ -482,10 +517,12 @@ workflow GvsImportGenomes {
         # view. When a single run sets both load_vcf_headers and load_vet_and_ref_ranges, without this edge the
         # two tasks race and is_loaded is silently left FALSE. select_all makes it a no-op for data-only runs
         # (headers loaded in a prior run, so sample_vcf_header is already populated).
+        # ProcessVrsAlleles likewise, so a sample is not marked loaded while its vet rows reference
+        # VRS IDs that vrs_allele does not hold yet.
         #@ except: UnnecessaryFunctionCall
         go = flatten([
           select_all(select_first([[VerifyParquetLoading.done], LoadDataViaBigQueryWriteAPI.done])),
-          select_all([ProcessVCFHeaders.done])
+          select_all([ProcessVCFHeaders.done, ProcessVrsAlleles.done])
         ]),
         project_id = project_id,
         dataset_name = dataset_name,
@@ -581,6 +618,9 @@ task ProcessInputGVCFs {
 
     Array[File] input_vcf_indexes
     Array[File] input_vcfs
+    File? reference_fasta
+    File? reference_fasta_index
+    File? reference_dict
     File interval_list
     File sample_map
     Array[String] sample_names
@@ -592,6 +632,7 @@ task ProcessInputGVCFs {
     Boolean use_compressed_references = false
     Boolean load_vet_and_ref_ranges
     Boolean load_vcf_headers
+    Boolean enable_vrs_ids
 
     String? parquet_output_gcs_dir
 
@@ -766,6 +807,7 @@ task ProcessInputGVCFs {
 
       gatk --java-options "-Xmx2g" CreateVariantIngestFiles \
         -V ${updated_input_vcf} \
+        ~{if enable_vrs_ids then "-R " + select_first([reference_fasta]) else ""} \
         -L ~{interval_list} \
         ~{"--ref-block-gq-to-ignore " + drop_state} \
         --ignore-above-gq-threshold ~{drop_state_includes_greater_than} \
@@ -780,6 +822,7 @@ task ProcessInputGVCFs {
         --ref-version 38 \
         --skip-loading-vqsr-fields ~{skip_loading_vqsr_fields} \
         --enable-vcf-headers ~{load_vcf_headers} \
+        --enable-vrs-ids ~{enable_vrs_ids} \
         --use-compressed-refs ~{use_compressed_references}
 
       # The Parquet / non-Parquet branches here might also be coalesced.
@@ -812,6 +855,14 @@ task ProcessInputGVCFs {
           # groups it under the vcf_header_lines_scratch table.
           header_parquet_file=`ls vcf_header_lines_scratch_*.parquet`
           gcloud storage ~{"--billing-project " + billing_project_id} cp $header_parquet_file ${OUTPUT_GCS_DIR}/vcf_header_lines_scratch/$header_parquet_file
+        fi
+
+        if [[ "~{enable_vrs_ids}" = 'true' ]]
+        then
+          # VRS parquet is named vrs_allele_scratch_<sampleId>_<input>.parquet so DiscoverParquetFiles
+          # groups it under the vrs_allele_scratch table.
+          vrs_allele_parquet_file=`ls vrs_allele_scratch_*.parquet`
+          gcloud storage ~{"--billing-project " + billing_project_id} cp $vrs_allele_parquet_file ${OUTPUT_GCS_DIR}/vrs_allele_scratch/$vrs_allele_parquet_file
         fi
 
         # cleanup after ourselves
@@ -871,6 +922,40 @@ task ProcessVCFHeaders {
   runtime {
     docker: variants_docker
     disks: "local-disk 500 HDD"
+  }
+}
+
+task ProcessVrsAlleles {
+  input {
+    String dataset_name
+    String project_id
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
+    Array[Boolean] go
+    String variants_docker
+  }
+  meta {
+    volatile: true
+  }
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    python3 /app/process_vrs_alleles.py \
+      --project_id=~{project_id} \
+      --dataset_name ~{dataset_name}
+  >>>
+
+  output {
+    # Exists so downstream tasks (e.g. SetIsLoadedColumn) can order themselves after the VRS merge.
+    Boolean done = true
+  }
+
+  runtime {
+    docker: variants_docker
   }
 }
 
@@ -1417,7 +1502,7 @@ task ConfigureParquetLifecycle {
       "action": {"type": "Delete"},
       "condition": {
         "age": 14,
-        "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/", "${BUCKET_PATH_PREFIX}sample_chromosome_ploidy/", "${BUCKET_PATH_PREFIX}vcf_header_lines_scratch/"]
+        "matchesPrefix": ["${BUCKET_PATH_PREFIX}vet/", "${BUCKET_PATH_PREFIX}ref_ranges/", "${BUCKET_PATH_PREFIX}sample_chromosome_ploidy/", "${BUCKET_PATH_PREFIX}vcf_header_lines_scratch/", "${BUCKET_PATH_PREFIX}vrs_allele_scratch/"]
       }
     }
 EOF
@@ -2016,7 +2101,7 @@ task DeleteParquetFiles {
       # The fixed list of table directories, not parquet_dirs.txt, so that a directory left out by a
       # failed listing is still checked. The quarantine directory is not in this list.
       CHECK_URLS=()
-      for table_dir in vet ref_ranges sample_chromosome_ploidy vcf_header_lines_scratch; do
+      for table_dir in vet ref_ranges sample_chromosome_ploidy vcf_header_lines_scratch vrs_allele_scratch; do
         CHECK_URLS+=("${OUTPUT_GCS_DIR}/${table_dir}/"'**')
       done
       # List the contents of the vet and ref_ranges directories for subsequent deletion in the loop below.
@@ -2029,6 +2114,10 @@ task DeleteParquetFiles {
       # Only present when headers were loaded; guard on existence so data-only runs don't fail here.
       if gcloud storage ls ~{"--billing-project " + billing_project_id} "${OUTPUT_GCS_DIR}/vcf_header_lines_scratch/" >/dev/null 2>&1; then
         echo "${OUTPUT_GCS_DIR}/vcf_header_lines_scratch/" >> parquet_dirs.txt
+      fi
+      # Only present when VRS IDs were computed; same guard.
+      if gcloud storage ls ~{"--billing-project " + billing_project_id} "${OUTPUT_GCS_DIR}/vrs_allele_scratch/" >/dev/null 2>&1; then
+        echo "${OUTPUT_GCS_DIR}/vrs_allele_scratch/" >> parquet_dirs.txt
       fi
 
       # Iterate over all Google Cloud paths in parquet_dirs.txt and delete all objects therein

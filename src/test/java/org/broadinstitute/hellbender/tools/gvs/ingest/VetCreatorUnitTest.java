@@ -1,11 +1,19 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.variantcontext.VariantContextBuilder;
 import org.apache.hadoop.fs.FileAlreadyExistsException;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.engine.ReferenceContext;
+import org.broadinstitute.hellbender.engine.ReferenceDataSource;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestUtils;
+import org.broadinstitute.hellbender.tools.gvs.common.VrsAlleleRecord;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
@@ -14,6 +22,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.List;
 
 public class VetCreatorUnitTest {
     private static final long SAMPLE_ID = 100;
@@ -91,7 +100,9 @@ public class VetCreatorUnitTest {
                     DATASET_NAME,
                     true,
                     false,
-                    PARQUET_SCHEMA
+                    PARQUET_SCHEMA,
+                    false,  // enableVrsIds
+                    null    // vrsAlleleCreator
             );
 
             // If we get here, the test failed - no exception was thrown
@@ -103,6 +114,36 @@ public class VetCreatorUnitTest {
         } finally {
             // Clean up the test file
             Files.deleteIfExists(parquetOutputFile.toPath());
+        }
+    }
+
+    @Test
+    public void testSpanningDeletionKeepsVrsAlleleIdsAlignedWithAlt() throws IOException {
+        // chr20:1000000 is C. With * first, an implementation that dropped * would put T's id at index 0,
+        // where vet alt has *.
+        final VariantContext variant = new VariantContextBuilder("test", "chr20", 1000000, 1000000,
+                List.of(Allele.create("C", true), Allele.SPAN_DEL, Allele.create("T"), Allele.NON_REF_ALLELE)).make();
+        final Path tempDir = Files.createTempDirectory("vet_creator_vrs");
+        final VetCreator vetCreator = new VetCreator(inputVcfFileName, SAMPLE_ID, tableNumber, tempDir.toFile(),
+                outputType, PROJECT_ID, DATASET_NAME, true, false, PARQUET_SCHEMA,
+                true,   // enableVrsIds
+                null);  // vrsAlleleCreator
+        try (ReferenceDataSource reference = ReferenceDataSource.of(
+                Paths.get(GATKBaseTest.largeFileTestDir, "Homo_sapiens_assembly38.20.21.fasta"))) {
+            final ReferenceContext referenceContext =
+                    new ReferenceContext(reference, new SimpleInterval("chr20", 1000000, 1000000));
+
+            final List<VrsAlleleRecord> records = vetCreator.computeVrsAlleleRecords(variant, referenceContext);
+            final List<String> vetAlt = List.of(VetFieldEnum.alt.getColumnValue(variant, false).split(","));
+            Assert.assertEquals(vetAlt, List.of("*", "T"));
+            Assert.assertEquals(records.size(), vetAlt.size());
+            Assert.assertNull(records.get(0), "* has no VRS representation");
+            Assert.assertTrue(records.get(1).vrsAlleleId.startsWith("ga4gh:VA."), records.get(1).vrsAlleleId);
+
+            Assert.assertEquals(VetCreator.vrsAlleleIds(records),
+                    List.of(VetCreator.NO_VRS_ALLELE_ID, records.get(1).vrsAlleleId));
+        } finally {
+            vetCreator.closeTool();
         }
     }
 }
