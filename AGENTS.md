@@ -780,10 +780,19 @@ validate` and fail only when the cluster is created.
    counts for both shapes in the Compute Engine local SSD documentation before
    changing either one, and set the master's count explicitly.
 
+An error message describes one machine shape, not its family or its
+neighbors. In VS-2055 the n2d-highmem-32 error above was taken to mean that N2
+and N2D with 32 vCPUs both accept 2. They do not: N2 at 32 vCPUs needs 4. That
+claim went into seven WDL help strings, the script and the PR description
+before review caught it. So before writing down a Compute Engine limit, look
+it up in Google's table for every family and size the text names, not just
+the one that failed.
+
 n2d-highmem-8 workers and an n2d-highmem-32 master have been the default
 since VS-2055, replacing n1, in the script and in every WDL that runs
-`run_in_hail_cluster.py`, each of which takes its own machine types. A WDL's own default overrides the script's, so changing the
-default family means editing both.
+`run_in_hail_cluster.py`, each of which takes its own machine types. A WDL's
+own default overrides the script's, so changing the default family means
+editing both.
 
 The memory per vCPU differs too: an n2d-highmem-8 has 64 GB against an
 n1-highmem-8's 52 GB. So a run on a new family is not a like-for-like
