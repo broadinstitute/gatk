@@ -159,8 +159,8 @@ task GetToolVersions {
     #     attestation manifest (it shows up as an `unknown/unknown` platform entry).
     # Both forms pull correctly under modern Docker and Cromwell. Neither the suffix nor the manifest media type says
     # anything about image contents -- verify a tag by layer count and size, not by the shape of its name.
-    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-11-05-gatkbase-lite-7e0158d58a6a"
-    String gatk_heavy_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-11-05-gatkbase-b2099b68c00e"
+    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-11-13-gatkbase-lite-ea2e1fab055c"
+    String gatk_heavy_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-11-13-gatkbase-d4f5d75b6ea6"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
     String plink_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/plink2:2024-04-23-slim-a0a65f52cc0e"
