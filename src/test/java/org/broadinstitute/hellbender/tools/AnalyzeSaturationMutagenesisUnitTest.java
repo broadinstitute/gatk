@@ -6,6 +6,7 @@ import org.broadinstitute.hellbender.tools.AnalyzeSaturationMutagenesis.*;
 import org.broadinstitute.hellbender.utils.read.ArtificialReadUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
+import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.ArrayList;
@@ -577,6 +578,52 @@ public class AnalyzeSaturationMutagenesisUnitTest extends GATKBaseTest {
         final ReadReport readReport2 = getReadReport(read);
         Assert.assertEquals(readReport2.getVariations(),
                 Collections.singletonList(new SNV(3, CALL_T, CALL_A, QUAL_30)));
+    }
+
+    @DataProvider(name = "extendedCigarReadReports")
+    public Object[][] extendedCigarReadReports() {
+        final List<Interval> fullCoverage = Collections.singletonList(new Interval(0, 17));
+        final List<SNV> substitution = Collections.singletonList(new SNV(3, CALL_T, CALL_A, QUAL_30));
+        return new Object[][] {
+                {"ACATGCGTCTAGTACGT", "17=", new Interval(0, 17), fullCoverage, Collections.emptyList()},
+                {"ACAAGCGTCTAGTACGT", "3=1X13=", new Interval(0, 17), fullCoverage, substitution},
+                {"ACAAGCGTCTAGTACGT", "3M1X6=7M", new Interval(0, 17), fullCoverage, substitution},
+                {"ACAAGCGTCTAGTACGT", "3=1X13=", new Interval(4, 15),
+                        Collections.singletonList(new Interval(4, 15)), Collections.emptyList()},
+                {"ACAATGCGTCTAGTACGT", "3=1X1I13=", new Interval(0, 18), fullCoverage,
+                        Arrays.asList(new SNV(3, CALL_T, CALL_A, QUAL_30), new SNV(4, NO_CALL, CALL_T, QUAL_30))},
+                {"ACAACGTCTAGTACGT", "3=1X1D12=", new Interval(0, 16),
+                        Arrays.asList(new Interval(0, 4), new Interval(5, 17)),
+                        Arrays.asList(new SNV(3, CALL_T, CALL_A, QUAL_30), new SNV(4, CALL_G, NO_CALL, QUAL_30))}
+        };
+    }
+
+    @Test(dataProvider = "extendedCigarReadReports")
+    public void testExtendedCigarReadReport(final String bases, final String cigar, final Interval trim,
+                                          final List<Interval> expectedCoverage, final List<SNV> expectedVariations) {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 0, refSeq.length);
+        final byte[] quals = new byte[bases.length()];
+        Arrays.fill(quals, QUAL_30);
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "read1", 0, 1,
+                bases.getBytes(), quals, cigar);
+        final boolean originalFindLargeDels = findLargeDels;
+        try {
+            findLargeDels = false;
+            final ReadReport report = new ReadReport(read, trim, refSeq);
+            Assert.assertEquals(report.getRefCoverage(), expectedCoverage);
+            Assert.assertEquals(report.getVariations(), expectedVariations);
+            // SNV equality deliberately ignores quality, so check it separately.
+            for (int idx = 0; idx < expectedVariations.size(); ++idx) {
+                Assert.assertEquals(report.getVariations().get(idx).getQuality(), expectedVariations.get(idx).getQuality());
+            }
+
+            read.setCigar(cigar.replace('=', 'M').replace('X', 'M'));
+            final ReadReport matchReport = new ReadReport(read, trim, refSeq);
+            Assert.assertEquals(report.getRefCoverage(), matchReport.getRefCoverage());
+            Assert.assertEquals(report.getVariations(), matchReport.getVariations());
+        } finally {
+            findLargeDels = originalFindLargeDels;
+        }
     }
 
     @Test
