@@ -155,6 +155,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - FoxtrotRelease_20261113_01
        tags:
          - /.*/
    - name: GvsValidateVDS
@@ -182,6 +183,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - FoxtrotRelease_20261113_01
        tags:
          - /.*/
    - name: GvsMergeAndRescoreVDSes
@@ -191,6 +193,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - FoxtrotRelease_20261113_01
        tags:
          - /.*/
    - name: GvsTieOutVDS
@@ -385,6 +388,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - FoxtrotRelease_20261113_01
          tags:
              - /.*/
    - name: GvsCallsetStatistics
@@ -503,6 +507,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - FoxtrotRelease_20261113_01
        tags:
          - /.*/
    - name: GvsCreateParticipantMappingFromVDS
