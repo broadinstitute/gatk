@@ -12,10 +12,12 @@ import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAligner;
 import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentConstants;
 
+import java.io.Serializable;
+
 /**
  * Set of arguments for Assembly Based Callers
  */
-public abstract class AssemblyBasedCallerArgumentCollection {
+public abstract class AssemblyBasedCallerArgumentCollection implements Serializable {
     private static final long serialVersionUID = 1L;
     public static final String USE_FILTERED_READS_FOR_ANNOTATIONS_LONG_NAME = "use-filtered-reads-for-annotations";
     public static final String BAM_OUTPUT_LONG_NAME = "bam-output";

@@ -20,14 +20,13 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentM
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculationArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.StandardCallerArgumentCollection;
 
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Set of arguments for the {@link HaplotypeCallerEngine}
  */
-public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgumentCollection implements Serializable {
+public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgumentCollection {
     private static final long serialVersionUID = 1L;
 
     public static final String PLOIDY_REGIONS_NAME = "ploidy-regions";
@@ -334,7 +333,9 @@ public class HaplotypeCallerArgumentCollection extends AssemblyBasedCallerArgume
         return flowMode != FlowMode.NONE;
     }
 
-    // Copy method used to create new hcArgs with same fields except input ploidy model
+    // Copy method used to create new hcArgs with same fields except input ploidy model. It makes a deep copy through Java
+    // serialization, so every superclass and nested argument collection must be Serializable, or its fields are lost or
+    // the copy fails; HaplotypeCallerArgumentCollectionUnitTest.testArgCollectionCopiesAreSynchronized enforces this.
     public HaplotypeCallerArgumentCollection copyWithNewPloidy(int ploidy) {
         HaplotypeCallerArgumentCollection newArgsWithNewPloidy = SerializationUtils.clone(this);
         newArgsWithNewPloidy.standardArgs.genotypeArgs.samplePloidy = ploidy;

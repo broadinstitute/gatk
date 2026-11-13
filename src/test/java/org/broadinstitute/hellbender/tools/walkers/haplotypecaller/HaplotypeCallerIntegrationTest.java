@@ -42,6 +42,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -970,6 +971,90 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         IntegrationTestSpec.assertEqualTextFiles(output, expected);
     }
 
+    @DataProvider(name = "ploidyRegionModes")
+    public Object[][] ploidyRegionModes() {
+        return new Object[][] {
+                {"GVCF", ".g.vcf", Arrays.asList("--" + AssemblyBasedCallerArgumentCollection.EMIT_REF_CONFIDENCE_LONG_NAME, ReferenceConfidenceMode.GVCF.toString())},
+                {"DRAGEN", ".vcf", Arrays.asList("--dragen-mode", "--dragstr-params-path", TEST_FILES_DIR + "example.dragstr-params.txt")}
+        };
+    }
+
+    // A ploidy region whose ploidy equals the default ploidy must not change the output. Regions in --ploidy-regions are
+    // genotyped with a copy of the arguments, and that copy must keep every argument, e.g. -ERC GVCF and the DRAGEN-mode arguments.
+    // A haploid region is also run, to check that the regions really are genotyped by their own engines.
+    @Test(dataProvider = "ploidyRegionModes")
+    public void testCustomPloidyRegionWithDefaultPloidy(final String mode, final String extension, final List<String> modeArgs) throws Exception {
+        final SimpleInterval ploidyRegion = new SimpleInterval("20", 9999001, 10021000);
+        final SimpleInterval haploidRegion = new SimpleInterval("20", 10005001, 10015000);
+        final File defaultPloidyRegions = createTempFile("defaultPloidyRegions", ".bed");
+        Files.writeString(defaultPloidyRegions.toPath(), String.format("%s\t%d\t%d\t%d\n",
+                ploidyRegion.getContig(), ploidyRegion.getStart() - 1, ploidyRegion.getEnd(), HomoSapiensConstants.DEFAULT_PLOIDY));
+        final File haploidRegions = createTempFile("haploidRegions", ".bed");
+        Files.writeString(haploidRegions.toPath(), String.format("%s\t%d\t%d\t1\n",
+                haploidRegion.getContig(), haploidRegion.getStart() - 1, haploidRegion.getEnd()));
+
+        final File expected = createTempFile("noPloidyRegions." + mode, extension);
+        final File output = createTempFile("defaultPloidyRegions." + mode, extension);
+        final File haploidOutput = createTempFile("haploidRegions." + mode, extension);
+        for (final Pair<File, File> regionsAndOutput : Arrays.asList(Pair.of((File) null, expected),
+                Pair.of(defaultPloidyRegions, output), Pair.of(haploidRegions, haploidOutput))) {
+            Utils.resetRandomGenerator();
+            final ArgumentsBuilder args = new ArgumentsBuilder()
+                    .addInput(NA12878_20_21_WGS_bam)
+                    .addReference(b37_reference_20_21)
+                    .addInterval("20:10000000-10020000")
+                    .addOutput(regionsAndOutput.getRight())
+                    .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
+            modeArgs.forEach(args::addRaw);
+            if (regionsAndOutput.getLeft() != null) {
+                args.add(HaplotypeCallerArgumentCollection.PLOIDY_REGIONS_NAME, regionsAndOutput.getLeft());
+            }
+            runCommandLine(args);
+        }
+
+        IntegrationTestSpec.assertEqualTextFiles(output, expected);
+
+        // Haploid genotypes come only from the haploid region's engine, which is used for the active regions that overlap
+        // it, so allow a margin around the region.
+        final SimpleInterval haploidRegionWithMargin = new SimpleInterval("20", haploidRegion.getStart() - 1000, haploidRegion.getEnd() + 1000);
+        final List<VariantContext> haploidCalls = VariantContextTestUtils.streamVcf(haploidOutput).collect(Collectors.toList());
+        Assert.assertTrue(haploidCalls.stream().anyMatch(vc -> haploidRegion.overlaps(vc) && vc.getGenotype(0).getPloidy() == 1
+                && vc.getAlternateAlleles().stream().anyMatch(a -> !a.isNonRefAllele())), "no haploid variant call in " + haploidRegion);
+        for (final VariantContext vc : haploidCalls) {
+            if (!haploidRegionWithMargin.overlaps(vc)) {
+                Assert.assertEquals(vc.getGenotype(0).getPloidy(), HomoSapiensConstants.DEFAULT_PLOIDY, "ploidy outside the haploid region at " + vc);
+            }
+        }
+    }
+
+    // Pins the output of a haploid region in -ERC GVCF and DRAGEN mode, which depends on the region's engine getting
+    // every argument, e.g. -ERC GVCF and the DRAGstr priors.
+    @Test(dataProvider = "ploidyRegionModes")
+    public void testCustomPloidyRegionIsConsistentWithPastResults(final String mode, final String extension, final List<String> modeArgs) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testCustomPloidyRegionIsConsistentWithPastResults." + mode, extension);
+        final File expected = new File(TEST_FILES_DIR, "expected.testPloidyRegions.haploid." + mode + extension);
+        final File haploidRegions = createTempFile("haploidRegions", ".bed");
+        Files.writeString(haploidRegions.toPath(), "20\t10005000\t10015000\t1\n");
+
+        final String outputPath = UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ? expected.getAbsolutePath() : output.getAbsolutePath();
+
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(NA12878_20_21_WGS_bam)
+                .addReference(b37_reference_20_21)
+                .addInterval("20:10004000-10016000")
+                .addOutput(outputPath)
+                .add(HaplotypeCallerArgumentCollection.PLOIDY_REGIONS_NAME, haploidRegions)
+                .add(StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, false);
+        modeArgs.forEach(args::addRaw);
+        runCommandLine(args);
+
+        if ( ! UPDATE_EXACT_MATCH_EXPECTED_OUTPUTS ) {
+            IntegrationTestSpec.assertEqualTextFiles(output, expected);
+        }
+    }
+
     // Should fail due to non-integer values in name column of bed
     @Test(dataProvider="HaplotypeCallerTestInputs", expectedExceptions = IllegalArgumentException.class)
     public void testNonIntegerCustomPloidyRegions(final String inputFileName, final String referenceFileName) throws Exception {
@@ -1040,30 +1125,6 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         IntegrationTestSpec.assertEqualTextFiles(output, expected);
-    }
-
-    // Tests the somewhat ad hoc implementation of copying hcArgs instances in the engine, used for managing multiple ploidies used based on user inputs
-    @Test
-    public void testArgCollectionCopiesAreSynchronized() {
-        Utils.resetRandomGenerator();
-
-        HaplotypeCallerArgumentCollection hcArgs = new HaplotypeCallerArgumentCollection();
-        hcArgs.applyBQD = !hcArgs.applyBQD;
-        hcArgs.dontGenotype = !hcArgs.dontGenotype;
-        hcArgs.standardArgs.annotateAllSitesWithPLs = !hcArgs.standardArgs.annotateAllSitesWithPLs;
-        hcArgs.standardArgs.genotypeArgs.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED = !hcArgs.standardArgs.genotypeArgs.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED;
-
-        // Create copy with different ploidy and check tweaked values (and one control non-changed value) remain in sync
-        HaplotypeCallerArgumentCollection hcArgsCopy = hcArgs.copyWithNewPloidy(3);
-        Assert.assertEquals(hcArgs.applyBQD, hcArgsCopy.applyBQD);
-        Assert.assertEquals(hcArgs.dontGenotype, hcArgsCopy.dontGenotype);
-        Assert.assertEquals(hcArgs.standardArgs.annotateAllSitesWithPLs, hcArgsCopy.standardArgs.annotateAllSitesWithPLs);
-        Assert.assertEquals(hcArgs.standardArgs.CONTAMINATION_FRACTION, hcArgsCopy.standardArgs.CONTAMINATION_FRACTION);
-        Assert.assertEquals(hcArgs.standardArgs.genotypeArgs.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED, hcArgsCopy.standardArgs.genotypeArgs.ANNOTATE_NUMBER_OF_ALLELES_DISCOVERED);
-
-        // Modify other values of copy and check they are now distinct, i.e. a "deep copy" was created above
-        hcArgsCopy.applyBQD = !hcArgsCopy.applyBQD;
-        Assert.assertNotEquals(hcArgs.applyBQD, hcArgsCopy.applyBQD);
     }
 
     // test that ReadFilterLibrary.NON_ZERO_REFERENCE_LENGTH_ALIGNMENT removes reads that consume zero reference bases
