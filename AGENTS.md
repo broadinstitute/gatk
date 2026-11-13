@@ -804,6 +804,13 @@ per-core speed, while the tail mostly reflects the autoscaling policy. Treat a
 difference as real when the worst run of one configuration still beats the
 best run of the other.
 
+When costing the runs, price everything a secondary worker carries at Spot
+rates, including its local SSD. Spot local SSD is a separate SKU, "SSD backed
+Local Storage attached to Spot Preemptible VMs", at about 60% of the on-demand
+rate. Pricing it on demand overstated the SSD's share of the VS-2055 costs by
+about 80%. Rates change, so look them up in the Cloud Billing Catalog API
+rather than reusing figures from an earlier write-up.
+
 ## Interpolated multi-line text defeats both heredoc conventions
 
 The dedent described above is computed on the command *after* interpolation. A
