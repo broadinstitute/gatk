@@ -20,8 +20,9 @@ workflow GvsRunHailScript {
         Int num_primary_workers = 2
         Int max_secondary_workers = 200
         Int num_local_ssds = 1
-        String worker_machine_type = "n1-highmem-8"
-        String master_machine_type = "n1-highmem-32"
+        Int? num_master_local_ssds
+        String worker_machine_type = "n2d-highmem-8"
+        String master_machine_type = "n2d-highmem-32"
         Boolean use_tiny_dataproc_cluster = false
 
         Int? cluster_max_idle_minutes
@@ -63,6 +64,9 @@ workflow GvsRunHailScript {
         hail_wheel: {
             help: "Optional Hail wheel file. Cannot define both this parameter and `hail_version`."
         }
+        num_master_local_ssds: {
+            help: "Local SSDs on the master, overriding num_local_ssds. Valid counts depend on machine family and vCPU count, and larger machines need more: N2D machines with 32 or 48 vCPUs reject 1 and accept 2, 4, 8, 16 or 24, but an N2 machine with 32 vCPUs needs at least 4. Left unset, the master gets the workers' count, except that 1 becomes 2, which suits the default n2d-highmem-32 master and n1-highmem-32. For any other master type, check the allowed counts in the Compute Engine local SSD documentation and set this explicitly."
+        }
     }
 
     if (!defined(variants_docker) || !defined(basic_docker) || !defined(cloud_sdk_slim_docker) || !defined(workspace_project) || !defined(hail_version)) {
@@ -103,6 +107,7 @@ workflow GvsRunHailScript {
             num_primary_workers = num_primary_workers,
             max_secondary_workers = max_secondary_workers,
             num_local_ssds = num_local_ssds,
+            num_master_local_ssds = num_master_local_ssds,
             worker_machine_type = worker_machine_type,
             master_machine_type = master_machine_type,
             use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
@@ -135,6 +140,7 @@ task RunHailScript {
         Int num_primary_workers
         Int max_secondary_workers
         Int num_local_ssds
+        Int? num_master_local_ssds
         String worker_machine_type
         String master_machine_type
         Boolean use_tiny_dataproc_cluster
@@ -203,8 +209,9 @@ task RunHailScript {
             --num-primary-workers ~{num_primary_workers} \
             --max-secondary-workers ~{max_secondary_workers} \
             --region ~{region} \
-            --zones ~{cluster_zones} \
+            --zones '~{cluster_zones}' \
             --num-local-ssds ~{num_local_ssds} \
+            ~{'--num-master-local-ssds ' + num_master_local_ssds} \
             --worker-machine-type ~{worker_machine_type} \
             --master-machine-type ~{master_machine_type} \
             --workspace-project ~{workspace_project} \

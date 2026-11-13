@@ -139,11 +139,12 @@ workflow GvsValidateVdsCompleteness {
         # a stockout elsewhere, so there is no reason to also diverge from the configuration
         # that is known to work. Worth revisiting for cost once the pipeline is proven.
         Int num_local_ssds = 1
-        String worker_machine_type = "n1-highmem-8"
+        Int? num_master_local_ssds
+        String worker_machine_type = "n2d-highmem-8"
         # Also left matching the other GVS workflows. The driver only collects a summary on
         # the order of 25,000 x 134 numbers per contig, so this is oversized on paper, but a smaller
         # master is a variable worth removing while the pipeline is still being brought up.
-        String master_machine_type = "n1-highmem-32"
+        String master_machine_type = "n2d-highmem-32"
         String? hail_temp_path
         String region = "us-central1"
         Int? cluster_max_idle_minutes
@@ -194,7 +195,7 @@ workflow GvsValidateVdsCompleteness {
             help: "Comma-separated zones to try in order, or auto for every zone in the region. A stockout is a per-zone condition, so a create that fails for capacity is retried in the next zone rather than failing the workflow."
         }
         num_local_ssds: {
-            help: "Local SSDs per master and worker. Kept at 1 to match the other GVS Hail workflows; lowering it widens the zones able to serve a request, at the cost of diverging from a known-good configuration."
+            help: "Local SSDs per worker, and per master unless `num_master_local_ssds` is set (a 1 here gives the master 2; see that input). Kept at 1 to match the other GVS Hail workflows; lowering it widens the zones able to serve a request, at the cost of diverging from a known-good configuration."
         }
         min_coverage_fraction: {
             help: "References mode only: skip bins whose baseline covers less than this fraction of the bin per sample. Defaults to 0.05. Dead sequence -- centromeres, satellite arrays, assembly gaps -- otherwise gets judged on the ratio between two near-zero numbers, which is where every false positive in the Foxtrot r2 reference scan came from. Bins it excludes are listed in sparse_bins_references.tsv. Has no effect in variants mode, where an entry count has no such denominator; use min_expected there."
@@ -204,6 +205,9 @@ workflow GvsValidateVdsCompleteness {
         }
         fail_on_findings: {
             help: "Fail the workflow if the screen flags anything, either a dropout rectangle or a globally depleted superpartition. Defaults to false, because a candidate is unproven until the adjudication SQL has been run against BigQuery and a red workflow would overstate what the run established. Set it true where nobody will read the report -- the outputs are still written and delocalized either way."
+        }
+        num_master_local_ssds: {
+            help: "Local SSDs on the master, overriding num_local_ssds. Valid counts depend on machine family and vCPU count, and larger machines need more: N2D machines with 32 or 48 vCPUs reject 1 and accept 2, 4, 8, 16 or 24, but an N2 machine with 32 vCPUs needs at least 4. Left unset, the master gets the workers' count, except that 1 becomes 2, which suits the default n2d-highmem-32 master and n1-highmem-32. For any other master type, check the allowed counts in the Compute Engine local SSD documentation and set this explicitly."
         }
     }
 
@@ -376,6 +380,7 @@ workflow GvsValidateVdsCompleteness {
             prefix = cluster_prefix,
             cluster_zones = cluster_zones,
             num_local_ssds = num_local_ssds,
+            num_master_local_ssds = num_master_local_ssds,
             worker_machine_type = worker_machine_type,
             master_machine_type = master_machine_type,
             use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
@@ -534,6 +539,7 @@ task ScanVdsForDropouts {
         String prefix
         String cluster_zones
         Int num_local_ssds
+        Int? num_master_local_ssds
         String worker_machine_type
         String master_machine_type
         Boolean use_tiny_dataproc_cluster
@@ -693,8 +699,9 @@ task ScanVdsForDropouts {
             --num-primary-workers ~{num_primary_workers} \
             --max-secondary-workers ~{max_secondary_workers} \
             --region ~{region} \
-            --zones ~{cluster_zones} \
+            --zones '~{cluster_zones}' \
             --num-local-ssds ~{num_local_ssds} \
+            ~{'--num-master-local-ssds ' + num_master_local_ssds} \
             --worker-machine-type ~{worker_machine_type} \
             --master-machine-type ~{master_machine_type} \
             --workspace-project ~{workspace_project} \
