@@ -7,6 +7,7 @@ import htsjdk.variant.vcf.VCFHeaderLineType;
 import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.aeonbits.owner.util.Collections;
 import org.broadinstitute.hellbender.utils.dragstr.DragstrParams;
+import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 
 import java.util.Collection;
 
@@ -15,8 +16,8 @@ import java.util.Collection;
  */
 final class DragstrVariantContextAnnotations {
 
-    public static final String DRAGSTRINFO_KEY = "DRAGstrInfo";
-    public static final String DRAGSTRPARAMS_KEY = "DRAGstrParams";
+    public static final String DRAGSTRINFO_KEY = GATKVCFConstants.DRAGSTR_INFO_KEY;
+    public static final String DRAGSTRPARAMS_KEY = GATKVCFConstants.DRAGSTR_PARAMS_KEY;
 
     /**
      * Returns VCF header lines required for annotations supplied by {@link #annotateVariantContextWithDragstrParametersUsed}.

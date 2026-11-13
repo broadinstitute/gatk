@@ -3,13 +3,16 @@ package org.broadinstitute.hellbender.tools.walkers;
 import htsjdk.samtools.seekablestream.SeekablePathStream;
 import htsjdk.samtools.util.FileExtensions;
 import htsjdk.samtools.util.Locatable;
+import htsjdk.tribble.index.IndexFactory;
 import htsjdk.variant.utils.VCFHeaderReader;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
+import htsjdk.variant.vcf.VCFCodec;
 import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import htsjdk.variant.vcf.VCFHeaderLineCount;
+import htsjdk.variant.vcf.VCFInfoHeaderLine;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.barclay.argparser.CommandLineException;
@@ -19,6 +22,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.GenomicsDBTestUtils;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
+import org.broadinstitute.hellbender.tools.IndexFeatureFile;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBArgumentCollection;
 import org.broadinstitute.hellbender.tools.genomicsdb.GenomicsDBImport;
 import org.broadinstitute.hellbender.tools.walkers.annotator.RMSMappingQuality;
@@ -357,6 +361,45 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
         final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
         //only variant is a big variant that shouldn't get output because it is missing PLs, but we should skip it gracefully
         Assert.assertEquals(outputData.getRight().size(),0);
+    }
+
+    @DataProvider
+    public Object[][] getUseGenomicsDB() {
+        return new Object[][] { { false }, { true } };
+    }
+
+    @Test(dataProvider = "getUseGenomicsDB")
+    public void testDragstrAnnotationsAreDropped(final boolean useGenomicsDB) throws IOException {
+        // the input record carries DRAGstrInfo=2,3 and DRAGstrParams=43.3,5.0,26.0 from HaplotypeCaller in DRAGEN mode;
+        // these are per-sample and used to be merged into a single median value, which is invalid under their Number=2 and Number=3 headers
+        final File gvcf = new File(toolsTestDir + "walkers/variantutils/ReblockGVCF/HG002.snippet.g.vcf");
+        final String input;
+        if (useGenomicsDB) {
+            // GenomicsDBImport needs an indexed input
+            final File indexedGvcf = new File(createTempDir("dragstrGvcf"), gvcf.getName());
+            Files.copy(gvcf.toPath(), indexedGvcf.toPath());
+            IndexFactory.createLinearIndex(indexedGvcf, new VCFCodec(), IndexFeatureFile.OPTIMAL_GVCF_INDEX_BIN_SIZE)
+                    .write(new File(indexedGvcf.getAbsolutePath() + FileExtensions.TRIBBLE_INDEX));
+            input = GenomicsDBTestUtils.makeGenomicsDBUri(GenomicsDBTestUtils.createTempGenomicsDB(indexedGvcf, new SimpleInterval("chr2", 103392924, 103392924)));
+        } else {
+            input = gvcf.getAbsolutePath();
+        }
+        // the site's QUAL is below the default calling threshold, so lower it as in DRAGEN mode
+        final File output = runGenotypeGVCFS(input, null, Arrays.asList("-stand-call-conf", "0"), hg38Reference);
+        final Pair<VCFHeader, List<VariantContext>> outputData = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
+        final VCFHeader header = outputData.getLeft();
+        Assert.assertEquals(outputData.getRight().size(), 1);
+        for (final VariantContext vc : outputData.getRight()) {
+            Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.DRAGSTR_INFO_KEY), vc.toString());
+            Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.DRAGSTR_PARAMS_KEY), vc.toString());
+            // every fixed-count INFO field has the number of values its header line declares
+            for (final String key : vc.getAttributes().keySet()) {
+                final VCFInfoHeaderLine line = header.getInfoHeaderLine(key);
+                if (line != null && line.getCountType() == VCFHeaderLineCount.INTEGER) {
+                    Assert.assertEquals(vc.getAttributeAsList(key).size(), line.getCount(), key + " in " + vc);
+                }
+            }
+        }
     }
 
     @Test
