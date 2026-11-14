@@ -15,12 +15,15 @@ import java.util.Map;
  * querying a live RefGet server), replace the body of {@link #getAccession} while
  * keeping this class's interface.</p>
  *
- * <p>Accessions were obtained from the local SeqRepo instance, e.g.:
+ * <p>Each accession is the digest of the chromosome's RefSeq sequence: NC_000001.11 for
+ * GRCh38 chr1, NC_000001.10 for GRCh37 chr1, and so on. These are the accessions VRS tools
+ * such as vrs-python use. To re-derive one, download the sequence from NCBI, uppercase it,
+ * and base64url-encode the first 24 bytes of its SHA-512:
  * <pre>
- *   curl http://127.0.0.1:5000/seqrepo/1/metadata/refseq:NC_000001.11   # GRCh38 chr1
- *   curl http://127.0.0.1:5000/seqrepo/1/metadata/GRCh37:1              # GRCh37 chr1
+ *   curl "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&amp;id=NC_000021.9&amp;rettype=fasta"
  * </pre>
- * and verified against the ga4gh:SQ.* alias in the response.</p>
+ * They are not digests of the GVS reference FASTA, which is the GRCh38 analysis set. The two
+ * differ wherever the analysis set N-masks sequence, as on chr21.</p>
  */
 public class RefGetAccessionProvider {
 
