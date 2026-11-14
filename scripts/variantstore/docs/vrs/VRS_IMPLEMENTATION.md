@@ -41,7 +41,7 @@ This enables downstream queries to identify and retrieve specific alleles across
 - `VrsIdComputerTest`: deterministic ID generation and format; it does not compare IDs with known values (VS-2059)
 - `VrsAlleleRecordTest`, `RefGetAccessionProviderTest`
 - `VetCreatorUnitTest`: a spanning-deletion `*` ALT gets the placeholder and keeps `vrs_allele_ids` aligned with `alt`
-- `CreateVariantIngestFilesIntegrationTest`: end-to-end VRS ID computation from a gVCF. It needs a local reference at a hardcoded path and skips without it.
+- `CreateVariantIngestFilesIntegrationTest`: end-to-end VRS ID computation from a gVCF, against the checked-in chr20/21 subset of hg38.
 
 ---
 

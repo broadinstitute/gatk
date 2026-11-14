@@ -149,18 +149,8 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
 
     @Test
     public void testCreateVrsAlleleParquetFiles() throws Exception {
-        // This test requires a local hg38 reference. Set the system property
-        // "gvs.test.hg38.reference" to the path of Homo_sapiens_assembly38.fasta,
-        // or place the file at the default location below.
-        final String refPath = System.getProperty(
-                "gvs.test.hg38.reference",
-                "/Users/hatcher/Projects/local_ref/Homo_sapiens_assembly38.fasta");
-        final File refFile = new File(refPath);
-        if (!refFile.exists()) {
-            throw new org.testng.SkipException(
-                    "Skipping testCreateVrsAlleleParquetFiles: reference not found at " + refPath
-                    + ". Set -Dgvs.test.hg38.reference=<path> to enable.");
-        }
+        // The input VCF is chr20 only, so the checked-in chr20/21 subset of hg38 suffices (as in VetCreatorUnitTest).
+        final String refPath = largeFileTestDir + "Homo_sapiens_assembly38.20.21.fasta";
 
         final File outputDir = createTempDir("output_dir_vrs");
         final File convertedDir = createTempDir("converted_vrs_");
