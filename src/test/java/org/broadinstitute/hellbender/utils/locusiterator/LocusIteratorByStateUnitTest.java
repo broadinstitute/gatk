@@ -519,6 +519,65 @@ public final class LocusIteratorByStateUnitTest extends LocusIteratorByStateBase
         }
     }
 
+    @DataProvider(name = "LIBS_SampleIndexTests")
+    public Object[][] makeLIBS_SampleIndexTests() {
+        final List<Object[]> tests = new ArrayList<>();
+        for (final int nSamples : Arrays.asList(1, 2, 3)) {
+            for (final boolean withReadsLackingReadGroups : Arrays.asList(false, true)) {
+                for (final int downsampleTo : Arrays.asList(-1, 3)) {
+                    tests.add(new Object[]{nSamples, withReadsLackingReadGroups, downsampleTo});
+                }
+            }
+        }
+        return tests.toArray(new Object[][]{});
+    }
+
+    /**
+     * Pileups from LIBS are indexed by sample, and splitting them by sample must agree with looking up each read's sample.
+     */
+    @Test(dataProvider = "LIBS_SampleIndexTests")
+    public void testLIBS_SampleIndex(final int nSamples, final boolean withReadsLackingReadGroups, final int downsampleTo) {
+        final ArtificialBAMBuilder bamBuilder = new ArtificialBAMBuilder(header.getSequenceDictionary(), 5, 10);
+        bamBuilder.createAndSetHeader(nSamples).setReadLength(10).setAlignmentStart(1);
+        final List<GATKRead> reads = bamBuilder.makeReads();
+        final List<String> samples = new ArrayList<>(bamBuilder.getSamples());
+        if (withReadsLackingReadGroups) {
+            // reads without a read group belong to the null sample
+            for (int r = 0; r < reads.size(); r += 3) {
+                reads.get(r).setReadGroup(null);
+            }
+            samples.add(null);
+        }
+        final SAMFileHeader bamHeader = bamBuilder.getHeader();
+        final DownsamplingMethod downsampler = downsampleTo == -1 ? new DownsamplingMethod(DownsampleType.NONE, null, null)
+                : new DownsamplingMethod(DownsampleType.BY_SAMPLE, downsampleTo, null);
+        final LocusIteratorByState li = new LocusIteratorByState(new FakeCloseableIterator<>(reads.iterator()), downsampler,
+                samples, bamHeader, true);
+
+        int nLociVisited = 0;
+        while (li.hasNext()) {
+            nLociVisited++;
+            final ReadPileup pileup = li.next().getBasePileup();
+            final ReadPileup unindexed = new ReadPileup(pileup.getLocation(), elementsOf(pileup));
+
+            Assert.assertEquals(new ArrayList<>(pileup.getSamples(bamHeader)), new ArrayList<>(unindexed.getSamples(bamHeader)));
+            for (final String sample : samples) {
+                Assert.assertEquals(elementsOf(pileup.getPileupForSample(sample, bamHeader)),
+                        elementsOf(unindexed.getPileupForSample(sample, bamHeader)));
+                Assert.assertEquals(elementsOf(pileup.getPileupForSamples(s -> !Objects.equals(s, sample), bamHeader)),
+                        elementsOf(unindexed.getPileupForSamples(s -> !Objects.equals(s, sample), bamHeader)));
+            }
+        }
+        Assert.assertTrue(nLociVisited > 0, "LIBS produced no pileups");
+    }
+
+    // the elements of a pileup, in order (PileupElement has identity equality)
+    private static List<PileupElement> elementsOf(final ReadPileup pileup) {
+        final List<PileupElement> elements = new ArrayList<>(pileup.size());
+        pileup.forEach(elements::add);
+        return elements;
+    }
+
     private void AssertWellOrderedPileup(final ReadPileup pileup) {
         if ( ! pileup.isEmpty() ) {
             final int leftMostPos = -1;

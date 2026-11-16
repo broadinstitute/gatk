@@ -117,7 +117,7 @@ public class F1R2CountsCollector {
         // optimize the common case of a single tumor sample
         final String onlySample = samples.size() == 1 ? samples.iterator().next() : null;
         final Map<String, ReadPileup> splitPileup = samples.size() == 1 ? Collections.singletonMap(onlySample,
-                        pileup.makeFilteredPileup(pe -> Objects.equals(ReadUtils.getSampleName(pe.getRead(), header), onlySample) && pe.getQual() > CF1R2Args.minBaseQuality))
+                        pileup.getPileupForSample(onlySample, header).makeFilteredPileup(pe -> pe.getQual() > CF1R2Args.minBaseQuality))
                 : pileup.splitBySample(header, null);
 
         for (final Map.Entry<String, ReadPileup> entry : splitPileup.entrySet()) {

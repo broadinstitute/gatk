@@ -19,6 +19,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+import java.util.function.Predicate;
 
 import static org.broadinstitute.hellbender.utils.read.ReadConstants.NO_MAPPING_QUALITY;
 
@@ -143,6 +144,90 @@ public final class ReadPileupUnitTest extends GATKBaseTest {
         final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "nullRG", 0, 1, 10);
         final ReadPileup pileup = new ReadPileup(loc, Collections.singletonList(read), 1);
         final Map<String, ReadPileup> error = pileup.splitBySample(header, null);
+    }
+
+    /**
+     * A pileup indexed by sample must split by sample exactly as one that looks up the sample of each read.
+     */
+    @Test
+    public void testSampleIndexAgreesWithReadSamples() {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000);
+        final List<String> readGroupSamples = Arrays.asList("sample1", "sample1", "sample2", "sample3");
+        for (int rg = 0; rg < readGroupSamples.size(); rg++) {
+            final SAMReadGroupRecord readGroup = new SAMReadGroupRecord("rg" + rg);
+            readGroup.setSample(readGroupSamples.get(rg));
+            header.addReadGroup(readGroup);
+        }
+
+        // reads grouped by sample: sample2, no read group (the null sample), sample1 (from two read groups), sample4 (no
+        // reads) and sample3
+        final List<String> readGroups = Arrays.asList("rg2", "rg2", null, null, "rg0", "rg1", "rg0", "rg3");
+        final List<String> samples = Arrays.asList("sample2", null, "sample1", "sample4", "sample3");
+        final int[] sampleStarts = {0, 2, 4, 7, 7, 8};
+
+        final List<GATKRead> reads = new ArrayList<>(readGroups.size());
+        for (int r = 0; r < readGroups.size(); r++) {
+            final GATKRead read = ArtificialReadUtils.createArtificialRead(header, "read" + r, 0, 1, 10);
+            if (readGroups.get(r) != null) {
+                read.setReadGroup(readGroups.get(r));
+            }
+            reads.add(read);
+        }
+        final ReadPileup unindexed = new ReadPileup(loc, reads, 1);
+        final ReadPileup indexed = new ReadPileup(loc, elementsOf(unindexed), new ReadPileup.SampleOrder(samples), sampleStarts);
+
+        Assert.assertEquals(new ArrayList<>(indexed.getSamples(header)), new ArrayList<>(unindexed.getSamples(header)));
+        for (final String sample : Arrays.asList("sample1", "sample2", "sample3", "sample4", null, "absentSample")) {
+            Assert.assertEquals(elementsOf(indexed.getPileupForSample(sample, header)), elementsOf(unindexed.getPileupForSample(sample, header)));
+        }
+
+        final Map<String, ReadPileup> indexedSplit = indexed.splitBySample(header, "unknown");
+        final Map<String, ReadPileup> unindexedSplit = unindexed.splitBySample(header, "unknown");
+        Assert.assertEquals(new ArrayList<>(indexedSplit.keySet()), new ArrayList<>(unindexedSplit.keySet()));
+        indexedSplit.forEach((sample, pileup) -> Assert.assertEquals(elementsOf(pileup), elementsOf(unindexedSplit.get(sample))));
+
+        final List<Predicate<String>> sampleFilters = Arrays.asList(s -> true, s -> false, "sample1"::equals,
+                s -> "sample2".equals(s) || "sample3".equals(s), Objects::isNull, s -> !"sample1".equals(s));
+        for (final Predicate<String> sampleFilter : sampleFilters) {
+            final ReadPileup indexedFiltered = indexed.getPileupForSamples(sampleFilter, header);
+            final ReadPileup unindexedFiltered = unindexed.getPileupForSamples(sampleFilter, header);
+            Assert.assertEquals(elementsOf(indexedFiltered), elementsOf(unindexedFiltered));
+            // a filtered pileup keeps an index that splits it correctly
+            for (final String sample : Arrays.asList("sample1", "sample2", "sample3", null)) {
+                Assert.assertEquals(elementsOf(indexedFiltered.getPileupForSample(sample, header)),
+                        elementsOf(unindexedFiltered.getPileupForSample(sample, header)));
+            }
+        }
+        Assert.assertSame(indexed.getPileupForSamples(s -> true, header), indexed, "a pileup whose samples all pass should be returned as is");
+    }
+
+    @DataProvider(name = "InvalidSampleIndices")
+    public Object[][] invalidSampleIndices() {
+        return new Object[][] {
+                {Arrays.asList("s1", "s2"), new int[] {0, 3}},              // too few starts
+                {Arrays.asList("s1", "s2"), new int[] {1, 2, 3}},           // doesn't begin at 0
+                {Arrays.asList("s1", "s2"), new int[] {0, 2, 2}},           // doesn't end at the pileup size of 3
+                {Arrays.asList("s1", "s2", "s3"), new int[] {0, 2, 1, 3}},  // decreasing
+                {Arrays.asList("s1", "s1"), new int[] {0, 2, 3}},           // repeated sample
+                {Arrays.asList(null, null), new int[] {0, 2, 3}}            // repeated null sample
+        };
+    }
+
+    @Test(dataProvider = "InvalidSampleIndices", expectedExceptions = IllegalArgumentException.class)
+    public void testInvalidSampleIndex(final List<String> samples, final int[] sampleStarts) {
+        final SAMFileHeader header = ArtificialReadUtils.createArtificialSamHeader(1, 1, 1000);
+        final List<GATKRead> reads = new ArrayList<>();
+        for (int r = 0; r < 3; r++) {
+            reads.add(ArtificialReadUtils.createArtificialRead(header, "read" + r, 0, 1, 10));
+        }
+        new ReadPileup(loc, elementsOf(new ReadPileup(loc, reads, 1)), new ReadPileup.SampleOrder(samples), sampleStarts);
+    }
+
+    // the elements of a pileup, in order (PileupElement has identity equality)
+    private static List<PileupElement> elementsOf(final ReadPileup pileup) {
+        final List<PileupElement> elements = new ArrayList<>(pileup.size());
+        pileup.forEach(elements::add);
+        return elements;
     }
 
     @Test(expectedExceptions = IllegalArgumentException.class)
