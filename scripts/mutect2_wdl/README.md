@@ -133,6 +133,10 @@ Recommended default values (where possible) are found in ``mutect2_template.json
 
 When ``Mutect2.common_variants_vcf`` is given, Mutect2 tabulates pileup summaries of the tumor and normal at the common variants as it calls variants, as ``GetPileupSummaries`` would but without another pass over the reads.  The workflow merges them into its ``tumor_pileups`` and ``normal_pileups`` outputs, and ``CalculateContamination`` estimates contamination from the sites in its range of allele frequencies (see ``Mutect2.contamination_max_population_af``).  For other uses of the pileups, such as segmenting by allele fraction, ``Mutect2.pileups_max_population_af`` collects sites of higher allele frequency, and for genomes ``Mutect2.common_variants_vcf`` should contain common SNPs throughout the genome, not only in exons.
 
+#### F1R2 counts in the mutect2 WDL
+
+When ``Mutect2.run_orientation_bias_mixture_model_filter`` is true, Mutect2 collects the F1R2 counts from which ``LearnReadOrientationModel`` learns the read orientation artifact model, and the workflow's ``f1r2_counts`` output is the array of the scatters' counts, a tar.gz for each, which ``LearnReadOrientationModel`` takes together as multiple inputs.  The output exists even with ``Mutect2.skip_filtering``, which skips ``LearnReadOrientationModel``, so that other tools can learn the model from it.
+
 #### mutect2-replicate-validation
 
 *This script is usually used by developers and evaluators only.*
