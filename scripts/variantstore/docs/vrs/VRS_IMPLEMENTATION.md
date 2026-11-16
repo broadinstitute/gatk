@@ -12,7 +12,7 @@ This document describes the VRS (Variant Representation Specification) allele ID
 
 The VRS ID feature computes standardized identifiers (ga4gh:VA.* format) for each variant allele during ingestion. When enabled, the pipeline:
 
-1. **Normalizes** each allele according to VRS 2.0.1 specification (left-alignment, decomposition, state resolution)
+1. **Normalizes** each allele according to the VRS 2.0.1 specification: fully-justified normalization (trim, roll, expand across the whole ambiguous region) and state resolution. This is not left-alignment: an indel in a repeat gets an interval spanning the whole repeat, in 0-based interbase coordinates with no VCF anchor base, so it does not line up with the single position of a left-aligned vid. Multi-allelic sites are not decomposed: each ALT is normalized on its own.
 2. **Computes** unique identifiers from the normalized representation using SHA-512 digest
 3. **Stores** IDs in both the VET (variant extraction table) and a dedicated vrs_allele table
 4. **Supports** heterozygous variants (1/2 genotypes) with multiple alleles via array fields

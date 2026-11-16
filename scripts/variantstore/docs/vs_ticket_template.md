@@ -44,14 +44,14 @@ AC: (or A/C:)
 
 ## Do / Don't
 
-| Do | Don't |
-|---|---|
-| Write in plain conversational prose | Use formal markdown headers (##) |
-| Start with context paragraphs | Jump straight to bullet lists |
-| Use `AC:` or `A/C:` for acceptance criteria | Use "Acceptance Criteria" as a header |
-| Write AC as testable outcomes | Write vague AC ("should work well") |
-| Include links, contacts, references in Notes | Omit context that helps future readers |
-| For spikes, mention what artifact or decision is expected | Leave the output of a spike ambiguous |
+| Do                                                        | Don't                                  |
+|-----------------------------------------------------------|----------------------------------------|
+| Write in plain conversational prose                       | Use formal markdown headers (##)       |
+| Start with context paragraphs                             | Jump straight to bullet lists          |
+| Use `AC:` or `A/C:` for acceptance criteria               | Use "Acceptance Criteria" as a header  |
+| Write AC as testable outcomes                             | Write vague AC ("should work well")    |
+| Include links, contacts, references in Notes              | Omit context that helps future readers |
+| For spikes, mention what artifact or decision is expected | Leave the output of a spike ambiguous  |
 
 ---
 
