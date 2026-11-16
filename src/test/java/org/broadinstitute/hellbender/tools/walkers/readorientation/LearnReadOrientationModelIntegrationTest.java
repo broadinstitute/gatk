@@ -18,6 +18,7 @@ import org.broadinstitute.hellbender.tools.walkers.mutect.filtering.M2FiltersArg
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -25,8 +26,6 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -74,11 +73,14 @@ public class LearnReadOrientationModelIntegrationTest extends CommandLineProgram
 
             runCommandLine(collectF1R2CountsArgs, CollectF1R2Counts.class.getSimpleName());
             IOUtils.extractTarGz(scatteredTarGzs.get(i).toPath(), extractedDirs.get(i).toPath());
-            final File refHist = F1R2CountsCollector.getRefHistogramsFromExtractedTar(extractedDirs.get(i)).get(0);
+            final File refHistogramTable = F1R2CountsCollector.getRefHistogramsFromExtractedTar(extractedDirs.get(i)).get(0);
 
-            // Ensure that we print every bin, even when the count is 0
-            final int lineCount = (int) Files.lines(Paths.get(refHist.getAbsolutePath())).filter(l -> l.matches("^[0-9].+")).count();
-            Assert.assertEquals(lineCount, F1R2FilterConstants.DEFAULT_MAX_DEPTH);
+            // Ensure that the table has a column for every depth bin
+            try (final TableReader<F1R2HistogramTable.Row> reader = F1R2HistogramTable.reader(refHistogramTable.toPath())) {
+                final List<String> columns = reader.columns().names();
+                Assert.assertEquals(columns.subList(3, columns.size()), Arrays.stream(F1R2FilterUtils.getDepthBins(F1R2FilterConstants.DEFAULT_MAX_DEPTH))
+                        .mapToObj(Integer::toString).collect(Collectors.toList()));
+            }
         }
 
         // Step 3: LearnReadOrientationModel
@@ -182,7 +184,7 @@ public class LearnReadOrientationModelIntegrationTest extends CommandLineProgram
         final File extractedDir = collectSyntheticF1R2Counts("SAMPLE");
         try (final AltSiteRecord.AltSiteRecordTableWriter writer = new AltSiteRecord.AltSiteRecordTableWriter(
                 new File(extractedDir, "OTHER.ACT" + F1R2CountsCollector.ALT_TABLE_EXTENSION).toPath(), "OTHER")) {
-            writer.writeRecord(new AltSiteRecord("ACT", 10, 5, 5, 3, Nucleotide.G));
+            writer.writeRecord(new AltSiteRecord("ACT", 10, 5, 5, 3, Nucleotide.G, "1", 100_000));
         }
         Assert.assertThrows(UserException.BadInput.class, () -> runLearnReadOrientationModel(extractedDir));
     }
