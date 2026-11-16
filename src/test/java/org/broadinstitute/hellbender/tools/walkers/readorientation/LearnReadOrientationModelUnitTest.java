@@ -1,6 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
-import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.Histogram;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.tools.walkers.SplitIntervals;
@@ -11,6 +10,7 @@ import org.testng.annotations.Test;
 import java.io.File;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -56,30 +56,24 @@ public class LearnReadOrientationModelUnitTest extends CommandLineProgramTest {
             IOUtils.extractTarGz(scatteredTarGz.toPath(), extractedDirs.get(i).toPath());
         }
 
-        final List<MetricsFile<?,Integer>> scatteredRefMetricsFiles = extractedDirs.stream()
-                .flatMap(dir -> F1R2CountsCollector.getRefHistogramsFromExtractedTar(dir).stream())
-                .map(LearnReadOrientationModel::readMetricsFile).collect(Collectors.toList());
+        final List<File> scatteredRefHistogramTables = extractedDirs.stream()
+                .flatMap(dir -> F1R2CountsCollector.getRefHistogramsFromExtractedTar(dir).stream()).collect(Collectors.toList());
 
-        final List<MetricsFile<?,Integer>> scatteredAltMetricsFiles = extractedDirs.stream()
-                .flatMap(dir -> F1R2CountsCollector.getAltHistogramsFromExtractedTar(dir).stream())
-                .map(LearnReadOrientationModel::readMetricsFile).collect(Collectors.toList());
+        final List<File> scatteredAltHistogramTables = extractedDirs.stream()
+                .flatMap(dir -> F1R2CountsCollector.getAltHistogramsFromExtractedTar(dir).stream()).collect(Collectors.toList());
 
         final List<File> scatteredAltTableFiles = extractedDirs.stream()
                 .flatMap(dir -> F1R2CountsCollector.getAltTablesFromExtractedTar(dir).stream()).collect(Collectors.toList());
 
-        final List<Histogram<Integer>> ref = LearnReadOrientationModel.sumHistogramsFromFiles(scatteredRefMetricsFiles, true);
-        final List<Histogram<Integer>> alt = LearnReadOrientationModel.sumHistogramsFromFiles(scatteredAltMetricsFiles, false);
+        final List<Histogram<Integer>> ref = sumHistogramTables(scatteredRefHistogramTables, false);
+        final List<Histogram<Integer>> alt = sumHistogramTables(scatteredAltHistogramTables, true);
         final List<AltSiteRecord> altSites = LearnReadOrientationModel.gatherAltSiteRecords(scatteredAltTableFiles);
-
-        final File refHistUnscattered = F1R2CountsCollector.getRefHistogramsFromExtractedTar(extractedDir).get(0);
-
-        final File altHistUnscattered = F1R2CountsCollector.getAltHistogramsFromExtractedTar(extractedDir).get(0);
 
         final List<File> altTablesUnscattered = F1R2CountsCollector.getAltTablesFromExtractedTar(extractedDir);
         final List<AltSiteRecord> altSitesTruth = LearnReadOrientationModel.gatherAltSiteRecords(altTablesUnscattered);
 
-        final List<Histogram<Integer>> refTruth = LearnReadOrientationModel.readMetricsFile(refHistUnscattered).getAllHistograms();
-        final List<Histogram<Integer>> altTruth = LearnReadOrientationModel.readMetricsFile(altHistUnscattered).getAllHistograms();
+        final List<Histogram<Integer>> refTruth = sumHistogramTables(F1R2CountsCollector.getRefHistogramsFromExtractedTar(extractedDir), false);
+        final List<Histogram<Integer>> altTruth = sumHistogramTables(F1R2CountsCollector.getAltHistogramsFromExtractedTar(extractedDir), true);
 
         for (Histogram<Integer> truth : refTruth){
             final Histogram<Integer> eval = ref.stream().filter(h -> h.getValueLabel().equals(truth.getValueLabel())).findAny().get();
@@ -94,5 +88,13 @@ public class LearnReadOrientationModelUnitTest extends CommandLineProgramTest {
 
         Assert.assertEquals(altSites.size(), altSitesTruth.size());
 
+    }
+
+    // the histograms of the one sample of the tables
+    private static List<Histogram<Integer>> sumHistogramTables(final List<File> tables, final boolean alt) {
+        final Map<String, List<Histogram<Integer>>> histogramsBySample =
+                LearnReadOrientationModel.sumHistogramTables(tables, alt, F1R2FilterConstants.DEFAULT_MAX_DEPTH);
+        Assert.assertEquals(histogramsBySample.size(), 1);
+        return histogramsBySample.values().iterator().next();
     }
 }

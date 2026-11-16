@@ -2,9 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
 import com.google.common.primitives.Ints;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.metrics.StringHeader;
-import htsjdk.samtools.util.Histogram;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
@@ -16,6 +13,7 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
+import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 
 import java.io.File;
 import java.io.IOException;
@@ -23,6 +21,14 @@ import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Collects the F1R2 counts of each sample from which {@link LearnReadOrientationModel} learns, into a tar.gz of, for each sample:
+ * <ul>
+ *     <li>a ref histogram table and an alt histogram table of the sites without alt reads and with one alt read, by block
+ *     of the genome, reference context and depth (see {@link F1R2HistogramTable})</li>
+ *     <li>an alt table of the sites with more alt reads of each reference context (see {@link AltSiteRecord})</li>
+ * </ul>
+ */
 public class F1R2CountsCollector {
 
     public static final String ALT_TABLE_EXTENSION = ".alt_table";
@@ -37,28 +43,36 @@ public class F1R2CountsCollector {
 
     private final CollectF1R2CountsArgumentCollection CF1R2Args;
 
-    // For each sample and for reference context, count ref sites in a histogram keyed by depth
-    private final Map<String, Map<String, Histogram<Integer>>> refSiteHistograms;
+    // For each sample, the counts of sites without alt reads and with one alt read of the current block of the genome
+    private final Map<String, BlockSiteCounts> blockSiteCounts;
 
-    // For each sample store the total depths of alt sites with alt depth = 1 separately to save memory
-    private Map<String, DepthOneHistograms> depthOneAltHistograms;
+    // For each sample, the writers of its ref and alt histogram tables, to which the counts of each block are written
+    // when the next block begins, since loci come in order
+    private final Map<String, TableWriter<F1R2HistogramTable.Row>> refHistogramWriters;
+    private final Map<String, TableWriter<F1R2HistogramTable.Row>> altHistogramWriters;
+
+    // the contig of the current block and its index along the contig, or null and -1 before the first locus
+    private String blockContig = null;
+    private int blockIndex = -1;
+
+    // the blocks that have begun, to make sure that loci come in order
+    private final Set<String> blocks = new HashSet<>();
 
     // alt table writer for each sample
-    // This is by far the largest quantity of data (for each sample histograms involve 64 3-base contexts x 3
-    // substitution errors x 2 orientations x (by default) 200 histogram count bins, which comes out to maybe 1MB of RAM.
-    // In a genome of 3 billion bases where every hundredth site or so has more than 1 alt base the alt records could come out
-    // to a gigabyte or more.  Thus it makes sense to split the alt tables by sample *and* by 3-base context
-    // so that downstream tools (LearnReadOrientationModel) need only load the records for one context at a time.
+    // This is by far the largest quantity of data.  In a genome of 3 billion bases where every hundredth site or so has
+    // more than 1 alt base the alt records could come out to a gigabyte or more.  Thus it makes sense to split the alt
+    // tables by sample *and* by 3-base context so that downstream tools (LearnReadOrientationModel) need only load the
+    // records for one context at a time.
     // Each sample's table is split after collection, one sample at a time, so that one file per sample is open during
-    // collection rather than one per sample and context.
+    // collection rather than one per sample and context.  The unsplit tables have a column of contexts, which the split
+    // tables have in their names instead.
     private Map<String, AltSiteRecord.AltSiteRecordTableWriter> altTableWriters;
 
     // the alt table of each sample, before it is split by 3-base context
     private final File unsplitAltTableDir = IOUtils.createTempDir("unsplit");
 
-    // We put all pre-tarred output files in a temporary directory.  These include, for each sample, a depth one alt
-    // histogram file and a ref site histogram file, each with information for all 3-base contexts, and an alt table
-    // for each 3-base context.
+    // We put all pre-tarred output files in a temporary directory.  These include, for each sample, a ref and an alt
+    // histogram table, each with information for all 3-base contexts, and an alt table for each 3-base context.
     private final File tmpDir = IOUtils.createTempDir("untarred");
 
     // the final output file is produced by archiving every file in the temporary directory
@@ -70,34 +84,33 @@ public class F1R2CountsCollector {
         this.header = header;
         this.outputTarGzFile = outputTarGzFile;
 
-        refSiteHistograms = new HashMap<>(samples.size());
-        depthOneAltHistograms = new HashMap<>(samples.size());
+        blockSiteCounts = new HashMap<>(samples.size());
+        refHistogramWriters = new HashMap<>(samples.size());
+        altHistogramWriters = new HashMap<>(samples.size());
         altTableWriters = new HashMap<>(samples.size());
 
         for (final String sample : samples) {
-            final Map<String, Histogram<Integer>> refSitesHistogramsForThisSample = new HashMap<>(F1R2FilterConstants.ALL_KMERS.size());
+            final BlockSiteCounts counts = new BlockSiteCounts(CF1R2Args.maxDepth);
+            blockSiteCounts.put(sample, counts);
 
-            // Initialize for each reference the histogram of the counts of reference sites by depth
-            for (final String context : F1R2FilterConstants.ALL_KMERS) {
-                Histogram<Integer> emptyRefHistogram = F1R2FilterUtils.createRefHistogram(context, CF1R2Args.maxDepth);
-                refSitesHistogramsForThisSample.put(context, emptyRefHistogram);
-            }
-
-            refSiteHistograms.put(sample, refSitesHistogramsForThisSample);
-            depthOneAltHistograms.put(sample, new DepthOneHistograms(CF1R2Args.maxDepth));
-
-            // Intentionally not use try-with-resources so that the writer stays open outside of the try block
+            // Intentionally not use try-with-resources so that the writers stay open outside of the try block
             final File altTableFile = getUnsplitAltTable(sample);
             try {
-                altTableWriters.put(sample, new AltSiteRecord.AltSiteRecordTableWriter(IOUtils.fileToPath(altTableFile), sample));
+                refHistogramWriters.put(sample, F1R2HistogramTable.writer(new File(tmpDir, IOUtils.urlEncode(sample) + REF_HIST_EXTENSION).toPath(),
+                        sample, false, counts.getBinDepths()));
+                altHistogramWriters.put(sample, F1R2HistogramTable.writer(new File(tmpDir, IOUtils.urlEncode(sample) + ALT_HIST_EXTENSION).toPath(),
+                        sample, true, counts.getBinDepths()));
+                altTableWriters.put(sample, new AltSiteRecord.AltSiteRecordTableWriter(IOUtils.fileToPath(altTableFile), sample, true));
             } catch (IOException e) {
-                throw new UserException(String.format("Encountered an IO exception creating a writer for %s", altTableFile), e);
+                throw new UserException(String.format("Encountered an IO exception creating the writers of the F1R2 counts of %s", sample), e);
             }
         }
     }
 
     public void process(final ReadPileup pileup, final ReferenceContext referenceContext) {
+        final String contig = referenceContext.getInterval().getContig();
         final int position = referenceContext.getInterval().getStart();
+        updateBlock(contig, position);
         final String refContext = referenceContext.getKmerAround(position, F1R2FilterConstants.REF_CONTEXT_PADDING);
         if (refContext == null) {
             return;
@@ -142,7 +155,7 @@ public class F1R2CountsCollector {
 
             // If the site is ref, we simply update the coverage histogram
             if (referenceSite) {
-                refSiteHistograms.get(sample).get(refContext).increment(Math.min(depth, CF1R2Args.maxDepth));
+                blockSiteCounts.get(sample).addRefSite(refContext, depth);
                 continue;
             }
 
@@ -158,42 +171,59 @@ public class F1R2CountsCollector {
 
             if (altCount == 1) {
                 final ReadOrientation type = altF1R2 == 1 ? ReadOrientation.F1R2 : ReadOrientation.F2R1;
-                depthOneAltHistograms.get(sample).increment(refContext, altBase, type, depth);
+                blockSiteCounts.get(sample).addOneAltReadSite(refContext, altBase, type, depth);
                 continue;
             }
 
             try {
-                altTableWriters.get(sample).writeRecord(new AltSiteRecord(refContext, refCount, altCount, refF1R2, altF1R2, altBase));
+                altTableWriters.get(sample).writeRecord(new AltSiteRecord(refContext, refCount, altCount, refF1R2, altF1R2, altBase, contig, position));
             } catch (IOException e) {
                 throw new UserException("Encountered an IO Exception writing to the alt data table", e);
             }
         }
     }
 
+    /**
+     * If a locus is in a different block of the genome than the previous one, write the histograms of the previous block
+     */
+    private void updateBlock(final String contig, final int position) {
+        final int index = (position - 1) / F1R2FilterConstants.BLOCK_SIZE;
+        if (index == blockIndex && contig.equals(blockContig)) {
+            return;
+        }
+
+        writeHistograms();
+        blockContig = contig;
+        blockIndex = index;
+        Utils.validate(blocks.add(contig + ":" + index), () -> String.format("F1R2 counts must be collected in order of " +
+                "position, but the locus %s:%d is in a block of the genome that came before other blocks", contig, position));
+    }
+
+    /**
+     * Write each sample's counts of the current block of the genome to its histogram tables, and reset them for the next
+     * block.  Before the first locus there is nothing to write.
+     */
     public void writeHistograms() {
+        if (blockContig == null) {
+            return;
+        }
         for (final String sample : samples) {
-            final MetricsFile<?, Integer> refMetricsFile = new MetricsFile<>();
-            addSampleHeader(refMetricsFile, sample);
-            refSiteHistograms.get(sample).values().forEach(refMetricsFile::addHistogram);
-            refMetricsFile.write(new File(tmpDir,IOUtils.urlEncode(sample) + REF_HIST_EXTENSION));
-
-            final MetricsFile<?, Integer> altMetricsFile = new MetricsFile<>();
-            addSampleHeader(altMetricsFile, sample);
-            depthOneAltHistograms.get(sample).getHistograms().forEach(altMetricsFile::addHistogram);
-            altMetricsFile.write(new File(tmpDir, IOUtils.urlEncode(sample) + ALT_HIST_EXTENSION));
-
+            try {
+                blockSiteCounts.get(sample).writeRowsAndReset(refHistogramWriters.get(sample), altHistogramWriters.get(sample),
+                        blockContig, blockIndex * F1R2FilterConstants.BLOCK_SIZE + 1);
+            } catch (IOException e) {
+                throw new UserException(String.format("Encountered an IO exception writing the histograms of %s", sample), e);
+            }
         }
     }
 
     public void closeAndArchiveFiles() {
-        if (altTableWriters != null) {
-            for (final AltSiteRecord.AltSiteRecordTableWriter writer : altTableWriters.values()) {
-                if (writer != null) {
-                    try {
-                        writer.close();
-                    } catch (IOException e) {
-                        throw new UserException("Encountered an IO exception while closing the alt table writer", e);
-                    }
+        for (final Map<String, ? extends TableWriter<?>> writers : List.of(refHistogramWriters, altHistogramWriters, altTableWriters)) {
+            for (final TableWriter<?> writer : writers.values()) {
+                try {
+                    writer.close();
+                } catch (IOException e) {
+                    throw new UserException("Encountered an IO exception while closing the F1R2 count tables", e);
                 }
             }
         }
@@ -279,26 +309,15 @@ public class F1R2CountsCollector {
     }
 
     /**
-     * Record the sample of a ref or alt histogram file, which {@link #getSample} reads, as its only {@link StringHeader}
+     * The reference context of an alt table, which is in its name, <sample>.<reference context>.alt_table
      */
-    static void addSampleHeader(final MetricsFile<?, ?> metricsFile, final String sample) {
-        metricsFile.addHeader(new StringHeader(sample));
-    }
-
-    /**
-     * The sample of a ref or alt histogram file, recorded by {@link #addSampleHeader}
-     *
-     * @param file the histogram file, for the error message if it does not have exactly one {@link StringHeader}
-     */
-    static String getSample(final MetricsFile<?, ?> metricsFile, final File file) {
-        final List<String> sampleHeaders = metricsFile.getHeaders().stream()
-                .filter(header -> header instanceof StringHeader)
-                .map(header -> ((StringHeader) header).getValue())
-                .collect(Collectors.toList());
-        if (sampleHeaders.size() != 1) {
-            throw new UserException.BadInput(String.format("The histogram file %s should have one string header, " +
-                    "which names its sample, but it has %d.", file, sampleHeaders.size()));
+    public static String getAltTableContext(final File altTable) {
+        final String name = altTable.getName();
+        final String nameWithoutExtension = name.substring(0, Math.max(name.length() - ALT_TABLE_EXTENSION.length(), 0));
+        final String context = nameWithoutExtension.substring(nameWithoutExtension.lastIndexOf('.') + 1);
+        if (!name.endsWith(ALT_TABLE_EXTENSION) || !F1R2FilterConstants.ALL_KMERS.contains(context)) {
+            throw new UserException.BadInput(String.format("%s is not named <sample>.<reference context>%s", altTable, ALT_TABLE_EXTENSION));
         }
-        return sampleHeaders.get(0);
+        return context;
     }
 }

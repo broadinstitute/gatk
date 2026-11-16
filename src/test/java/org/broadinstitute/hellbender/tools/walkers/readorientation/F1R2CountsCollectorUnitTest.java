@@ -2,59 +2,93 @@ package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
 import com.sun.management.UnixOperatingSystemMXBean;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.metrics.Header;
-import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.metrics.StringHeader;
-import htsjdk.samtools.metrics.VersionHeader;
 import org.broadinstitute.hellbender.GATKBaseTest;
-import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.tsv.TableReader;
+import org.broadinstitute.hellbender.utils.tsv.TableUtils;
+import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import org.testng.Assert;
 import org.testng.SkipException;
-import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.io.File;
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.OperatingSystemMXBean;
+import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class F1R2CountsCollectorUnitTest extends GATKBaseTest {
-    // write a histogram file with the given headers and read it as LearnReadOrientationModel does
-    private static MetricsFile<?, Integer> writeAndRead(final List<Header> headers) {
-        final MetricsFile<?, Integer> metricsFile = new MetricsFile<>();
-        headers.forEach(metricsFile::addHeader);
-        final File file = createTempFile("histograms", F1R2CountsCollector.REF_HIST_EXTENSION);
-        metricsFile.write(file);
-        return LearnReadOrientationModel.readMetricsFile(file);
-    }
-
     @Test
-    public void testSampleHeader() {
-        // LearnReadOrientationModel used to take a histogram file's first header as its sample
-        final VersionHeader otherHeader = new VersionHeader();
-        otherHeader.setVersionedItem("GATK");
-        otherHeader.setVersionString("4.0");
-        final MetricsFile<?, Integer> metricsFile = new MetricsFile<>();
-        metricsFile.addHeader(otherHeader);
-        F1R2CountsCollector.addSampleHeader(metricsFile, "tumor");
+    public void testDepthBins() {
+        // exact depths up to 24, then rounded to the nearest multiple of 10, at most the maximum depth
+        final int maxDepth = 200;
+        IntStream.rangeClosed(1, 24).forEach(depth -> Assert.assertEquals(F1R2FilterUtils.binDepth(depth, maxDepth), depth));
+        Assert.assertEquals(F1R2FilterUtils.binDepth(25, maxDepth), 30);
+        Assert.assertEquals(F1R2FilterUtils.binDepth(34, maxDepth), 30);
+        Assert.assertEquals(F1R2FilterUtils.binDepth(35, maxDepth), 40);
+        Assert.assertEquals(F1R2FilterUtils.binDepth(194, maxDepth), 190);
+        Assert.assertEquals(F1R2FilterUtils.binDepth(195, maxDepth), 200);
+        Assert.assertEquals(F1R2FilterUtils.binDepth(1000, maxDepth), 200);
+        Assert.assertEquals(F1R2FilterUtils.binDepth(204, 205), 200);
+        Assert.assertEquals(F1R2FilterUtils.binDepth(205, 205), 205);
+        Assert.assertEquals(F1R2FilterUtils.binDepth(15, 12), 12);
 
-        final MetricsFile<?, Integer> read = writeAndRead(metricsFile.getHeaders());
-        Assert.assertEquals(F1R2CountsCollector.getSample(read, new File("histograms")), "tumor");
+        final int[] bins = F1R2FilterUtils.getDepthBins(maxDepth);
+        Assert.assertEquals(bins.length, 24 + 18);
+        Assert.assertEquals(bins[23], 24);
+        Assert.assertEquals(bins[24], 30);
+        Assert.assertEquals(bins[bins.length - 1], maxDepth);
     }
 
-    @DataProvider
-    public Object[][] headersWithoutOneSample() {
-        return new Object[][] { { List.of() }, { List.of(new StringHeader("tumor"), new StringHeader("normal")) } };
+    // Each block's histogram tables have a row for each context, and alt base and orientation, with sites, and the counts
+    // are reset for the next block
+    @Test
+    public void testBlockSiteCounts() throws IOException {
+        final int maxDepth = 200;
+        final BlockSiteCounts counts = new BlockSiteCounts(maxDepth);
+        final Path refTable = createTempPath("counts", F1R2CountsCollector.REF_HIST_EXTENSION);
+        final Path altTable = createTempPath("counts", F1R2CountsCollector.ALT_HIST_EXTENSION);
+        try (TableWriter<F1R2HistogramTable.Row> refWriter = F1R2HistogramTable.writer(refTable, "tumor", false, counts.getBinDepths());
+             TableWriter<F1R2HistogramTable.Row> altWriter = F1R2HistogramTable.writer(altTable, "tumor", true, counts.getBinDepths())) {
+            counts.addRefSite("ACG", 10);
+            counts.addRefSite("ACG", 33);   // in the bin of depth 30
+            counts.addRefSite("ACG", 500);  // in the bin of the maximum depth
+            counts.addOneAltReadSite("ACG", Nucleotide.T, ReadOrientation.F1R2, 27);
+            counts.writeRowsAndReset(refWriter, altWriter, "chr1", 1);
+            counts.addRefSite("TTT", 10);
+            counts.writeRowsAndReset(refWriter, altWriter, "chr1", 1_000_001);
+        }
+
+        final List<F1R2HistogramTable.Row> refRows = readRows(refTable);
+        Assert.assertEquals(refRows.stream().map(row -> row.contig() + ":" + row.blockStart() + " " + row.histogramLabel()).collect(Collectors.toList()),
+                List.of("chr1:1 ACG", "chr1:1000001 TTT"));
+        Assert.assertEquals(refRows.get(0).depths(), F1R2FilterUtils.getDepthBins(maxDepth));
+        Assert.assertEquals(countsByDepth(refRows.get(0)), Map.of(10, 1, 30, 1, 200, 1));
+        Assert.assertEquals(countsByDepth(refRows.get(1)), Map.of(10, 1));
+
+        final List<F1R2HistogramTable.Row> altRows = readRows(altTable);
+        Assert.assertEquals(altRows.size(), 1);
+        Assert.assertEquals(altRows.get(0).histogramLabel(), "ACG_T_F1R2");
+        Assert.assertEquals(countsByDepth(altRows.get(0)), Map.of(30, 1));
     }
 
-    @Test(dataProvider = "headersWithoutOneSample", expectedExceptions = UserException.BadInput.class)
-    public void testHistogramFileWithoutOneSampleHeader(final List<Header> headers) {
-        F1R2CountsCollector.getSample(writeAndRead(headers), new File("histograms"));
+    private static List<F1R2HistogramTable.Row> readRows(final Path table) throws IOException {
+        try (TableReader<F1R2HistogramTable.Row> reader = F1R2HistogramTable.reader(table)) {
+            Assert.assertEquals(reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG), "tumor");
+            return reader.toList();
+        }
+    }
+
+    private static Map<Integer, Integer> countsByDepth(final F1R2HistogramTable.Row row) {
+        return IntStream.range(0, row.depths().length).filter(n -> row.counts()[n] > 0).boxed()
+                .collect(Collectors.toMap(n -> row.depths()[n], n -> row.counts()[n]));
     }
 
     // A writer for each sample and 3-base context used to stay open throughout collection, so that 16 samples took
@@ -78,11 +112,11 @@ public class F1R2CountsCollectorUnitTest extends GATKBaseTest {
         collector.writeHistograms();
         collector.closeAndArchiveFiles();
 
-        // one alt table per sample, not one per sample and context
-        Assert.assertTrue(openFilesDuringCollection <= 2 * numSamples,
+        // a ref and an alt histogram table and an alt table per sample, not an alt table per sample and context
+        Assert.assertTrue(openFilesDuringCollection <= 3 * numSamples,
                 String.format("%d files were open during collection for %d samples", openFilesDuringCollection, numSamples));
 
-        // the archive holds an alt table for each sample and context, and two histograms for each sample
+        // the archive holds an alt table for each sample and context, and two histogram tables for each sample
         final File extractedDir = createTempDir("extracted");
         IOUtils.extractTarGz(outputTarGz.toPath(), extractedDir.toPath());
         final Set<String> expectedAltTables = samples.stream()

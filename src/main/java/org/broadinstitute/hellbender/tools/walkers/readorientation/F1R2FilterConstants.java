@@ -40,6 +40,15 @@ public class F1R2FilterConstants {
     // We combine all sites of depths above this value in the last bin of the histogram
     static final int DEFAULT_MAX_DEPTH = 200;
 
+    // The histograms of F1R2 counts keep depths up to this one exact and round greater depths to the nearest multiple of
+    // DEPTH_ROUNDING.  Depths 21 to 24 are exact because they would otherwise be rounded into the bin of depth 20.
+    static final int MAX_EXACT_DEPTH = 24;
+    static final int DEPTH_ROUNDING = 10;
+
+    // F1R2 counts have separate histograms for each block of the genome of this many bases, starting at multiples of it,
+    // so that the sites they count can be located, eg in segments of the genome
+    public static final int BLOCK_SIZE = 1_000_000;
+
     static final int numAltHistogramsPerContext = (Nucleotide.STANDARD_BASES.size() - 1) * (ReadOrientation.values().length);
 
     public static Integer[] getEmptyBins(final int maxDepth){
