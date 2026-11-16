@@ -19,7 +19,8 @@ VRS_ALLELE_COLUMNS = [
     "state_repeat_subunit_length",
 ]
 
-# What ingest writes to vet.vrs_allele_ids for a spanning-deletion `*` ALT (VetCreator.NO_VRS_ALLELE_ID).
+# What ingest writes to vet.vrs_allele_ids for an ALT with no id (VetCreator.NO_VRS_ALLELE_ID): a spanning-deletion
+# `*`, or any ALT on a contig with no refget accession.
 NO_VRS_ALLELE_ID = ""
 
 # How many offending ids to show in a failure message.
@@ -37,8 +38,10 @@ def _sample_id_list(sample_ids):
 
 
 def scratch_sample_ids_sql(project_id, dataset_name):
-    """The samples whose VRS alleles are waiting in the scratch table: this run's, scoping every
-    later statement so a concurrent ingest's rows are left alone."""
+    """The samples currently in the scratch table. That is every sample there, not only this run's:
+    it includes a concurrent ingest's samples, and any left by an earlier run that failed after
+    loading. Merging those is harmless, since the merge is idempotent, and finishes the failed run's
+    work. It does not isolate concurrent ingests; the design assumes one ingest at a time."""
     return f"""
         SELECT DISTINCT sample_id
         FROM `{project_id}.{dataset_name}.{SCRATCH_TABLE}`
@@ -98,8 +101,8 @@ def missing_vet_ids_sql(project_id, dataset_name, sample_ids):
 
     This is the check that ties the two halves together: vet.vrs_allele_ids is the per-sample
     association, vrs_allele the lookup, and a vet id with no lookup row is a dangling reference.
-    The table wildcard is restricted to the numbered vet tables. A spanning-deletion `*` ALT has the
-    NO_VRS_ALLELE_ID placeholder instead of an id, so it is not a dangling reference.
+    The table wildcard is restricted to the numbered vet tables. An ALT with no id has the
+    NO_VRS_ALLELE_ID placeholder instead, so it is not a dangling reference.
     """
     return f"""
         SELECT v.sample_id, vet_id AS vrs_allele_id
@@ -193,7 +196,8 @@ def process_vrs_alleles(project_id, dataset_name, client=None):
         raise RuntimeError(
             f"{TARGET_TABLE} holds more than one row for these vrs_allele_ids (showing up to {EXAMPLE_LIMIT}): "
             f"{[row.vrs_allele_id for row in duplicates]}. Was another ingest merging into this dataset at "
-            f"the same time? {SCRATCH_TABLE} is unchanged.")
+            f"the same time? {SCRATCH_TABLE} is unchanged. A rerun fails the same way, because the merge never "
+            f"removes a row: deduplicate {TARGET_TABLE} first (see VRS_IMPLEMENTATION.md).")
 
     _execute(client, SCRATCH_TABLE, clean_up_scratch_sql(project_id, dataset_name, sample_ids))
 

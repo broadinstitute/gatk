@@ -73,6 +73,14 @@ When `enable_vrs_ids=true`, the parquet discovery logic includes the `vrs_allele
 
 Like `ProcessVCFHeaders`, this assumes one ingest at a time per dataset. The steps are scoped to the samples in the scratch table, and the duplicate check catches two concurrent merges inserting the same allele.
 
+If two merges do race, a rerun keeps failing the duplicate check, because the insert never removes a row. The duplicate rows are identical, since each id is a hash of its row's content and the conflict check runs first, so recover by keeping one of each, then rerun `ProcessVrsAlleles` to finish the merge. Rewrite the table in place, as below, rather than with `CREATE OR REPLACE TABLE ... AS SELECT`, which turns the `REQUIRED` columns `NULLABLE`:
+
+```sql
+CREATE TEMP TABLE deduped AS SELECT DISTINCT * FROM `<project>.<dataset>.vrs_allele`;
+TRUNCATE TABLE `<project>.<dataset>.vrs_allele`;
+INSERT INTO `<project>.<dataset>.vrs_allele` SELECT * FROM deduped;
+```
+
 ---
 
 ## How to Use
