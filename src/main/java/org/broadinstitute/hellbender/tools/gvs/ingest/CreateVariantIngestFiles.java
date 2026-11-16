@@ -180,8 +180,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
 
-    public final MessageType variantRowSchema = MessageTypeParser
-            .parseMessageType("""
+    /**
+     * The vet Parquet schema. {@code vrs_allele_ids} is declared only with VRS IDs enabled: the Parquet load
+     * appends with an autodetected schema and cannot add a column, so a file that declares it fails to load
+     * into a vet table created before the column existed, even when every value is empty.
+     */
+    static MessageType variantRowSchema(final boolean withVrsAlleleIds) {
+        return MessageTypeParser.parseMessageType("""
             message VariantRow {
             	required int64 sample_id;
             	required int64 location;
@@ -201,9 +206,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             	optional binary call_PID (UTF8);
             	optional int64 call_PS;
             	optional binary call_PL (UTF8);
-                repeated binary vrs_allele_ids (UTF8);
-            }
-            """);
+            %s}
+            """.formatted(withVrsAlleleIds ? "repeated binary vrs_allele_ids (UTF8);\n" : ""));
+    }
 
     public final MessageType vrsAlleleRowSchema = MessageTypeParser
             .parseMessageType("""
@@ -416,7 +421,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             if (enableVrsIds) {
                 vrsAlleleCreator = new VrsAlleleCreator(inputVcfFileName, sampleId, outputDir, outputType, projectID, datasetName, vrsAlleleRowSchema);
             }
-            vetCreator = new VetCreator(inputVcfFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, variantRowSchema, enableVrsIds, vrsAlleleCreator);
+            vetCreator = new VetCreator(inputVcfFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, variantRowSchema(enableVrsIds), enableVrsIds, vrsAlleleCreator);
         }
         if (enableVCFHeaders && vcfHeaderRowsExist == Boolean.FALSE) {
             logger.info("Writing vcf header data for sample id = {}, name = {}", sampleId, sampleName);

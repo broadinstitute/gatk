@@ -165,6 +165,23 @@ Five consequences worth knowing before writing anything that joins across these:
    `SPLIT(alt, ',')[OFFSET(allele_pos - 1)]`, so anything copied from such an
    array into `alt_allele` must use the same offset (VS-2058, VS-2061).
 
+### The GVS reference is not the RefSeq sequence
+
+GVS's hg38 FASTA is the GRCh38 analysis set, which replaces some sequence with
+N: false duplications on chr21, among others. GA4GH sequence digests
+(`SQ.*`), and so VRS IDs, name the RefSeq sequences (NC_000021.9 for GRCh38
+chr21), as vrs-python and SeqRepo do. So a digest computed from our FASTA
+matches RefSeq on chr20 but not on chr21: `SQ.UfFHm4y…` from our FASTA,
+`SQ.5ZUqx…` from NCBI's sequence. The chr21 file is intact, and its MD5
+matches the `.dict`.
+
+So check an accession against NCBI's sequence, never against our FASTA.
+Download it with
+`efetch.fcgi?db=nuccore&id=<accession>&rettype=fasta`, uppercase it, and
+base64url-encode the first 24 bytes of its SHA-512. Where the analysis set
+masks sequence, VRS normalization reads N where the sequence the ID names has
+real bases, so an ID there may differ from vrs-python's (VS-2058, VS-2059).
+
 
 # High-Level Architecture (WDLs, BigQuery, Terra)
 
@@ -1137,6 +1154,22 @@ suspicion, since the cheapest way to write one is also the vacuous way.
 Where two call sites must agree on a predicate, a single mutation should break
 tests covering both. If it breaks only one, either the coverage is incomplete
 or the predicate is still duplicated.
+
+## `./gradlew test -Dfoo=bar` does not reach the test
+
+The test JVM is a separate process from Gradle's, and it sees only the system
+properties that `testsettings.gradle` names. Of those, only
+`gatk.spark.debug` is copied from a `-D` given to Gradle. So a test that reads
+`System.getProperty("x", <default>)` always gets its default when run with
+`./gradlew test -Dx=...`. If the default is a missing file and the test then
+skips, the test can never run, here or in CI. In VS-2058,
+`testCreateVrsAlleleParquetFiles` defaulted to one developer's local path and
+skipped everywhere else, and reported `SKIPPED` even with the property set.
+
+So do not make a test depend on a system property. Point it at a file under
+`src/test/resources` (`GATKBaseTest.largeFileTestDir` holds the chr20/21 subset
+of hg38). Treat a `SKIPPED` result as a test that did not run, not as one that
+passed.
 
 ## Do not trust a completion signal without checking it is fresh
 

@@ -1,5 +1,9 @@
 package org.broadinstitute.hellbender.tools.gvs.ingest;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
+import org.apache.parquet.hadoop.ParquetFileReader;
+import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
@@ -145,6 +149,19 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         final List<File> convertedFiles = Arrays.asList(convertedRefRangesTsv, convertedVetTsv, convertedPloidyTsv);
         final List<String> expectedOutputFiles = Arrays.asList(expectedRefRangesTsv, expectedVetTsv, expectedPloidyTsv);
         IntegrationTestSpec.assertMatchingFiles(convertedFiles, expectedOutputFiles, false, STRICT);
+
+        // With VRS off the vet file must not declare the column, or it cannot load into a pre-VRS vet table.
+        Assert.assertFalse(declaresField(vetParquetFile, VRS_ALLELE_IDS_FIELD),
+                "vet Parquet declares " + VRS_ALLELE_IDS_FIELD + " with VRS IDs disabled");
+    }
+
+    private static final String VRS_ALLELE_IDS_FIELD = "vrs_allele_ids";
+
+    private static boolean declaresField(final File parquetFile, final String fieldName) throws Exception {
+        try (ParquetFileReader reader = ParquetFileReader.open(
+                HadoopInputFile.fromPath(new Path(parquetFile.toURI()), new Configuration()))) {
+            return reader.getFooter().getFileMetaData().getSchema().containsField(fieldName);
+        }
     }
 
     @Test
@@ -181,8 +198,12 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
                 .collect(Collectors.toList());
         Assert.assertTrue(fileNames.stream().anyMatch(n -> n.startsWith("vrs_allele_scratch_")),
                 "Expected a vrs_allele_scratch_*.parquet file in output, got: " + fileNames);
-        Assert.assertTrue(fileNames.stream().anyMatch(n -> n.startsWith("vet_")),
-                "Expected a vet_*.parquet file in output");
+        final File vetFile = allOutputFiles.stream()
+                .filter(f -> f.getName().startsWith("vet_"))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Expected a vet_*.parquet file in output"));
+        Assert.assertTrue(declaresField(vetFile, VRS_ALLELE_IDS_FIELD),
+                "vet Parquet does not declare " + VRS_ALLELE_IDS_FIELD + " with VRS IDs enabled");
         Assert.assertTrue(fileNames.stream().anyMatch(n -> n.startsWith("ref_ranges_")),
                 "Expected a ref_ranges_*.parquet file in output");
 

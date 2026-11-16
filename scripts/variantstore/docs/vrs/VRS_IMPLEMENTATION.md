@@ -52,7 +52,7 @@ VRS ID flow is wired through three WDL workflows with consistent opt-in semantic
 | Workflow                     | Role                                                                                                                                                                                                                                  |
 |------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | **GvsCreateTables.wdl**      | Creates the vet_* tables, whose schema now always includes `vrs_allele_ids` (empty with VRS off), and ref_ranges; the VRS tables are created in GvsAssignIds                                                                          |
-| **GvsAssignIds.wdl**         | Orchestrates sample ID assignment; conditionally creates the vrs_allele_scratch and vrs_allele tables when `enable_vrs_ids=true`                                                                                                      |
+| **GvsAssignIds.wdl**         | Orchestrates sample ID assignment; when `enable_vrs_ids=true`, fails if any existing vet table lacks `vrs_allele_ids`, then creates the vrs_allele_scratch and vrs_allele tables                                                      |
 | **GvsImportGenomes.wdl**     | Main ingestion engine; passes `enable_vrs_ids` to ingest tool, conditionally uploads vrs_allele_scratch parquet files to GCS, includes vrs_allele_scratch in parquet discovery, loading and verification, then runs ProcessVrsAlleles |
 | **GvsBulkIngestGenomes.wdl** | High-level bulk orchestrator; accepts and forwards `enable_vrs_ids` input (default: false) to both downstream workflows                                                                                                               |
 
@@ -89,7 +89,9 @@ java ... CreateVariantIngestFiles --enable-vrs-ids true ...
 # Pass enable_vrs_ids=true to GvsBulkIngestGenomes workflow input
 ```
 
-Default is `false` for backward compatibility; existing ingests unaffected.
+Default is `false`. With it off, the vet Parquet files do not declare `vrs_allele_ids`, so ingest still appends to vet tables created before the column existed.
+
+With it on, every vet table already in the dataset must have the column. `GvsAssignIds` checks this before assigning any sample IDs and fails if one does not, naming the tables. In practice, VRS IDs at ingest need a new dataset. Adding the column to an existing dataset and computing IDs for the rows already in it is a separate workflow, not yet written (VS-2064).
 
 ### Output Files
 
