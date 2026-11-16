@@ -21,6 +21,12 @@ workflow GvsRemoveSamplesFromVDS {
         Int? cluster_max_age_minutes
         Boolean leave_cluster_running_at_end = false
         Float? master_memory_fraction
+        String worker_machine_type = "n2d-highmem-8"
+        String master_machine_type = "n2d-highmem-32"
+        Int? num_master_local_ssds
+        # Compute Engine stockouts are per-zone, and Dataproc's default placement picks one zone and fails rather than
+        # moving on. "auto" tries every zone in the region.
+        String cluster_zones = "auto"
 
         String? git_branch_or_tag
         String? hail_version
@@ -59,6 +65,18 @@ workflow GvsRemoveSamplesFromVDS {
         }
         hail_wheel: {
             help: "Optional Hail wheel. Cannot define both this parameter and `hail_version`."
+        }
+        worker_machine_type: {
+            help: "Machine type for the Dataproc cluster's primary and secondary workers. Defaults to n2d-highmem-8. Must be a type listed in hailctl's MACHINE_MEM table for the Hail version in use, or cluster creation fails with a KeyError; as of Hail 0.2.134 that covers the n1, n2, n2d, e2, c2, m1 and m2 families but not C3, C3D or any 4th-generation family."
+        }
+        master_machine_type: {
+            help: "Machine type for the Dataproc cluster's master. Defaults to n2d-highmem-32. Subject to the same hailctl MACHINE_MEM restriction as `worker_machine_type`. Not affected by `use_tiny_dataproc_cluster`, which only changes worker counts."
+        }
+        num_master_local_ssds: {
+            help: "Local SSDs on the master, overriding the workers' 1. Valid counts depend on machine family and vCPU count, and larger machines need more: N2D machines with 32 or 48 vCPUs reject 1 and accept 2, 4, 8, 16 or 24, but an N2 machine with 32 vCPUs needs at least 4. Left unset, the master gets the workers' count, except that 1 becomes 2, which suits the default n2d-highmem-32 master and n1-highmem-32. For any other master type, check the allowed counts in the Compute Engine local SSD documentation and set this explicitly."
+        }
+        cluster_zones: {
+            help: "Comma-separated zones to try in order when creating the Dataproc cluster, or auto for every zone in the region. A stockout is a per-zone condition, so a create that fails for capacity is retried in the next zone rather than failing the workflow. Set to an empty string to keep Dataproc's own placement, which picks one zone and does not retry."
         }
     }
 
@@ -110,6 +128,10 @@ workflow GvsRemoveSamplesFromVDS {
             cluster_max_idle_minutes = cluster_max_idle_minutes,
             cluster_max_age_minutes = cluster_max_age_minutes,
             master_memory_fraction = master_memory_fraction,
+            worker_machine_type = worker_machine_type,
+            master_machine_type = master_machine_type,
+            num_master_local_ssds = num_master_local_ssds,
+            cluster_zones = cluster_zones,
     }
 
     output {
@@ -134,6 +156,10 @@ task RemoveSamplesFromVDS {
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
+        String worker_machine_type
+        String master_machine_type
+        Int? num_master_local_ssds
+        String cluster_zones
 
         String workspace_project
         String workspace_bucket
@@ -196,6 +222,10 @@ task RemoveSamplesFromVDS {
             --account ${account_name} \
             ~{true='--use-tiny-dataproc-cluster' false='' use_tiny_dataproc_cluster} \
             --region ~{region} \
+            --worker-machine-type ~{worker_machine_type} \
+            --master-machine-type ~{master_machine_type} \
+            ~{'--num-master-local-ssds ' + num_master_local_ssds} \
+            --zones '~{cluster_zones}' \
             --workspace-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \

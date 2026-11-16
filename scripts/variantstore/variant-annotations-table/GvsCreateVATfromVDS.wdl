@@ -26,6 +26,12 @@ workflow GvsCreateVATfromVDS {
         Boolean generate_vep_and_loftee_annotations = true
         Boolean leave_hail_cluster_running_at_end = false
         Boolean use_tiny_dataproc_cluster = false
+        String worker_machine_type = "n2d-highmem-8"
+        String master_machine_type = "n2d-highmem-32"
+        Int? num_master_local_ssds
+        # Compute Engine stockouts are per-zone, and Dataproc's default placement picks one zone and fails rather than
+        # moving on. "auto" tries every zone in the region.
+        String cluster_zones = "auto"
         Boolean use_tiny_vep_annotation_load_runtime = false
         Int? merge_vcfs_disk_size_override
         Int? split_intervals_disk_size_override
@@ -85,6 +91,18 @@ workflow GvsCreateVATfromVDS {
         }
         generate_vep_and_loftee_annotations: {
             help: "If true (the default), run VEP + LOFTEE and load the resulting annotations into the VAT. Set to false to skip VEP + LOFTEE annotation entirely, which can significantly reduce runtime and cost for large callsets (500K+ samples). The VAT BigQuery schema is unchanged regardless of this setting; VEP/LOFTEE columns will simply be null when disabled."
+        }
+        worker_machine_type: {
+            help: "Machine type for the workers of the Dataproc cluster that generates the sites-only VCF from the VDS. Defaults to n2d-highmem-8. Must be a type listed in hailctl's MACHINE_MEM table for the Hail version in use, or cluster creation fails with a KeyError; as of Hail 0.2.134 that covers the n1, n2, n2d, e2, c2, m1 and m2 families but not C3, C3D or any 4th-generation family. Unused when 'sites_only_vcf' is supplied."
+        }
+        master_machine_type: {
+            help: "Machine type for the master of the Dataproc cluster that generates the sites-only VCF from the VDS. Defaults to n2d-highmem-32. Subject to the same hailctl MACHINE_MEM restriction as 'worker_machine_type'. Not affected by 'use_tiny_dataproc_cluster', which only changes worker counts. Unused when 'sites_only_vcf' is supplied."
+        }
+        num_master_local_ssds: {
+            help: "Local SSDs on the master of the sites-only VCF cluster, overriding the workers' 1. Valid counts depend on machine family and vCPU count, and larger machines need more: N2D machines with 32 or 48 vCPUs reject 1 and accept 2, 4, 8, 16 or 24, but an N2 machine with 32 vCPUs needs at least 4. Left unset, the master gets the workers' count, except that 1 becomes 2, which suits the default n2d-highmem-32 master and n1-highmem-32. For any other master type, check the allowed counts in the Compute Engine local SSD documentation and set this explicitly. Unused when 'sites_only_vcf' is supplied."
+        }
+        cluster_zones: {
+            help: "Comma-separated zones to try in order when creating the Dataproc cluster, or auto for every zone in the region. A stockout is a per-zone condition, so a create that fails for capacity is retried in the next zone rather than failing the workflow. Set to an empty string to keep Dataproc's own placement, which picks one zone and does not retry. Unused when 'sites_only_vcf' is supplied."
         }
     }
 
@@ -249,6 +267,10 @@ workflow GvsCreateVATfromVDS {
             call GenerateSitesOnlyVcf {
                 input:
                     use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
+                    worker_machine_type = worker_machine_type,
+                    master_machine_type = master_machine_type,
+                    num_master_local_ssds = num_master_local_ssds,
+                    cluster_zones = cluster_zones,
                     vds_path = select_first([vds_path]),
                     workspace_project = effective_google_project,
                     hail_version = effective_hail_version,
@@ -531,6 +553,10 @@ task GenerateSitesOnlyVcf {
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
         Float? master_memory_fraction
+        String worker_machine_type
+        String master_machine_type
+        Int? num_master_local_ssds
+        String cluster_zones
 
         String cloud_sdk_docker
     }
@@ -591,6 +617,10 @@ task GenerateSitesOnlyVcf {
             --account ${account_name} \
             ~{true='--use-tiny-dataproc-cluster' false='' use_tiny_dataproc_cluster} \
             --region ~{region} \
+            --worker-machine-type ~{worker_machine_type} \
+            --master-machine-type ~{master_machine_type} \
+            ~{'--num-master-local-ssds ' + num_master_local_ssds} \
+            --zones '~{cluster_zones}' \
             --workspace-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \
