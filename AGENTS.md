@@ -221,6 +221,11 @@ The dotted-module form, `python3 -m unittest test.test_run_in_hail_cluster`,
 fails with `ModuleNotFoundError`, because `test/` is not a package and the
 tests import their script as a top-level module.
 
+Run across the whole `test/` directory, discovery reports import errors for
+`test_create_*_bqloadjson_*` (no `ijson`) and `test_parquet_loading` (no
+`google-cloud-bigquery`) on a machine without those packages. CI installs them, so
+these errors locally do not indicate a problem with the change.
+
 ### Nirvana Docker Image
 
 This is an Illumina Nirvana-based Docker image build from
