@@ -155,7 +155,7 @@ workflows:
        branches:
          - master
          - ah_var_store
-         - vs_2055_non_n1_hail
+         - FoxtrotRelease_20261116_01
        tags:
          - /.*/
    - name: GvsValidateVDS
@@ -183,6 +183,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - FoxtrotRelease_20261116_01
        tags:
          - /.*/
    - name: GvsMergeAndRescoreVDSes
@@ -192,6 +193,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - FoxtrotRelease_20261116_01
        tags:
          - /.*/
    - name: GvsTieOutVDS
@@ -257,7 +259,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_2055_non_n1_hail
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -351,7 +352,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_2055_non_n1_hail
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
@@ -361,7 +361,6 @@ workflows:
          branches:
              - master
              - ah_var_store
-             - vs_2055_non_n1_hail
          tags:
              - /.*/
    - name: GvsIngestTieout
@@ -507,6 +506,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - FoxtrotRelease_20261116_01
        tags:
          - /.*/
    - name: GvsCreateParticipantMappingFromVDS
