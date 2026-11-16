@@ -2,26 +2,27 @@ package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
 import com.google.common.collect.ImmutableMap;
 import htsjdk.samtools.SAMFileHeader;
-import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.util.CloserUtil;
 import htsjdk.samtools.util.Histogram;
-import htsjdk.samtools.util.IOUtil;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.walkers.mutect.M2TestingUtils;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.SAMFileGATKReadWriter;
+import org.broadinstitute.hellbender.utils.tsv.TableReader;
 import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
-import java.io.Reader;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Created by tsato on 3/14/18.
@@ -48,14 +49,13 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
         final File extractedDir = createTempDir("extracted");
         IOUtils.extractTarGz(outputTarGz.toPath(), extractedDir.toPath());
 
-        final File refHistogramFile = F1R2CountsCollector.getRefHistogramsFromExtractedTar(extractedDir).stream().findFirst().get();
+        final File refHistogramTable = F1R2CountsCollector.getRefHistogramsFromExtractedTar(extractedDir).stream().findFirst().get();
 
-        final MetricsFile<?, Integer> referenceSiteMetrics = new MetricsFile<>();
-        final Reader in = IOUtil.openFileForBufferedReading(refHistogramFile);
-        referenceSiteMetrics.read(in);
-        CloserUtil.close(in);
+        // the reads are all in the first block of contig 1
+        Assert.assertEquals(getBlocks(refHistogramTable), Set.of("1:1"));
 
-        List<Histogram<Integer>> histograms = referenceSiteMetrics.getAllHistograms();
+        final List<Histogram<Integer>> histograms = LearnReadOrientationModel.sumHistogramTables(List.of(refHistogramTable),
+                false, F1R2FilterConstants.DEFAULT_MAX_DEPTH).get(sample);
 
         /** Expected result
          *
@@ -84,13 +84,14 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
          **/
 
         // alt site tests
-        final int totalAltRecords = F1R2CountsCollector.getAltTablesFromExtractedTar(extractedDir).stream()
-                .mapToInt(file -> AltSiteRecord.readAltSiteRecords(file.toPath()).getRight().size()).sum();
+        final int totalAltRecords = LearnReadOrientationModel.gatherAltSiteRecords(F1R2CountsCollector.getAltTablesFromExtractedTar(extractedDir)).size();
         Assert.assertEquals(totalAltRecords, 4);
 
+        // the reads start at position 99,991 of contig 1
+        final Map<String, Integer> positions = Map.of("CAC", 100_001, "TAA", 100_004, "AGC", 100_006, "ACA", 100_009);
         for (final String context : List.of("CAC", "TAA", "AGC", "ACA")) {
             final File altTableFile = new File(extractedDir, F1R2CountsCollector.getAltTableName(sample, context));
-            final List<AltSiteRecord> altDesignMatrix = AltSiteRecord.readAltSiteRecords(altTableFile.toPath()).getRight();
+            final List<AltSiteRecord> altDesignMatrix = AltSiteRecord.readAltSiteRecords(altTableFile.toPath(), context).getRight();
             Assert.assertEquals(altDesignMatrix.size(), 1);
             final AltSiteRecord record = altDesignMatrix.get(0);
             Assert.assertEquals(record.getReferenceContext(), context);
@@ -98,6 +99,8 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
             Assert.assertEquals(record.getAltCount(), 30);
             Assert.assertEquals(record.getRefF1R2(), 35);
             Assert.assertEquals(record.getAltF1R2(), 15);
+            Assert.assertEquals(record.getContig(), "1");
+            Assert.assertEquals(record.getPosition(), (int) positions.get(context));
         }
 
         // check ref histograms
@@ -153,19 +156,10 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
         final File extractedDir = createTempDir("extracted");
         IOUtils.extractTarGz(outputTarGz.toPath(), extractedDir.toPath());
 
-        final File altHistogramFile = F1R2CountsCollector.getAltHistogramsFromExtractedTar(extractedDir).stream().findFirst().get();
+        final File altHistogramTable = F1R2CountsCollector.getAltHistogramsFromExtractedTar(extractedDir).stream().findFirst().get();
 
-        final MetricsFile<?, Integer> referenceSiteMetrics = new MetricsFile<>();
-        final Reader in = IOUtil.openFileForBufferedReading(altHistogramFile);
-        referenceSiteMetrics.read(in);
-        CloserUtil.close(in);
-
-        final MetricsFile<?, Integer> altSiteMetrics = new MetricsFile<>();
-        final Reader altMetricsReader = IOUtil.openFileForBufferedReading(altHistogramFile);
-        altSiteMetrics.read(altMetricsReader);
-        CloserUtil.close(altMetricsReader);
-
-        final List<Histogram<Integer>> histograms = altSiteMetrics.getAllHistograms();
+        final List<Histogram<Integer>> histograms = LearnReadOrientationModel.sumHistogramTables(List.of(altHistogramTable),
+                true, F1R2FilterConstants.DEFAULT_MAX_DEPTH).get(sample);
 
         // TODO: should there be 64*3*2 = 384 histograms or just the non-zero ones?
         final String[] expectedTransitions = new String[]{"CAC_T_F2R1", "TAA_G_F2R1", "AGC_C_F2R1", "ACA_A_F2R1"};
@@ -233,6 +227,41 @@ public class CollectF1R2CountsIntegrationTest extends CommandLineProgramTest {
                 IntegrationTestSpec.assertEqualTextFiles(new File(sampleAndDir.getValue(), sample + extension),
                         new File(extractedDir12, sample + extension));
             }
+        }
+    }
+
+    // The histogram tables have rows for each block of the genome with data, and the alt tables have the sites' positions
+    @Test
+    public void testBlocks() throws IOException {
+        final File outputTarGz = createTempFile("f1r2", ".tar.gz");
+        runCommandLine(new ArgumentsBuilder().addReference(b37_reference_20_21)
+                .addInput(new File(LearnReadOrientationModelIntegrationTest.hapmapBamSnippet))
+                .addIntervals(new File(LearnReadOrientationModelIntegrationTest.intervalList))
+                .addOutput(outputTarGz));
+
+        final File extractedDir = createTempDir("extracted");
+        IOUtils.extractTarGz(outputTarGz.toPath(), extractedDir.toPath());
+
+        // the intervals of chromosome 20, each in its own block
+        final List<SimpleInterval> intervals = List.of(new SimpleInterval("20", 5296760, 5297096), new SimpleInterval("20", 23420905, 23421244),
+                new SimpleInterval("20", 25755641, 25755987), new SimpleInterval("20", 34144590, 34144918), new SimpleInterval("20", 62165386, 62165688));
+        final Set<String> blocks = Set.of("20:5000001", "20:23000001", "20:25000001", "20:34000001", "20:62000001");
+
+        Assert.assertEquals(getBlocks(F1R2CountsCollector.getRefHistogramsFromExtractedTar(extractedDir).get(0)), blocks);
+        Assert.assertEquals(getBlocks(F1R2CountsCollector.getAltHistogramsFromExtractedTar(extractedDir).get(0)), blocks);
+
+        final List<AltSiteRecord> altSites = LearnReadOrientationModel.gatherAltSiteRecords(F1R2CountsCollector.getAltTablesFromExtractedTar(extractedDir));
+        Assert.assertFalse(altSites.isEmpty());
+        for (final AltSiteRecord altSite : altSites) {
+            final SimpleInterval locus = new SimpleInterval(altSite.getContig(), altSite.getPosition(), altSite.getPosition());
+            Assert.assertTrue(intervals.stream().anyMatch(interval -> interval.contains(locus)), locus.toString());
+        }
+    }
+
+    // the blocks of the genome of the rows of a histogram table, as contig:block start
+    private static Set<String> getBlocks(final File histogramTable) throws IOException {
+        try (TableReader<F1R2HistogramTable.Row> reader = F1R2HistogramTable.reader(histogramTable.toPath())) {
+            return reader.stream().map(row -> row.contig() + ":" + row.blockStart()).collect(Collectors.toSet());
         }
     }
 
