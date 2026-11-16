@@ -9,14 +9,14 @@ import java.util.Map;
  * {@link VrsIdComputer}. It uniquely identifies the reference sequence globally
  * and is the SHA-512t24u digest of the chromosome's full sequence.</p>
  *
- * <p>Currently implemented as static lookup tables for GRCh38/hg38 and GRCh37/hg19.
- * Both "chr"-prefixed (e.g. "chr1") and bare (e.g. "1") contig names are accepted
- * for both builds. If a different implementation is needed in the future (e.g.
- * querying a live RefGet server), replace the body of {@link #getAccession} while
- * keeping this class's interface.</p>
+ * <p>Currently implemented as a static lookup table for GRCh38, the only reference GVS supports. Contig names
+ * must match the hg38 FASTA exactly ("chr1" to "chr22", "chrX", "chrY", "chrM"); bare names such as "1" are not
+ * recognized, so a GRCh37 contig can never be given a GRCh38 accession. If a different implementation is needed
+ * in the future (e.g. querying a live RefGet server), replace the body of {@link #getAccession} while keeping
+ * this class's interface.</p>
  *
  * <p>Each accession is the digest of the chromosome's RefSeq sequence: NC_000001.11 for
- * GRCh38 chr1, NC_000001.10 for GRCh37 chr1, and so on. These are the accessions VRS tools
+ * chr1, and so on. These are the accessions VRS tools
  * such as vrs-python use. To re-derive one, download the sequence from NCBI, uppercase it,
  * and base64url-encode the first 24 bytes of its SHA-512:
  * <pre>
@@ -26,19 +26,6 @@ import java.util.Map;
  * differ wherever the analysis set N-masks sequence, as on chr21.</p>
  */
 public class RefGetAccessionProvider {
-
-    public enum GenomeBuild {
-        GRCH38, GRCH37;
-
-        /** Accept common string aliases (case-insensitive). */
-        public static GenomeBuild fromString(final String s) {
-            switch (s.toLowerCase()) {
-                case "grch38": case "hg38": case "38": return GRCH38;
-                case "grch37": case "hg19": case "37": case "19": return GRCH37;
-                default: throw new IllegalArgumentException("Unknown genome build: '" + s + "'");
-            }
-        }
-    }
 
     /** GRCh38 (hg38) chromosome → GA4GH SQ accession (keyed with "chr" prefix). */
     private static final Map<String, String> GRCH38_ACCESSIONS = Map.ofEntries(
@@ -69,83 +56,21 @@ public class RefGetAccessionProvider {
         Map.entry("chrM",  "SQ.k3grVkjY-hoWcCUojHw6VU6GE3MZ8Sct")
     );
 
-    /**
-     * GRCh37 (hg19) chromosome → GA4GH SQ accession (keyed with "chr" prefix).
-     * Note: chrM uses the same rCRS sequence as GRCh38 (NC_012920.1 / GRCh37.p13:MT).
-     */
-    private static final Map<String, String> GRCH37_ACCESSIONS = Map.ofEntries(
-        Map.entry("chr1",  "SQ.S_KjnFVz-FE7M0W6yoaUDgYxLPc1jyWU"),
-        Map.entry("chr2",  "SQ.9KdcA9ZpY1Cpvxvg8bMSLYDUpsX6GDLO"),
-        Map.entry("chr3",  "SQ.VNBualIltAyi2AI_uXcKU7M9XUOuA7MS"),
-        Map.entry("chr4",  "SQ.iy7Zfceb5_VGtTQzJ-v5JpPbpeifHD_V"),
-        Map.entry("chr5",  "SQ.vbjOdMfHJvTjK_nqvFvpaSKhZillW0SX"),
-        Map.entry("chr6",  "SQ.KqaUhJMW3CDjhoVtBetdEKT1n6hM-7Ek"),
-        Map.entry("chr7",  "SQ.IW78mgV5Cqf6M24hy52hPjyyo5tCCd86"),
-        Map.entry("chr8",  "SQ.tTm7wmhz0G4lpt8wPspcNkAD_qiminj6"),
-        Map.entry("chr9",  "SQ.HBckYGQ4wYG9APHLpjoQ9UUe9v7NxExt"),
-        Map.entry("chr10", "SQ.-BOZ8Esn8J88qDwNiSEwUr5425UXdiGX"),
-        Map.entry("chr11", "SQ.XXi2_O1ly-CCOi3HP5TypAw7LtC6niFG"),
-        Map.entry("chr12", "SQ.105bBysLoDFQHhajooTAUyUkNiZ8LJEH"),
-        Map.entry("chr13", "SQ.Ewb9qlgTqN6e_XQiRVYpoUfZJHXeiUfH"),
-        Map.entry("chr14", "SQ.5Ji6FGEKfejK1U6BMScqrdKJK8GqmIGf"),
-        Map.entry("chr15", "SQ.zIMZb3Ft7RdWa5XYq0PxIlezLY2ccCgt"),
-        Map.entry("chr16", "SQ.W6wLoIFOn4G7cjopxPxYNk2lcEqhLQFb"),
-        Map.entry("chr17", "SQ.AjWXsI7AkTK35XW9pgd3UbjpC3MAevlz"),
-        Map.entry("chr18", "SQ.BTj4BDaaHYoPhD3oY2GdwC_l0uqZ92UD"),
-        Map.entry("chr19", "SQ.ItRDD47aMoioDCNW_occY5fWKZBKlxCX"),
-        Map.entry("chr20", "SQ.iy_UbUrvECxFRX5LPTH_KPojdlT7BKsf"),
-        Map.entry("chr21", "SQ.LpTaNW-hwuY_yARP0rtarCnpCQLkgVCg"),
-        Map.entry("chr22", "SQ.XOgHwwR3Upfp5sZYk6ZKzvV25a4RBVu8"),
-        Map.entry("chrX",  "SQ.v7noePfnNpK8ghYXEqZ9NukMXW7YeNsm"),
-        Map.entry("chrY",  "SQ.BT7QyW5iXaX_1PSX-msSGYsqRdMKqkj-"),
-        Map.entry("chrM",  "SQ.k3grVkjY-hoWcCUojHw6VU6GE3MZ8Sct")  // same rCRS as GRCh38
-    );
 
     private RefGetAccessionProvider() {}
 
     /**
-     * Normalize any contig name to a "chr"-prefixed key for internal map lookup.
-     * Handles: "1"→"chr1", "chr1"→"chr1", "X"→"chrX", "MT"→"chrM", "chrMT"→"chrM".
-     */
-    private static String normalize(final String contig) {
-        String c = contig.startsWith("chr") ? contig : "chr" + contig;
-        // GRCh37 uses "MT" for mitochondria; normalize to "chrM"
-        if (c.equals("chrMT")) {
-            c = "chrM";
-        }
-        return c;
-    }
-
-    /**
      * Returns the GA4GH RefGet accession for the given GRCh38 contig name.
-     * Equivalent to {@code getAccession(contig, GenomeBuild.GRCH38)}.
      *
-     * @param contig contig name (e.g. "chr20", "20")
+     * @param contig contig name as in the hg38 FASTA (e.g. "chr20")
      * @return the SQ.* accession string, never null
      * @throws IllegalArgumentException if the contig is not recognized
      */
     public static String getAccession(final String contig) {
-        return getAccession(contig, GenomeBuild.GRCH38);
-    }
-
-    /**
-     * Returns the GA4GH RefGet accession for the given contig and genome build.
-     *
-     * <p>Both "chr"-prefixed (e.g. "chr1") and bare (e.g. "1") contig names are
-     * accepted for both builds. GRCh37's "MT" is normalized to "chrM".</p>
-     *
-     * @param contig contig name from a VCF or VariantContext
-     * @param build  {@link GenomeBuild#GRCH38} or {@link GenomeBuild#GRCH37}
-     * @return the SQ.* accession string, never null
-     * @throws IllegalArgumentException if the contig is not recognized for the given build
-     */
-    public static String getAccession(final String contig, final GenomeBuild build) {
-        final String key = normalize(contig);
-        final Map<String, String> map = build == GenomeBuild.GRCH37 ? GRCH37_ACCESSIONS : GRCH38_ACCESSIONS;
-        final String accession = map.get(key);
+        final String accession = GRCH38_ACCESSIONS.get(contig);
         if (accession == null) {
             throw new IllegalArgumentException(
-                "No " + build + " RefGet accession found for contig: '" + contig + "'. " +
+                "No GRCh38 RefGet accession found for contig: '" + contig + "'. " +
                 "Only standard chromosomes (chr1-22, chrX, chrY, chrM) are supported.");
         }
         return accession;
@@ -156,17 +81,6 @@ public class RefGetAccessionProvider {
      * (i.e. {@link #getAccession(String)} will not throw).
      */
     public static boolean isKnownContig(final String contig) {
-        return isKnownContig(contig, GenomeBuild.GRCH38);
-    }
-
-    /**
-     * Returns true if the given contig name is known for the given build
-     * (i.e. {@link #getAccession(String, GenomeBuild)} will not throw).
-     */
-    public static boolean isKnownContig(final String contig, final GenomeBuild build) {
-        final String key = normalize(contig);
-        final Map<String, String> map = build == GenomeBuild.GRCH37 ? GRCH37_ACCESSIONS : GRCH38_ACCESSIONS;
-        return map.containsKey(key);
+        return GRCH38_ACCESSIONS.containsKey(contig);
     }
 }
-

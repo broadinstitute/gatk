@@ -86,7 +86,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     @Argument(fullName = "enable-vrs-ids",
             shortName = "vrs",
             doc = "compute and write VRS allele IDs into the vrs_allele_ids column of VET output, " +
-                  "and produce a vrs_allele_scratch output file. Requires a reference (--reference).",
+                  "and produce a vrs_allele_scratch output file. Requires a reference (--reference) and --ref-version 38.",
             optional = true)
     public boolean enableVrsIds = false;
 
@@ -290,6 +290,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
         if (enableVrsIds && !hasReference()) {
             throw new UserException("--enable-vrs-ids requires a reference (--reference): VRS normalization reads reference bases");
+        }
+        if (enableVrsIds && !"38".equals(refVersion)) {
+            throw new UserException("--enable-vrs-ids requires --ref-version 38: VRS IDs use GRCh38 RefGet accessions, " +
+                    "and GVS supports no other reference");
         }
 
         // Set up output directory:

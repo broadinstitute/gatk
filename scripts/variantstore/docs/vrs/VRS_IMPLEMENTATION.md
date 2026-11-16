@@ -91,13 +91,13 @@ When invoking `CreateVariantIngestFiles` or the bulk ingest workflow:
 
 ```bash
 # Java tool
-java ... CreateVariantIngestFiles --enable-vrs-ids true -R Homo_sapiens_assembly38.fasta ...
+java ... CreateVariantIngestFiles --enable-vrs-ids true -R Homo_sapiens_assembly38.fasta --ref-version 38 ...
 
 # WDL (Terra)
 # Pass enable_vrs_ids=true to GvsBulkIngestGenomes workflow input
 ```
 
-The Java tool fails at startup if `--enable-vrs-ids` is set without a reference; the WDL always passes one when the flag is on.
+The Java tool fails at startup if `--enable-vrs-ids` is set without a reference, or without `--ref-version 38`: the refget accessions are GRCh38 only, as is GVS. The WDL always passes both when the flag is on.
 
 Default is `false`. With it off, the vet Parquet files do not declare `vrs_allele_ids`, so ingest still appends to vet tables created before the column existed.
 

@@ -173,6 +173,22 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
         runCommandLine(args);
     }
 
+    @Test(expectedExceptions = UserException.class, expectedExceptionsMessageRegExp = ".*requires --ref-version 38.*")
+    public void testVrsIdsRequireRefVersion38() {
+        // GRCh37 contig names would otherwise be looked up as GRCh38 ones and given the wrong accessions.
+        final File outputDir = createTempDir("output");
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .add("R", largeFileTestDir + "Homo_sapiens_assembly38.20.21.fasta")
+                .add("V", getToolTestDataDir() + INPUT_VCF_FILE)
+                .add("L", getToolTestDataDir() + interval_list_file)
+                .add("output-type", "PARQUET")
+                .add("SNM", getToolTestDataDir() + sample_map_file)
+                .add("enable-vrs-ids", true)
+                .add("ref-version", "37")
+                .add("output-directory", outputDir);
+        runCommandLine(args);
+    }
+
     private static boolean declaresField(final File parquetFile, final String fieldName) throws Exception {
         try (ParquetFileReader reader = ParquetFileReader.open(
                 HadoopInputFile.fromPath(new Path(parquetFile.toURI()), new Configuration()))) {
