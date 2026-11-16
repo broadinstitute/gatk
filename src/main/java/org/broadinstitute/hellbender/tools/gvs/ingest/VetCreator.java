@@ -5,6 +5,7 @@ import htsjdk.variant.variantcontext.VariantContext;
 import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.metadata.CompressionCodecName;
 import org.apache.parquet.schema.MessageType;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.NormalizedAllele;
@@ -98,22 +99,27 @@ public class VetCreator {
     /**
      * Normalize each non-ref alternate allele and compute its full VRS record.
      * The result is aligned entry for entry with the vet {@code alt} column, which drops only
-     * {@code <NON_REF>}: a spanning-deletion {@code *} ALT gets a null entry, since VRS cannot represent it.
-     * Returns an empty list when VRS IDs are disabled, reference is unavailable,
-     * or the contig is not a recognized chromosome.
+     * {@code <NON_REF>}. An ALT gets a null entry where it has no ID: a spanning-deletion {@code *}, which
+     * VRS cannot represent, and every ALT on a contig with no refget accession (alt, decoy, HLA).
+     * Returns an empty list when VRS IDs are disabled.
      */
     List<VrsAlleleRecord> computeVrsAlleleRecords(final VariantContext variant, final org.broadinstitute.hellbender.engine.ReferenceContext referenceContext) {
-        if (!enableVrsIds || referenceContext == null || !referenceContext.hasBackingDataSource()
-                || !RefGetAccessionProvider.isKnownContig(variant.getContig())) {
+        if (!enableVrsIds) {
             return Collections.emptyList();
         }
-        final String refgetAccession = RefGetAccessionProvider.getAccession(variant.getContig());
+        if (referenceContext == null || !referenceContext.hasBackingDataSource()) {
+            // CreateVariantIngestFiles requires a reference with VRS IDs enabled, so this is a bug, not bad input.
+            throw new GATKException("VRS IDs are enabled but no reference is available at " +
+                    variant.getContig() + ":" + variant.getStart());
+        }
+        final boolean knownContig = RefGetAccessionProvider.isKnownContig(variant.getContig());
+        final String refgetAccession = knownContig ? RefGetAccessionProvider.getAccession(variant.getContig()) : null;
         final List<VrsAlleleRecord> records = new ArrayList<>();
         for (final Allele altAllele : variant.getAlternateAlleles()) {
             if (altAllele.isNonRefAllele()) {
                 continue; // skip <NON_REF> and <*>, as the vet alt column does
             }
-            if (altAllele.equals(Allele.SPAN_DEL)) {
+            if (altAllele.equals(Allele.SPAN_DEL) || !knownContig) {
                 records.add(null); // keeps the list aligned with vet alt, which keeps *
                 continue;
             }

@@ -146,4 +146,31 @@ public class VetCreatorUnitTest {
             vetCreator.closeTool();
         }
     }
+
+    @Test
+    public void testUnknownContigGetsPlaceholderPerAlt() throws IOException {
+        // An alt contig has no refget accession. Each ALT still needs a slot, or vrs_allele_ids would be
+        // empty beside a non-empty vet alt.
+        final String altContig = "chr20_GL383577v2_alt";
+        final VariantContext variant = new VariantContextBuilder("test", altContig, 1000, 1000,
+                List.of(Allele.create("A", true), Allele.create("T"), Allele.SPAN_DEL, Allele.NON_REF_ALLELE)).make();
+        final Path tempDir = Files.createTempDirectory("vet_creator_vrs");
+        final VetCreator vetCreator = new VetCreator(inputVcfFileName, SAMPLE_ID, tableNumber, tempDir.toFile(),
+                outputType, PROJECT_ID, DATASET_NAME, true, false, PARQUET_SCHEMA,
+                true,   // enableVrsIds
+                null);  // vrsAlleleCreator
+        try (ReferenceDataSource reference = ReferenceDataSource.of(
+                Paths.get(GATKBaseTest.largeFileTestDir, "Homo_sapiens_assembly38.20.21.fasta"))) {
+            final ReferenceContext referenceContext =
+                    new ReferenceContext(reference, new SimpleInterval(altContig, 1000, 1000));
+
+            final List<VrsAlleleRecord> records = vetCreator.computeVrsAlleleRecords(variant, referenceContext);
+            final List<String> vetAlt = List.of(VetFieldEnum.alt.getColumnValue(variant, false).split(","));
+            Assert.assertEquals(vetAlt, List.of("T", "*"));
+            Assert.assertEquals(VetCreator.vrsAlleleIds(records),
+                    List.of(VetCreator.NO_VRS_ALLELE_ID, VetCreator.NO_VRS_ALLELE_ID));
+        } finally {
+            vetCreator.closeTool();
+        }
+    }
 }

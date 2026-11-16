@@ -40,7 +40,7 @@ This enables downstream queries to identify and retrieve specific alleles across
 - `VrsNormalizerTest`: trimming, rolling, expansion and state resolution for SNPs, indels and substitutions
 - `VrsIdComputerTest`: deterministic ID generation and format; it does not compare IDs with known values (VS-2059)
 - `VrsAlleleRecordTest`, `RefGetAccessionProviderTest`
-- `VetCreatorUnitTest`: a spanning-deletion `*` ALT gets the placeholder and keeps `vrs_allele_ids` aligned with `alt`
+- `VetCreatorUnitTest`: a spanning-deletion `*` ALT, and every ALT on a contig with no refget accession, gets the placeholder and keeps `vrs_allele_ids` aligned with `alt`
 - `CreateVariantIngestFilesIntegrationTest`: end-to-end VRS ID computation from a gVCF, against the checked-in chr20/21 subset of hg38.
 
 ---
@@ -67,7 +67,7 @@ When `enable_vrs_ids=true`, the parquet discovery logic includes the `vrs_allele
 3. `ProcessVrsAlleles` (`process_vrs_alleles.py`) then works on the samples in the scratch table:
    - It fails if any `vrs_allele_id` has rows that disagree on location or state, before merging anything.
    - It inserts the distinct alleles not already in `vrs_allele`. This is idempotent, so a re-run inserts nothing new.
-   - It fails if any `vrs_allele_ids` entry in those samples' vet rows has no `vrs_allele` row, or if `vrs_allele` holds an id more than once. The empty-string placeholder for a `*` ALT is exempt.
+   - It fails if any `vrs_allele_ids` entry in those samples' vet rows has no `vrs_allele` row, or if `vrs_allele` holds an id more than once. The empty-string placeholder (see Output Files) is exempt.
    - Only then does it delete those samples' scratch rows, so a failed check leaves them for inspection.
 4. `SetIsLoadedColumn` waits for `ProcessVrsAlleles`.
 
@@ -83,11 +83,13 @@ When invoking `CreateVariantIngestFiles` or the bulk ingest workflow:
 
 ```bash
 # Java tool
-java ... CreateVariantIngestFiles --enable-vrs-ids true ...
+java ... CreateVariantIngestFiles --enable-vrs-ids true -R Homo_sapiens_assembly38.fasta ...
 
 # WDL (Terra)
 # Pass enable_vrs_ids=true to GvsBulkIngestGenomes workflow input
 ```
+
+The Java tool fails at startup if `--enable-vrs-ids` is set without a reference; the WDL always passes one when the flag is on.
 
 Default is `false`. With it off, the vet Parquet files do not declare `vrs_allele_ids`, so ingest still appends to vet tables created before the column existed.
 
@@ -97,7 +99,7 @@ With it on, every vet table already in the dataset must have the column. `GvsAss
 
 When enabled, each sample produces:
 
-1. **vet_*.parquet**: the standard vet file with one new column, `vrs_allele_ids`: REPEATED STRING, one ID per entry in `alt` (a comma-separated string). A spanning-deletion `*` ALT, which VRS cannot represent, gets an empty string (`VetCreator.NO_VRS_ALLELE_ID`), so the two stay aligned.
+1. **vet_*.parquet**: the standard vet file with one new column, `vrs_allele_ids`: REPEATED STRING, one ID per entry in `alt` (a comma-separated string). An ALT with no ID gets an empty string (`VetCreator.NO_VRS_ALLELE_ID`), so the two stay aligned. That covers a spanning-deletion `*`, which VRS cannot represent, and every ALT on a contig outside chr1–22, X, Y and M (alt, decoy, HLA), which has no refget accession. The default calling intervals cover only those standard chromosomes.
 
 2. **vrs_allele_scratch_*.parquet**: the sample's allele records containing:
    - `sample_id`

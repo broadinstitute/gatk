@@ -5,6 +5,7 @@ import org.apache.hadoop.fs.Path;
 import org.apache.parquet.hadoop.ParquetFileReader;
 import org.apache.parquet.hadoop.util.HadoopInputFile;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.gvs.common.IngestConstants;
@@ -156,6 +157,21 @@ public class CreateVariantIngestFilesIntegrationTest extends CommandLineProgramT
     }
 
     private static final String VRS_ALLELE_IDS_FIELD = "vrs_allele_ids";
+
+    @Test(expectedExceptions = UserException.class, expectedExceptionsMessageRegExp = ".*requires a reference.*")
+    public void testVrsIdsRequireReference() {
+        // Without a reference the tool used to exit 0 with empty vrs_allele_ids arrays and no VRS rows.
+        final File outputDir = createTempDir("output");
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .add("V", getToolTestDataDir() + INPUT_VCF_FILE)
+                .add("L", getToolTestDataDir() + interval_list_file)
+                .add("output-type", "PARQUET")
+                .add("SNM", getToolTestDataDir() + sample_map_file)
+                .add("enable-vrs-ids", true)
+                .add("ref-version", "38")
+                .add("output-directory", outputDir);
+        runCommandLine(args);
+    }
 
     private static boolean declaresField(final File parquetFile, final String fieldName) throws Exception {
         try (ParquetFileReader reader = ParquetFileReader.open(

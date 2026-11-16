@@ -154,12 +154,14 @@ Five consequences worth knowing before writing anything that joins across these:
    equivalent form.
 5. `vet.alt` keeps the spanning-deletion `*`. `VetFieldEnum.alt` drops only
    `<NON_REF>` (and `<*>`), and ingest skips a row only when `*` is its sole
-   real ALT (`CreateVariantIngestFiles.java:461`), so `*` reaches `vet`
+   real ALT (the `SPAN_DEL` check in `CreateVariantIngestFiles.apply`), so `*` reaches `vet`
    beside a real ALT, as in `T,*`. Any per-ALT array stored next to
    `vet.alt`, such as `vrs_allele_ids`, must keep a slot for `*`, or every
    later entry shifts onto the wrong allele. BigQuery arrays cannot hold
    NULL, so the slot needs a placeholder (`VetCreator.NO_VRS_ALLELE_ID`,
-   the empty string), and any check over the array must skip it. Note that
+   the empty string), and any check over the array must skip it. Ingest
+   also writes the placeholder for every ALT on a contig with no refget
+   accession (alt, decoy, HLA), so such a row is all placeholders. Note that
    `vet.alt` itself is a comma-separated STRING, not an array: only
    `vrs_allele_ids` is REPEATED. `alt_allele_positions.sql` reads
    `SPLIT(alt, ',')[OFFSET(allele_pos - 1)]`, so anything copied from such an

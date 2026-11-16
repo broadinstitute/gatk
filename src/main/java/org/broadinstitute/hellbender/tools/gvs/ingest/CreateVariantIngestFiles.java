@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.tools.gvs.ingest.bq.RefRangesBQWriter;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
@@ -286,6 +287,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     public void onTraversalStart() {
         if (!enableVet && !enableReferenceRanges && !enableVCFHeaders) {
             throw new RuntimeIOException("Invalid invocation: variants, references, and VCF header writing all set to false");
+        }
+        if (enableVrsIds && !hasReference()) {
+            throw new UserException("--enable-vrs-ids requires a reference (--reference): VRS normalization reads reference bases");
         }
 
         // Set up output directory:
