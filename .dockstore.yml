@@ -175,13 +175,24 @@ workflows:
          - ah_var_store
        tags:
          - /.*/
-   - name: GvsValidateVdsCompleteness
+   - name: GvsValidateVdsVariantDataCompleteness
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsValidateVdsCompleteness.wdl
      filters:
        branches:
          - master
          - ah_var_store
+         - FoxtrotRelease_20261116_02
+       tags:
+         - /.*/
+   - name: GvsValidateVdsReferenceDataCompleteness
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/wdl/GvsValidateVdsCompleteness.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - FoxtrotRelease_20261116_02
        tags:
          - /.*/
    - name: GvsMergeAndRescoreVDSes
