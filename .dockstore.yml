@@ -537,6 +537,16 @@ workflows:
          - VS-2022
        tags:
          - /.*/
+   - name: GvsExplainUnmatchedPhasingVids
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsExplainUnmatchedPhasingVids.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - VS-2022
+       tags:
+         - /.*/
    - name: GvsRemoveSamplesFromVDS
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsRemoveSamplesFromVDS.wdl
