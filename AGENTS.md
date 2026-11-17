@@ -71,6 +71,36 @@ confirm lineage from the ticket that produced the artifact, or from the inputs
 recorded in the Cromwell metadata of the workflow that built it. A differing
 patch number alone should not be flagged.
 
+The same reasoning runs the other way: an unchanged release level means an
+unchanged participant set, whatever the steps in between did. Rebuilding a VDS
+within a release can remove samples and later add them back. In VS-2023,
+`GvsRemoveSamplesFromVDS` took two superpartitions' samples out of the r2 p1
+VDS, and `GvsMergeAndRescoreVDSes` merged them back in from a rebuilt VDS, so
+the r2 p5 VDS holds the same samples as r2 p1. So do not infer a changed sample
+set from one step's name. Check the release level, or the net effect of the
+whole procedure.
+
+### Set provenance-bearing inputs explicitly on AoU runs
+
+For an AoU deliverable, set explicitly in the Terra configuration any input
+whose default decides what the artifact contains, even when the default is the
+value you want. The configuration and the Cromwell metadata then record what
+was used. Left to a default, the answer depends on which WDL version happened
+to run, and a later change to the default silently changes what a rerun
+produces. For example, `GvsCreateVATfromVDS`'s `manual_clinvar_path_prefix`
+decides which ClinVar build annotates the VAT (VS-2052).
+
+`git_branch_or_tag` belongs in the same category, but it does not do what its
+name suggests. It does not choose the code that runs. Terra runs whichever
+Dockstore version is selected in the configuration. The input is passed to
+`GetToolVersions`, which clones that branch and records its HEAD as the run's
+`git_hash`. So set it to the release branch *and* select that branch's version
+in Terra. Set it to one while running the other, and the metadata names a commit
+that is not the code that ran. Selecting the version requires the workflow to be
+registered for the branch in `.dockstore.yml`. Release branches are
+usually registered only for the workflows they were cut to run, so check before
+the run is due.
+
 ## Key Concepts
 
 ### Hard filtered versus soft filtered variants
