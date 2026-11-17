@@ -1,0 +1,285 @@
+#!/usr/bin/env python3
+"""Edit a JIRA description as ADF so the edit survives the Atlassian MCP losslessly.
+
+The Atlassian MCP can read and write a JIRA description either as markdown or as ADF (Atlassian
+Document Format, JIRA's native JSON). Markdown is the obvious choice and the wrong one for editing
+an existing description: the MCP renders a smartlink (an inline VS-NNNN chip) as
+`<custom data-type="smartlink" ...>URL</custom>`, and sending that markdown back makes JIRA store
+and display the tag literally. Tables and nested lists can also come back changed. ADF round-trips
+exactly, because nothing passes through markdown.
+
+The obstacle with ADF is size. Every block carries a `localId` attribute, which made a long
+description (VS-2023) 90K characters, too big to pass back inline. JIRA regenerates localIds, so
+stripping them is safe, and it brought that description down to 69K.
+
+This helper does the mechanical parts of that round-trip:
+
+    jira-adf extract RESULT.txt -o desc.json      # pull the ADF out of a saved getJiraIssue result
+    jira-adf outline desc.json [--path 83]        # number the blocks so edits can address them
+    jira-adf delete desc.json 24:"Then two" 83.0:"No cluster" -o desc.json
+    jira-adf replace desc.json "old text" "new text" -o desc.json
+    jira-adf strip desc.json -o desc.min.json     # drop localIds, minify, report sizes
+    jira-adf split desc.min.json --max-chars 35000 -o desc.part   # if still too big to Read at once
+
+A block is addressed by its index path: `24` is the 25th top-level block, and `83.0` is the first
+child of block 83 (for example the first item of a bullet list). `delete` takes an optional
+`:TEXT` guard per path and refuses to change anything unless each block's visible text contains
+its guard. Guards match visible text only, never attributes, so a guard such as `9419` cannot
+falsely match a localId that happens to contain those digits. All paths refer to the numbering
+before any deletion.
+
+`replace` requires the old text to occur exactly once, inside a single text node. A string that
+spans formatting, such as plain text running into `code`, will not be found. Edit the JSON
+directly in that case.
+
+The full procedure, including the MCP calls on either side of this helper, is in AGENTS.md under
+"Editing a JIRA description through the Atlassian MCP".
+
+Like reflow-md and check-us-spelling, this script is deliberately extensionless so that the
+Dockerfile's `COPY *.py /app/` leaves it out of the Variants image and out of the rebuild-and-bump
+obligation. Do not rename it to jira_adf.py.
+"""
+
+import argparse
+import json
+import sys
+
+
+def load_json(path):
+    with open(path, encoding='utf-8') as f:
+        return json.load(f)
+
+
+def write_pretty(doc, path):
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(doc, f, indent=2, ensure_ascii=False)
+        f.write('\n')
+
+
+def minify(doc):
+    # Non-ASCII characters are kept literal rather than \u-escaped: escaping lengthens the payload
+    # and makes it harder to read, and split() slices by character, not byte, so a multi-byte
+    # character is never cut in half either way.
+    return json.dumps(doc, separators=(',', ':'), ensure_ascii=False)
+
+
+def find_adf(obj, field):
+    """Return the ADF doc from a saved getJiraIssue result, or from a bare ADF doc."""
+    if isinstance(obj, dict) and obj.get('type') == 'doc':
+        return obj
+    if isinstance(obj, dict):
+        fields = obj.get('fields')
+        if isinstance(fields, dict) and isinstance(fields.get(field), dict):
+            candidate = fields[field]
+            if candidate.get('type') == 'doc':
+                return candidate
+    raise SystemExit(f"error: no ADF document found (looked for a bare doc, or fields.{field}). "
+                     "Was the issue fetched with responseContentFormat: \"adf\"?")
+
+
+def visible_text(node):
+    """Concatenate the human-visible text under a node: text nodes and smartlink URLs."""
+    if isinstance(node, list):
+        return ''.join(visible_text(n) for n in node)
+    if not isinstance(node, dict):
+        return ''
+    parts = []
+    if node.get('type') == 'text':
+        parts.append(node.get('text', ''))
+    elif node.get('type') in ('inlineCard', 'blockCard'):
+        parts.append(node.get('attrs', {}).get('url', ''))
+    elif node.get('type') == 'hardBreak':
+        parts.append(' ')
+    children = node.get('content')
+    if children:
+        sep = ' ' if node.get('type') in ('tableRow', 'bulletList', 'orderedList', 'table') else ''
+        parts.append(sep.join(visible_text(c) for c in children))
+    return ''.join(parts)
+
+
+def parse_path(text):
+    try:
+        return [int(p) for p in text.split('.')]
+    except ValueError:
+        raise SystemExit(f"error: bad block path {text!r}; expected dot-separated indices like 83.0")
+
+
+def resolve(doc, path):
+    """Return (parent_list, index, node) for an index path under doc."""
+    node = doc
+    parent = None
+    index = None
+    for depth, i in enumerate(path):
+        children = node.get('content') if isinstance(node, dict) else None
+        if not isinstance(children, list) or not (0 <= i < len(children)):
+            where = '.'.join(map(str, path[:depth])) or 'the document root'
+            count = len(children) if isinstance(children, list) else 0
+            raise SystemExit(f"error: block path {'.'.join(map(str, path))} does not exist: "
+                             f"{where} has {count} children")
+        parent, index, node = children, i, children[i]
+    return parent, index, node
+
+
+def describe(node):
+    kind = node.get('type', '?')
+    if kind == 'heading':
+        kind = f"heading{node.get('attrs', {}).get('level', '')}"
+    return kind
+
+
+def cmd_extract(args):
+    doc = find_adf(load_json(args.source), args.field)
+    write_pretty(doc, args.output)
+    print(f"wrote {args.output}: {len(doc.get('content', []))} top-level blocks, "
+          f"{len(minify(doc)):,} chars minified")
+
+
+def cmd_outline(args):
+    doc = load_json(args.file)
+    root = doc
+    prefix = ''
+    if args.path:
+        _, _, root = resolve(doc, parse_path(args.path))
+        prefix = args.path + '.'
+    for i, child in enumerate(root.get('content', []) or []):
+        text = ' '.join(visible_text(child).split())
+        if len(text) > args.width:
+            text = text[:args.width - 1] + '…'
+        print(f"{prefix}{i:<4} {describe(child):<12} {text}")
+
+
+def cmd_delete(args):
+    doc = load_json(args.file)
+    targets = []
+    for spec in args.blocks:
+        path_text, _, guard = spec.partition(':')
+        path = parse_path(path_text)
+        parent, index, node = resolve(doc, path)
+        if guard and guard not in visible_text(node):
+            preview = ' '.join(visible_text(node).split())[:120]
+            raise SystemExit(f"error: block {path_text} does not contain {guard!r}; nothing changed. "
+                             f"Its text begins: {preview!r}")
+        targets.append((path, parent, index))
+    paths = [t[0] for t in targets]
+    for a in paths:
+        for b in paths:
+            if a != b and b[:len(a)] == a:
+                raise SystemExit(f"error: {'.'.join(map(str, b))} is inside "
+                                 f"{'.'.join(map(str, a))}; delete one or the other")
+    if len(set(map(tuple, paths))) != len(paths):
+        raise SystemExit("error: the same block was named twice")
+    # Delete in reverse path order so no deletion shifts the index of a target still to come.
+    for path, parent, index in sorted(targets, key=lambda t: t[0], reverse=True):
+        del parent[index]
+        print(f"deleted {'.'.join(map(str, path))}")
+    write_pretty(doc, args.output)
+
+
+def cmd_replace(args):
+    doc = load_json(args.file)
+    hits = []
+
+    def walk(node):
+        if isinstance(node, dict):
+            if node.get('type') == 'text' and args.old in node.get('text', ''):
+                hits.append(node)
+            for child in node.get('content', []) or []:
+                walk(child)
+
+    walk(doc)
+    if len(hits) != 1:
+        raise SystemExit(f"error: {args.old!r} occurs in {len(hits)} text nodes, expected exactly 1; "
+                         "nothing changed")
+    node = hits[0]
+    if node['text'].count(args.old) != 1:
+        raise SystemExit(f"error: {args.old!r} occurs more than once in one text node; nothing changed")
+    node['text'] = node['text'].replace(args.old, args.new)
+    write_pretty(doc, args.output)
+    print("replaced 1 occurrence")
+
+
+def strip_local_ids(node):
+    if isinstance(node, list):
+        return [strip_local_ids(n) for n in node]
+    if not isinstance(node, dict):
+        return node
+    out = {}
+    for key, value in node.items():
+        if key == 'attrs' and isinstance(value, dict):
+            value = {k: v for k, v in value.items() if k != 'localId'}
+            if not value:
+                continue
+        out[key] = strip_local_ids(value)
+    return out
+
+
+def cmd_strip(args):
+    doc = load_json(args.file)
+    before = len(minify(doc))
+    stripped = strip_local_ids(doc)
+    text = minify(stripped)
+    with open(args.output, 'w', encoding='utf-8') as f:
+        f.write(text)
+    print(f"wrote {args.output}: {before:,} -> {len(text):,} chars")
+
+
+def cmd_split(args):
+    with open(args.file, encoding='utf-8') as f:
+        text = f.read()
+    json.loads(text)  # refuse to split something that is not valid JSON to begin with
+    parts = [text[i:i + args.max_chars] for i in range(0, len(text), args.max_chars)]
+    for n, part in enumerate(parts, 1):
+        with open(f"{args.output}.{n}", 'w', encoding='utf-8') as f:
+            f.write(part)
+    assert ''.join(parts) == text
+    print(f"wrote {len(parts)} parts: " +
+          ', '.join(f"{args.output}.{n} ({len(p):,})" for n, p in enumerate(parts, 1)))
+    print("concatenate them in order, with nothing between, to reproduce the input exactly")
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__.split('\n\n')[0])
+    sub = parser.add_subparsers(dest='command', required=True)
+
+    p = sub.add_parser('extract', help='pull the ADF doc out of a saved getJiraIssue result')
+    p.add_argument('source')
+    p.add_argument('-o', '--output', required=True)
+    p.add_argument('--field', default='description')
+    p.set_defaults(func=cmd_extract)
+
+    p = sub.add_parser('outline', help='list blocks with their index paths')
+    p.add_argument('file')
+    p.add_argument('--path', help='list the children of this block instead of the top level')
+    p.add_argument('--width', type=int, default=100)
+    p.set_defaults(func=cmd_outline)
+
+    p = sub.add_parser('delete', help='delete blocks by index path, each with an optional :TEXT guard')
+    p.add_argument('file')
+    p.add_argument('blocks', nargs='+', metavar='PATH[:TEXT]')
+    p.add_argument('-o', '--output', required=True)
+    p.set_defaults(func=cmd_delete)
+
+    p = sub.add_parser('replace', help='replace text occurring exactly once in a single text node')
+    p.add_argument('file')
+    p.add_argument('old')
+    p.add_argument('new')
+    p.add_argument('-o', '--output', required=True)
+    p.set_defaults(func=cmd_replace)
+
+    p = sub.add_parser('strip', help='remove localIds and minify')
+    p.add_argument('file')
+    p.add_argument('-o', '--output', required=True)
+    p.set_defaults(func=cmd_strip)
+
+    p = sub.add_parser('split', help='split a minified file into parts small enough to Read')
+    p.add_argument('file')
+    p.add_argument('--max-chars', type=int, default=35000)
+    p.add_argument('-o', '--output', required=True, help='parts are written as OUTPUT.1, OUTPUT.2, ...')
+    p.set_defaults(func=cmd_split)
+
+    args = parser.parse_args(argv)
+    args.func(args)
+
+
+if __name__ == '__main__':
+    sys.exit(main())

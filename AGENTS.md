@@ -221,6 +221,11 @@ The dotted-module form, `python3 -m unittest test.test_run_in_hail_cluster`,
 fails with `ModuleNotFoundError`, because `test/` is not a package and the
 tests import their script as a top-level module.
 
+Run across the whole `test/` directory, discovery reports import errors for
+`test_create_*_bqloadjson_*` (no `ijson`) and `test_parquet_loading` (no
+`google-cloud-bigquery`) on a machine without those packages. CI installs them, so
+these errors locally do not indicate a problem with the change.
+
 ### Nirvana Docker Image
 
 This is an Illumina Nirvana-based Docker image build from
@@ -946,6 +951,61 @@ its definition elsewhere would turn a spelling nit into broken code.
 Like `reflow-md`, this script is deliberately extensionless so that the Dockerfile's
 `COPY *.py /app/` leaves it out of the Variants image and out of the rebuild-and-bump
 obligation. Do not rename it to `check_us_spelling.py`.
+
+## Editing a JIRA description through the Atlassian MCP
+
+VS tickets live on the `broadworkbench` Atlassian site; get its cloud ID from
+`getAccessibleAtlassianResources`. The MCP can only replace a description
+wholesale, and it can read and write it either as markdown or as ADF (Atlassian
+Document Format, JIRA's native JSON). To edit a description that already exists,
+use ADF. Markdown looks like the easy route but does not round-trip.
+
+**Markdown write-back corrupts smartlinks.** The MCP renders an inline issue chip
+(an ADF `inlineCard`) as `<custom data-type="smartlink" data-id="id-N">URL</custom>`.
+Sending that markdown back does not recreate the chip. JIRA stores the tag and
+displays it literally. On VS-2010 this left four broken links to be repaired by
+hand. The value echoed back by the edit matches what was sent, so it is not
+evidence that the round-trip worked.
+
+**ADF round-trips exactly, once it is small enough to send.** Every ADF node
+carries a `localId` attribute. JIRA regenerates these, and stripping them shrank
+the VS-2023 description from 90K characters to 69K, small enough to pass inline in
+one `editJiraIssue` call. `scripts/variantstore/scripts/jira-adf` does the
+mechanical parts:
+
+1. Fetch with `getJiraIssue`, `responseContentFormat: "adf"`,
+   `fields: ["description"]`. A long description exceeds the tool-result limit and
+   is saved to a `tool-results/...txt` file. That is fine, since it never needs to
+   come into context.
+2. `jira-adf extract <saved result> -o desc.json`, then
+   `jira-adf outline desc.json` to number the blocks. `--path 83` lists the
+   children of block 83, such as the items of a bullet list.
+3. Edit with guards that check the target before changing anything:
+   `jira-adf delete desc.json 24:"Then two things" 83.0:"No cluster" -o desc.json`
+   and `jira-adf replace desc.json "old" "new" -o desc.json`. A guard matches
+   visible text only. A bare number such as `9419` would otherwise match inside a
+   `localId`. For anything the subcommands do not cover, edit the JSON in Python,
+   asserting on each node's text before you change it.
+4. `jira-adf strip desc.json -o desc.min.json`. If the result is still too large
+   to Read in one go, `jira-adf split desc.min.json -o desc.part` writes parts
+   that concatenate back to it exactly. Read each part and pass the whole document
+   as `fields: {"description": ...}` with `contentFormat: "adf"`.
+5. Set `responseContentFormat: "markdown"` on the edit and check the returned text.
+   Removed passages should be gone, and untouched landmarks should still be there:
+   smartlinks, tables, the acceptance criteria.
+
+Writing new text from scratch, such as a fresh comment, is fine as markdown. Leave
+out any smartlink tags and use bare URLs or plain issue keys, which JIRA links by
+itself. JIRA also hard-breaks newlines inside a paragraph, so write one line per
+paragraph, as described under "One line per paragraph" below.
+
+Do not go looking for JIRA API credentials in environment variables or `~/.netrc`
+to get around the MCP. Auto mode denies it as credential exploration, and the
+procedure above makes it unnecessary.
+
+Like `reflow-md`, `jira-adf` is deliberately extensionless so that the
+Dockerfile's `COPY *.py /app/` leaves it out of the Variants image. Do not rename
+it to `jira_adf.py`.
 
 # Code Review Conventions
 
