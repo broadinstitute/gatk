@@ -877,6 +877,33 @@ delete or on a retry (VS-2053). List what remains with `gcloud storage objects
 list --format='value(name)'`: it exits 0 with empty output when nothing matches,
 while `gcloud storage ls` exits 1, the same as for a real error.
 
+## A Hail script's own imports must be shipped to the cluster
+
+`run_in_hail_cluster.py` submits one script to Dataproc. Any GVS module that script
+imports, such as `hail_gvs_util` or `vds_validation`, reaches the cluster only if the
+WDL also passes it with `--secondary-script-path-list`, which becomes `--py-files`.
+Leave one out and the job fails on the cluster with `ModuleNotFoundError: No module
+named '<module>'`, after the cluster has been created. Every local check passes: the
+module is in the Variants image and in `GetHailScripts`'s outputs, the unit tests
+import it from the scripts directory, and `womtool validate` sees only a command
+string.
+
+So moving code into a shared module means updating every WDL whose script now
+imports it, not just the scripts. In VS-1949 (#9381), `remove_samples_from_vds.py`
+started importing `hail_gvs_util`, but `GvsRemoveSamplesFromVDS.wdl` was not changed.
+No integration test runs that workflow, so it stayed broken for five months, until
+VS-2023 ran it (fixed in VS-2062). To check, list each Hail script's imports of GVS
+modules and compare them with the `--secondary-script-path-list` arguments in the
+WDL that runs it:
+
+    cd scripts/variantstore/scripts
+    grep -nE '^\s*(from|import) (hail_gvs_util|vds_validation|import_gvs|import_gvs_ploidy|hail_gvs_import)\b' *.py
+
+Allow for leading whitespace, as above: `hail_gvs_import.py` imports `import_gvs`
+inside a function. The list is transitive, so `GvsCreateVDS` ships `import_gvs_ploidy`
+because `import_gvs` imports it. `GvsCreateVDS` and `GvsMergeAndRescoreVDSes` ship
+their modules correctly and are the examples to copy.
+
 # Documentation Conventions
 
 ## Markdown tables must be rectangular

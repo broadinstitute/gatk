@@ -120,6 +120,7 @@ workflow GvsRemoveSamplesFromVDS {
             hail_temp_path = hail_temp_path,
             run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
             remove_samples_from_vds_script = GetHailScripts.remove_samples_from_vds_script,
+            hail_gvs_util_script = GetHailScripts.hail_gvs_util_script,
             workspace_project = effective_google_project,
             region = region,
             workspace_bucket = effective_workspace_bucket,
@@ -149,6 +150,7 @@ task RemoveSamplesFromVDS {
         String output_vds_path
         Boolean leave_cluster_running_at_end
         File remove_samples_from_vds_script
+        File hail_gvs_util_script
         File run_in_hail_cluster_script
         String? hail_version
         File? hail_wheel
@@ -218,6 +220,7 @@ task RemoveSamplesFromVDS {
         # Run the Hail python script to remove samples from the VDS.
         python3 ~{run_in_hail_cluster_script} \
             --script-path ~{remove_samples_from_vds_script} \
+            --secondary-script-path-list ~{hail_gvs_util_script} \
             --script-arguments-json-path script-arguments.json \
             --account ${account_name} \
             ~{true='--use-tiny-dataproc-cluster' false='' use_tiny_dataproc_cluster} \
