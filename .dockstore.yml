@@ -156,6 +156,7 @@ workflows:
          - master
          - ah_var_store
          - vs_2055_non_n1_hail
+         - vs_2067_c4_hail_benchmark
        tags:
          - /.*/
    - name: GvsValidateVDS

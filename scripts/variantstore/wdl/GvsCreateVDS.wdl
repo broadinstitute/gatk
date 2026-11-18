@@ -19,6 +19,7 @@ workflow GvsCreateVDS {
         Float? master_memory_fraction
         String worker_machine_type = "n2d-highmem-8"
         String master_machine_type = "n2d-highmem-32"
+        String? secondary_worker_machine_types
         Int? num_master_local_ssds
         # Compute Engine stockouts are per-zone, and Dataproc's default placement picks one zone and fails rather than
         # moving on. "auto" tries every zone in the region.
@@ -63,10 +64,13 @@ workflow GvsCreateVDS {
             help: "Optional Hail wheel. Cannot define both this parameter and `hail_version`."
         }
         worker_machine_type: {
-            help: "Machine type for the Dataproc cluster's primary and secondary workers. Defaults to n2d-highmem-8. Must be a type listed in hailctl's MACHINE_MEM table for the Hail version in use, or cluster creation fails with a KeyError; as of Hail 0.2.134 that covers the n1, n2, n2d, e2, c2, m1 and m2 families but not C3, C3D or any 4th-generation family."
+            help: "Machine type for the Dataproc cluster's primary workers, and for its secondary workers unless `secondary_worker_machine_types` is set. Defaults to n2d-highmem-8. Must be a type listed in hailctl's MACHINE_MEM table for the Hail version in use, or cluster creation fails with a KeyError; as of Hail 0.2.134 that covers the n1, n2, n2d, e2, c2, m1 and m2 families but not C3, C3D or any 4th-generation family."
         }
         master_machine_type: {
             help: "Machine type for the Dataproc cluster's master. Defaults to n2d-highmem-32. Subject to the same hailctl MACHINE_MEM restriction as `worker_machine_type`. Not affected by `use_tiny_dataproc_cluster`, which only changes worker counts."
+        }
+        secondary_worker_machine_types: {
+            help: "Comma-separated machine types for the secondary workers, in order of preference; Dataproc falls back to a later type when an earlier one is stocked out. Left unset, secondary workers use `worker_machine_type`. Unlike `worker_machine_type` these need not be in hailctl's MACHINE_MEM table, so newer families can be used here on Hail 0.2.134; use the -lssd shape of a C4, C4D, N4 or N4D type to get local SSD, as in `c4-highmem-8-lssd`. Each type needs at least the YARN memory of `worker_machine_type`, because Spark executors are sized from that. All listed types must share a disk configuration, so do not mix those families with others."
         }
         num_master_local_ssds: {
             help: "Local SSDs on the master, overriding the workers' 1. Valid counts depend on machine family and vCPU count, and larger machines need more: N2D machines with 32 or 48 vCPUs reject 1 and accept 2, 4, 8, 16 or 24, but an N2 machine with 32 vCPUs needs at least 4. Left unset, the master gets the workers' count, except that 1 becomes 2, which suits the default n2d-highmem-32 master and n1-highmem-32. For any other master type, check the allowed counts in the Compute Engine local SSD documentation and set this explicitly."
@@ -146,6 +150,7 @@ workflow GvsCreateVDS {
             master_memory_fraction = master_memory_fraction,
             worker_machine_type = worker_machine_type,
             master_machine_type = master_machine_type,
+            secondary_worker_machine_types = secondary_worker_machine_types,
             num_master_local_ssds = num_master_local_ssds,
             cluster_zones = cluster_zones,
     }
@@ -178,6 +183,7 @@ task CreateVds {
         Float? master_memory_fraction
         String worker_machine_type
         String master_machine_type
+        String? secondary_worker_machine_types
         Int? num_master_local_ssds
         String cluster_zones
 
@@ -249,6 +255,7 @@ task CreateVds {
             --region ~{region} \
             --worker-machine-type ~{worker_machine_type} \
             --master-machine-type ~{master_machine_type} \
+            ~{'--secondary-worker-machine-types ' + secondary_worker_machine_types} \
             ~{'--num-master-local-ssds ' + num_master_local_ssds} \
             --zones '~{cluster_zones}' \
             --workspace-project ~{workspace_project} \
