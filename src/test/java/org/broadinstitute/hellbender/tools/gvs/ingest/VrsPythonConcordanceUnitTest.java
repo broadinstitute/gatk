@@ -155,6 +155,8 @@ public class VrsPythonConcordanceUnitTest {
                 Assert.assertEquals(actual.end, pos - 1L + ref.length(), label + ": GVS end");
                 Assert.assertEquals(actual.stateType, VrsAlleleRecord.STATE_LITERAL, label + ": GVS state type");
                 Assert.assertEquals(actual.stateSequence, expected.get("alt"), label + ": GVS state sequence");
+                // The interval is the input one on both sides, so vrs-python's location ID is GVS's too.
+                Assert.assertEquals(actual.vrsLocationId, expected.get("location_id"), label + ": GVS location ID");
                 Assert.assertEquals(vrsAlleleIds.get(index), actual.vrsAlleleId, label + ": vrs_allele_ids entry");
                 continue;
             }
