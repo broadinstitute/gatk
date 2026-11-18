@@ -184,6 +184,11 @@ base64url-encode the first 24 bytes of its SHA-512. Where the analysis set
 masks sequence, VRS normalization reads N where the sequence the ID names has
 real bases, so an ID there may differ from vrs-python's (VS-2058, VS-2059).
 
+To compute IDs with vrs-python without SeqRepo, serve those NCBI sequences from
+a small in-memory `_DataProxy`, as `VrsPythonConcordance/generate_expected.py`
+does. Its `AlleleTranslator` needs `ga4gh.vrs[extras]`; the base package fails
+on `import hgvs`.
+
 
 # High-Level Architecture (WDLs, BigQuery, Terra)
 
