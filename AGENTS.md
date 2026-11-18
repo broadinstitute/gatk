@@ -241,6 +241,22 @@ baked into the image (a script, an added tool, or a Python package):
    tag. Workflows resolve the image through `GetToolVersions`, so this step is what makes the rebuilt
    image actually take effect.
 
+To run one of these scripts' unit tests locally before building, without pytest
+(it is not installed on developer machines), use unittest discovery from the
+scripts directory:
+
+    cd scripts/variantstore/scripts
+    python3 -m unittest discover -s test -p test_run_in_hail_cluster.py
+
+The dotted-module form, `python3 -m unittest test.test_run_in_hail_cluster`,
+fails with `ModuleNotFoundError`, because `test/` is not a package and the
+tests import their script as a top-level module.
+
+Run across the whole `test/` directory, discovery reports import errors for
+`test_create_*_bqloadjson_*` (no `ijson`) and `test_parquet_loading` (no
+`google-cloud-bigquery`) on a machine without those packages. CI installs them, so
+these errors locally do not indicate a problem with the change.
+
 ### Nirvana Docker Image
 
 This is an Illumina Nirvana-based Docker image build from
@@ -781,6 +797,88 @@ timestamps with the cluster's autoscaler log in Cloud Logging
 filtered on `resource.labels.cluster_name`). The log survives the cluster's
 deletion for the 30-day retention period.
 
+The autoscaler log does not reliably show Spot preemptions. Dataproc replaces
+a preempted secondary worker, so the cluster size it records can stay at its
+maximum while workers are being lost. Count preemptions from the Compute
+Engine audit log instead:
+
+    gcloud logging read 'protoPayload.methodName="compute.instances.preempted"
+      AND protoPayload.resourceName:"<cluster name>"' \
+      --project <project> --freshness=2d --format='value(timestamp)'
+
+A preemption burst while the cluster is fully allocated looks like stalls:
+allocation dips with nothing pending, then the backlog comes back as lost work
+is recomputed.
+
+## Changing a Dataproc machine type is more than a name swap
+
+`run_in_hail_cluster.py` starts clusters through `hailctl dataproc start`, and
+two constraints apply to any machine type passed to it. Both pass `womtool
+validate` and fail only when the cluster is created.
+
+1. **hailctl only knows the families in its `MACHINE_MEM` table.** It looks the
+   type up there to size Spark memory, so an unlisted type fails with a
+   `KeyError`. As of Hail 0.2.134 (`hail_version` in `GvsUtils.wdl`) the table
+   covers n1, n2, n2d, e2, c2, m1 and m2, but not C3, C3D or any 4th-generation
+   family. Read the pinned version's table before proposing a type.
+2. **Valid local SSD counts depend on the machine family and vCPU count.** n1
+   accepts one SSD at any size, but N2 and N2D raise the minimum as vCPUs
+   grow. N2D machines with 32 or 48 vCPUs reject 1 and accept 2, 4, 8, 16 or
+   24; an N2 machine with 32 vCPUs needs at least 4. So an n2d-highmem-32
+   master fails to create alongside n2d-highmem-8 workers, which accept 1:
+   `Number of local SSDs for an instance of type n2d-highmem-32 should be one
+   of [0, 2, 4, 8, 16, 24], while [1] is requested`. The master therefore has
+   its own count, `--num-master-local-ssds` (`num_master_local_ssds` on every
+   GVS workflow that takes machine types). Left unset it follows the workers'
+   count, except that 1 becomes 2, so the default n2d-highmem-32 master is
+   valid (VS-2055). That rule covers no other N2 or N2D master: an
+   n2-highmem-32 or an n2d-highmem-64 still fails with it. Look up the allowed
+   counts for both shapes in the Compute Engine local SSD documentation before
+   changing either one, and set the master's count explicitly.
+
+An error message describes one machine shape, not its family or its
+neighbors. In VS-2055 the n2d-highmem-32 error above was taken to mean that N2
+and N2D with 32 vCPUs both accept 2. They do not: N2 at 32 vCPUs needs 4. That
+claim went into seven WDL help strings, the script and the PR description
+before review caught it. So before writing down a Compute Engine limit, look
+it up in Google's table for every family and size the text names, not just
+the one that failed.
+
+n2d-highmem-8 workers and an n2d-highmem-32 master have been the default
+since VS-2055, replacing n1, in the script and in every WDL that runs
+`run_in_hail_cluster.py`, each of which takes its own machine types. A WDL's
+own default overrides the script's, so changing the default family means
+editing both.
+
+The memory per vCPU differs too: an n2d-highmem-8 has 64 GB against an
+n1-highmem-8's 52 GB. So a run on a new family is not a like-for-like
+comparison of Spark settings tuned on n1.
+
+## Compare cluster configurations over repeated runs
+
+Two identical runs of the same Hail job can differ by more than the
+configuration change being measured. In VS-2055, two n1 runs of AnVIL 3K VDS
+creation took 2h46m and 3h14m, and two n2d runs took 1h47m and 2h00m. Most of
+the n1 spread was Spot preemption: the slower run lost 106 workers while all
+200 were busy, against 2 in the faster one. The rest came from straggler
+stages at the end of the job.
+
+So a single run of each configuration does not settle a comparison. When
+asked to evaluate one, ask for at least two runs per configuration and count
+the preemptions in each, as described in "A Hail export from a wide table
+finishes on the master alone". Compare the phase where the cluster is fully
+allocated with a backlog pending, as well as the total. That phase isolates
+per-core speed, while the tail mostly reflects the autoscaling policy. Treat a
+difference as real when the worst run of one configuration still beats the
+best run of the other.
+
+When costing the runs, price everything a secondary worker carries at Spot
+rates, including its local SSD. Spot local SSD is a separate SKU, "SSD backed
+Local Storage attached to Spot Preemptible VMs", at about 60% of the on-demand
+rate. Pricing it on demand overstated the SSD's share of the VS-2055 costs by
+about 80%. Rates change, so look them up in the Cloud Billing Catalog API
+rather than reusing figures from an earlier write-up.
+
 ## Interpolated multi-line text defeats both heredoc conventions
 
 The dedent described above is computed on the command *after* interpolation. A
@@ -843,6 +941,33 @@ downloads; check each with `gcloud storage ls -l`, starting with
 copied with `gsutil cp <jar> gvs-internal-scratch/...`, without `gs://`.
 `gsutil` treated that as a local path, wrote a 408 MB file into the working
 tree, and reported success.
+
+## A Hail script's own imports must be shipped to the cluster
+
+`run_in_hail_cluster.py` submits one script to Dataproc. Any GVS module that script
+imports, such as `hail_gvs_util` or `vds_validation`, reaches the cluster only if the
+WDL also passes it with `--secondary-script-path-list`, which becomes `--py-files`.
+Leave one out and the job fails on the cluster with `ModuleNotFoundError: No module
+named '<module>'`, after the cluster has been created. Every local check passes: the
+module is in the Variants image and in `GetHailScripts`'s outputs, the unit tests
+import it from the scripts directory, and `womtool validate` sees only a command
+string.
+
+So moving code into a shared module means updating every WDL whose script now
+imports it, not just the scripts. In VS-1949 (#9381), `remove_samples_from_vds.py`
+started importing `hail_gvs_util`, but `GvsRemoveSamplesFromVDS.wdl` was not changed.
+No integration test runs that workflow, so it stayed broken for five months, until
+VS-2023 ran it (fixed in VS-2062). To check, list each Hail script's imports of GVS
+modules and compare them with the `--secondary-script-path-list` arguments in the
+WDL that runs it:
+
+    cd scripts/variantstore/scripts
+    grep -nE '^\s*(from|import) (hail_gvs_util|vds_validation|import_gvs|import_gvs_ploidy|hail_gvs_import)\b' *.py
+
+Allow for leading whitespace, as above: `hail_gvs_import.py` imports `import_gvs`
+inside a function. The list is transitive, so `GvsCreateVDS` ships `import_gvs_ploidy`
+because `import_gvs` imports it. `GvsCreateVDS` and `GvsMergeAndRescoreVDSes` ship
+their modules correctly and are the examples to copy.
 
 # Documentation Conventions
 
@@ -928,6 +1053,61 @@ context, then an optional `Notes:` list for links, contacts and caveats, then `A
 concrete, testable bullets. Do not use Markdown headings. A spike says what artifact or
 decision it produces, and whether it is timeboxed. The one-line-per-paragraph rule under
 Code Review Conventions applies here too.
+
+## Editing a JIRA description through the Atlassian MCP
+
+VS tickets live on the `broadworkbench` Atlassian site; get its cloud ID from
+`getAccessibleAtlassianResources`. The MCP can only replace a description
+wholesale, and it can read and write it either as markdown or as ADF (Atlassian
+Document Format, JIRA's native JSON). To edit a description that already exists,
+use ADF. Markdown looks like the easy route but does not round-trip.
+
+**Markdown write-back corrupts smartlinks.** The MCP renders an inline issue chip
+(an ADF `inlineCard`) as `<custom data-type="smartlink" data-id="id-N">URL</custom>`.
+Sending that markdown back does not recreate the chip. JIRA stores the tag and
+displays it literally. On VS-2010 this left four broken links to be repaired by
+hand. The value echoed back by the edit matches what was sent, so it is not
+evidence that the round-trip worked.
+
+**ADF round-trips exactly, once it is small enough to send.** Every ADF node
+carries a `localId` attribute. JIRA regenerates these, and stripping them shrank
+the VS-2023 description from 90K characters to 69K, small enough to pass inline in
+one `editJiraIssue` call. `scripts/variantstore/scripts/jira-adf` does the
+mechanical parts:
+
+1. Fetch with `getJiraIssue`, `responseContentFormat: "adf"`,
+   `fields: ["description"]`. A long description exceeds the tool-result limit and
+   is saved to a `tool-results/...txt` file. That is fine, since it never needs to
+   come into context.
+2. `jira-adf extract <saved result> -o desc.json`, then
+   `jira-adf outline desc.json` to number the blocks. `--path 83` lists the
+   children of block 83, such as the items of a bullet list.
+3. Edit with guards that check the target before changing anything:
+   `jira-adf delete desc.json 24:"Then two things" 83.0:"No cluster" -o desc.json`
+   and `jira-adf replace desc.json "old" "new" -o desc.json`. A guard matches
+   visible text only. A bare number such as `9419` would otherwise match inside a
+   `localId`. For anything the subcommands do not cover, edit the JSON in Python,
+   asserting on each node's text before you change it.
+4. `jira-adf strip desc.json -o desc.min.json`. If the result is still too large
+   to Read in one go, `jira-adf split desc.min.json -o desc.part` writes parts
+   that concatenate back to it exactly. Read each part and pass the whole document
+   as `fields: {"description": ...}` with `contentFormat: "adf"`.
+5. Set `responseContentFormat: "markdown"` on the edit and check the returned text.
+   Removed passages should be gone, and untouched landmarks should still be there:
+   smartlinks, tables, the acceptance criteria.
+
+Writing new text from scratch, such as a fresh comment, is fine as markdown. Leave
+out any smartlink tags and use bare URLs or plain issue keys, which JIRA links by
+itself. JIRA also hard-breaks newlines inside a paragraph, so write one line per
+paragraph, as described under "One line per paragraph" below.
+
+Do not go looking for JIRA API credentials in environment variables or `~/.netrc`
+to get around the MCP. Auto mode denies it as credential exploration, and the
+procedure above makes it unnecessary.
+
+Like `reflow-md`, `jira-adf` is deliberately extensionless so that the
+Dockerfile's `COPY *.py /app/` leaves it out of the Variants image. Do not rename
+it to `jira_adf.py`.
 
 # Code Review Conventions
 
@@ -1237,6 +1417,19 @@ as a real answer. When a loop over revisions reports that none of them contain
 something you expect to be there, check the command ran before believing the
 result.
 
+## A space-separated file list in a zsh variable is one word
+
+zsh does not split an unquoted `$VAR` on whitespace, unlike bash. So after
+`F="a.wdl b.wdl"`, both `for f in $F` and `tool $F` see a single argument,
+`a.wdl b.wdl`. The loop runs once, and a tool that takes files fails with a
+"No such file or directory" error naming the whole string. Use an array:
+`F=(a.wdl b.wdl)`, then `for f in $F` or `tool $F`.
+
+Worse than the failure, a loop body that pipes through `tail` or `grep` can
+print almost nothing, which looks like a clean pass. In VS-2055 a `womtool
+validate` loop over seven WDLs printed the joined path once and no verdicts.
+Check that the output names every file before reading it as a pass.
+
 ## Prove a rebuilt image carries the code, do not infer it
 
 The Variants-image rebuild rule above has a verification step that costs one
@@ -1266,7 +1459,7 @@ The "Detect missing Docker image tag updates" CI check is a wrapper around
 `scripts/ci/check_docker_refresh.sh`. Running it locally saves a push-and-wait
 cycle:
 
-    scripts/ci/check_docker_refresh.sh origin/ah_var_store HEAD
+    bash scripts/ci/check_docker_refresh.sh origin/ah_var_store HEAD
 
 Two things about it are easy to misread.
 
@@ -1285,7 +1478,7 @@ built from a scratch index so the real index is untouched:
     cp "$(git rev-parse --git-path index)" "${IDX}"
     GIT_INDEX_FILE="${IDX}" git add scripts/variantstore/wdl/GvsUtils.wdl
     C=$(git commit-tree "$(GIT_INDEX_FILE="${IDX}" git write-tree)" -p HEAD -m tmp)
-    scripts/ci/check_docker_refresh.sh origin/ah_var_store "${C}"
+    bash scripts/ci/check_docker_refresh.sh origin/ah_var_store "${C}"
 
 Nothing references the commit, so git eventually garbage-collects it.
 

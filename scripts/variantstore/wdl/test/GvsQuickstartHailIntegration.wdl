@@ -44,6 +44,11 @@ workflow GvsQuickstartHailIntegration {
         String ploidy_table_name = "sample_chromosome_ploidy"
         # Parquet ingest is supported; defaults to false for legacy test compatibility.
         Boolean use_parquet_ingest = false
+        # Dataproc machine types and master local SSDs for the VDS creation cluster (VS-2055). Left unset,
+        # GvsCreateVDS's defaults apply: n2d-highmem-8 workers, an n2d-highmem-32 master, and 2 master SSDs.
+        String? worker_machine_type
+        String? master_machine_type
+        Int? num_master_local_ssds
     }
 
     String project_id = "gvs-internal"
@@ -135,6 +140,9 @@ workflow GvsQuickstartHailIntegration {
             cloud_sdk_slim_docker = effective_cloud_sdk_slim_docker,
             cluster_max_age_minutes = 120,
             cluster_max_idle_minutes = 60,
+            worker_machine_type = worker_machine_type,
+            master_machine_type = master_machine_type,
+            num_master_local_ssds = num_master_local_ssds,
     }
 
     # Intentionally unused: runs for its side effect of validating VDS tieout; its output is not consumed downstream.

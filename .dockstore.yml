@@ -155,6 +155,7 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - vs_2055_non_n1_hail
        tags:
          - /.*/
    - name: GvsValidateVDS
@@ -258,6 +259,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_2055_non_n1_hail
          tags:
              - /.*/
    - name: GvsCreateVATFilesFromBigQuery
@@ -351,6 +353,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - vs_2055_non_n1_hail
          tags:
              - /.*/
    - name: GvsQuickstartIntegration
