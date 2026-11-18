@@ -803,6 +803,33 @@ The memory per vCPU differs too: an n2d-highmem-8 has 64 GB against an
 n1-highmem-8's 52 GB. So a run on a new family is not a like-for-like
 comparison of Spark settings tuned on n1.
 
+### Newer families as Spot secondaries, and the per-family local SSD quota
+
+Families that hailctl does not know, such as C4 and C4D, can still run as
+secondary workers. `--secondary-worker-machine-types` in
+`run_in_hail_cluster.py` (`secondary_worker_machine_types` in
+`GvsCreateVDS.wdl`) passes them to Dataproc as ranked flexible VMs. hailctl
+sizes Spark from the primary worker type, so a secondary type needs at least
+that type's YARN memory. Three constraints apply:
+
+1. C4, C4D, N4 and N4D boot only from `hyperdisk-balanced`. Their `-lssd`
+   shapes carry a built-in 375 GB local SSD, so the requested local SSD count
+   must be 0.
+2. Dataproc gives every secondary worker the same disk configuration, so the
+   listed types must agree on it. N2D cannot be the fallback for C4D, but C4
+   can.
+3. The `-lssd` disks count against
+   `LOCAL-SSD-TOTAL-GB-PER-VM-FAMILY-per-project-region`, which defaults to
+   30,000 GB per family per region. That allows 80 VMs per family. N2D's
+   attached SSDs did not count against it in VS-2067: N2D clusters held 200.
+
+So a cluster of newer families that stops short of its maximum size is not
+necessarily stocked out. Before concluding that it is, check the creation
+errors for `QUOTA_EXCEEDED`. In VS-2067, a C4/C4D cluster peaked at 160
+secondaries, 80 of each family. 360 creates failed on the quota and only 58
+on stockout. Spot CPUs come out of `PREEMPTIBLE_CPUS`, not the per-family CPU
+quotas, so the CPU quotas are not the limit.
+
 ## Compare cluster configurations over repeated runs
 
 Two identical runs of the same Hail job can differ by more than the
