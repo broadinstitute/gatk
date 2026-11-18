@@ -66,6 +66,8 @@ workflow GvsOppositeHaplotypePLP {
         String? requester_pays_project
 
         Int plp_disk_gb = 200
+        # PhasePLPSites holds full-width records (every sample) in norm's re-sort window.
+        Int plp_memory_gb = 8
         Int shard_disk_gb = 100
         Int shard_cpu = 4
         Int shard_preemptible = 1
@@ -121,6 +123,7 @@ workflow GvsOppositeHaplotypePLP {
             reference = GetReference.reference,
             requester_pays_project = requester_pays_project,
             disk_gb = plp_disk_gb,
+            memory_gb = plp_memory_gb,
             variants_docker = GetToolVersions.variants_docker,
     }
 
@@ -523,6 +526,7 @@ task PhasePLPSites {
         Reference reference
         String? requester_pays_project
         Int disk_gb
+        Int memory_gb
         String variants_docker
     }
     parameter_meta {
@@ -571,12 +575,23 @@ task PhasePLPSites {
         # All samples: this is the pass that discovers who the carriers are.
         # GT is the only FORMAT field, but INFO carries Number=A fields (AC, AF) that norm would otherwise split on
         # every record, so drop it first.
+        # The norm logs are parsed below, so they go to files; on failure, show them, since they may hold the error.
+        # An out-of-memory kill prints nothing, so report peak memory as well as disk. Best effort: the file depends on
+        # the cgroup version.
+        report_resources() {
+            df -h .
+            cat /sys/fs/cgroup/memory.peak /sys/fs/cgroup/memory/memory.max_usage_in_bytes 2> /dev/null \
+                | awk '{ printf "peak memory: %.2f GiB\n", $1 / 2^30 }' || true
+        }
         bcftools view --threads 4 --regions-file ~{plp_regions} --output-type u "${vcf}" \
             | bcftools annotate --remove INFO --output-type u \
             | bcftools norm --multiallelics -any --output-type u 2> split.log \
             | bcftools norm --fasta-ref ~{reference.reference_fasta} --check-ref w \
-                --output-type b --output plp.bcf 2> realign.log
+                --output-type b --output plp.bcf 2> realign.log \
+            || { rc=$?; cat split.log realign.log >&2; report_resources >&2; exit ${rc}; }
         cat split.log realign.log
+        ls -l plp.bcf
+        report_resources
 
         python3 - ~{plp_vids} plp.bcf vcf_sample_count.txt split.log realign.log <<'PYTHON_HEREDOC'
         import gzip
@@ -676,7 +691,7 @@ task PhasePLPSites {
     >>>
     runtime {
         docker: variants_docker
-        memory: "8 GiB"
+        memory: "~{memory_gb} GiB"
         disks: "local-disk ~{disk_gb} SSD"
         cpu: 4
         maxRetries: 3
@@ -758,7 +773,8 @@ task ScanShard {
                 | bcftools annotate --remove INFO --output-type u \
                 | bcftools norm --multiallelics -any --output-type u 2> split.log \
                 | bcftools norm --fasta-ref ~{reference.reference_fasta} --check-ref w \
-                    --output-type b --output start.bcf 2> realign.log
+                    --output-type b --output start.bcf 2> realign.log \
+                || { rc=$?; cat split.log realign.log >&2; df -h . >&2; exit ${rc}; }
             cat split.log realign.log
         else
             # Nothing to pair against, so skip the VCF entirely. The join-rate stats are then absent for this shard.
