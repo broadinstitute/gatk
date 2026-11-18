@@ -5,6 +5,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
+import org.broadinstitute.hellbender.utils.iterators.PushPullTransformer;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.testng.Assert;
@@ -114,6 +115,41 @@ public class MultiIntervalLocalReadShardUnitTest extends GATKBaseTest {
     }
 
 
+    // holds every read until the end of input, then renames them all
+    private static final class RenameAtEndOfInputTransformer implements PushPullTransformer<GATKRead> {
+        private final String newName;
+        private final List<GATKRead> held = new ArrayList<>();
+        private List<GATKRead> finalized = new ArrayList<>();
+
+        RenameAtEndOfInputTransformer(final String newName) {
+            this.newName = newName;
+        }
+
+        @Override
+        public void submit(final GATKRead read) {
+            held.add(read);
+        }
+
+        @Override
+        public boolean hasFinalizedItems() {
+            return !finalized.isEmpty();
+        }
+
+        @Override
+        public List<GATKRead> consumeFinalizedItems() {
+            final List<GATKRead> result = finalized;
+            finalized = new ArrayList<>();
+            return result;
+        }
+
+        @Override
+        public void signalEndOfInput() {
+            held.forEach(read -> read.setName(newName));
+            finalized.addAll(held);
+            held.clear();
+        }
+    }
+
     @DataProvider
     public Object[][] shardIterationTestData() {
         final ReadsDataSource readsSource = new ReadsPathDataSource(IOUtils.getPath(publicTestDir + "org/broadinstitute/hellbender/engine/reads_data_source_test1.bam"));
@@ -154,6 +190,11 @@ public class MultiIntervalLocalReadShardUnitTest extends GATKBaseTest {
         transformedAfterFilterShard.setPostReadFilterTransformer(renameToA);
         transformedAfterFilterShard.setReadFilter(keepReadBOnly);
 
+        // the downsampler, which keeps reads by name, runs before the buffered transformer, which renames them
+        final MultiIntervalLocalReadShard bufferedAfterDownsamplingShard = new MultiIntervalLocalReadShard(Arrays.asList(new SimpleInterval("1", 1, 5000)), 0, readsSource);
+        bufferedAfterDownsamplingShard.setDownsampler(new KeepNamedReadsDownsampler(Arrays.asList("b", "c")));
+        bufferedAfterDownsamplingShard.setPostDownsamplingTransformer(new RenameAtEndOfInputTransformer("z"));
+
         return new Object[][] {
                 // shard, expected read names after iteration
                 {new MultiIntervalLocalReadShard(Arrays.asList(new SimpleInterval("1", 200, 210)), 0, readsSource), Arrays.asList("a", "b", "c") },
@@ -170,7 +211,8 @@ public class MultiIntervalLocalReadShardUnitTest extends GATKBaseTest {
                 {transformedInOrderToPassFilterShard, Arrays.asList("b", "b", "b")},
                 {transformedAfterFilterShard, Arrays.asList("a")},   
                 {multiIntervalDownsampledShard, Arrays.asList("a", "b", "c", "e", "g")},
-                {multiIntervalDownsampledShardWithPadding, Arrays.asList("a", "b", "c", "e", "g", "h")}
+                {multiIntervalDownsampledShardWithPadding, Arrays.asList("a", "b", "c", "e", "g", "h")},
+                {bufferedAfterDownsamplingShard, Arrays.asList("z", "z")}
         };
     }
 
