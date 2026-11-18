@@ -4,7 +4,7 @@
 
 This document describes the VRS (Variant Representation Specification) allele ID feature integrated into GATK's variant store ingest pipeline. VRS IDs provide standardized, globally-unique identifiers for genomic alleles, enabling interoperability across bioinformatics tools and databases.
 
-**Current status**: Implemented from the Java ingest tool through WDL orchestration to BigQuery loading, behind `enable_vrs_ids` (default `false`). The IDs have not yet been checked against vrs-python beyond a single normalizer case (VS-2059), and `alt_allele` does not carry them yet (VS-2061).
+**Current status**: Implemented from the Java ingest tool through WDL orchestration to BigQuery loading, behind `enable_vrs_ids` (default `false`). The IDs match vrs-python 2.3.3 on a fixed set of chr20 and chr21 cases, except where the GVS reference N-masks sequence (VS-2059), and `alt_allele` does not carry them yet (VS-2061).
 
 ---
 
@@ -38,7 +38,8 @@ This enables downstream queries to identify and retrieve specific alleles across
 
 - `VrsAlleleCreatorUnitTest`: file naming, Parquet output, no-op scenarios
 - `VrsNormalizerTest`: trimming, rolling, expansion and state resolution for SNPs, indels and substitutions
-- `VrsIdComputerTest`: deterministic ID generation and format; it does not compare IDs with known values (VS-2059)
+- `VrsIdComputerTest`: deterministic ID generation and format
+- `VrsPythonConcordanceUnitTest`: compares allele ID, location ID, normalized start and end, and state with vrs-python 2.3.3 for an SNV, an MNV, insertions of new and of repeated sequence, deletions inside and outside a repeat, a right-shifted deletion, a multi-allelic site with `*`, and two SNVs in a region chr21 N-masks. The expected values are in `VrsPythonConcordance/expected.tsv` under the test resources, beside `generate_expected.py`, which wrote them against the RefSeq sequences. One case differs on purpose: an ALT equal to the masked RefSeq base is a reference allele to vrs-python, while GVS reads N and sees a substitution (VS-2059)
 - `VrsAlleleRecordTest`, `RefGetAccessionProviderTest`
 - `VetCreatorUnitTest`: a spanning-deletion `*` ALT, and every ALT on a contig with no refget accession, gets the placeholder and keeps `vrs_allele_ids` aligned with `alt`
 - `CreateVariantIngestFilesIntegrationTest`: end-to-end VRS ID computation from a gVCF, against the checked-in chr20/21 subset of hg38.
