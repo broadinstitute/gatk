@@ -38,7 +38,8 @@ import java.util.Map;
  *
  * <p>A row with a {@code gvs_differs} reason is one where GVS deliberately does not match vrs-python, because
  * the GVS reference N-masks sequence that RefSeq has. Its allele ID is asserted to differ, so a change that
- * makes it match shows up here and the reason can be retired.</p>
+ * makes it match shows up here and the reason can be retired. GVS's own normalized interval and state are
+ * asserted too, so the row also guards what GVS returns there.</p>
  */
 public class VrsPythonConcordanceUnitTest {
     private static final Path EXPECTED = Paths.get(GATKBaseTest.publicTestDir,
@@ -146,6 +147,15 @@ public class VrsPythonConcordanceUnitTest {
             if (!expected.get("gvs_differs").isEmpty()) {
                 Assert.assertNotEquals(actual.vrsAlleleId, expected.get("allele_id"),
                         label + " now matches vrs-python; retire its gvs_differs reason: " + expected.get("gvs_differs"));
+                // Not matching vrs-python is not enough: pin what GVS itself returns. A substitution over N
+                // has nothing to trim or roll, so GVS keeps the input interval and writes the ALT literally.
+                Assert.assertEquals(expected.get("alt").length(), ref.length(),
+                        label + ": only substitutions have a GVS expectation here; add one for this kind of row");
+                Assert.assertEquals(actual.start, pos - 1L, label + ": GVS start");
+                Assert.assertEquals(actual.end, pos - 1L + ref.length(), label + ": GVS end");
+                Assert.assertEquals(actual.stateType, VrsAlleleRecord.STATE_LITERAL, label + ": GVS state type");
+                Assert.assertEquals(actual.stateSequence, expected.get("alt"), label + ": GVS state sequence");
+                Assert.assertEquals(vrsAlleleIds.get(index), actual.vrsAlleleId, label + ": vrs_allele_ids entry");
                 continue;
             }
 

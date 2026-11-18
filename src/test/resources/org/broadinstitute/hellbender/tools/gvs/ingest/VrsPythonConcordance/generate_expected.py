@@ -7,11 +7,15 @@ every ALT against the RefSeq sequence the refget accession names, as any other V
 would. That is the point of the comparison: on chr21 the analysis set N-masks sequence that RefSeq
 has, so GVS and vrs-python see different reference bases there (VS-2059).
 
-Requires vrs-python 2.3.3, pinned below, and network access to NCBI unless --refseq-dir already holds
-the sequences:
+Requires vrs-python 2.3.3, pinned below, with its extras, since the translator imports hgvs. It also
+needs network access to NCBI unless --refseq-dir already holds the sequences:
 
-    python3 -m venv vrsenv && vrsenv/bin/pip install 'ga4gh.vrs==2.3.3'
+    python3 -m venv vrsenv && vrsenv/bin/pip install 'ga4gh.vrs[extras]==2.3.3'
     vrsenv/bin/python generate_expected.py --refseq-dir /tmp/refseq > expected.tsv
+
+If the download fails, for example with CERTIFICATE_VERIFY_FAILED, fetch the files with any other tool
+into --refseq-dir as <accession>.fa, from
+https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=<accession>&rettype=fasta
 
 No SeqRepo is needed. The script fetches NC_000020.11 and NC_000021.9 from NCBI E-utilities, checks
 that each one's GA4GH digest equals the accession GVS uses (RefGetAccessionProvider), and serves
