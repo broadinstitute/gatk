@@ -3,6 +3,8 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.samtools.util.PeekableIterator;
+import htsjdk.variant.variantcontext.Allele;
+import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
 import htsjdk.variant.variantcontext.VariantContextComparator;
 import htsjdk.variant.vcf.VCFHeader;
@@ -16,8 +18,15 @@ import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 
 import java.io.File;
+import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.Iterator;
-import java.util.Optional;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Queue;
+import java.util.Set;
 import java.util.Spliterator;
 import java.util.Spliterators;
 import java.util.stream.StreamSupport;
@@ -27,7 +36,7 @@ import java.util.stream.StreamSupport;
  * with optional contextual information from a reference, sets of reads, and/or supplementary sources of
  * Features.
  *
- * Subclasses must implement the {@link #apply} and {@link #areVariantsAtSameLocusConcordant} methods to process each variant
+ * Subclasses must implement the {@link #apply} and {@link #shouldVariantsBeMatched} methods to process each variant
  * and may optionally implement {@link #onTraversalStart} and/or {@link #onTraversalSuccess}.
  *
  * Created by Takuto Sato 1/30/17, abstractified by David Benjamin on 2/22/17.
@@ -88,6 +97,46 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
 
     // this may often be overridden
     protected Predicate<VariantContext> makeEvalVariantFilter() { return vc -> true; }
+
+    protected abstract boolean shouldVariantsBeMatched(final VariantContext truth, final VariantContext eval);
+
+    /**
+     * Whether a single truth record may be matched to more than one eval record at the same locus.  By default matching
+     * is one-to-one: once a truth record has been matched to an eval record, it is unavailable to subsequent eval records.
+     * Override to return true if, for example, split multiallelic eval records should each be compared to the same
+     * multiallelic truth record.
+     */
+    protected boolean allowTruthToMatchMultipleEvals() { return false; }
+
+    /**
+     * Match truth and eval records which all start at the same locus.  Each eval record is matched to the first compatible
+     * truth record (as determined by {@link #shouldVariantsBeMatched}), subject to {@link #allowTruthToMatchMultipleEvals}.
+     * Eval records are returned in input order, followed by any unmatched truth records in input order.
+     */
+    protected Queue<TruthVersusEval> matchVariants(final List<VariantContext> truthVariants, final List<VariantContext> evalVariants) {
+        //we expect only a small number of variants in each list, so a loop is fine
+        final Queue<TruthVersusEval> queue = new ArrayDeque<>();
+        final Set<VariantContext> unmatchedTruth = new LinkedHashSet<>(truthVariants);
+        for (final VariantContext eval : evalVariants) {
+            final Collection<VariantContext> candidateTruth = allowTruthToMatchMultipleEvals() ? truthVariants : unmatchedTruth;
+            final VariantContext matchedTruth = candidateTruth.stream()
+                    .filter(truth -> shouldVariantsBeMatched(truth, eval))
+                    .findFirst().orElse(null);
+            if (matchedTruth != null) {
+                unmatchedTruth.remove(matchedTruth);
+                queue.add(new TruthVersusEval(matchedTruth, eval));
+            } else {
+                queue.add(TruthVersusEval.evalOnly(eval));
+            }
+        }
+
+        //deal with unmatched truth
+        for (final VariantContext truth : unmatchedTruth) {
+            queue.add(TruthVersusEval.truthOnly(truth));
+        }
+
+        return queue;
+    }
 
     private Spliterator<TruthVersusEval> getSpliteratorForDrivingVariants() {
         final Iterator<VariantContext> truthIterator = new FilterIterator<>(truthVariants.iterator(), makeTruthVariantFilter());
@@ -162,6 +211,58 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
         return (VCFHeader)header;
     }
 
+    protected ConcordanceState getConcordanceState(final Genotype truth, final Genotype eval, final boolean evalWasFiltered) {
+        final boolean isTruthPositive = truth != null && isPositive(truth);
+        final boolean isEvalPositive = eval != null && isPositive(eval) && !evalWasFiltered;
+        final boolean genotypesAfterFilteringAgree;
+        if (eval == null || evalWasFiltered) {
+            genotypesAfterFilteringAgree = !isTruthPositive;
+        } else if (truth == null) {
+            genotypesAfterFilteringAgree = !isEvalPositive;
+        } else {
+            genotypesAfterFilteringAgree = genotypesAgree(truth, eval);
+        }
+
+        return evaluateConcordanceState(isEvalPositive, isTruthPositive, genotypesAfterFilteringAgree, evalWasFiltered);
+    }
+
+    protected ConcordanceState evaluateConcordanceState(final boolean isPositiveEval, final boolean isPositiveTruth, final boolean genotypesAfterFilteringAgree, final boolean evalIsFiltered) {
+        Utils.validate(!(evalIsFiltered && isPositiveEval), "isPositiveEval and evalIsFiltered cannot both be true");
+        Utils.validate(!(genotypesAfterFilteringAgree && (isPositiveEval != isPositiveTruth)), "if genotypes agree truth and eval must both be positive or negative");
+        if (genotypesAfterFilteringAgree) {
+            if (isPositiveEval) {
+                return ConcordanceState.TRUE_POSITIVE;
+            } else {
+                return evalIsFiltered ? ConcordanceState.FILTERED_TRUE_NEGATIVE : ConcordanceState.TRUE_NEGATIVE;
+            }
+        } else {
+            if (isPositiveEval) {
+                return ConcordanceState.FALSE_POSITIVE;
+            } else {
+                return evalIsFiltered ? ConcordanceState.FILTERED_FALSE_NEGATIVE : ConcordanceState.FALSE_NEGATIVE;
+            }
+        }
+    }
+
+    private boolean hasNonRefAlleles(final Collection<Allele> alleles) {
+        return alleles.stream().anyMatch(Allele::isNonReference);
+    }
+
+    protected boolean isPositive(final Genotype genotype) {
+        return hasNonRefAlleles(genotype.getAlleles());
+    }
+
+    protected boolean genotypesAgree(final Genotype geno1, final Genotype geno2) {
+        // we ignore phasing
+        final List<Allele> sortedAlleles1 = new ArrayList<>(geno1.getAlleles());
+        Collections.sort(sortedAlleles1);
+
+        final List<Allele> sortedAlleles2 = new ArrayList<>(geno2.getAlleles());
+        Collections.sort(sortedAlleles2);
+
+        return sortedAlleles1.equals(sortedAlleles2);
+    }
+
     /**
      * encapsulate the iteration over truth and eval.  hasNext() returns true if either the truth or eval iterator have
      * any variants remaining.  next() produces variants in genomic order, along with their concordance state of
@@ -174,107 +275,107 @@ public abstract class AbstractConcordanceWalker extends WalkerBase {
     private class ConcordanceIterator implements Iterator<TruthVersusEval> {
         private final PeekableIterator<VariantContext> truthIterator;
         private final PeekableIterator<VariantContext> evalIterator;
+        private final Queue<TruthVersusEval> truthVersusEvalQueue = new ArrayDeque<>();
 
         protected ConcordanceIterator(final  Iterator<VariantContext> truthIterator, final Iterator<VariantContext> evalIterator) {
             this.truthIterator = new PeekableIterator<>(truthIterator);
             this.evalIterator = new PeekableIterator<>(evalIterator);
         }
 
-        public boolean hasNext() { return truthIterator.hasNext() || evalIterator.hasNext(); }
+        public boolean hasNext() { return truthIterator.hasNext() || evalIterator.hasNext() || !truthVersusEvalQueue.isEmpty(); }
 
         public TruthVersusEval next() {
+
+            if (!truthVersusEvalQueue.isEmpty()) {
+                return truthVersusEvalQueue.poll();
+            }
+
             if (!truthIterator.hasNext()) {
-                return nextEvalOnlyVariant();
+                return TruthVersusEval.evalOnly(evalIterator.next());
             } else if (!evalIterator.hasNext()) {
-                return nextTruthOnlyVariant();
+                return TruthVersusEval.truthOnly(truthIterator.next());
             }
 
             final int positionCompare = variantContextComparator.compare(truthIterator.peek(), evalIterator.peek());
             if (positionCompare > 0) {
-                return nextEvalOnlyVariant();
+                return TruthVersusEval.evalOnly(evalIterator.next());
             } else if (positionCompare < 0) {
-                return nextTruthOnlyVariant();
-            } else if(evalIterator.peek().isFiltered()) {
-                return TruthVersusEval.filteredFalseNegative(truthIterator.next(), evalIterator.next());
-            } else if (areVariantsAtSameLocusConcordant(truthIterator.peek(), evalIterator.peek())) {
-                return TruthVersusEval.truePositive(truthIterator.next(), evalIterator.next());
+                return TruthVersusEval.truthOnly(truthIterator.next());
             } else {
-                // advance truth in case of same-locus discordance -- we could equally well advance eval
-                return TruthVersusEval.falseNegative(truthIterator.next());
+                //get all eval records at this location
+                final List<VariantContext> evalVariants = getAllVariantsAtNextLocus(evalIterator);
+
+                //get all truth records at this location
+                final List<VariantContext> truthVariants = getAllVariantsAtNextLocus(truthIterator);
+
+                //if there is only one truth and eval at this location, can just return those, otherwise need to match using matching function
+                if (evalVariants.size() == 1 && truthVariants.size() == 1) {
+                    final VariantContext truthVariant = truthVariants.get(0);
+                    final VariantContext evalVariant = evalVariants.get(0);
+                    if (shouldVariantsBeMatched(truthVariant, evalVariant)) {
+                        return new TruthVersusEval(truthVariant, evalVariant);
+                    } else {
+                        truthVersusEvalQueue.add(TruthVersusEval.evalOnly(evalVariant));
+                        return TruthVersusEval.truthOnly(truthVariant);
+                    }
+                } else {
+                    truthVersusEvalQueue.addAll(matchVariants(truthVariants, evalVariants));
+                    return truthVersusEvalQueue.poll();
+                }
             }
         }
 
-        // if a variant only exists in the eval vcf, it is either a false positive or a filtered true negative
-        private TruthVersusEval nextEvalOnlyVariant() {
-            final VariantContext evalVariant = evalIterator.next();
-            return evalVariant.isFiltered() ? TruthVersusEval.filteredTrueNegative(evalVariant) : TruthVersusEval.falsePositive(evalVariant);
-        }
+        private List<VariantContext> getAllVariantsAtNextLocus(final PeekableIterator<VariantContext> iterator) {
+            Utils.validateArg(iterator.hasNext(), "AbstractConcordanceWalker asked for next variant in variant group when variant group was empty");
+            final List<VariantContext> variants = new ArrayList<>();
+            VariantContext currentVariant = iterator.next();
+            variants.add(currentVariant);
+            while(iterator.hasNext() && variantContextComparator.compare(currentVariant, iterator.peek()) == 0) {
+                currentVariant = iterator.next();
+                variants.add(currentVariant);
+            }
 
-        private TruthVersusEval nextTruthOnlyVariant() { return TruthVersusEval.falseNegative(truthIterator.next()); }
+            return variants;
+        }
 
         private Spliterator<TruthVersusEval> spliterator() {
             return Spliterators.spliteratorUnknownSize(this, 0);
         }
     }
 
-    // override this to customize the degree of agreement required to call a true positive.  Sometimes, for example, we may want
-    // just a single alt allele to agree and sometime we may require all alt alleles to match
-    protected abstract boolean areVariantsAtSameLocusConcordant(final VariantContext truth, final VariantContext eval);
-
     /**
      * store a truth vc in case of a false negative, an eval vc in case of a false positive, or a concordance pair of
      * truth and eval in case of a true positive.
      */
     protected static class TruthVersusEval implements Locatable {
-        private final Optional<VariantContext> truth;
-        private final Optional<VariantContext> eval;
-        private final ConcordanceState concordanceState;
+        protected final VariantContext truth;
+        protected final VariantContext eval;
 
-        private TruthVersusEval(final Optional<VariantContext> truth, final Optional<VariantContext> eval,
-                                final ConcordanceState concordanceState) {
+        public TruthVersusEval(final VariantContext truth, final VariantContext eval) {
             this.truth = truth;
             this.eval = eval;
-            this.concordanceState = concordanceState;
         }
 
-        public static TruthVersusEval falseNegative(final VariantContext truth) {
-            return new TruthVersusEval(Optional.of(truth), Optional.empty(), ConcordanceState.FALSE_NEGATIVE);
+        public static TruthVersusEval evalOnly(final VariantContext eval) {
+            return new TruthVersusEval(null, eval);
         }
 
-        public static TruthVersusEval falsePositive(final VariantContext eval) {
-            return new TruthVersusEval(Optional.empty(), Optional.of(eval), ConcordanceState.FALSE_POSITIVE);
-        }
-
-        public static TruthVersusEval truePositive(final VariantContext truth, final VariantContext eval) {
-            return new TruthVersusEval(Optional.of(truth), Optional.of(eval), ConcordanceState.TRUE_POSITIVE);
-        }
-
-        public static TruthVersusEval filteredFalseNegative(final VariantContext truth, final VariantContext eval) {
-            return new TruthVersusEval(Optional.of(truth), Optional.of(eval), ConcordanceState.FILTERED_FALSE_NEGATIVE);
-        }
-
-        public static TruthVersusEval filteredTrueNegative(final VariantContext eval) {
-            return new TruthVersusEval(Optional.empty(), Optional.of(eval), ConcordanceState.FILTERED_TRUE_NEGATIVE);
-        }
-
-        public ConcordanceState getConcordance() {
-            return concordanceState;
+        public static TruthVersusEval truthOnly(final VariantContext truth) {
+            return new TruthVersusEval(truth, null);
         }
 
         public VariantContext getTruth() {
-            Utils.validateArg(truth.isPresent(), () -> "This is a " + concordanceState.toString() + " and has no truth VariantContext.");
-            return truth.get();
+            return truth;
         }
 
         public VariantContext getEval() {
-            Utils.validateArg(eval.isPresent(), () -> "This is a " + concordanceState.toString() + " and has no eval VariantContext.");
-            return eval.get();
+            return eval;
         }
 
-        public boolean hasTruth() {return truth.isPresent(); }
-        public boolean hasEval() { return eval.isPresent(); }
+        public boolean hasTruth() {return truth != null; }
+        public boolean hasEval() { return eval != null; }
 
-        public VariantContext getTruthIfPresentElseEval() { return truth.orElseGet(() -> eval.get()); }
+        public VariantContext getTruthIfPresentElseEval() { return truth != null ? truth : eval; }
 
         public String getContig() { return getTruthIfPresentElseEval().getContig(); }
         public int getStart() { return getTruthIfPresentElseEval().getStart(); }
