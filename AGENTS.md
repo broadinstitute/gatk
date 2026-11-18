@@ -366,6 +366,26 @@ lands in the task's working directory and is discarded. Do not copy it into
 commands run locally: there it leaves a log of several hundred KB in the
 repo. Omit the flag instead.
 
+### `CREATE OR REPLACE TABLE ... AS SELECT` drops `REQUIRED`
+
+A table created from a query gets every column `NULLABLE`, whatever the
+source declared, and loses its clustering unless the statement restates it.
+So rewriting a table in place with `CREATE OR REPLACE TABLE t AS SELECT ...
+FROM t`, for example to deduplicate it, silently changes its schema. A later
+load or `INSERT` that relies on the original schema may then behave
+differently. To rewrite rows and keep the schema, stage them in a temporary
+table, then `TRUNCATE` and `INSERT`:
+
+```sql
+CREATE TEMP TABLE deduped AS SELECT DISTINCT * FROM `<project>.<dataset>.t`;
+TRUNCATE TABLE `<project>.<dataset>.t`;
+INSERT INTO `<project>.<dataset>.t` SELECT * FROM deduped;
+```
+
+Run all three as one multi-statement query, since the temporary table lasts
+only for that script. In VS-2058 this is the documented recovery for duplicate
+`vrs_allele` rows.
+
 ## Key Workflows
 
 ### GvsJointVariantCalling.wdl

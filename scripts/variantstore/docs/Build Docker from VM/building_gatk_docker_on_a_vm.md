@@ -144,6 +144,8 @@ send an `Accept` header that includes `application/vnd.oci.image.index.v1+json` 
 To verify an image is what you think it is, compare layer count and compressed size against a known-good tag rather
 than reading anything into the name. At the time of writing a correct pair looks like: lite = 12 layers / 1.29 GB
 compressed, heavy = 13 layers / 2.49 GB compressed, the difference being a single ~1.2 GB Conda/ML layer.
+These counts are for the `amd64` image manifest alone. The attestation manifest described above has one small layer of
+its own, so counting across every manifest in the index gives 13 and 14 instead, for an image that is correct.
 
 ## Building on Google Cloud instead
 
