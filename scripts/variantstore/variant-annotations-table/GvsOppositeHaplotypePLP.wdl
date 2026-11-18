@@ -6,7 +6,14 @@ import "../wdl/GvsUtils.wdl" as Utils
 # likely pathogenic variant on the *other* haplotype of the same gene (compound heterozygotes, plus the hom-alt cases
 # that are trivially on both haplotypes).
 #
-# Stage A (PrepareShards) reads the BigQuery tables built during scoping and turns them into
+# Scoping (CreateScopingTables, skipped if create_scoping_tables is false) builds three tables from the VAT:
+#   - the P/LP table: every VAT row whose ClinVar classification is one of plp_classifications,
+#   - the coding genes table: genes with any variant that changes an amino acid, a proxy for protein-coding since the
+#     VAT has no biotype column, and
+#   - the partner table: every VAT vid in a gene that is in both.
+# Note that "same gene" means the VAT's gene_id annotation, so a vid annotated to two genes is a partner in each.
+#
+# Stage A (PrepareShards) reads the scoping tables and turns them into
 #   - a global list of P/LP vids for the genes in scope, with the VCF regions that hold them, and
 #   - shards of starting vids, each with the merged VCF regions that hold them.
 # PhasePLPSites streams the P/LP regions out of the phased VCF once, over all samples, and records which haplotype
@@ -30,8 +37,19 @@ workflow GvsOppositeHaplotypePLP {
 
         String project_id
         String dataset
+
+        # Build the scoping tables from the VAT before anything else. Set false to reuse tables from an earlier run.
+        Boolean create_scoping_tables = true
+        # Required when create_scoping_tables is true.
+        String? vat_table_name
+        # ClinVar classifications that count as P/LP. Matched exactly against the elements of clinvar_classification.
+        Array[String] plp_classifications = ["pathogenic", "likely pathogenic"]
+        # Without this, a scoping table that already exists fails the run instead of being replaced.
+        Boolean overwrite_scoping_tables = false
+
         String partner_vids_table_name = "preupdate_p_lp_gene_partner_vids"
         String plp_vids_table_name = "preupdate_p_lp_vat_entries"
+        String coding_genes_table_name = "preupdate_coding_genes"
 
         # Contig to process, named as in the VCF. Intervals on other contigs are ignored.
         String contig = "chr20"
@@ -63,12 +81,29 @@ workflow GvsOppositeHaplotypePLP {
             basic_docker = GetToolVersions.basic_docker,
     }
 
+    if (create_scoping_tables) {
+        call CreateScopingTables {
+            input:
+                project_id = project_id,
+                dataset = dataset,
+                vat_table_name = vat_table_name,
+                plp_classifications = plp_classifications,
+                overwrite = overwrite_scoping_tables,
+                plp_vids_table_name = plp_vids_table_name,
+                coding_genes_table_name = coding_genes_table_name,
+                partner_vids_table_name = partner_vids_table_name,
+                variants_docker = GetToolVersions.variants_docker,
+        }
+    }
+
     call PrepareShards {
         input:
             project_id = project_id,
             dataset = dataset,
-            partner_vids_table_name = partner_vids_table_name,
-            plp_vids_table_name = plp_vids_table_name,
+            # The same names either way; taking them from CreateScopingTables when it ran makes PrepareShards wait
+            # for the tables to exist.
+            partner_vids_table_name = select_first([CreateScopingTables.partner_table, partner_vids_table_name]),
+            plp_vids_table_name = select_first([CreateScopingTables.plp_table, plp_vids_table_name]),
             contig = contig,
             intervals = intervals,
             vids_per_shard = vids_per_shard,
@@ -127,6 +162,162 @@ workflow GvsOppositeHaplotypePLP {
         File unmatched_plp_vids = PhasePLPSites.unmatched_plp_vids
         File plp_haps = PhasePLPSites.plp_haps
         File summary = GatherResults.summary
+        File? scoping_stats = CreateScopingTables.stats
+    }
+}
+
+task CreateScopingTables {
+    input {
+        String project_id
+        String dataset
+        String? vat_table_name
+        Array[String] plp_classifications
+        Boolean overwrite
+        String plp_vids_table_name
+        String coding_genes_table_name
+        String partner_vids_table_name
+        String variants_docker
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        python3 - "~{project_id}" "~{dataset}" "~{default='' vat_table_name}" "~{plp_vids_table_name}" \
+            "~{coding_genes_table_name}" "~{partner_vids_table_name}" ~{overwrite} ~{write_lines(plp_classifications)} \
+            <<'PYTHON_HEREDOC'
+        import json
+        import sys
+
+        from google.api_core.exceptions import NotFound
+        from google.cloud import bigquery
+
+        (project_id, dataset, vat_table, plp_table, coding_table, partner_table, overwrite,
+         classifications_path) = sys.argv[1:]
+        if not vat_table:
+            sys.exit("vat_table_name is required when create_scoping_tables is true")
+        with open(classifications_path) as f:
+            classifications = [line.strip() for line in f if line.strip()]
+        if not classifications:
+            sys.exit("plp_classifications is empty")
+
+        targets = (plp_table, coding_table, partner_table)
+        if vat_table in targets or len(set(targets)) < len(targets):
+            sys.exit(f"Scoping table names must be distinct from each other and from the VAT: {vat_table}, {targets}")
+
+        client = bigquery.Client(project=project_id)
+
+
+        def fq(table):
+            return f"`{project_id}.{dataset}.{table}`"
+
+
+        existing = []
+        for table in targets:
+            try:
+                client.get_table(f"{project_id}.{dataset}.{table}")
+                existing.append(table)
+            except NotFound:
+                pass
+        if existing and overwrite != "true":
+            sys.exit(f"Scoping tables already exist in {project_id}.{dataset}: {', '.join(existing)}. Set "
+                     "overwrite_scoping_tables to replace them, choose other table names, or set create_scoping_tables "
+                     "to false to use them as they are.")
+
+        bytes_processed = 0
+
+
+        def run(sql, params=()):
+            global bytes_processed
+            job = client.query(sql, job_config=bigquery.QueryJobConfig(query_parameters=list(params)))
+            rows = list(job.result())
+            bytes_processed += job.total_bytes_processed or 0
+            return rows
+
+
+        def description(text):
+            # A JSON string is also a valid BigQuery string literal.
+            return json.dumps(f"{text} Built from {vat_table} by GvsOppositeHaplotypePLP.")
+
+
+        plp_description = description(
+            "VAT rows whose clinvar_classification includes one of: " + ", ".join(classifications) + ".")
+        coding_description = description(
+            "Genes with at least one VAT row with a non-null aa_change, a proxy for protein-coding.")
+        partner_description = description(
+            f"Every VAT vid in a gene that is in both {plp_table} and {coding_table}, one row per (vid, gene_id).")
+
+        run(f"""
+            CREATE OR REPLACE TABLE {fq(plp_table)}
+            OPTIONS (description = {plp_description})
+            AS
+            SELECT DISTINCT vid, clinvar_classification, contig, position, gene_id, gene_symbol
+            FROM {fq(vat_table)}
+            WHERE EXISTS (
+              SELECT 1 FROM UNNEST(clinvar_classification) AS classification
+              WHERE classification IN UNNEST(@plp_classifications)
+            )
+        """, [bigquery.ArrayQueryParameter("plp_classifications", "STRING", classifications)])
+
+        run(f"""
+            CREATE OR REPLACE TABLE {fq(coding_table)}
+            OPTIONS (description = {coding_description})
+            AS
+            SELECT gene_id
+            FROM {fq(vat_table)}
+            WHERE gene_id IS NOT NULL
+            GROUP BY gene_id
+            HAVING LOGICAL_OR(aa_change IS NOT NULL)
+        """)
+
+        # Clustered for PrepareShards, which reads it by contig and position.
+        run(f"""
+            CREATE OR REPLACE TABLE {fq(partner_table)}
+            CLUSTER BY contig, position
+            OPTIONS (description = {partner_description})
+            AS
+            WITH plp_genes AS (
+              SELECT DISTINCT p.gene_id
+              FROM {fq(plp_table)} AS p
+              JOIN {fq(coding_table)} AS c USING (gene_id)
+            )
+            SELECT DISTINCT v.vid, v.gene_id, v.contig, v.position
+            FROM {fq(vat_table)} AS v
+            JOIN plp_genes AS g USING (gene_id)
+        """)
+
+        counts = run(f"""
+            SELECT
+              (SELECT COUNT(*) FROM {fq(plp_table)}) AS plp_rows,
+              (SELECT COUNT(DISTINCT vid) FROM {fq(plp_table)}) AS plp_vids,
+              (SELECT COUNT(DISTINCT gene_id) FROM {fq(plp_table)}) AS plp_genes,
+              (SELECT COUNT(*) FROM {fq(coding_table)}) AS coding_genes,
+              (SELECT COUNT(*) FROM {fq(partner_table)}) AS partner_rows,
+              (SELECT COUNT(DISTINCT vid) FROM {fq(partner_table)}) AS partner_vids,
+              (SELECT COUNT(DISTINCT gene_id) FROM {fq(partner_table)}) AS partner_genes
+        """)[0]
+        with open("scoping_stats.json", "w") as f:
+            json.dump({
+                "vat_table": vat_table,
+                "plp_classifications": classifications,
+                "replaced_existing_tables": existing,
+                **dict(counts.items()),
+                "bytes_processed": bytes_processed,
+            }, f, indent=2)
+        PYTHON_HEREDOC
+
+        cat scoping_stats.json
+    >>>
+    runtime {
+        docker: variants_docker
+        memory: "4 GiB"
+        disks: "local-disk 10 HDD"
+        cpu: 1
+    }
+    output {
+        String plp_table = plp_vids_table_name
+        String partner_table = partner_vids_table_name
+        File stats = "scoping_stats.json"
     }
 }
 
