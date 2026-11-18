@@ -1269,6 +1269,16 @@ moot rather than fixed — for example, a cost concern about code that turns out
 to be gated off by a default nobody sets. Record a moot finding as moot, or the
 next round raises it again.
 
+Check that CI has run on the commits since the last round. GitHub runs no
+`pull_request` workflow on a PR that conflicts with its base, and it shows no
+failure for the skipped runs. The PR keeps the green checks of the last commit
+that ran, and the only sign is that later commits have no runs. In VS-2058,
+VS-2055 landed on `ah_var_store` mid-review, and nine commits, including the
+Java changes that fixed round 1's findings, went untested in CI. So compare
+`gh pr view <n> --json mergeable` and the head SHA of the latest
+`gh run list --branch <branch>` run against the branch head before trusting
+the checks.
+
 # Session Retrospectives
 
 ## Offer to capture what a session taught you, every time
@@ -1452,6 +1462,22 @@ commit date is circumstantial in the same way.
 It matters most when a WDL starts passing a new argument to a baked-in script.
 A stale image fails with argparse's `error: unrecognized arguments`, which
 surfaces only at runtime inside a Cromwell task, long after review.
+
+A merge in which both sides bumped `variants_docker` needs a new image. Each
+side's image was built from its own tree, so neither holds the other side's
+scripts, and resolving the conflict by picking either tag ships a stale
+script. In VS-2058 the branch's image lacked VS-2055's
+`run_in_hail_cluster.py`, which would have broken Hail cluster creation at
+its new n2d defaults. The `ah_var_store` image had no `process_vrs_alleles.py`
+at all. The refresh check above passes with either tag, because the tag string
+changed. So run `build_docker.sh` on the merged tree, before committing the
+merge, and put the new tag in the merge commit. Then diff every baked-in
+script against the merge, not just the ones your branch touched:
+
+    docker cp "${CID}":/app/. ./img/
+    for f in $(git ls-files 'scripts/variantstore/scripts/*.py' | grep -v /test/ | awk -F/ 'NF==4'); do
+      git show ":${f}" | cmp -s - "./img/$(basename "${f}")" || echo "stale: ${f}"
+    done
 
 ## Run the Docker refresh check locally, and read its output, not its exit status
 
