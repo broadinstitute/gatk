@@ -839,12 +839,12 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<String> expectedKeys = Arrays.asList(
                 "chrM:152-152 T*, [C]",
                 "chrM:263-263 A*, [G]",
-                "chrM:302-302 A*, [AC, ACC, ACCCCCCCCCCCCC, C]",
+                "chrM:302-302 A*, [AC, ACC, C]",
                 "chrM:310-310 T*, [C, TC]",
                 "chrM:750-750 A*, [G]");
         Assert.assertTrue(variantKeys.containsAll(expectedKeys));
 
-        Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1741);
+        Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1740);
     }
 
     // basic test on a small chunk of NA12878 mitochondria. This is intended to be a sanity check to ensure that the pileup-caller
@@ -1106,8 +1106,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "chrM:263-263 A*, [<NON_REF>, G]",
                 //"chrM:297-297 A*, [<NON_REF>, AC, C]",
                 //"chrM:301-301 A*, [<NON_REF>, AC, ACC, ACCC]",
-                "chrM:302-302 A*, [<NON_REF>, AC, ACC, ACCC, C]",  //one of these commented out variants has an allele that only appears in debug mode
-                "chrM:310-310 T*, [<NON_REF>, TC]",
+                "chrM:302-302 A*, [<NON_REF>, AC, ACC, ACCC, ACCCCCCCCCCC, C]",  //one of these commented out variants has an allele that only appears in debug mode
+                "chrM:310-310 T*, [<NON_REF>, C, TC]",
                 "chrM:750-750 A*, [<NON_REF>, G]");
         Assert.assertTrue(variantKeys.containsAll(expectedKeys));
         //First entry should be a homRef block
@@ -1144,7 +1144,9 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "chrM:218-218 A*, [<NON_REF>]",
                 "chrM:264-266 C*, [<NON_REF>]",
                 "chrM:475-483 A*, [<NON_REF>]",
-                "chrM:488-492 T*, [<NON_REF>]");
+                "chrM:488-492 T*, [<NON_REF>]",
+                "chrM:264-270 C*, [<NON_REF>]",
+                "chrM:475-749 A*, [<NON_REF>]");
 
         //ref block boundaries aren't particularly stable, so try a few and make sure we check at least one
         final List<String> refBlockKeys = expectedRefKeys.stream()

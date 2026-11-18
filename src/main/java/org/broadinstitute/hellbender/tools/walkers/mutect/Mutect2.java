@@ -22,9 +22,12 @@ import org.broadinstitute.hellbender.tools.walkers.contamination.PileupSummaryCo
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
+import org.broadinstitute.hellbender.transformers.UnexplainedSoftClipTransformer;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 import org.broadinstitute.hellbender.utils.downsampling.MutectDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
+import org.broadinstitute.hellbender.utils.iterators.PushPullTransformer;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.cmdline.ModeArgumentUtils;
 import org.broadinstitute.hellbender.utils.variant.writers.SomaticGVCFWriter;
 
@@ -251,6 +254,12 @@ public final class Mutect2 extends AssemblyRegionWalker {
     @Override
     public ReadTransformer makePostReadFilterTransformer() {
         return super.makePostReadFilterTransformer().andThen(Mutect2Engine.makeStandardMutect2PostFilterReadTransformer(referenceArguments.getReferencePath(), !MTAC.dontClipITRArtifacts));
+    }
+
+    @Override
+    protected PushPullTransformer<GATKRead> makePostDownsamplingTransformer() {
+        return MTAC.keepUnexplainedSoftClips ? null :
+                new UnexplainedSoftClipTransformer(new ReferenceFileSource(referenceArguments.getReferencePath()), Mutect2Engine.MIN_TAIL_QUALITY);
     }
 
     @Override

@@ -14,6 +14,8 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
+import org.broadinstitute.hellbender.utils.iterators.PushPullTransformer;
+import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.io.IOException;
 import java.io.PrintStream;
@@ -158,6 +160,16 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
     }
 
     /**
+     * Returns a transformer to apply to the coordinate-sorted reads of each shard after downsampling, before assembly
+     * region detection.  Unlike a {@link org.broadinstitute.hellbender.transformers.ReadTransformer}, it may buffer
+     * reads in order to transform them together, but it must release them in coordinate order.  It is called once per
+     * shard, since the transformer holds state.  The default implementation returns null, meaning no such transformation.
+     */
+    protected PushPullTransformer<GATKRead> makePostDownsamplingTransformer() {
+        return null;
+    }
+
+    /**
      * {@inheritDoc}
      *
      * Implementation of assembly region traversal.
@@ -182,6 +194,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
             readShard.setReadFilter(countedFilter);
             readShard.setDownsampler(createDownsampler());
             readShard.setPostReadFilterTransformer(makePostReadFilterTransformer());
+            readShard.setPostDownsamplingTransformer(makePostDownsamplingTransformer());
 
             processReadShard(readShard, reference, features);
         }

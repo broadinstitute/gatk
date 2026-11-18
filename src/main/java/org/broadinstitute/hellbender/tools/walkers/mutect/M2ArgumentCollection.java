@@ -48,6 +48,7 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
     public static final String MAX_SUSPICIOUS_READS_PER_ALIGNMENT_START_LONG_NAME = "max-suspicious-reads-per-alignment-start";
     public static final String NORMAL_LOG_10_ODDS_LONG_NAME = "normal-lod";
     public static final String IGNORE_ITR_ARTIFACTS_LONG_NAME = "ignore-itr-artifacts";
+    public static final String KEEP_UNEXPLAINED_SOFT_CLIPS_LONG_NAME = "keep-unexplained-soft-clips";
     public static final String MITOCHONDRIA_MODE_LONG_NAME = "mitochondria-mode";
     public static final String MICROBIAL_MODE_LONG_NAME = "microbial-mode";
     public static final String CALLABLE_DEPTH_LONG_NAME = "callable-depth";
@@ -381,6 +382,17 @@ public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection 
      */
     @Argument(fullName= IGNORE_ITR_ARTIFACTS_LONG_NAME, doc="Turn off read transformer that clips artifacts associated with end repair insertions near inverted tandem repeats.", optional = true)
     public boolean dontClipITRArtifacts = false;
+
+    /**
+     * The soft-clipped bases of chimeric reads, adapter read-through and reads from paralogs trigger spurious active
+     * regions and thread spurious haplotypes through the assembly graph.  By default, before active region detection,
+     * Mutect2 hard clips soft clips that have low base quality, are mostly one base, or that neither the nearby
+     * reference nor other reads explain: the reference as a small variant near the end of the read, other reads as a
+     * clip from the other side that overlaps it or an indel that they align.
+     * See {@link org.broadinstitute.hellbender.transformers.UnexplainedSoftClipTransformer}.
+     */
+    @Argument(fullName = KEEP_UNEXPLAINED_SOFT_CLIPS_LONG_NAME, doc = "Turn off the hard clipping of soft clips that neither the nearby reference nor other reads explain.", optional = true)
+    public boolean keepUnexplainedSoftClips = false;
 
     /**
      * When Mutect2 is run in reference confidence mode with banding compression enabled (-ERC GVCF), homozygous-reference

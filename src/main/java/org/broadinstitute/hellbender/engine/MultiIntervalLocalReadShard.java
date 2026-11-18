@@ -7,6 +7,8 @@ import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsamplingIterator;
+import org.broadinstitute.hellbender.utils.iterators.PushPullTransformer;
+import org.broadinstitute.hellbender.utils.iterators.PushToPullIterator;
 import org.broadinstitute.hellbender.utils.iterators.ReadFilteringIterator;
 import org.broadinstitute.hellbender.utils.iterators.ReadTransformingIterator;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -36,6 +38,7 @@ public final class MultiIntervalLocalReadShard implements MultiIntervalShard<GAT
     private ReadFilter readFilter;
     private ReadTransformer postReadFilterTransformer;
     private ReadsDownsampler downsampler;
+    private PushPullTransformer<GATKRead> postDownsamplingTransformer;
 
     /**
      * Create a new MultiIntervalLocalReadShard spanning the given intervals, with each interval expanded
@@ -121,6 +124,16 @@ public final class MultiIntervalLocalReadShard implements MultiIntervalShard<GAT
     }
 
     /**
+     * Reads in this shard will be transformed after downsampling by this transformer, which may buffer reads in order
+     * to transform them together, but must release them in coordinate order.
+     *
+     * @param transformer transformer to apply after downsampling (may be null, which signifies no such transformation)
+     */
+    public void setPostDownsamplingTransformer(final PushPullTransformer<GATKRead> transformer) {
+        postDownsamplingTransformer = transformer;
+    }
+
+    /**
      * @return an iterator over reads in this shard, as filtered using the configured read filter
      *         and downsampled using the configured downsampler; reads are lazily loaded rather than pre-loaded
      *
@@ -147,6 +160,10 @@ public final class MultiIntervalLocalReadShard implements MultiIntervalShard<GAT
 
         if ( downsampler != null ) {
             readsIterator = new ReadsDownsamplingIterator(readsIterator, downsampler);
+        }
+
+        if ( postDownsamplingTransformer != null ) {
+            readsIterator = new PushToPullIterator<>(readsIterator, postDownsamplingTransformer);
         }
 
         return readsIterator;
