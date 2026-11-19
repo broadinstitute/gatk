@@ -343,7 +343,8 @@ public final class AssemblyBasedCallerUtils {
                 correctOverlappingBaseQualities,
                 argumentCollection.softClipLowQualityEnds,
                 argumentCollection.overrideSoftclipFragmentCheck,
-                true);
+                // only pileup detection uses the hard-clipped copies of the reads
+                argumentCollection.pileupDetectionArgs.usePileupDetection);
 
 
         if( argumentCollection.assemblerArgs.debugAssembly) {
