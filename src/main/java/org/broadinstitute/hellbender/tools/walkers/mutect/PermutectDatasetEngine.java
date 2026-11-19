@@ -220,16 +220,13 @@ public class PermutectDatasetEngine implements AutoCloseable {
         // haplotype equivalence counts, haplotype complexity, haplotype dominance
         final Triple<int[], int[], double[]> assemblyComplexity = AssemblyComplexity.annotate(vc, logFragmentLikelihoods, false);
 
-        // TODO: for now we don't really need normal reads
-        // note that the following use the VC's allele order, not necessarily the likelihoods' allele order
-        final List<List<List<Integer>>> normalReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, normalSamples,
-                likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, permutectDatasetMode, readGroupIndices);
+        // only tumor reads are featurized, since the dataset has no normal read vectors
+        // note that the following uses the VC's allele order, not necessarily the likelihoods' allele order
         final List<List<List<Integer>>> tumorReadVectorsByAllele =  FeaturizedReadSets.getReadVectors(vc, tumorSamples,
                 likelihoods, logFragmentLikelihoods, maxRefCount, maxAltCount, altDownsampleMap, permutectDatasetMode, readGroupIndices);
 
         // ref and alt reads have already been downsampled by the read featurizer
         final List<List<Integer>> tumorRefReads = tumorReadVectorsByAllele.get(0);
-        final List<List<Integer>> normalRefReads = normalReadVectorsByAllele.get(0);
 
         final List<LikelihoodMatrix<Fragment,Allele>> tumorMatrices = tumorSamples.stream()
                 .map(s -> logFragmentAlleleLikelihoods.sampleMatrix(logFragmentAlleleLikelihoods.indexOfSample(s)))
@@ -244,20 +241,16 @@ public class PermutectDatasetEngine implements AutoCloseable {
             final String altAllele = vc.getAlternateAllele(n).getBaseString();
             final List<Double> variantFeatureVector = variantFeatures(n, assemblyComplexity, tlod, tumorADs[n+1]);
             final List<List<Integer>> tumorAltReads = tumorReadVectorsByAllele.get(n+1);
-            final List<List<Integer>> normalAltReads = normalReadVectorsByAllele.get(n+1);
 
             printWriter.println(labels.get(n).toString());
             printWriter.printf("%d:%d,%s->%s%n", contigIndex, position, refAllele, altAllele);
             printWriter.println(refBases);
             printWriter.println(numberString(variantFeatureVector, "%.2f", " "));
-            //printWriter.printf("%d %d %d %d%n", tumorRefReads.size(), tumorAltReads.size(), normalRefReads.size(), normalAltReads.size());
             // zeroes because we currently don't use normal read vectors
             printWriter.printf("%d %d %d %d%n", tumorRefReads.size(), tumorAltReads.size(), 0, 0);
 
             tumorRefReads.forEach(r -> printWriter.println(integerString(r)));
             tumorAltReads.forEach(r -> printWriter.println(integerString(r)));
-            //normalRefReads.forEach(r -> printWriter.print(numberString(r)));
-            //normalAltReads.forEach(r -> printWriter.print(numberString(r)));
             printWriter.printf("%d %d %d %d%n", tumorDepth, tumorADs[n+1], normalDepth, normalADs[n+1]);  // pre-downsampling counts
             // this is approximately the likelihood that these particular reads are alt given sequencing error, excluding
             // the depth C N_alt combinatorial factor that is common to all likelihoods in Permutect

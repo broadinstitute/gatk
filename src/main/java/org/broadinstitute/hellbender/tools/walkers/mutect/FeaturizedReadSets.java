@@ -44,17 +44,6 @@ public class FeaturizedReadSets {
 
     private FeaturizedReadSets() { }
 
-    public static List<List<List<Integer>>> getReadVectors(final VariantContext vc,
-                                                           final Collection<String> samples,
-                                                           final AlleleLikelihoods<GATKRead, Allele> likelihoods,
-                                                           final AlleleLikelihoods<Fragment, Haplotype> haplotypeLikelihoods,
-                                                           final int refDownsample,
-                                                           final int altDownsample,
-                                                           final M2ArgumentCollection.PermutectDatasetMode permutectDatasetMode,
-                                                           final Map<String, Integer> readGroupIndices) {
-        return getReadVectors(vc, samples, likelihoods, haplotypeLikelihoods, refDownsample, altDownsample, Collections.emptyMap(), permutectDatasetMode, readGroupIndices);
-    }
-
     // returns Lists (in allele order) of lists of read vectors supporting each allele
     public static List<List<List<Integer>>> getReadVectors(final VariantContext vc,
                                                            final Collection<String> samples,
