@@ -3,6 +3,7 @@ package org.broadinstitute.hellbender.tools.walkers.readorientation;
 import com.sun.management.UnixOperatingSystemMXBean;
 import htsjdk.samtools.SAMFileHeader;
 import org.broadinstitute.hellbender.GATKBaseTest;
+import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableReader;
@@ -20,11 +21,31 @@ import java.nio.file.Path;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
 public class F1R2CountsCollectorUnitTest extends GATKBaseTest {
+    @Test
+    public void testMedianIsAtLeast() {
+        // agrees with MathUtils.median for odd and even numbers of values, including the mean of middle values on either
+        // side of the threshold, and ties at the threshold
+        final Random random = new Random(1);
+        for (int trial = 0; trial < 10000; trial++) {
+            final List<Integer> values = IntStream.range(0, 1 + random.nextInt(8)).mapToObj(n -> 45 + random.nextInt(10))
+                    .collect(Collectors.toList());
+            for (int threshold = 44; threshold <= 55; threshold++) {
+                final int t = threshold;
+                final int numAtLeast = (int) values.stream().filter(v -> v >= t).count();
+                final int maxBelow = values.stream().filter(v -> v < t).max(Integer::compare).orElse(Integer.MIN_VALUE);
+                final int minAtLeast = values.stream().filter(v -> v >= t).min(Integer::compare).orElse(Integer.MAX_VALUE);
+                Assert.assertEquals(F1R2CountsCollector.medianIsAtLeast(values.size(), numAtLeast, maxBelow, minAtLeast, t),
+                        MathUtils.median(values) >= t, values + " with threshold " + t);
+            }
+        }
+    }
+
     @Test
     public void testDepthBins() {
         // exact depths up to 24, then rounded to the nearest multiple of 10, at most the maximum depth
