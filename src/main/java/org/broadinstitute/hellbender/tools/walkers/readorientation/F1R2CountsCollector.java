@@ -43,6 +43,9 @@ public class F1R2CountsCollector {
     // the statistics of the current sample's pileup at the current locus, reused for every sample and locus
     private final PileupStatistics pileupStatistics;
 
+    // the reference bases around the current locus
+    private final ReferenceContextWindow referenceContextWindow = new ReferenceContextWindow(ReferenceContextWindow.DEFAULT_WINDOW_SIZE);
+
     // For each sample, the counts of sites without alt reads and with one alt read of the current block of the genome
     private final Map<String, BlockSiteCounts> blockSiteCounts;
 
@@ -112,15 +115,12 @@ public class F1R2CountsCollector {
         final String contig = referenceContext.getInterval().getContig();
         final int position = referenceContext.getInterval().getStart();
         updateBlock(contig, position);
-        final String refContext = referenceContext.getKmerAround(position, F1R2FilterConstants.REF_CONTEXT_PADDING);
+        // null at the ends of the contig and at Ns
+        final String refContext = referenceContextWindow.contextAt(referenceContext, contig, position);
         if (refContext == null) {
             return;
         }
-        final Nucleotide refBase = F1R2FilterUtils.getMiddleBase(refContext);
-
-        if (refContext.contains("N") || refContext.length() != F1R2FilterConstants.REFERENCE_CONTEXT_SIZE) {
-            return;
-        }
+        final Nucleotide refBase = Nucleotide.decode((byte) refContext.charAt(F1R2FilterConstants.MIDDLE_INDEX));
 
         // optimize the common case of a single tumor sample
         final String onlySample = samples.size() == 1 ? samples.iterator().next() : null;
