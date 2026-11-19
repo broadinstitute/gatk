@@ -10,8 +10,21 @@ import org.testng.annotations.Test;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
+import java.util.stream.Collectors;
 
 public class PermutectDatasetEngineUnitTest {
+
+    @Test
+    public void testIntegerString() {
+        // the integers as String.format writes them in GATK's locale, separated by spaces
+        final List<List<Integer>> lists = List.of(List.of(), List.of(7), List.of(0, -3, 42, Integer.MAX_VALUE, Integer.MIN_VALUE),
+                Arrays.asList(1, null, 2));
+        for (final List<Integer> numbers : lists) {
+            final String expected = numbers.stream().map(x -> String.format(Locale.US, "%d", x)).collect(Collectors.joining(" "));
+            Assert.assertEquals(PermutectDatasetEngine.integerString(numbers), expected);
+        }
+    }
 
     // a variant on contig 20 with the given start, ref allele and alt alleles
     private static VariantContext variant(final int start, final String ref, final String... alts) {
