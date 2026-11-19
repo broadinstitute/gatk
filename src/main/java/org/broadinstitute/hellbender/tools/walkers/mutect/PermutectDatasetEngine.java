@@ -322,8 +322,19 @@ public class PermutectDatasetEngine implements AutoCloseable {
         }).toList();
     }
 
-    private String integerString(final List<Integer> numbers) {
-        return numberString(numbers, "%d", " ");
+    /**
+     * The integers separated by spaces, as String.format("%d") writes them in GATK's US English locale, but without the
+     * cost of a Formatter for each of the many integers of every featurized read
+     */
+    static String integerString(final List<Integer> numbers) {
+        final StringBuilder builder = new StringBuilder(4 * numbers.size());
+        for (int n = 0; n < numbers.size(); n++) {
+            if (n > 0) {
+                builder.append(' ');
+            }
+            builder.append(numbers.get(n));
+        }
+        return builder.toString();
     }
 
     private String numberString(final List<? extends Number> numbers, final String formatString, final String separator) {
