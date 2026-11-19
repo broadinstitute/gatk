@@ -678,11 +678,13 @@ public class AlleleLikelihoods<EVIDENCE extends Locatable, A extends Allele> imp
             final double[][] oldSampleValues = valuesBySampleIndex[s];
             newLikelihoodValues[s] = new double[alleleCount][newEvidenceCount];
 
-            // For each old allele and read we update the new table keeping the maximum likelihood.
+            // A group's likelihood for each allele is the sum of its reads' likelihoods.  Each read's index is looked up
+            // once, not once per allele, since the lookup hashes the read; each allele's sum still adds the group's reads
+            // in the same order.
             for (int newEvidenceIndex = 0; newEvidenceIndex < newEvidenceCount; newEvidenceIndex++) {
-                for (int a = 0; a < alleleCount; a++) {
-                    for (final EVIDENCE evidence : evidenceGroups.get(newEvidenceIndex)) {
-                        final int oldEvidenceIndex = evidenceIndex(s, evidence);
+                for (final EVIDENCE evidence : evidenceGroups.get(newEvidenceIndex)) {
+                    final int oldEvidenceIndex = evidenceIndex(s, evidence);
+                    for (int a = 0; a < alleleCount; a++) {
                         newLikelihoodValues[s][a][newEvidenceIndex] += oldSampleValues[a][oldEvidenceIndex];
                     }
                 }

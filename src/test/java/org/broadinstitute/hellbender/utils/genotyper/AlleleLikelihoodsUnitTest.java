@@ -12,6 +12,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -82,6 +83,32 @@ public final class AlleleLikelihoodsUnitTest {
         fillWithRandomLikelihoods(samples, alleles, original);
         Utils.resetRandomGenerator();
         return fillWithRandomLikelihoods(samples, alleles, result);
+    }
+
+    @Test(dataProvider = "dataSets")
+    public void testGroupEvidence(final String[] samples, final Allele[] alleles, final Map<String,List<GATKRead>> reads) {
+        // the likelihoods of grouped evidence are the sums of the likelihoods of the evidence in each group
+        final AlleleLikelihoods<GATKRead, Allele> original = new AlleleLikelihoods<>(new IndexedSampleList(samples), new IndexedAlleleList<>(alleles), reads);
+        final double[][][] likelihoods = fillWithRandomLikelihoods(samples, alleles, original);
+        final Function<GATKRead, Integer> grouping = read -> read.getStart() % 3;
+        final AlleleLikelihoods<GATKRead, Allele> grouped = original.groupEvidence(grouping, group -> group.get(0));
+
+        for (int s = 0; s < samples.length; s++) {
+            final List<GATKRead> sampleReads = original.sampleEvidence(s);
+            Assert.assertEquals(grouped.sampleEvidenceCount(s), sampleReads.stream().map(grouping).distinct().count());
+            for (int g = 0; g < grouped.sampleEvidenceCount(s); g++) {
+                final Integer key = grouping.apply(grouped.sampleEvidence(s).get(g));
+                for (int a = 0; a < alleles.length; a++) {
+                    double expected = 0;
+                    for (int r = 0; r < sampleReads.size(); r++) {
+                        if (grouping.apply(sampleReads.get(r)).equals(key)) {
+                            expected += likelihoods[s][a][r];
+                        }
+                    }
+                    Assert.assertEquals(grouped.sampleMatrix(s).get(a, g), expected, 1e-10);
+                }
+            }
+        }
     }
 
     @Test(dataProvider = "dataSets")
