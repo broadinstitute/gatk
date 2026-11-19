@@ -17,7 +17,7 @@ public class CalledHaplotypes {
     public CalledHaplotypes(final List<VariantContext> calls, final Set<Haplotype> calledHaplotypes) {
         this.calls = Utils.nonNull(calls, "calls cannot be null");
         this.calledHaplotypes = Utils.nonNull(calledHaplotypes, "calledHaplotypes cannot be null");
-        Utils.validateArg(calls.isEmpty() == calledHaplotypes.isEmpty(), "Calls and calledHaplotypes should both be empty or both not but got calls=" + calls + " calledHaplotypes=" + calledHaplotypes);
+        Utils.validateArg(calls.isEmpty() == calledHaplotypes.isEmpty(), () -> "Calls and calledHaplotypes should both be empty or both not but got calls=" + calls + " calledHaplotypes=" + calledHaplotypes);
     }
 
     /**
