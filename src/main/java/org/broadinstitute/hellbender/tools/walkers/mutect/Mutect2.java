@@ -13,11 +13,14 @@ import org.broadinstitute.hellbender.cmdline.programgroups.ShortVariantDiscovery
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.engine.spark.Mutect2AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.*;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCallerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
 import org.broadinstitute.hellbender.transformers.ReadTransformer;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 import org.broadinstitute.hellbender.utils.downsampling.MutectDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 import org.broadinstitute.hellbender.cmdline.ModeArgumentUtils;
@@ -221,6 +224,10 @@ public final class Mutect2 extends AssemblyRegionWalker {
      public static final String MUTECT_STATS_SHORT_NAME = "stats";
      public static final String DEFAULT_STATS_EXTENSION = ".stats";
 
+    public Mutect2() {
+        super(new Mutect2AssemblyRegionArgumentCollection());
+    }
+
     @ArgumentCollection
     protected M2ArgumentCollection MTAC = new M2ArgumentCollection();
 
@@ -325,6 +332,28 @@ public final class Mutect2 extends AssemblyRegionWalker {
                     MTAC.flowMode.getNameValuePairs(),
                     M2ArgumentCollection.FLOW_M2_MODE_LONG_NAME
                     );
+        }
+
+        // Permutect training data uses germline variants as examples of non-artifacts and panel of normals sites as examples
+        // of artifacts, so generating it always implies genotyping both
+        if (MTAC.permutectTrainingDataset != null && !(MTAC.genotypeGermlineSites && MTAC.genotypePonSites)) {
+            logger.info("--" + M2ArgumentCollection.PERMUTECT_TRAINING_DATASET_LONG_NAME + " implies --" + M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME +
+                    " and --" + M2ArgumentCollection.GENOTYPE_PON_SITES_LONG_NAME);
+            MTAC.genotypeGermlineSites = true;
+            MTAC.genotypePonSites = true;
+        }
+
+        // the activity profile keeps a fraction of germline-only clusters, but only when we genotype germline sites
+        if (!MTAC.genotypeGermlineSites) {
+            if (assemblyRegionArgs.genotypeGermlineSitesFraction != AssemblyRegionArgumentCollection.DEFAULT_GENOTYPE_GERMLINE_SITES_FRACTION) {
+                logger.warn("--" + AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME + " has no effect without --" +
+                        M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME);
+            }
+            assemblyRegionArgs.genotypeGermlineSitesFraction = 0.0;
+        } else if (assemblyRegionArgs.genotypeGermlineSitesFraction != AssemblyRegionArgumentCollection.DEFAULT_GENOTYPE_GERMLINE_SITES_FRACTION &&
+                assemblyRegionArgs.activityProfileType != ActivityProfile.ProfileType.MUTECT2) {
+            throw new CommandLineException.BadArgumentValue(AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME,
+                    "requires --" + AssemblyRegionArgumentCollection.ACTIVITY_PROFILE_TYPE_LONG_NAME + " " + ActivityProfile.ProfileType.MUTECT2);
         }
         return null;
     }

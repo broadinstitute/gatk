@@ -4,6 +4,7 @@ import htsjdk.samtools.SAMFileHeader;
 import htsjdk.samtools.reference.ReferenceSequenceFile;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.AssemblyRegion;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.utils.*;
 import org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
@@ -45,9 +46,9 @@ public class ActivityProfileUnitTest extends GATKBaseTest {
         List<AssemblyRegion> expectedRegions;
         int extension = 0;
         GenomeLoc regionStart = startLoc;
-        final ProfileType type;
+        final ActivityProfile.ProfileType type;
 
-        public BasicActivityProfileTestProvider(final ProfileType type, final List<Double> probs, boolean startActive, int ... startsAndStops) {
+        public BasicActivityProfileTestProvider(final ActivityProfile.ProfileType type, final List<Double> probs, boolean startActive, int ... startsAndStops) {
             super(BasicActivityProfileTestProvider.class);
             this.type = type;
             this.probs = probs;
@@ -61,10 +62,12 @@ public class ActivityProfileUnitTest extends GATKBaseTest {
 
         public ActivityProfile makeProfile() {
             switch ( type ) {
-                case Base: return new ActivityProfile(MAX_PROB_PROPAGATION_DISTANCE, ACTIVE_PROB_THRESHOLD, header);
-                case BandPass:
+                case BASE: return new ActivityProfile(MAX_PROB_PROPAGATION_DISTANCE, ACTIVE_PROB_THRESHOLD, header);
+                case BAND_PASS:
                     // zero size => equivalent to ActivityProfile
                     return new BandPassActivityProfile(MAX_PROB_PROPAGATION_DISTANCE, ACTIVE_PROB_THRESHOLD, 0, 0.01, false, header);
+                case MUTECT2:
+                    return new Mutect2ActivityProfile(new AssemblyRegionArgumentCollection(), header);
                 default: throw new IllegalStateException(type.toString());
             }
         }
@@ -83,13 +86,9 @@ public class ActivityProfileUnitTest extends GATKBaseTest {
         }
     }
 
-    private enum ProfileType {
-        Base, BandPass
-    }
-
     @DataProvider(name = "BasicActivityProfileTestProvider")
     public Object[][] makeQualIntervalTestProvider() {
-        for ( final ProfileType type : ProfileType.values() ) {
+        for ( final ActivityProfile.ProfileType type : ActivityProfile.ProfileType.values() ) {
             new BasicActivityProfileTestProvider(type, Arrays.asList(1.0), true, 0, 1);
             new BasicActivityProfileTestProvider(type, Arrays.asList(1.0, 0.0), true, 0, 1, 2);
             new BasicActivityProfileTestProvider(type, Arrays.asList(0.0, 1.0), false, 0, 1, 2);
