@@ -19,6 +19,7 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import java.util.*;
+import java.util.stream.IntStream;
 
 /**
  * Unit tests for PairHMMLikelihoodCalculationEngine
@@ -129,12 +130,31 @@ public final class PairHMMLikelihoodCalculationEngineUnitTest extends GATKBaseTe
 
         for ( int i = 1; i < insQuals.length; i++ ) {
 
-            final int repeatLengthFromCovariate = ReadLikelihoodCalculationEngine.findTandemRepeatUnits(readString.getBytes(), i-1).getRight();
+            final int repeatLengthFromCovariate = ReadLikelihoodCalculationEngine.findTandemRepeatLength(readString.getBytes(), i-1);
             final byte adjustedScore = PairHMMLikelihoodCalculationEngine.getErrorModelAdjustedQual(repeatLengthFromCovariate, 3.0);
 
             Assert.assertEquals(insQuals[i - 1], adjustedScore);
             Assert.assertEquals(delQuals[i - 1], adjustedScore);
         }
+    }
+
+    @DataProvider(name = "TandemRepeatLengthTestProvider")
+    public Object[][] createTandemRepeatLengthTestData() {
+        // the tandem repeat length at every offset of each read, as the Pair-returning findTandemRepeatUnits computed it
+        return new Object[][] {
+                {"TTCTTCCCCACACACAGT", new int[] {2, 1, 2, 2, 4, 4, 4, 4, 3, 4, 3, 4, 1, 1, 1, 1, 1, 1}},
+                {"AAAAAAAAAAAAAAAAAAAAAAAAAGTC", new int[] {20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 1, 1, 1, 1}},
+                {"GCAGCAGCAGCATTTGATCGATCGATCG", new int[] {3, 3, 4, 3, 3, 4, 1, 1, 1, 1, 1, 3, 3, 3, 3, 3, 2, 2, 3, 3, 1, 1, 1, 1, 1, 1, 1, 3}},
+                {"CACACACACACACACACACACACAT", new int[] {11, 12, 11, 12, 11, 12, 11, 12, 11, 12, 11, 12, 11, 12, 11, 12, 11, 12, 11, 12, 1, 1, 1, 1, 1}},
+                {"ACGTTGCAACGTGGTACA", new int[] {1, 1, 2, 2, 1, 1, 2, 2, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1}},
+        };
+    }
+
+    @Test(dataProvider = "TandemRepeatLengthTestProvider")
+    public void testFindTandemRepeatLength(final String read, final int[] expectedLengths) {
+        final int[] lengths = IntStream.range(0, read.length())
+                .map(offset -> ReadLikelihoodCalculationEngine.findTandemRepeatLength(read.getBytes(), offset)).toArray();
+        Assert.assertEquals(lengths, expectedLengths, read);
     }
 
     //Private function to compare 2d arrays

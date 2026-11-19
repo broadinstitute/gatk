@@ -361,7 +361,7 @@ public final class PDPairHMMLikelihoodCalculationEngine implements ReadLikelihoo
         }
 
         for ( int i = 1; i < readBases.length; i++ ) {
-            final int repeatLength = ReadLikelihoodCalculationEngine.findTandemRepeatUnits(readBases, i-1).getRight();
+            final int repeatLength = ReadLikelihoodCalculationEngine.findTandemRepeatLength(readBases, i-1);
             readInsQuals[i-1] = (byte) Math.min(0xff & readInsQuals[i - 1], 0xff & pcrIndelErrorModelCache[repeatLength]);
             readDelQuals[i-1] = (byte) Math.min(0xff & readDelQuals[i - 1], 0xff & pcrIndelErrorModelCache[repeatLength]);
         }
