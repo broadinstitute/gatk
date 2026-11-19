@@ -1,9 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
-import com.google.common.primitives.Ints;
+import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
@@ -11,6 +9,7 @@ import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.pileup.PileupElement;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.tsv.TableWriter;
@@ -35,13 +34,14 @@ public class F1R2CountsCollector {
     public static final String ALT_HIST_EXTENSION = ".alt_histogram";
     public static final String REF_HIST_EXTENSION = ".ref_histogram";
 
-    private static final Logger logger = LogManager.getLogger(F1R2CountsCollector.class);
-
     private final Set<String> samples;
 
     private final SAMFileHeader header;
 
     private final CollectF1R2CountsArgumentCollection CF1R2Args;
+
+    // the statistics of the current sample's pileup at the current locus, reused for every sample and locus
+    private final PileupStatistics pileupStatistics;
 
     // For each sample, the counts of sites without alt reads and with one alt read of the current block of the genome
     private final Map<String, BlockSiteCounts> blockSiteCounts;
@@ -83,6 +83,7 @@ public class F1R2CountsCollector {
         this.samples = samples.size() == 1 ? Collections.singleton(samples.iterator().next()) : new HashSet<>(samples);
         this.header = header;
         this.outputTarGzFile = outputTarGzFile;
+        pileupStatistics = new PileupStatistics(CF1R2Args.minMedianMapQual);
 
         blockSiteCounts = new HashMap<>(samples.size());
         refHistogramWriters = new HashMap<>(samples.size());
@@ -121,30 +122,29 @@ public class F1R2CountsCollector {
             return;
         }
 
-        if (refContext == null) {
-            logger.warn(String.format("Skipped a site with null reference at interval %s, k-mer = %s",
-                    referenceContext.getInterval().toString(), refContext));
-            return;
-        }
-
         // optimize the common case of a single tumor sample
         final String onlySample = samples.size() == 1 ? samples.iterator().next() : null;
-        final Map<String, ReadPileup> splitPileup = samples.size() == 1 ? Collections.singletonMap(onlySample,
-                        pileup.getPileupForSample(onlySample, header).makeFilteredPileup(pe -> pe.getQual() > CF1R2Args.minBaseQuality))
-                : pileup.splitBySample(header, null);
+        final Map<String, ReadPileup> splitPileup = samples.size() == 1 ?
+                Collections.singletonMap(onlySample, pileup.getPileupForSample(onlySample, header)) : pileup.splitBySample(header, null);
 
         for (final Map.Entry<String, ReadPileup> entry : splitPileup.entrySet()) {
             final String sample = entry.getKey();
+            final ReadPileup samplePileup = entry.getValue();
 
-            // if size == 1 we filtered by base quality already
-            final ReadPileup samplePileup = samples.size() == 1 ? entry.getValue() :
-                    entry.getValue().makeFilteredPileup(pe -> pe.getQual() > CF1R2Args.minBaseQuality);
-            final int[] baseCounts = samplePileup.getBaseCounts();
-            final int depth = (int) MathUtils.sum(baseCounts);
+            // one pass over the elements whose base qualities are above the minimum
+            pileupStatistics.reset();
+            for (final PileupElement pe : samplePileup) {
+                if (pe.getQual() > CF1R2Args.minBaseQuality) {
+                    pileupStatistics.add(pe);
+                }
+            }
 
-            if (!isPileupGood(samplePileup)) {
+            if (!pileupStatistics.isGood()) {
                 continue;
             }
+
+            final int[] baseCounts = pileupStatistics.baseCounts;
+            final int depth = pileupStatistics.depth;
 
             // Make a copy of base counts and update the counts of ref to -1. Now the maxElementIndex of the array gives us
             // the alt base.
@@ -166,8 +166,16 @@ public class F1R2CountsCollector {
             final int altCount = baseCounts[altBaseIndex];
             Utils.validate(altCount > 0, "We must have a nonzero alt read but got " + altCount);
 
-            final int refF1R2 = samplePileup.getNumberOfElements(pe -> Nucleotide.decode(pe.getBase()) == refBase && ReadUtils.isF1R2(pe.getRead()));
-            final int altF1R2 = samplePileup.getNumberOfElements(pe -> Nucleotide.decode(pe.getBase()) == altBase && ReadUtils.isF1R2(pe.getRead()));
+            // a second pass over the elements, only at the few sites with alt reads
+            int refF1R2 = 0;
+            int altF1R2 = 0;
+            for (final PileupElement pe : samplePileup) {
+                if (pe.getQual() > CF1R2Args.minBaseQuality && ReadUtils.isF1R2(pe.getRead())) {
+                    final Nucleotide base = Nucleotide.decode(pe.getBase());
+                    refF1R2 += base == refBase ? 1 : 0;
+                    altF1R2 += base == altBase ? 1 : 0;
+                }
+            }
 
             if (altCount == 1) {
                 final ReadOrientation type = altF1R2 == 1 ? ReadOrientation.F1R2 : ReadOrientation.F2R1;
@@ -272,23 +280,86 @@ public class F1R2CountsCollector {
     }
 
     /**
-     * Use a series of heuristics to detect a bad pileup.
+     * The statistics of a sample's pileup at a locus, accumulated in one pass over the elements whose base qualities are
+     * above the minimum: the counts of their A, C, G and T bases, and what decides whether the pileup is good, ie whether
+     * it has such bases, few elements next to indels, and a high median mapping quality.
      */
-    private boolean isPileupGood(final ReadPileup pileup){
-        final int[] baseCounts = pileup.getBaseCounts();
-        final int depth = (int) MathUtils.sum(baseCounts);
+    private static final class PileupStatistics {
+        private final int minMedianMappingQuality;
 
-        List<Integer> mappingQualities = Ints.asList(pileup.getMappingQuals());
+        // the counts of A, C, G and T, indexed as by BaseUtils.simpleBaseToBaseIndex, and their sum
+        final int[] baseCounts = new int[4];
+        int depth;
 
-        // If more than 1% of the reads is indel then consider this site an indel
-        final int indelThreshold = depth/100;
-        boolean isIndel = pileup.getNumberOfElements(pe -> pe.isDeletion() || pe.isAfterInsertion() || pe.isBeforeDeletionStart()) > indelThreshold;
+        private int numElements;
+        private int numIndelElements;
 
-        // If depth (the sum of base counts) is 0 but the pileup is non-empty, that means all the reads
-        // have deleted bases at this particular locus
-        isIndel = isIndel || depth == 0 && pileup.size() > 0;
+        // the number of mapping qualities at least the minimum median, the largest below it and the smallest at least it
+        private int numAtLeastMinimum;
+        private int maxBelowMinimum;
+        private int minAtLeastMinimum;
 
-        return depth > 0 && ! isIndel && MathUtils.median(mappingQualities) >= CF1R2Args.minMedianMapQual;
+        PileupStatistics(final int minMedianMappingQuality) {
+            this.minMedianMappingQuality = minMedianMappingQuality;
+            reset();
+        }
+
+        void reset() {
+            Arrays.fill(baseCounts, 0);
+            depth = 0;
+            numElements = 0;
+            numIndelElements = 0;
+            numAtLeastMinimum = 0;
+            maxBelowMinimum = Integer.MIN_VALUE;
+            minAtLeastMinimum = Integer.MAX_VALUE;
+        }
+
+        void add(final PileupElement pe) {
+            numElements++;
+            if (!pe.isDeletion()) {
+                final int baseIndex = BaseUtils.simpleBaseToBaseIndex(pe.getBase());
+                if (baseIndex != -1) {
+                    baseCounts[baseIndex]++;
+                    depth++;
+                }
+            }
+            if (pe.isDeletion() || pe.isAfterInsertion() || pe.isBeforeDeletionStart()) {
+                numIndelElements++;
+            }
+            final int mappingQuality = pe.getMappingQual();
+            if (mappingQuality >= minMedianMappingQuality) {
+                numAtLeastMinimum++;
+                minAtLeastMinimum = Math.min(minAtLeastMinimum, mappingQuality);
+            } else {
+                maxBelowMinimum = Math.max(maxBelowMinimum, mappingQuality);
+            }
+        }
+
+        /**
+         * Use a series of heuristics to detect a bad pileup.  Without A, C, G or T bases, eg if all the reads have deleted
+         * bases here, or if more than 1% as many elements as those bases are next to indels, consider the site an indel.
+         */
+        boolean isGood() {
+            return depth > 0 && numIndelElements <= depth / 100 &&
+                    medianIsAtLeast(numElements, numAtLeastMinimum, maxBelowMinimum, minAtLeastMinimum, minMedianMappingQuality);
+        }
+    }
+
+    /**
+     * Whether the median of some integers, as {@link MathUtils#median} computes it, is at least a threshold, given the
+     * number of integers, the number at least the threshold, the largest below it and the smallest at least it.  The median
+     * of an odd number of values is the middle one, and of an even number the mean of the middle two.
+     */
+    @VisibleForTesting
+    static boolean medianIsAtLeast(final int numValues, final int numAtLeast, final int maxBelow, final int minAtLeast,
+                                   final int threshold) {
+        Utils.validateArg(numValues > 0, "the median of no values is undefined");
+        if (2 * numAtLeast != numValues) {
+            // the middle value, or both middle values, are on the side of the threshold of the majority of values
+            return 2 * numAtLeast > numValues;
+        }
+        // an even number of values whose middle two are the largest below the threshold and the smallest at least it
+        return maxBelow + minAtLeast >= 2 * threshold;
     }
 
     public static List<File> getRefHistogramsFromExtractedTar(final File extractedTarDir) {
