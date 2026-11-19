@@ -759,6 +759,48 @@ A preemption burst while the cluster is fully allocated looks like stalls:
 allocation dips with nothing pending, then the backlog comes back as lost work
 is recomputed.
 
+## Why Hail is pinned at 0.2.134
+
+Nothing in GVS itself needs 0.2.134. Each workflow installs whatever
+`hail_version` names and starts its own cluster with `hailctl`, so it can run
+any version. The pin matches Terra instead. As of November 2026, Terra's
+Leonardo runtime ships Hail 0.2.134 on Dataproc 2.2.52
+(`leo-dataproc-image-2-2-52-debian12-...`). A VDS written with that version
+opens in a Terra notebook as Terra ships it, and an ad-hoc check there runs
+the same Hail as the workflows. So the limit falls on what readers can open,
+not on what GVS can run.
+
+Each Hail release fixes its Dataproc image in `IMAGE_VERSION` in
+`hailtop/hailctl/dataproc/start.py`:
+
+| Hail            | Dataproc image  | Spark |
+|-----------------|-----------------|-------|
+| 0.2.131–0.2.135 | 2.2.5-debian12  | 3.5.0 |
+| 0.2.136         | 2.2.60-debian12 | 3.5.0 |
+| 0.2.137–0.2.139 | 2.3.17-debian12 | 3.5.3 |
+| 0.2.140         | 3.0.1-debian13  | 4.1.2 |
+
+The change log does not mention the image changes in 0.2.136 and 0.2.137, so
+read the source at the release tag rather than relying on the log.
+
+Ad-hoc work in a Terra runtime therefore stops at the 2.2 line. That means
+0.2.135, or 0.2.136 if it is tested first. Beyond that, the newer version
+has to run on a cluster you start with `hailctl` yourself. Start it from the
+Terra terminal, which runs as the workspace's pet service account, with the
+`--service-account` and `--subnet` flags that `run_in_hail_cluster.py`
+passes. From your own account it cannot work, because you can neither act as
+the pet service account nor impersonate it. In VS-2067, a cluster create in a
+Terra workspace project as the pet account failed with
+`iam.serviceAccounts.getAccessToken` denied. Once the cluster is up, your own
+account can submit jobs to it, because that needs only `dataproc.jobs.create`.
+
+So before proposing a `hail_version` bump, check two things. First, that
+researchers' Hail can read a VDS written by the new version: older Hail is not
+guaranteed to read newer output, so write a small VDS with the candidate
+version and read it with the readers' version. Second, if the new version
+needs a newer Dataproc image than Terra's, that ad-hoc work moves to clusters
+launched with `hailctl`.
+
 ## Changing a Dataproc machine type is more than a name swap
 
 `run_in_hail_cluster.py` starts clusters through `hailctl dataproc start`, and
