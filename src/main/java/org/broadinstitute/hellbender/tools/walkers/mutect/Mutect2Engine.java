@@ -293,12 +293,18 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
     }
 
     public List<VariantContext> callRegion(final AssemblyRegion originalAssemblyRegion, final ReferenceContext referenceContext, final FeatureContext featureContext ) {
+        // without variation there are no calls, and the reads need no processing unless we emit reference confidence
+        final boolean noVariation = !originalAssemblyRegion.isActive() || originalAssemblyRegion.size() == 0;
+        if ( noVariation && !emitReferenceConfidence() ) {
+            return NO_CALLS;
+        }
+
         // divide PCR qual by two in order to get the correct total qual when treating paired reads as independent
         AssemblyBasedCallerUtils.cleanOverlappingReadPairs(originalAssemblyRegion.getReads(), samplesList, header,
                 false, OptionalInt.of(MTAC.pcrSnvQual /2), OptionalInt.of(MTAC.pcrIndelQual /2));
 
-        if ( !originalAssemblyRegion.isActive() || originalAssemblyRegion.size() == 0 ) {
-            return emitReferenceConfidence() ? referenceModelForNoVariation(originalAssemblyRegion) : NO_CALLS;  //TODD: does this need to be finalized?
+        if ( noVariation ) {
+            return referenceModelForNoVariation(originalAssemblyRegion);  //TODD: does this need to be finalized?
         }
 
         removeUnmarkedDuplicates(originalAssemblyRegion);
