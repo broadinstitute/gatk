@@ -120,7 +120,8 @@ workflow GvsOppositeHaplotypePLP {
             phased_vcf_index = phased_vcf_index,
             plp_vids = PrepareShards.plp_vids,
             plp_regions = PrepareShards.plp_regions,
-            reference = GetReference.reference,
+            reference_fasta = GetReference.reference.reference_fasta,
+            reference_fasta_index = GetReference.reference.reference_fasta_index,
             requester_pays_project = requester_pays_project,
             disk_gb = plp_disk_gb,
             memory_gb = plp_memory_gb,
@@ -135,7 +136,8 @@ workflow GvsOppositeHaplotypePLP {
                 phased_vcf_index = phased_vcf_index,
                 plp_vids = PrepareShards.plp_vids,
                 plp_haps = PhasePLPSites.plp_haps,
-                reference = GetReference.reference,
+                reference_fasta = GetReference.reference.reference_fasta,
+                reference_fasta_index = GetReference.reference.reference_fasta_index,
                 requester_pays_project = requester_pays_project,
                 indel_padding_bp = indel_padding_bp,
                 cpu = shard_cpu,
@@ -523,7 +525,11 @@ task PhasePLPSites {
         File? phased_vcf_index
         File plp_vids
         File plp_regions
-        Reference reference
+        # Files, not the Reference struct's Strings: given a gs:// path, norm -f fetches sequence over HTTP for
+        # every realigned record, and one transient error fails the task. Cromwell localizes the index next
+        # to the FASTA, where htslib looks for it.
+        File reference_fasta
+        File reference_fasta_index
         String? requester_pays_project
         Int disk_gb
         Int memory_gb
@@ -586,7 +592,7 @@ task PhasePLPSites {
         bcftools view --threads 4 --regions-file ~{plp_regions} --output-type u "${vcf}" \
             | bcftools annotate --remove INFO --output-type u \
             | bcftools norm --multiallelics -any --output-type u 2> split.log \
-            | bcftools norm --fasta-ref ~{reference.reference_fasta} --check-ref w \
+            | bcftools norm --fasta-ref ~{reference_fasta} --check-ref w \
                 --output-type b --output plp.bcf 2> realign.log \
             || { rc=$?; cat split.log realign.log >&2; report_resources >&2; exit ${rc}; }
         cat split.log realign.log
@@ -710,7 +716,11 @@ task ScanShard {
         File? phased_vcf_index
         File plp_vids
         File plp_haps
-        Reference reference
+        # Files, not the Reference struct's Strings: given a gs:// path, norm -f fetches sequence over HTTP for
+        # every realigned record, and one transient error fails the task. Cromwell localizes the index next
+        # to the FASTA, where htslib looks for it.
+        File reference_fasta
+        File reference_fasta_index
         String? requester_pays_project
         Int indel_padding_bp
         Int cpu
@@ -772,7 +782,7 @@ task ScanShard {
                 --output-type u "${vcf}" \
                 | bcftools annotate --remove INFO --output-type u \
                 | bcftools norm --multiallelics -any --output-type u 2> split.log \
-                | bcftools norm --fasta-ref ~{reference.reference_fasta} --check-ref w \
+                | bcftools norm --fasta-ref ~{reference_fasta} --check-ref w \
                     --output-type b --output start.bcf 2> realign.log \
                 || { rc=$?; cat split.log realign.log >&2; df -h . >&2; exit ${rc}; }
             cat split.log realign.log
