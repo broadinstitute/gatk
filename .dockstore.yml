@@ -536,5 +536,6 @@ workflows:
        branches:
          - master
          - ah_var_store
+         - FoxtrotRelease_20261116_02
        tags:
          - /.*/
