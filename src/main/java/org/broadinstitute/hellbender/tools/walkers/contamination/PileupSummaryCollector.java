@@ -9,6 +9,7 @@ import org.broadinstitute.hellbender.engine.AlignmentContext;
 import org.broadinstitute.hellbender.engine.FeatureContext;
 import org.broadinstitute.hellbender.engine.FeatureInput;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
@@ -17,6 +18,8 @@ import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.BitSet;
+import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -35,6 +38,15 @@ public final class PileupSummaryCollector implements AutoCloseable {
 
     private boolean sawVariantsWithoutAlleleFrequency = false;
     private boolean sawVariantsWithAlleleFrequency = false;
+
+    // The variants overlapping a window of the genome, windowContig:[windowStart, windowStart + VARIANT_WINDOW_SIZE),
+    // queried once for all the loci in the window, which come in order, rather than at every locus, and the positions of
+    // the window that they overlap, relative to its start.  Most loci overlap no variants.
+    private static final int VARIANT_WINDOW_SIZE = 10_000;
+    private String windowContig = null;
+    private int windowStart = 0;
+    private List<VariantContext> windowVariants = Collections.emptyList();
+    private final BitSet windowPositionsWithVariants = new BitSet(VARIANT_WINDOW_SIZE);
 
     public PileupSummaryCollector(final FeatureInput<VariantContext> variants, final double minPopulationAlleleFrequency,
                                   final double maxPopulationAlleleFrequency) {
@@ -62,7 +74,7 @@ public final class PileupSummaryCollector implements AutoCloseable {
      * Write a record to each table if this locus is a biallelic SNP among the variants, with population allele frequency in range
      */
     public void process(final AlignmentContext alignmentContext, final FeatureContext featureContext) {
-        final List<VariantContext> vcs = featureContext.getValues(variants);
+        final List<VariantContext> vcs = variantsAt(featureContext);
         if (vcs.isEmpty()) {
             return;
         }
@@ -81,6 +93,43 @@ public final class PileupSummaryCollector implements AutoCloseable {
                 }
             }
         }
+    }
+
+    /**
+     * The variants overlapping a FeatureContext's locus, as {@code featureContext.getValues(variants)} would give them,
+     * in the order of the window's query, which filters the same file-ordered cache of the variants
+     */
+    private List<VariantContext> variantsAt(final FeatureContext featureContext) {
+        final SimpleInterval locus = featureContext.getInterval();
+        if (locus == null || locus.size() != 1) {
+            return featureContext.getValues(variants);
+        }
+
+        final int position = locus.getStart();
+        if (!locus.getContig().equals(windowContig) || position < windowStart || position >= windowStart + VARIANT_WINDOW_SIZE) {
+            windowContig = locus.getContig();
+            windowStart = position;
+            windowVariants = featureContext.getValues(variants, 0, VARIANT_WINDOW_SIZE - 1);
+            windowPositionsWithVariants.clear();
+            for (final VariantContext vc : windowVariants) {
+                final int from = Math.max(vc.getStart(), windowStart) - windowStart;
+                final int to = Math.min(vc.getEnd(), windowStart + VARIANT_WINDOW_SIZE - 1) - windowStart;
+                if (from <= to) {
+                    windowPositionsWithVariants.set(from, to + 1);
+                }
+            }
+        }
+
+        if (!windowPositionsWithVariants.get(position - windowStart)) {
+            return Collections.emptyList();
+        }
+        final List<VariantContext> result = new ArrayList<>(1);
+        for (final VariantContext vc : windowVariants) {
+            if (vc.getStart() <= position && position <= vc.getEnd()) {
+                result.add(vc);
+            }
+        }
+        return result;
     }
 
     /**
