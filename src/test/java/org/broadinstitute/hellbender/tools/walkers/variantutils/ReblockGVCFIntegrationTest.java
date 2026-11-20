@@ -23,6 +23,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -110,6 +111,94 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         args2.add("L", intervals.getAbsolutePath());
         args2.addRaw("-gvcf");  //TODO: add --no-overlaps after ValidateVariants update is merged
         validator.runCommandLine(args2);  //will throw a UserException if GVCF isn't contiguous
+    }
+
+    @Test
+    public void testHeaderOmitsFieldsNoRecordCanCarry() {
+        final VCFHeader header = reblock(warpReblockingArgs(getTestFile("prodWesInput.g.vcf"), hg38Reference)).getLeft();
+        // final annotations the tool never computes, annotations it removes, and the MQ depth written only for legacy RAW_MQ input
+        for (final String key : Arrays.asList(GATKVCFConstants.QUAL_BY_DEPTH_KEY, GATKVCFConstants.FISHER_STRAND_KEY,
+                GATKVCFConstants.STRAND_ODDS_RATIO_KEY, GATKVCFConstants.AS_FISHER_STRAND_KEY,
+                GATKVCFConstants.AS_STRAND_ODDS_RATIO_KEY, GATKVCFConstants.EXCESS_HET_KEY,
+                GATKVCFConstants.INBREEDING_COEFFICIENT_KEY, GATKVCFConstants.AS_INBREEDING_COEFFICIENT_KEY,
+                GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED)) {
+            Assert.assertNull(header.getInfoHeaderLine(key), key);
+        }
+        Assert.assertNull(header.getFormatHeaderLine(GATKVCFConstants.MIN_DP_FORMAT_KEY));
+        for (final String key : Arrays.asList(GATKVCFConstants.RAW_QUAL_APPROX_KEY, GATKVCFConstants.VARIANT_DEPTH_KEY,
+                GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY)) {
+            Assert.assertNotNull(header.getInfoHeaderLine(key), key);
+        }
+    }
+
+    @Test
+    public void testEveryFieldOnRecordsIsDeclaredForHaplotypeCallerInput() {
+        assertEveryFieldOnRecordsIsDeclared(warpReblockingArgs(getTestFile("prodWesInput.g.vcf"), hg38Reference));
+    }
+
+    @Test
+    public void testEveryFieldOnRecordsIsDeclaredForLegacyInput() {
+        assertEveryFieldOnRecordsIsDeclared(warpReblockingArgs(getTestFile("prod.chr20snippet.withRawMQ.g.vcf"), hg38_reference_20_21));
+    }
+
+    @Test
+    public void testEveryFieldOnRecordsIsDeclaredForDragenInput() {
+        assertEveryFieldOnRecordsIsDeclared(warpReblockingArgs(getTestFile("dragen.g.vcf"), hg38Reference).add("L", "chr1"));
+    }
+
+    @Test
+    public void testLegacyRawMQInputKeepsMQDepth() {
+        final ArgumentsBuilder args = new ArgumentsBuilder().addReference(hg38_reference_20_21)
+                .add("V", getTestFile("prod.chr20snippet.withRawMQ.g.vcf"));
+        final VCFHeader header = reblock(args).getLeft();
+        Assert.assertNotNull(header.getInfoHeaderLine(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED));
+        Assert.assertNotNull(header.getInfoHeaderLine(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED));
+    }
+
+    @Test
+    public void testFloorBlocksWritesAPassedThroughNoCallBlockWithoutMinDP() throws IOException {
+        // a no-call reference block whose PLs don't favour hom-ref, which is written as it is rather than rebanded
+        final File input = createTempFile("noCallBlock", ".g.vcf");
+        Files.write(input.toPath(), Arrays.asList(
+                "##fileformat=VCFv4.2",
+                "##contig=<ID=chr20,length=64444167>",
+                "##INFO=<ID=END,Number=1,Type=Integer,Description=\"Stop position of the interval\">",
+                "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">",
+                "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Read depth\">",
+                "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype quality\">",
+                "##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description=\"Minimum DP observed within the GVCF block\">",
+                "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Phred-scaled genotype likelihoods\">",
+                "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tsample1",
+                "chr20\t10000000\t.\tG\t<NON_REF>\t.\t.\tEND=10000020\tGT:DP:GQ:MIN_DP:PL\t./.:18:9:18:20,0,135"));
+        final Pair<VCFHeader, List<VariantContext>> reblocked =
+                reblock(new ArgumentsBuilder().addReference(hg38_reference_20_21).add("V", input).addFlag("floor-blocks"));
+        Assert.assertNull(reblocked.getLeft().getFormatHeaderLine(GATKVCFConstants.MIN_DP_FORMAT_KEY));
+        Assert.assertEquals(reblocked.getRight().size(), 1);
+        Assert.assertFalse(reblocked.getRight().get(0).getGenotype(0).hasExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY));
+    }
+
+    private ArgumentsBuilder warpReblockingArgs(final File input, final String reference) {
+        final ArgumentsBuilder args = new ArgumentsBuilder().addReference(reference).add("V", input)
+                .addFlag("do-qual-approx").addFlag("floor-blocks");
+        Arrays.asList("20", "30", "40").forEach(band -> args.add("GQB", band));
+        return args;
+    }
+
+    // --lenient lets records with undeclared fields be written, so that the check below rather than the writer finds them
+    private void assertEveryFieldOnRecordsIsDeclared(final ArgumentsBuilder args) {
+        final Pair<VCFHeader, List<VariantContext>> reblocked = reblock(args.addFlag(StandardArgumentDefinitions.LENIENT_LONG_NAME));
+        final VCFHeader header = reblocked.getLeft();
+        Assert.assertFalse(reblocked.getRight().isEmpty());
+        for (final VariantContext vc : reblocked.getRight()) {
+            vc.getAttributes().keySet().forEach(key -> Assert.assertNotNull(header.getInfoHeaderLine(key), key + " at " + vc.getStart()));
+            vc.getGenotype(0).getExtendedAttributes().keySet().forEach(key -> Assert.assertNotNull(header.getFormatHeaderLine(key), key + " at " + vc.getStart()));
+        }
+    }
+
+    private Pair<VCFHeader, List<VariantContext>> reblock(final ArgumentsBuilder args) {
+        final File output = createTempFile("reblocked", ".g.vcf");
+        runCommandLine(args.addOutput(output));
+        return VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath());
     }
 
     @Test  //absolute minimal output

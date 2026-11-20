@@ -91,6 +91,9 @@ import java.util.stream.IntStream;
  * <p>Only single-sample GVCF files produced by HaplotypeCaller can be used as input for this tool.</p>
  * <p>Annotations and header lines that are uninformative for single-sample will be dropped: 
  *       MLEAC, MLEAF, DS, ExcessHet, HaplotypeScore, InbreedingCoeff, AS_InbreedingCoeff
+ * <p>The output header declares only the INFO fields the tool can write, and with --floor-blocks no MIN_DP. An
+ * annotation is copied only from input whose header declares it, so an input record carrying an annotation its header
+ * doesn't declare fails to write unless --lenient is given.</p>
  * <p>Note that when uncalled alleles are dropped, the original GQ may increase.  Use --keep-all-alts if GQ accuracy is a concern.</p>
  *
  */
@@ -264,9 +267,9 @@ public final class ReblockGVCF extends MultiVariantWalker {
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.AS_VARIANT_DEPTH_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY));
         headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY));
-        headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED));  //NOTE: this is deprecated, but keep until we reprocess all GVCFs
-        if (inputHeader.hasInfoLine(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED)) {
+        if (inputHeader.hasInfoLine(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED)) {  // see updateMQAnnotations
             headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED));
+            headerLines.add(GATKVCFHeaderLines.getInfoLine(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED));  //NOTE: this is deprecated, but keep until we reprocess all GVCFs
         }
 
         for(String annotation : annotationsToKeep) {
@@ -294,8 +297,12 @@ public final class ReblockGVCF extends MultiVariantWalker {
             }
         }
 
-        if ( dbsnp.dbsnp != null  ) {
-            VCFStandardHeaderLines.addStandardInfoLines(headerLines, true, VCFConstants.DBSNP_KEY);
+        // Declare only the fields output records can carry. A declared field that no record carries still costs tools
+        // downstream: GenomicsDBImport, for one, stores and processes every declared field for every record.
+        final Set<String> infoKeysWritten = getInfoKeysWritten(inputHeader);
+        headerLines.removeIf(line -> line instanceof VCFInfoHeaderLine info && !infoKeysWritten.contains(info.getID()));
+        if (floorBlocks) {  // floored blocks carry no MIN_DP, and GVCFBlockCombiner removes it from records written as they are
+            headerLines.removeIf(line -> line instanceof VCFFormatHeaderLine format && format.getID().equals(GATKVCFConstants.MIN_DP_FORMAT_KEY));
         }
 
         referenceReader = ReferenceUtils.createReferenceReader(referenceArguments.getReferenceSpecifier());
@@ -332,6 +339,43 @@ public final class ReblockGVCF extends MultiVariantWalker {
     @VisibleForTesting
     protected void createAnnotationEngine() {
         annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, Collections.emptyList(), false, false);
+    }
+
+    /**
+     * Returns the INFO keys an output record can carry: END, the annotations this tool computes, the legacy mapping
+     * quality keys when the input has them, the annotation engine's keys that {@link #copyInfoAnnotations} copies from
+     * input records (so only those the input declares), and the ones requested with --annotations-to-keep. The engine
+     * declares header lines for final annotations such as QD and FS, which this tool never computes, so a line for a key
+     * outside this set would describe a field no record carries.
+     */
+    private Set<String> getInfoKeysWritten(final VCFHeader inputHeader) {
+        final Set<String> keys = new HashSet<>(Arrays.asList(VCFConstants.END_KEY, VCFConstants.DEPTH_KEY,
+                GATKVCFConstants.RAW_QUAL_APPROX_KEY, GATKVCFConstants.AS_RAW_QUAL_APPROX_KEY,
+                GATKVCFConstants.VARIANT_DEPTH_KEY, GATKVCFConstants.AS_VARIANT_DEPTH_KEY,
+                GATKVCFConstants.RAW_GENOTYPE_COUNT_KEY, GATKVCFConstants.RAW_MAPPING_QUALITY_WITH_DEPTH_KEY));
+        if (inputHeader.hasInfoLine(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED)) {
+            keys.add(GATKVCFConstants.RAW_RMS_MAPPING_QUALITY_DEPRECATED);
+            keys.add(GATKVCFConstants.MAPPING_QUALITY_DEPTH_DEPRECATED);
+        }
+        final List<VariantAnnotation> engineAnnotations = new ArrayList<>(annotationEngine.getInfoAnnotations());
+        engineAnnotations.addAll(annotationEngine.getJumboInfoAnnotations());
+        for (final VariantAnnotation annotation : engineAnnotations) {
+            copiedInfoKeys(annotation).stream()
+                    .filter(inputHeader::hasInfoLine)
+                    .filter(key -> !infoFieldAnnotationKeyNamesToRemove.contains(key))
+                    .forEach(keys::add);
+        }
+        keys.addAll(annotationsToKeep);
+        return keys;
+    }
+
+    /** Returns the INFO keys of an annotation that {@link #copyInfoAnnotations} copies from an input record that has them. */
+    private static List<String> copiedInfoKeys(final VariantAnnotation annotation) {
+        final List<String> keys = new ArrayList<>(annotation.getKeyNames());
+        if (annotation instanceof AlleleSpecificAnnotation && annotation instanceof ReducibleAnnotation reducible) {
+            keys.addAll(reducible.getRawKeyNames());
+        }
+        return keys;
     }
 
     // get VariantContexts from input gVCFs and regenotype
