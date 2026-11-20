@@ -824,12 +824,33 @@ Terra workspace project as the pet account failed with
 `iam.serviceAccounts.getAccessToken` denied. Once the cluster is up, your own
 account can submit jobs to it, because that needs only `dataproc.jobs.create`.
 
-So before proposing a `hail_version` bump, check two things. First, that
-researchers' Hail can read a VDS written by the new version: older Hail is not
-guaranteed to read newer output, so write a small VDS with the candidate
-version and read it with the readers' version. Second, if the new version
-needs a newer Dataproc image than Terra's, that ad-hoc work moves to clusters
-launched with `hailctl`.
+### Hail's version numbers do not signal breaking changes
+
+Every Hail release is numbered `0.2.N`, so the version number never says
+whether a release breaks anything. Breaking changes do arrive under these
+increments:
+
+- **0.2.139 changed the on-disk index format, in one direction only.**
+  hail#15445 writes each index as a single flat `partname.idx` file instead of
+  a `partname.idx/` directory. Newer Hail still reads the old layout, but older
+  Hail cannot read the new one, and there is no option to keep writing the old
+  format. A VDS contains row indexes, so a VDS written by 0.2.139 or later
+  cannot be read by anyone on an older Hail. For an AoU deliverable that means
+  any researcher whose Workbench environment is older.
+- **0.2.140 changed the whole runtime.** It moves to Spark 4.1, Scala 2.13,
+  Java 17 or later, Dataproc 3.0 images, and Python 3.12 or later.
+
+So before proposing a `hail_version` bump, read the changelog
+(`hail/python/hail/docs/change_log.md` at the target tag) for every release
+between the pinned version and the target, not only the target's entry, and
+read `start.py` at the target tag for its Dataproc image, which the changelog
+may not mention. Then check two things. First, that researchers' Hail can
+read a VDS written by the new version. Because of the 0.2.139 index change, no
+release from 0.2.139 on passes this for readers on an older Hail, so raise it
+with AoU before a GVS VDS is written with one. For any other candidate, write
+a small VDS with it and read it with the readers' version. Second, if the new
+version needs a newer Dataproc image than Terra's, ad-hoc work moves to
+clusters launched with `hailctl`. VS-2066 tracks the upgrade.
 
 ## Changing a Dataproc machine type is more than a name swap
 
@@ -844,11 +865,13 @@ validate` and fail only when the cluster is created.
    (`hail_version` in `GvsUtils.wdl`) is 0.2.134. Hail 0.2.140 removes the
    table and asks `gcloud compute machine-types list` for the vCPUs and memory
    instead, so it accepts any type that gcloud knows. Upgrading to get that is
-   not a small change, though: see "Hail's version numbers do not signal
-   breaking changes" below. To try a newer family on the pinned version, add
-   entries to the table before hailctl starts, since memory sizing is the only
-   thing it uses the table for. Read the pinned version's `start.py` before
-   proposing a type.
+   not a small change, though: see "Why Hail is pinned at 0.2.134" above. To
+   try a newer family on the pinned version, add entries to the table before
+   hailctl starts, since memory sizing is the only thing it uses the table
+   for. For secondary workers alone there is a second route that needs no
+   table entry: `--secondary-worker-machine-types`, described in "Newer
+   families as Spot secondaries" below. Read the pinned version's `start.py`
+   before proposing a type.
 2. **Valid local SSD counts depend on the machine family and vCPU count.** n1
    accepts one SSD at any size, but N2 and N2D raise the minimum as vCPUs
    grow. N2D machines with 32 or 48 vCPUs reject 1 and accept 2, 4, 8, 16 or
@@ -867,12 +890,15 @@ validate` and fail only when the cluster is created.
    and C4D get local SSD only through `-lssd` shapes, with a fixed number of
    disks: one each for `c4-highmem-8-lssd` and `c4d-highmem-8-lssd`, five for
    `c4-highmem-32-lssd`. C3 has no highmem `-lssd` shape at all, and N4, N4D
-   and C4A support no local SSD. `run_in_hail_cluster.py` always passes
-   `--num-worker-local-ssds` and `--num-master-local-ssds`, and its "1 becomes
-   2" master rule is wrong for these shapes. Supporting them means letting the
-   script stop passing a count, and checking what Dataproc does when one is
-   passed. Dataproc's supported machine types page lists C3, C4, N4 and N4D,
-   but not C3D or C4D (checked November 2026).
+   and C4A support no local SSD. For the master and primary workers,
+   `run_in_hail_cluster.py` always passes `--num-worker-local-ssds` and
+   `--num-master-local-ssds`, and its "1 becomes 2" master rule is wrong for
+   these shapes. Secondary workers are handled: `--secondary-worker-machine-types`
+   requests 0 for an `-lssd` shape, and Dataproc still mounts the built-in SSD
+   and gives it to YARN (see "Newer families as Spot secondaries" below).
+   Dataproc's supported machine types page lists C3, C4, N4 and N4D, but not
+   C3D or C4D (checked November 2026). C4D nonetheless ran as Spot secondaries
+   in VS-2067.
 
 An error message describes one machine shape, not its family or its
 neighbors. In VS-2055 the n2d-highmem-32 error above was taken to mean that N2
@@ -1029,29 +1055,6 @@ Allow for leading whitespace, as above: `hail_gvs_import.py` imports `import_gvs
 inside a function. The list is transitive, so `GvsCreateVDS` ships `import_gvs_ploidy`
 because `import_gvs` imports it. `GvsCreateVDS` and `GvsMergeAndRescoreVDSes` ship
 their modules correctly and are the examples to copy.
-
-## Hail's version numbers do not signal breaking changes
-
-Every Hail release is numbered `0.2.N`, so the version number never says
-whether a release breaks anything. Breaking changes do arrive under these
-increments:
-
-- **0.2.139 changed the on-disk index format, in one direction only.**
-  hail#15445 writes each index as a single flat `partname.idx` file instead of
-  a `partname.idx/` directory. Newer Hail still reads the old layout, but older
-  Hail cannot read the new one, and there is no option to keep writing the old
-  format. A VDS contains row indexes, so a VDS written by 0.2.139 or later
-  cannot be read by anyone on an older Hail. For an AoU deliverable that means
-  any researcher whose Workbench environment is older.
-- **0.2.140 changed the whole runtime.** It moves to Spark 4.1, Scala 2.13,
-  Java 17 or later, Dataproc 3.0 images, and Python 3.12 or later.
-
-So before recommending a Hail version bump, read the changelog
-(`hail/python/hail/docs/change_log.md` at the target tag) for every release
-between the pinned version and the target. Do not read only the target's
-entry. Check in particular whether files the new version writes can still be
-read by older versions, and raise that with AoU before a GVS VDS is written
-with it. VS-2066 tracks the upgrade.
 
 # Documentation Conventions
 
