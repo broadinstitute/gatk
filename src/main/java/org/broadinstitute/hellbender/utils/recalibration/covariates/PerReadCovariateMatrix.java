@@ -58,7 +58,7 @@ public final class PerReadCovariateMatrix {
      * @param mismatch the mismatch key value
      * @param insertion the insertion key value
      * @param deletion the deletion key value
-     * @param readOffset the read offset, must be >= 0 and <= the read length used to create this ReadCovariates
+     * @param readOffset the read offset, must be >= 0 and <= the read length used to create this PerReadCovariateMatrix
      */
     public void addCovariate(final int mismatch, final int insertion, final int deletion, final int readOffset) {
         covariates[EventType.BASE_SUBSTITUTION.ordinal()][readOffset][currentCovariateIndex] = mismatch;

@@ -6,13 +6,17 @@ import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
+import java.util.List;
+
 /**
  * The Reported Quality Score covariate.
  */
-public final class QualityScoreCovariate implements Covariate {
+public final class QualityScoreCovariate implements RequiredCovariate {
     private static final long serialVersionUID = 1L;
+    public static final int MAX_QUAL_SCORE_KEY = QualityUtils.MAX_SAM_QUAL_SCORE;
 
-    public QualityScoreCovariate(final RecalibrationArgumentCollection RAC){
+    @Override
+    public void initialize(final RecalibrationArgumentCollection RAC, final List<String> readGroups) {
         //nothing to initialize
     }
 

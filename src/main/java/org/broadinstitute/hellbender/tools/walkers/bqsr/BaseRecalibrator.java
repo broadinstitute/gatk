@@ -22,6 +22,7 @@ import org.broadinstitute.hellbender.utils.recalibration.BaseRecalibrationEngine
 import org.broadinstitute.hellbender.utils.recalibration.QuantizationInfo;
 import org.broadinstitute.hellbender.utils.recalibration.RecalUtils;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
+import org.broadinstitute.hellbender.utils.recalibration.covariates.BQSRCovariateList;
 import picard.cmdline.programgroups.ReadDataManipulationProgramGroup;
 
 import java.io.PrintStream;
@@ -139,6 +140,11 @@ public final class BaseRecalibrator extends ReadWalker {
      */
     @Override
     public void onTraversalStart() {
+        if ( recalArgs.LIST_ONLY ) {
+            logger.info("Available covariates: " + BQSRCovariateList.getAllDiscoveredCovariateNames());
+            System.exit(0);
+        }
+
         if (recalArgs.FORCE_PLATFORM != null) {
             recalArgs.DEFAULT_PLATFORM = recalArgs.FORCE_PLATFORM;
         }

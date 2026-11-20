@@ -365,4 +365,31 @@ public final class RecalDatum implements Serializable {
         final double logLikelihood = MathUtils.logBinomialProbability((int) nObservations, (int) nErrors, QualityUtils.qualToErrorProb(qualityScore));
         return ( Double.isInfinite(logLikelihood) || Double.isNaN(logLikelihood) ) ? -Double.MAX_VALUE : logLikelihood;
     }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (this == obj){
+            return true;
+        }
+
+        if (!(obj instanceof RecalDatum) || obj == null) {
+            return false;
+        }
+
+        RecalDatum other = (RecalDatum) obj;
+        return numObservations == other.numObservations
+                && Double.compare(numMismatches, other.numMismatches) == 0
+                && Double.compare(reportedQuality, other.reportedQuality) == 0
+                && empiricalQuality == other.empiricalQuality;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = 17;
+        result = 31 * result + Long.hashCode(numObservations);
+        result = 31 * result + Double.hashCode(numMismatches);
+        result = 31 * result + Double.hashCode(reportedQuality);
+        result = 31 * result + Integer.hashCode(empiricalQuality);
+        return result;
+    }
 }

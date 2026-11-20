@@ -13,19 +13,20 @@ import org.broadinstitute.hellbender.utils.clipping.ClippingRepresentation;
 import org.broadinstitute.hellbender.utils.clipping.ReadClipper;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.recalibration.RecalibrationArgumentCollection;
+import java.util.List;
 
 /**
  * The read bases preceding and including the base in question (as opposed to reference bases).
  */
-public final class ContextCovariate implements Covariate {
+public final class ContextCovariate implements StandardCovariate {
     private static final long serialVersionUID = 1L;
     private static final Logger logger = LogManager.getLogger(ContextCovariate.class);
 
-    private final int mismatchesContextSize;
-    private final int indelsContextSize;
+    private int mismatchesContextSize;
+    private int indelsContextSize;
 
-    private final int mismatchesKeyMask;
-    private final int indelsKeyMask;
+    private int mismatchesKeyMask;
+    private int indelsKeyMask;
 
     private static final int LENGTH_BITS = 4;
     private static final int LENGTH_MASK = 15;
@@ -34,11 +35,12 @@ public final class ContextCovariate implements Covariate {
     // the maximum context size (number of bases) permitted; we need to keep the leftmost base free so that values are
     // not negative and we reserve 4 more bits to represent the length of the context; it takes 2 bits to encode one base.
     private static final int MAX_DNA_CONTEXT = 13;
-    private final byte lowQualTail;
+    private byte lowQualTail;
 
     public static final int UNKNOWN_OR_ERROR_CONTEXT_CODE = -1;
 
-    public ContextCovariate(final RecalibrationArgumentCollection RAC){
+    @Override
+    public void initialize(final RecalibrationArgumentCollection RAC, final List<String> readGroups) {
         mismatchesContextSize = RAC.MISMATCHES_CONTEXT_SIZE;
         indelsContextSize = RAC.INDELS_CONTEXT_SIZE;
         logger.debug("\t\tContext sizes: base substitution model " + mismatchesContextSize + ", indel substitution model " + indelsContextSize);
@@ -75,7 +77,7 @@ public final class ContextCovariate implements Covariate {
 
         final int readLengthAfterClipping = strandedClippedBases.length;
 
-        // this is necessary to ensure that we don't keep historical data in the ReadCovariates values
+        // this is necessary to ensure that we don't keep historical data in the PerReadCovariateMatrix values
         // since the context covariate may not span the entire set of values in read covariates
         // due to the clipping of the low quality bases
         if ( readLengthAfterClipping != originalReadLength) {
