@@ -545,6 +545,23 @@ public class CombineGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testDragstrAnnotationsAreDropped() throws IOException {
+        // the input record carries DRAGstrInfo=2,3 and DRAGstrParams=43.3,5.0,26.0 from HaplotypeCaller in DRAGEN mode
+        final File input = new File(toolsTestDir + "walkers/variantutils/ReblockGVCF/HG002.snippet.g.vcf");
+        final File output = createTempFile("combinegvcfs", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder();
+        args.addReference(new File(hg38Reference)).addOutput(output).addVCF(input);
+        runCommandLine(args);
+
+        final List<VariantContext> actualVCs = getVariantContexts(output);
+        Assert.assertTrue(actualVCs.stream().anyMatch(vc -> vc.getStart() == 103392924 && vc.getNAlleles() > 2));
+        for (final VariantContext vc : actualVCs) {
+            Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.DRAGSTR_INFO_KEY), vc.toString());
+            Assert.assertFalse(vc.hasAttribute(GATKVCFConstants.DRAGSTR_PARAMS_KEY), vc.toString());
+        }
+    }
+
+    @Test
     public void testDropSomaticFilteringAnnotations() throws IOException {
         final File output = createTempFile("combinegvcfs", ".vcf");
         final ArgumentsBuilder args = new ArgumentsBuilder();

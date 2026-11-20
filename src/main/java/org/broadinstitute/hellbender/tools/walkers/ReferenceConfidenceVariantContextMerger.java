@@ -49,6 +49,11 @@ public final class ReferenceConfidenceVariantContextMerger {
             VCFConstants.PHASE_SET_KEY);
     private static final List<String> SOMATIC_INFO_ANNOTATIONS_TO_DROP = Arrays.asList(
             GATKVCFConstants.POPULATION_AF_KEY);
+    // HaplotypeCaller DRAGEN-mode INFO fields that describe one sample's STR model at one site. They are fixed-count
+    // lists with no meaningful cross-sample combination (the median would collapse each to one value), so drop them.
+    private static final List<String> PER_SAMPLE_INFO_ANNOTATIONS_TO_DROP = Arrays.asList(
+            GATKVCFConstants.DRAGSTR_INFO_KEY,
+            GATKVCFConstants.DRAGSTR_PARAMS_KEY);
 
     public ReferenceConfidenceVariantContextMerger(VariantAnnotatorEngine engine, final VCFHeader inputHeader) {
         this(engine, inputHeader, false, false);
@@ -454,7 +459,8 @@ public final class ReferenceConfidenceVariantContextMerger {
         for ( final Map.Entry<String, Object> p : vcPair.getVc().getAttributes().entrySet() ) {
             final String key = p.getKey();
             if (SOMATIC_INFO_ANNOTATIONS_TO_MOVE.contains(key) ||
-                    SOMATIC_INFO_ANNOTATIONS_TO_DROP.contains(key) || Mutect2FilteringEngine.STANDARD_MUTECT_INFO_FIELDS_FOR_FILTERING.contains(key)) {
+                    SOMATIC_INFO_ANNOTATIONS_TO_DROP.contains(key) || PER_SAMPLE_INFO_ANNOTATIONS_TO_DROP.contains(key) ||
+                    Mutect2FilteringEngine.STANDARD_MUTECT_INFO_FIELDS_FOR_FILTERING.contains(key)) {
                 continue;
             }
 
