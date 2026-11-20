@@ -872,6 +872,16 @@ secondaries, 80 of each family. 360 creates failed on the quota and only 58
 on stockout. Spot CPUs come out of `PREEMPTIBLE_CPUS`, not the per-family CPU
 quotas, so the CPU quotas are not the limit.
 
+N4 and N4D are in `HYPERDISK_ONLY_FAMILIES` only so that they get the right
+boot disk. They have no local SSD in any form, neither attached nor as an
+`-lssd` shape, so the script gives them none, and Spark's shuffle and spill
+data then lands on the Hyperdisk boot disk. VS-2067 benchmarked C4 and C4D
+rather than these cheaper families for that reason: a comparison against n2d
+would have changed the I/O path as well as the CPU. So do not propose N4 or
+N4D as a drop-in replacement for an SSD-backed type. Treat them as untested
+until a benchmark has sized the boot disk and its Hyperdisk throughput for
+shuffle.
+
 ## Compare cluster configurations over repeated runs
 
 Two identical runs of the same Hail job can differ by more than the
