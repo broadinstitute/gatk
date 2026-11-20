@@ -61,7 +61,7 @@ class PloidyEmissionSampler(Sampler):
         self.ploidy_emission_basic_sampler = PloidyEmissionBasicSampler(
             ploidy_model, self.hybrid_inference_params.log_emission_samples_per_round)
 
-    def update_approximation(self, approx: pm.approximations.MeanField):
+    def update_approximation(self, approx: pm.MeanField):
         self.ploidy_emission_basic_sampler.update_approximation(approx)
 
     def draw(self) -> np.ndarray:

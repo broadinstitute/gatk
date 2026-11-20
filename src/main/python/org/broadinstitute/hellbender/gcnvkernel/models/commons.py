@@ -9,6 +9,12 @@ from pymc.util import makeiter
 from pymc.variational.opvi import _known_scan_ignored_inputs
 from typing import Tuple, Generator
 
+try:
+    from pymc.pytensorf import compile_pymc
+except ImportError:
+    # PyMC renamed compile_pymc to compile in 5.16.0.
+    from pymc.pytensorf import compile as compile_pymc
+
 _logger = logging.getLogger(__name__)
 
 _log_2_pi = 1.837877066409345  # np.log(2 * np.pi)
@@ -241,7 +247,7 @@ def get_sampling_generator_for_model_approximation(approx: pm.MeanField, node,
     node_sample = approx.symbolic_sample_over_posterior(node)
     node_sample = approx.set_size_and_deterministic(node_sample, s=1, d=False)
     # must use compile_pymc to pass random_seed for reproducible sampling
-    node_sample_func = pm.pytensorf.compile_pymc(inputs=[], outputs=node_sample,
-                                                 random_seed=approx.rng.randint(2**30, dtype=np.int64))
+    node_sample_func = compile_pymc(inputs=[], outputs=node_sample,
+                                    random_seed=approx.rng.randint(2**30, dtype=np.int64))
 
     return (node_sample_func()[0] for _ in range(num_samples))

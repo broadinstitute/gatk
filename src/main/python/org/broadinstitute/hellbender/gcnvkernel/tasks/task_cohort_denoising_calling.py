@@ -111,7 +111,7 @@ class CopyNumberEmissionSampler(Sampler):
         self.copy_number_emission_basic_sampler = CopyNumberEmissionBasicSampler(
             denoising_config, calling_config, hybrid_inference_params, shared_workspace, denoising_model)
 
-    def update_approximation(self, approx: pm.approximations.MeanField):
+    def update_approximation(self, approx: pm.MeanField):
         self.copy_number_emission_basic_sampler.update_approximation(approx)
 
     def draw(self) -> np.ndarray:

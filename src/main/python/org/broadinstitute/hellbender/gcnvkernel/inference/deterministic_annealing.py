@@ -1,15 +1,15 @@
 import pymc as pm
-from .. import types
+from pymc.variational.approximations import MeanField
+from pymc.variational.inference import Inference
+from pymc.variational.opvi import Approximation, Operator
 
-Operator = pm.operators.Operator
-Inference = pm.Inference
-MeanField = pm.MeanField
+from .. import types
 
 
 class KLThermal(Operator):
     """Kullback-Leibler divergence operator with finite temperature."""
     def __init__(self,
-                 approx: pm.approximations.Approximation,
+                 approx: Approximation,
                  temperature: types.TensorSharedVariable):
         """Initializer.
 

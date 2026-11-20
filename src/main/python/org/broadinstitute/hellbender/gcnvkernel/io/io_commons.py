@@ -22,6 +22,24 @@ _logger = logging.getLogger(__name__)
 VarMap = collections.namedtuple('VarMap', 'var, slc, shp, dtyp')
 
 
+def scalar_to_str(value) -> str:
+    """Returns the string representation of a python or numpy scalar.
+
+    NumPy renders the repr of its scalars as e.g. "np.float64(1.0)" since 2.0.0, which the GATK
+    tools reading these files cannot parse, so numpy scalars are converted to the equivalent
+    python scalar first.
+
+    Args:
+        value: a python or numpy scalar
+
+    Returns:
+        a string
+    """
+    if isinstance(value, np.generic):
+        value = value.item()
+    return repr(value)
+
+
 def read_csv(input_file: str,
              dtypes_dict: Dict[str, object] = None,
              mandatory_columns_set: Set[str] = None,

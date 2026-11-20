@@ -12,16 +12,16 @@ import scipy.sparse as sp
 import pytensor
 import pytensor.sparse as pst
 import pytensor.tensor as pt
-from pytensor.tensor.shape import unbroadcast
 from pymc import Normal, Deterministic, Potential, Lognormal, Exponential, TruncatedNormal, Uniform
 
 from . import commons
 from .fancy_model import GeneralizedContinuousModel
 from .pytensor_hmm import PytensorForwardBackward
-from .. import config, types
+from .. import config, pytensor_compat, types
 from ..structs.interval import Interval, GCContentAnnotation
 from ..structs.metadata import SampleMetadataCollection
 from ..tasks.inference_task_base import HybridInferenceParameters
+from ..pytensor_compat import SparseConstant, unbroadcast
 
 _logger = logging.getLogger(__name__)
 
@@ -450,7 +450,7 @@ class DenoisingCallingWorkspace:
 
         # GC bias factors
         # (to be initialized by calling `initialize_bias_inference_vars`)
-        self.W_gc_tg: Optional[pst.SparseConstant] = None
+        self.W_gc_tg: Optional[SparseConstant] = None
 
         # auxiliary data structures for hybrid q_c_expectation_mode calculation
         # (to be initialized by calling `initialize_bias_inference_vars`)
@@ -592,7 +592,7 @@ class DenoisingCallingWorkspace:
         return np.log(trans_tkl)
 
     @staticmethod
-    def _create_sparse_gc_bin_tensor_tg(interval_list: List[Interval], num_gc_bins: int) -> pst.SparseConstant:
+    def _create_sparse_gc_bin_tensor_tg(interval_list: List[Interval], num_gc_bins: int) -> SparseConstant:
         """Creates a sparse 2d pytensor tensor with shape (num_intervals, gc_bin). The sparse
         tensor represents a 1-hot mapping of each interval to its GC bin index. The range [0, 1]
         is uniformly divided into num_gc_bins.
@@ -611,7 +611,7 @@ class DenoisingCallingWorkspace:
         indptr = np.arange(0, num_intervals + 1)
         scipy_gc_matrix = sp.csr_matrix((data, indices, indptr), shape=(num_intervals, num_gc_bins),
                                         dtype=types.small_uint)
-        pytensor_gc_matrix: pst.SparseConstant = pst.as_sparse(scipy_gc_matrix)
+        pytensor_gc_matrix: SparseConstant = pst.as_sparse(scipy_gc_matrix)
         return pytensor_gc_matrix
 
     @staticmethod
@@ -705,7 +705,7 @@ class DenoisingModel(GeneralizedContinuousModel):
     # PR #8561 some broadcastable arguments in the distributions below in PyMC3 were removed
     """The gCNV coverage denoising model declaration (continuous RVs only; discrete posteriors are assumed
     to be given)."""
-    @pytensor.config.change_flags(compute_test_value="off")
+    @pytensor_compat.change_test_value_flag("off")
     def __init__(self,
                  denoising_model_config: DenoisingModelConfig,
                  shared_workspace: DenoisingCallingWorkspace,
@@ -888,7 +888,7 @@ class CopyNumberEmissionBasicSampler:
         self.denoising_model = denoising_model
         self._simultaneous_log_copy_number_emission_sampler = None
 
-    def update_approximation(self, approx: pm.approximations.MeanField):
+    def update_approximation(self, approx: pm.MeanField):
         """Generates a new compiled sampler based on a given approximation.
         Args:
             approx: an instance of PyMC mean-field approximation
@@ -907,16 +907,16 @@ class CopyNumberEmissionBasicSampler:
         assert self.is_sampler_initialized, "Posterior approximation is not provided yet"
         return self._simultaneous_log_copy_number_emission_sampler()
 
-    @pytensor.config.change_flags(compute_test_value="off")
-    def _get_compiled_simultaneous_log_copy_number_emission_sampler(self, approx: pm.approximations.MeanField):
+    @pytensor_compat.change_test_value_flag("off")
+    def _get_compiled_simultaneous_log_copy_number_emission_sampler(self, approx: pm.MeanField):
         """For a given variational approximation, returns a compiled pytensor function that draws posterior samples
         from log copy number emission probabilities."""
         log_copy_number_emission_stc = commons.stochastic_node_mean_symbolic(
             approx, self.denoising_model['log_copy_number_emission_stc'],
             size=self.inference_params.log_emission_samples_per_round)
         # must use compile_pymc to pass random_seed for reproducible sampling
-        return pm.pytensorf.compile_pymc(inputs=[], outputs=log_copy_number_emission_stc,
-                                         random_seed=approx.rng.randint(2**30, dtype=np.int64))
+        return commons.compile_pymc(inputs=[], outputs=log_copy_number_emission_stc,
+                                    random_seed=approx.rng.randint(2**30, dtype=np.int64))
 
 
 class HHMMClassAndCopyNumberBasicCaller:
@@ -1152,7 +1152,7 @@ class HHMMClassAndCopyNumberBasicCaller:
         self.shared_workspace.update_auxiliary_vars()
 
     @staticmethod
-    @pytensor.config.change_flags(compute_test_value="off")
+    @pytensor_compat.change_test_value_flag("off")
     def get_compiled_copy_number_hmm_specs_pytensor_func() -> pytensor.compile.Function:
         """Returns a compiled function that calculates the interval-class-averaged and probability-sum-normalized
         log copy number transition matrix and log copy number prior for the first interval
@@ -1177,7 +1177,7 @@ class HHMMClassAndCopyNumberBasicCaller:
         pi_jkc = pt.tensor3(name='pi_jkc')
         cnv_stay_prob_t = pt.vector(name='cnv_stay_prob_t')
         log_q_tau_tk = pt.matrix(name='log_q_tau_tk')
-        t_to_j_map = pt.vector(name='t_to_j_map', dtype=pytensor.scalar.uint32)
+        t_to_j_map = pt.vector(name='t_to_j_map', dtype=types.med_uint)
 
 
 
@@ -1206,7 +1206,7 @@ class HHMMClassAndCopyNumberBasicCaller:
 
         return pytensor.function(inputs=inputs, outputs=outputs)
 
-    @pytensor.config.change_flags(compute_test_value="off")
+    @pytensor_compat.change_test_value_flag("off")
     def _get_update_log_class_emission_tk_pytensor_func(self) -> pytensor.compile.Function:
         """Returns a compiled function that calculates the log interval class emission probability and
         directly updates `log_class_emission_tk` in the workspace.
@@ -1266,9 +1266,9 @@ class HHMMClassAndCopyNumberBasicCaller:
                 xi_tab.dimshuffle(0, 'x', 1, 2) * log_trans_tkab, axis=-1), axis=-1)
             return cum_sum_tk + current_log_class_emission_tk
 
-        reduce_output = pytensor.reduce(inc_log_class_emission_tk_except_for_first_interval,
-                                  sequences=[pi_sjkc, q_c_stc],
-                                  outputs_info=[log_class_emission_cum_sum_tk])
+        reduce_output = pytensor_compat.scan_reduce(inc_log_class_emission_tk_except_for_first_interval,
+                                                    sequences=[pi_sjkc, q_c_stc],
+                                                    outputs_info=[log_class_emission_cum_sum_tk])
         log_class_emission_tk_except_for_first_interval = reduce_output[0]
 
         # the first interval
