@@ -1170,6 +1170,26 @@ The distinction is whether the leftover changes what a merged workflow does. If
 it only affects what is visible or runnable on the developer's own branch, leave
 it alone.
 
+## Measure how often a buggy input class occurs before ranking it
+
+A bug confined to one class of variant is only as severe as that class is
+common in what GVS actually ingests, and reasoning about callers is a poor
+substitute for counting. Ingest works per sample, so the per-sample reblocked
+gVCFs in `gs://gvs-internal-quickstart/` are the right population: stream one
+HaplotypeCaller sample (`reblocked-v2-vcfs/*.haplotypeCalls.*`) and one DRAGEN
+sample (`reblocked-v3-vcfs/`) with `gcloud storage cat | gunzip -c`, drop
+`<NON_REF>`-only lines, and classify each ALT exactly as the code under review
+does. Each is about 1 GB and takes minutes.
+
+In VS-2058, a differential test against vrs-python showed that `VrsNormalizer`
+gives every delins (trimmed REF and ALT both non-empty, lengths differ) the
+wrong VRS state. The review first ranked that as the top bug and claimed
+HaplotypeCaller emits delins. Two whole-genome samples, about 9.1 million
+alleles, held no delins and no MNPs at all, so the finding became a latent
+spec-conformance question for the team rather than a merge blocker. Check the
+classifier against inputs known to contain the class (here the differential
+test's 2,811 delins) before trusting a zero.
+
 ## Re-reviewing a branch starts with the previous rounds
 
 A second or third review of the same branch is mostly triage, not fresh
