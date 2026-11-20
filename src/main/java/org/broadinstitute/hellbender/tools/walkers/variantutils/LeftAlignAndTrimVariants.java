@@ -28,11 +28,11 @@ import java.util.*;
  * Left-align indels in a variant callset
  *
  * <p>
- * This tool takes a VCF file, left-aligns the indels and trims common bases from indels,
+ * This tool takes a VCF file, left-aligns the indels and trims common bases from all variants,
  * leaving them with a minimum representation. The same indel can often be placed at multiple positions and still
  * represent the same haplotype. While the standard convention with VCF is to place an indel at the left-most position
  * this isn't always done, so this tool can be used to left-align them. This tool optionally splits multiallelic
- * sites into biallelics and left-aligns individual alleles. Optionally, the tool will not trim common bases from indels.
+ * sites into biallelics and left-aligns individual alleles. Optionally, the tool will not trim common bases from variants.
  * </p>
  *
  * <h3>Input</h3>
@@ -172,8 +172,10 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
     private VariantContextWriter vcfWriter = null;
     private VCFHeader vcfHeader = null;
 
-    VariantContext lastVariant;
-
+    private int thisVariantGroupStart = 0;
+    private String thisVariantGroupContig = null;
+    private VariantContext lastVariantWritten = null;
+    private final List<VariantContext> realignedVariants = new ArrayList<>();
     @Override
     public void onTraversalStart() {
         final Map<String, VCFHeader> vcfHeaders = Collections.singletonMap(getDrivingVariantsFeatureInput().getName(), getHeaderForVariants());
@@ -213,6 +215,17 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
      */
     @Override
     public void apply(VariantContext vc, ReadsContext readsContext, ReferenceContext ref, FeatureContext featureContext) {
+        if (vc.getContig() != thisVariantGroupContig || vc.getStart() > thisVariantGroupStart) {
+            realignedVariants.sort(Comparator.comparingInt(VariantContext::getStart));
+            for (VariantContext realignedVariant : realignedVariants) {
+                vcfWriter.add(realignedVariant);
+            }
+            thisVariantGroupStart = vc.getStart();
+            thisVariantGroupContig = vc.getContig();
+            lastVariantWritten = realignedVariants.isEmpty() ? lastVariantWritten : realignedVariants.get(realignedVariants.size() - 1);
+            realignedVariants.clear();
+        }
+
         final List<VariantContext> vcList;
         if (splitMultiallelics) {
             if (vc.getGenotypes().stream().anyMatch(g -> g.hasAnyAttribute(GATKVCFConstants.ALLELE_FRACTION_KEY))) {
@@ -231,12 +244,10 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
             if (indelLength > maxIndelSize) {
                 logger.info(String.format("%s (%d) at position %s:%d; skipping that record. Set --max-indel-length >= %d",
                         "Indel is too long", indelLength, splitVariant.getContig(), splitVariant.getStart(), indelLength));
-                lastVariant = splitVariant;
-                vcfWriter.add(splitVariant);
+                realignedVariants.add(splitVariant);
             } else {
-                final int distanceToLastVariant = (lastVariant != null && splitVariant.contigsMatch(lastVariant)) ? splitVariant.getStart() - lastVariant.getEnd() : Integer.MAX_VALUE;
-                lastVariant = GATKVariantContextUtils.leftAlignAndTrim(splitVariant, ref, Math.min(maxLeadingBases, distanceToLastVariant - 1), !dontTrimAlleles);
-                vcfWriter.add(lastVariant);
+                final int distanceToLastVariant = (lastVariantWritten != null && splitVariant.contigsMatch(lastVariantWritten)) ? splitVariant.getStart() - lastVariantWritten.getStart() : Integer.MAX_VALUE;
+                realignedVariants.add(GATKVariantContextUtils.leftAlignAndTrim(splitVariant, ref, Math.min(maxLeadingBases, distanceToLastVariant), !dontTrimAlleles));
             }
         }
     }
@@ -256,6 +267,11 @@ public class LeftAlignAndTrimVariants extends VariantWalker {
      */
     @Override
     public Object onTraversalSuccess() {
+        //write out remaining variants
+        realignedVariants.sort(Comparator.comparingInt(VariantContext::getStart));
+        for (VariantContext realignedVariant : realignedVariants) {
+            vcfWriter.add(realignedVariant);
+        }
         return "SUCCESS";
     }
 

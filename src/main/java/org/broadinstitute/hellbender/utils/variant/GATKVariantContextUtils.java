@@ -2220,15 +2220,13 @@ public final class GATKVariantContextUtils {
      * By definition, it will only take biallelic vc's. Splitting into multiple alleles has to be
      * handled by calling routine.
      *
-     * @param vc  Input VC with variants to left align
+     * @param vc  Input VC with variants to left align and trim
      * @param ref Reference context
      * @return new VC.
      */
-    public static VariantContext leftAlignAndTrim(final VariantContext vc, final ReferenceContext ref, final int maxLeadingBases, final boolean trim) {
-        if (!vc.isIndel() || maxLeadingBases <= 0) {
-            return vc;
-        }
+    public static VariantContext leftAlignAndTrim(final VariantContext vc, final ReferenceContext ref, final int maxLeadingBasesIndel, final boolean trim) {
 
+        final int maxLeadingBases = vc.isIndel() ? maxLeadingBasesIndel : 0;
 
         for(int leadingBases = Math.min(maxLeadingBases, 10); leadingBases <= maxLeadingBases; leadingBases = Math.min(2*leadingBases, maxLeadingBases)) {
             final int refStart = Math.max(vc.getStart() - leadingBases, 1);
@@ -2245,8 +2243,9 @@ public final class GATKVariantContextUtils {
                 return result;
             }).collect(Collectors.toList());
 
+            final int boundStart = vc.isSNP() || vc.isMNP() ? variantOffsetInRef : variantOffsetInRef + 1; // +1 to ignore the shared base in front for indels
             final List<IndexRange> alleleRanges = vc.getAlleles().stream()
-                    .map(a -> new IndexRange(variantOffsetInRef + 1, variantOffsetInRef + a.length()))  // +1 to ignore the shared base in front
+                    .map(a -> new IndexRange(boundStart, variantOffsetInRef + a.length()))
                     .collect(Collectors.toList());
 
             // note that this also shifts the index ranges as a side effect, so below they can be used to output allele bases
