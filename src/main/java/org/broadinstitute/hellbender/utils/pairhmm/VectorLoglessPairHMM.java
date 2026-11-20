@@ -137,17 +137,21 @@ public final class VectorLoglessPairHMM extends LoglessPairHMM {
         //       compute_full_prob()
         pairHmm.computeLikelihoods(readDataArray, mHaplotypeDataArray, mLogLikelihoodArray);
 
+        //Since the order of haplotypes in the List<Haplotype> and alleleHaplotypeMap is different,
+        //get the idx of each haplotype in the list, to get the right likelihoodValue.  Look them up once rather than for
+        //every read, since a lookup hashes and compares the haplotype's bases.
+        final List<Haplotype> haplotypes = logLikelihoods.alleles();
+        final int[] idxInsideHaplotypeList = new int[numHaplotypes];
+        for (int hapIdx = 0; hapIdx < numHaplotypes; hapIdx++) {
+            idxInsideHaplotypeList[hapIdx] = haplotypeToHaplotypeListIdxMap.get(haplotypes.get(hapIdx));
+        }
+
         int readIdx = 0;
         for (int r = 0; r < readListSize; r++) {
-            int hapIdx = 0;
-            for (final Haplotype haplotype : logLikelihoods.alleles()) {
-
-                //Since the order of haplotypes in the List<Haplotype> and alleleHaplotypeMap is different,
-                //get idx of current haplotype in the list and use this idx to get the right likelihoodValue
-                final int idxInsideHaplotypeList = haplotypeToHaplotypeListIdxMap.get(haplotype);
-                logLikelihoods.set(hapIdx, r, mLogLikelihoodArray[readIdx + idxInsideHaplotypeList]);
-                writeToResultsFileIfApplicable(readDataArray[r].readBases, readDataArray[r].readQuals, readDataArray[r].insertionGOP, readDataArray[r].deletionGOP, readDataArray[r].overallGCP, haplotype.getBases(), mLogLikelihoodArray[readIdx + idxInsideHaplotypeList]);
-                ++hapIdx;
+            for (int hapIdx = 0; hapIdx < numHaplotypes; hapIdx++) {
+                final double likelihood = mLogLikelihoodArray[readIdx + idxInsideHaplotypeList[hapIdx]];
+                logLikelihoods.set(hapIdx, r, likelihood);
+                writeToResultsFileIfApplicable(readDataArray[r].readBases, readDataArray[r].readQuals, readDataArray[r].insertionGOP, readDataArray[r].deletionGOP, readDataArray[r].overallGCP, haplotypes.get(hapIdx).getBases(), likelihood);
             }
             readIdx += numHaplotypes;
         }

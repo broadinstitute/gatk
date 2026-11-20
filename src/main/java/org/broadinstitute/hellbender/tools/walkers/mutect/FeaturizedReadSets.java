@@ -22,7 +22,6 @@ import org.broadinstitute.hellbender.utils.smithwaterman.SmithWatermanAlignmentC
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 
 /**
  * For each sample and for each allele a list feature vectors of supporting reads
@@ -38,22 +37,12 @@ public class FeaturizedReadSets {
     private static final SmithWatermanAligner aligner = SmithWatermanAligner.getAligner(SmithWatermanAligner.Implementation.JAVA);
     private static final int FEATURES_PER_RANGE = 5;
     private static final List<Integer> RANGES = List.of(5, 10, 20);
+    private static final int MAX_RANGE = Collections.max(RANGES);
     public static final int NUM_RANGED_FEATURES = FEATURES_PER_RANGE * RANGES.size();
     private static final int VERY_BAD_QUAL_THRESHOLD = 10;
     private static final int BAD_QUAL_THRESHOLD = 20;
 
     private FeaturizedReadSets() { }
-
-    public static List<List<List<Integer>>> getReadVectors(final VariantContext vc,
-                                                           final Collection<String> samples,
-                                                           final AlleleLikelihoods<GATKRead, Allele> likelihoods,
-                                                           final AlleleLikelihoods<Fragment, Haplotype> haplotypeLikelihoods,
-                                                           final int refDownsample,
-                                                           final int altDownsample,
-                                                           final M2ArgumentCollection.PermutectDatasetMode permutectDatasetMode,
-                                                           final Map<String, Integer> readGroupIndices) {
-        return getReadVectors(vc, samples, likelihoods, haplotypeLikelihoods, refDownsample, altDownsample, Collections.emptyMap(), permutectDatasetMode, readGroupIndices);
-    }
 
     // returns Lists (in allele order) of lists of read vectors supporting each allele
     public static List<List<List<Integer>>> getReadVectors(final VariantContext vc,
@@ -163,13 +152,22 @@ public class FeaturizedReadSets {
             final List<int[]> rangedFeatures = RANGES.stream().map(range -> new int[FEATURES_PER_RANGE]).toList();
 
             while (!asm.isRightEdge()) {
-                final PileupElement pe = asm.makePileupElement();
-                final int distanceFromVariant = Math.abs(asm.getReadOffset() - readPositionOfVariantStart);
+                final int offsetFromVariant = asm.getReadOffset() - readPositionOfVariantStart;
+
+                // read offsets never decrease as we step forward, so no later base is in range either
+                if (offsetFromVariant > MAX_RANGE) {
+                    break;
+                }
 
                 // pick which array's features we are accounting.  If the ranges are 5, 10, 20, and the distance is, say 8, then the '<= 10' range is relevant
-                final OptionalInt relevantRange = IntStream.range(0, RANGES.size()).filter(n -> distanceFromVariant <= RANGES.get(n)).findFirst();
-                if (relevantRange.isPresent()) {
-                    final int[] featuresToAddTo = rangedFeatures.get(relevantRange.getAsInt());
+                final int distanceFromVariant = Math.abs(offsetFromVariant);
+                if (distanceFromVariant <= MAX_RANGE) {
+                    int relevantRange = 0;
+                    while (distanceFromVariant > RANGES.get(relevantRange)) {
+                        relevantRange++;
+                    }
+                    final int[] featuresToAddTo = rangedFeatures.get(relevantRange);
+                    final PileupElement pe = asm.makePileupElement();
                     if (pe.isBeforeInsertion()) {
                         featuresToAddTo[0] += pe.getLengthOfImmediatelyFollowingIndel();
                     }
