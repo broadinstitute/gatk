@@ -2,8 +2,6 @@ package org.broadinstitute.hellbender.cmdline;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
-import com.intel.gkl.compression.IntelDeflaterFactory;
-import com.intel.gkl.compression.IntelInflaterFactory;
 import htsjdk.samtools.Defaults;
 import htsjdk.samtools.metrics.Header;
 import htsjdk.samtools.metrics.MetricBase;
@@ -12,6 +10,8 @@ import htsjdk.samtools.metrics.StringHeader;
 import htsjdk.samtools.util.BlockCompressedOutputStream;
 import htsjdk.samtools.util.BlockGunzipper;
 import htsjdk.samtools.util.Log;
+import htsjdk.samtools.util.zip.DeflaterFactory;
+import htsjdk.samtools.util.zip.InflaterFactory;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.broadinstitute.barclay.argparser.*;
@@ -36,6 +36,8 @@ import java.util.*;
 import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 import java.util.stream.Collectors;
+import java.util.zip.Deflater;
+import java.util.zip.Inflater;
 
 /**
  * Abstract class to facilitate writing command-line programs.
@@ -75,10 +77,10 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
     @Argument(fullName = StandardArgumentDefinitions.QUIET_NAME, doc = "Whether to suppress job-summary info on System.err.", common=true)
     public Boolean QUIET = false;
 
-    @Argument(fullName = StandardArgumentDefinitions.USE_JDK_DEFLATER_LONG_NAME, shortName = StandardArgumentDefinitions.USE_JDK_DEFLATER_SHORT_NAME, doc = "Whether to use the JdkDeflater (as opposed to IntelDeflater)", common=true)
+    @Argument(fullName = StandardArgumentDefinitions.USE_JDK_DEFLATER_LONG_NAME, shortName = StandardArgumentDefinitions.USE_JDK_DEFLATER_SHORT_NAME, doc = "Whether to use the JdkDeflater (as opposed to the libdeflate-based deflater)", common=true)
     public boolean useJdkDeflater = false;
 
-    @Argument(fullName = StandardArgumentDefinitions.USE_JDK_INFLATER_LONG_NAME, shortName = StandardArgumentDefinitions.USE_JDK_INFLATER_SHORT_NAME, doc = "Whether to use the JdkInflater (as opposed to IntelInflater)", common=true)
+    @Argument(fullName = StandardArgumentDefinitions.USE_JDK_INFLATER_LONG_NAME, shortName = StandardArgumentDefinitions.USE_JDK_INFLATER_SHORT_NAME, doc = "Whether to use the JdkInflater (as opposed to the libdeflate-based inflater)", common=true)
     public boolean useJdkInflater = false;
 
     @Argument(fullName = StandardArgumentDefinitions.NIO_MAX_REOPENS_LONG_NAME, shortName = StandardArgumentDefinitions.NIO_MAX_REOPENS_SHORT_NAME, doc = "If the GCS bucket channel errors out, how many times it will attempt to re-initiate the connection", optional = true)
@@ -183,13 +185,10 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
             throw new UserException.BadTempDir(p, e.getMessage(), e);
         }
 
-        //Set defaults (note: setting them here means they are not controllable by the user)
-        if (! useJdkDeflater) {
-            BlockCompressedOutputStream.setDefaultDeflaterFactory(new IntelDeflaterFactory());
-        }
-        if (! useJdkInflater) {
-            BlockGunzipper.setDefaultInflaterFactory(new IntelInflaterFactory());
-        }
+        // HTSJDK's stock factories use libdeflate when its native library is available and fall back to the JDK
+        // otherwise. The factories are process-wide, so always set them so that a prior tool's choice doesn't leak.
+        BlockCompressedOutputStream.setDefaultDeflaterFactory(useJdkDeflater ? new JdkDeflaterFactory() : new DeflaterFactory());
+        BlockGunzipper.setDefaultInflaterFactory(useJdkInflater ? new JdkInflaterFactory() : new InflaterFactory());
 
         BucketUtils.setGlobalNIODefaultOptions(NIO_MAX_REOPENS, NIO_PROJECT_FOR_REQUESTER_PAYS);
 
@@ -439,10 +438,8 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
         // Log the configuration options:
         ConfigFactory.logConfigFields(ConfigFactory.getInstance().getGATKConfig(), Log.LogLevel.DEBUG);
 
-        final boolean usingIntelDeflater = (BlockCompressedOutputStream.getDefaultDeflaterFactory() instanceof IntelDeflaterFactory && ((IntelDeflaterFactory)BlockCompressedOutputStream.getDefaultDeflaterFactory()).usingIntelDeflater());
-        logger.info("Deflater: " + (usingIntelDeflater ? "IntelDeflater": "JdkDeflater"));
-        final boolean usingIntelInflater = (BlockGunzipper.getDefaultInflaterFactory() instanceof IntelInflaterFactory && ((IntelInflaterFactory)BlockGunzipper.getDefaultInflaterFactory()).usingIntelInflater());
-        logger.info("Inflater: " + (usingIntelInflater ? "IntelInflater": "JdkInflater"));
+        logger.info("Deflater: " + getDeflaterName());
+        logger.info("Inflater: " + getInflaterName());
 
         logger.info("GCS max retries/reopens: " + BucketUtils.getCloudStorageConfiguration(NIO_MAX_REOPENS, "").maxChannelReopens());
         if (Strings.isNullOrEmpty(NIO_PROJECT_FOR_REQUESTER_PAYS)) {
@@ -543,5 +540,41 @@ public abstract class CommandLineProgram implements CommandLinePluginProvider {
             }
         }
         
+    }
+
+    /** Returns the simple class name of the deflater the current default factory produces (e.g. LibdeflateDeflater or Deflater). */
+    public static String getDeflaterName() {
+        final Deflater deflater = BlockCompressedOutputStream.getDefaultDeflaterFactory().makeDeflater(Defaults.COMPRESSION_LEVEL, true);
+        try {
+            return deflater.getClass().getSimpleName();
+        } finally {
+            deflater.end();
+        }
+    }
+
+    /** Returns the simple class name of the inflater the current default factory produces (e.g. LibdeflateInflater or Inflater). */
+    public static String getInflaterName() {
+        final Inflater inflater = BlockGunzipper.getDefaultInflaterFactory().makeInflater(true);
+        try {
+            return inflater.getClass().getSimpleName();
+        } finally {
+            inflater.end();
+        }
+    }
+
+    /** Factory that always produces the JDK's own deflater, bypassing libdeflate. */
+    private static final class JdkDeflaterFactory extends DeflaterFactory {
+        @Override
+        public Deflater makeDeflater(final int compressionLevel, final boolean nowrap) {
+            return new Deflater(compressionLevel, nowrap);
+        }
+    }
+
+    /** Factory that always produces the JDK's own inflater, bypassing libdeflate. */
+    private static final class JdkInflaterFactory extends InflaterFactory {
+        @Override
+        public Inflater makeInflater(final boolean nowrap) {
+            return new Inflater(nowrap);
+        }
     }
 }
