@@ -113,9 +113,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
             MafOutputRendererConstants.FieldName_ref_context, MafOutputRendererConstants.FieldName_Other_Transcripts);
 
     private static String hg38Chr3Ref;
-    private static String b37Chr3Ref;
-    private static String b37Chr2Ref;
     private static String hg19Chr3Ref;
+    private static String b37Chr2Ref;
     private static String hg19Chr19Ref;
 
     private static String eColiRef;
@@ -132,9 +131,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         }
 
         hg38Chr3Ref = FuncotatorReferenceTestUtils.retrieveHg38Chr3Ref();
-        b37Chr3Ref = FuncotatorReferenceTestUtils.retrieveB37Chr3Ref();
-        b37Chr2Ref = FuncotatorReferenceTestUtils.retrieveB37Chr2Ref();
         hg19Chr3Ref = FuncotatorReferenceTestUtils.retrieveHg19Chr3Ref();
+        b37Chr2Ref = FuncotatorReferenceTestUtils.retrieveB37Chr2Ref();
         hg19Chr19Ref = FuncotatorReferenceTestUtils.retrieveHg19Chr19Ref();
         eColiRef = FuncotatorReferenceTestUtils.retrieveEcoliReference();
     }
@@ -755,7 +753,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
                 PIK3CA_VCF_HG19,
                 outputFile,
-                b37Chr3Ref,
+                b37Reference,
                 DS_PIK3CA_DIR,
                 FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                 outputFormatType,
@@ -794,7 +792,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
                 PIK3CA_VCF_HG19,
                 outputFile,
-                b37Chr3Ref,
+                b37Reference,
                 DS_PIK3CA_DIR,
                 FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                 outputFormatType,
@@ -873,7 +871,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
                 XSV_CLINVAR_MULTIHIT_TEST_VCF,
                 outputFile,
-                b37Chr2Ref,
+                b37Reference,
                 DS_XSV_CLINVAR_TESTS,
                 FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                 outputFormatType,
@@ -903,7 +901,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
                 XSV_CLINVAR_COL_TEST_VCF,
                 outputFile,
-                b37Chr2Ref,
+                b37Reference,
                 DS_XSV_CLINVAR_TESTS,
                 FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                 outputFormatType,
@@ -1143,8 +1141,8 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
     @DataProvider(name = "provideForMafVcfConcordance")
     final Object[][] provideForMafVcfConcordance() {
         return new Object[][]{
-                {PIK3CA_VCF_HG19_SNPS, b37Chr3Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Collections.singletonList("Gencode_19_proteinChange"), Collections.singletonList(MafOutputRendererConstants.FieldName_Protein_Change), DS_PIK3CA_DIR, true, 15},
-                {PIK3CA_VCF_HG19_INDELS, b37Chr3Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Collections.singletonList("Gencode_19_proteinChange"), Collections.singletonList(MafOutputRendererConstants.FieldName_Protein_Change), DS_PIK3CA_DIR, true, 57},
+                {PIK3CA_VCF_HG19_SNPS, b37Reference, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Collections.singletonList("Gencode_19_proteinChange"), Collections.singletonList(MafOutputRendererConstants.FieldName_Protein_Change), DS_PIK3CA_DIR, true, 15},
+                {PIK3CA_VCF_HG19_INDELS, b37Reference, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Collections.singletonList("Gencode_19_proteinChange"), Collections.singletonList(MafOutputRendererConstants.FieldName_Protein_Change), DS_PIK3CA_DIR, true, 57},
                 {MUC16_VCF_HG19, hg19Chr19Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, Collections.singletonList("Gencode_19_proteinChange"), Collections.singletonList(MafOutputRendererConstants.FieldName_Protein_Change), FuncotatorTestConstants.FUNCOTATOR_DATA_SOURCES_MAIN_FOLDER, false, 2057},
                 {
                         PIK3CA_VCF_HG38,
@@ -1156,7 +1154,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
                         false,
                         104,
                 },
-                {PIK3CA_VCF_HG19_INDELS, b37Chr3Ref, FuncotatorTestConstants.REFERENCE_VERSION_HG19, VCF_FIELDS_GENCODE_19_DS, MAF_FIELDS_GENCODE_DS, DS_PIK3CA_DIR, true, 57},
+                {PIK3CA_VCF_HG19_INDELS, b37Reference, FuncotatorTestConstants.REFERENCE_VERSION_HG19, VCF_FIELDS_GENCODE_19_DS, MAF_FIELDS_GENCODE_DS, DS_PIK3CA_DIR, true, 57},
         };
     }
 
@@ -1401,7 +1399,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
                 PIK3CA_VCF_HG19_ALTS,
                 vcfOutputFile,
-                b37Chr3Ref,
+                b37Reference,
                 DS_PIK3CA_DIR,
                 FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                 vcfOutputFormatType,
@@ -1539,7 +1537,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
                 PIK3CA_VCF_HG19,
                 outputFile,
-                b37Chr3Ref,
+                b37Reference,
                 DS_PIK3CA_DIR,
                 FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                 FuncotatorArgumentDefinitions.OutputFormatType.MAF,
@@ -1578,7 +1576,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
                 PIK3CA_VCF_HG19,
                 outputFile,
-                b37Chr3Ref,
+                b37Reference,
                 DS_PIK3CA_DIR,
                 FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                 outputFormatType,
@@ -1631,7 +1629,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
                 tnVcf,
                 outputFile,
-                b37Chr3Ref,
+                b37Reference,
                 DS_PIK3CA_DIR,
                 FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                 outputFormatType,
@@ -1687,7 +1685,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
                 tnVcf,
                 outputFile,
-                b37Chr3Ref,
+                b37Reference,
                 DS_PIK3CA_DIR,
                 FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                 outputFormatType,
@@ -1741,7 +1739,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
                 vcfFile,
                 outputFile,
-                b37Chr3Ref,
+                b37Reference,
                 DS_PIK3CA_DIR,
                 FuncotatorTestConstants.REFERENCE_VERSION_HG19,
                 outputFormatType,
@@ -1761,7 +1759,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
         // The input VCF and Reference file are incompatible because
         // the reference file dictionary has only chromosome 2 and the
         // input VCF has a dictionary that contains all contigs for HG19.
-        // Therefore the reference dictionary is NOT a superset of the input VCF dictionary.
+        // Therefore, the reference dictionary is NOT a superset of the input VCF dictionary.
 
         final ArgumentsBuilder arguments = createBaselineArgumentsForFuncotator(
                 XSV_CLINVAR_COL_TEST_VCF,
@@ -1823,7 +1821,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         arguments.addVCF(new File(EMPTY_VCF));
         arguments.addOutput(outputFile);
-        arguments.addReference(new File(b37Chr3Ref));
+        arguments.addReference(new File(b37Reference));
         arguments.add(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, DS_PIK3CA_DIR);
         arguments.add(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
         arguments.add(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
@@ -1853,7 +1851,7 @@ public class FuncotatorIntegrationTest extends CommandLineProgramTest {
 
         arguments.addVCF(new File(MAF_DBSNP_TEST));
         arguments.addOutput(outputFile);
-        arguments.addReference(new File(b37Chr3Ref));
+        arguments.addReference(new File(b37Reference));
         arguments.add(FuncotatorArgumentDefinitions.DATA_SOURCES_PATH_LONG_NAME, PIK3CA_DBSNP_DS);
         arguments.add(FuncotatorArgumentDefinitions.REFERENCE_VERSION_LONG_NAME, FuncotatorTestConstants.REFERENCE_VERSION_HG19);
         arguments.add(FuncotatorArgumentDefinitions.OUTPUT_FORMAT_LONG_NAME, outputFormatType.toString());
