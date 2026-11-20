@@ -1,0 +1,20 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: gatk
+  description: Official code repository for GATK versions 4 and up
+  tags:
+    - gatk
+    - foss
+  annotations:
+    github.com/project-slug: broadinstitute/gatk
+    backstage.io/source-template: template:default/open-pr-with-catalog-entry
+    backstage.io/techdocs-ref: dir:.
+  links:
+    - url: https://software.broadinstitute.org/gatk
+      title: Broad GATK Home Page
+      icon: dashboard
+spec:
+  type: service
+  lifecycle: production
+  owner: gatk-dev
