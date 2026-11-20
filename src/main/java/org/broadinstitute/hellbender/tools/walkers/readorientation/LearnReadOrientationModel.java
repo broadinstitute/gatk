@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
 import com.google.common.annotations.VisibleForTesting;
-import htsjdk.samtools.metrics.MetricsFile;
 import htsjdk.samtools.util.*;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -15,6 +14,8 @@ import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.tools.walkers.mutect.Mutect2;
+import org.broadinstitute.hellbender.utils.tsv.TableReader;
+import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
 import java.io.*;
 import java.util.*;
@@ -83,24 +84,12 @@ public class LearnReadOrientationModel extends CommandLineProgram {
 
         IntStream.range(0, inputTarGzs.size()).forEach(n -> IOUtils.extractTarGz(inputTarGzs.get(n).toPath(), tmpDirs.get(n).toPath()));
 
-        final List<File> refHistogramFiles = tmpDirs.stream().flatMap(dir -> F1R2CountsCollector.getRefHistogramsFromExtractedTar(dir).stream()).collect(Collectors.toList());
-        final List<File> altHistogramFiles = tmpDirs.stream().flatMap(dir -> F1R2CountsCollector.getAltHistogramsFromExtractedTar(dir).stream()).collect(Collectors.toList());
+        final List<File> refHistogramTables = tmpDirs.stream().flatMap(dir -> F1R2CountsCollector.getRefHistogramsFromExtractedTar(dir).stream()).collect(Collectors.toList());
+        final List<File> altHistogramTables = tmpDirs.stream().flatMap(dir -> F1R2CountsCollector.getAltHistogramsFromExtractedTar(dir).stream()).collect(Collectors.toList());
 
-        final Map<String, List<MetricsFile<?, Integer>>> refHistogramMetricsFilesBySample = readHistogramFilesBySample(refHistogramFiles);
-        final Map<String, List<MetricsFile<?, Integer>>> altHistogramMetricsFilesBySample = readHistogramFilesBySample(altHistogramFiles);
-
-        final Set<String> refHistogramSamples = refHistogramMetricsFilesBySample.keySet();
-        final Set<String> altHistogramSamples = altHistogramMetricsFilesBySample.keySet();
-        Utils.validate(altHistogramSamples.isEmpty() || refHistogramSamples.containsAll(altHistogramSamples) && altHistogramSamples.containsAll(refHistogramSamples), "ref and alt histograms must have same samples");
-        Utils.validate(altHistogramSamples.isEmpty() || refHistogramSamples.stream().allMatch(sample -> refHistogramMetricsFilesBySample.get(sample).size() == altHistogramMetricsFilesBySample.get(sample).size()),
-                "Each sample must have the same number of alt and ref histograms");
-
-        //Utils.validate(altHistogramFiles.size() == 0 || altDataTables.size() == altHistogramFiles.size(), "If provided, the number of alt histograms must match others");
-        refHistogramsBySample = refHistogramSamples.stream().collect(Collectors.toMap(sample -> sample,
-                sample -> sumHistogramsFromFiles(refHistogramMetricsFilesBySample.get(sample), true)));
-
-        altHistogramsBySample = altHistogramSamples.stream().collect(Collectors.toMap(sample -> sample,
-                sample -> sumHistogramsFromFiles(altHistogramMetricsFilesBySample.get(sample), false)));
+        refHistogramsBySample = sumHistogramTables(refHistogramTables, false, maxDepth);
+        altHistogramsBySample = sumHistogramTables(altHistogramTables, true, maxDepth);
+        Utils.validate(altHistogramsBySample.isEmpty() || refHistogramsBySample.keySet().equals(altHistogramsBySample.keySet()), "ref and alt histograms must have same samples");
 
         final Set<String> samples = refHistogramsBySample.keySet();
 
@@ -293,58 +282,70 @@ public class LearnReadOrientationModel extends CommandLineProgram {
         altDesignMatrix.addAll(altDesignMatrixRevComp.stream().map(AltSiteRecord::getReverseComplementOfRecord).collect(Collectors.toList()));
     }
 
-    public static MetricsFile<?, Integer> readMetricsFile(File file){
-        final MetricsFile<?, Integer> metricsFile = new MetricsFile<>();
-        final Reader reader = IOUtil.openFileForBufferedReading(file);
-        metricsFile.read(reader);
-        CloserUtil.close(reader);
-        return metricsFile;
+    /**
+     * The histograms of each sample, summed over all the blocks of the genome of its ref or alt histogram tables (see
+     * {@link F1R2HistogramTable}) in all the inputs: of sites without alt reads for every reference context, or of
+     * sites with one alt read for every context, alt base and orientation, each with a bin for every depth up to the
+     * maximum.  Tables are read one row at a time, so memory doesn't depend on how many blocks they have.
+     */
+    @VisibleForTesting
+    static Map<String, List<Histogram<Integer>>> sumHistogramTables(final List<File> tables, final boolean alt, final int maxDepth) {
+        final Map<String, Map<String, Histogram<Integer>>> histogramsBySample = new HashMap<>();
+        for (final File table : tables) {
+            try (final TableReader<F1R2HistogramTable.Row> reader = F1R2HistogramTable.reader(table.toPath())) {
+                final String sample = reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG);
+                if (sample == null) {
+                    throw new UserException.BadInput(String.format("The histogram table %s doesn't name its sample", table));
+                }
+                final Map<String, Histogram<Integer>> histograms = histogramsBySample.computeIfAbsent(sample, s -> emptyHistograms(alt, maxDepth));
+                for (final F1R2HistogramTable.Row row : reader) {
+                    final Histogram<Integer> histogram = histograms.get(row.histogramLabel());
+                    if (histogram == null) {
+                        throw new UserException.BadInput(String.format("The histogram table %s has a row of %s, which isn't a " +
+                                "reference context, or a context, alt base and orientation", table, row.histogramLabel()));
+                    }
+                    for (int n = 0; n < row.depths().length; n++) {
+                        if (row.counts()[n] > 0) {
+                            if (row.depths()[n] > maxDepth) {
+                                throw new UserException.BadInput(String.format("The histogram table %s has sites of depth %d, " +
+                                        "which is more than the maximum depth of %d", table, row.depths()[n], maxDepth));
+                            }
+                            histogram.increment(row.depths()[n], row.counts()[n]);
+                        }
+                    }
+                }
+            } catch (final IOException e) {
+                throw new UserException.CouldNotReadInputFile(table.toPath(), e);
+            }
+        }
+        return histogramsBySample.entrySet().stream().collect(Collectors.toMap(Map.Entry::getKey, entry -> new ArrayList<>(entry.getValue().values())));
     }
 
-    // the ref or alt histogram files of all the inputs, by sample
-    private static Map<String, List<MetricsFile<?, Integer>>> readHistogramFilesBySample(final List<File> histogramFiles) {
-        final Map<String, List<MetricsFile<?, Integer>>> result = new HashMap<>();
-        for (final File file : histogramFiles) {
-            final MetricsFile<?, Integer> metricsFile = readMetricsFile(file);
-            result.computeIfAbsent(F1R2CountsCollector.getSample(metricsFile, file), sample -> new ArrayList<>()).add(metricsFile);
+    // empty ref histograms for every reference context, or alt histograms for every context, alt base and orientation, by label
+    private static Map<String, Histogram<Integer>> emptyHistograms(final boolean alt, final int maxDepth) {
+        final Map<String, Histogram<Integer>> result = new LinkedHashMap<>();
+        for (final String context : F1R2FilterConstants.ALL_KMERS) {
+            if (!alt) {
+                result.put(context, F1R2FilterUtils.createRefHistogram(context, maxDepth));
+                continue;
+            }
+            for (final Nucleotide altBase : Nucleotide.STANDARD_BASES) {
+                if (altBase != F1R2FilterUtils.getMiddleBase(context)) {
+                    for (final ReadOrientation orientation : ReadOrientation.values()) {
+                        final Histogram<Integer> histogram = F1R2FilterUtils.createAltHistogram(context, altBase, orientation, maxDepth);
+                        result.put(histogram.getValueLabel(), histogram);
+                    }
+                }
+            }
         }
         return result;
     }
 
-    public static List<Histogram<Integer>> sumHistogramsFromFiles(final List<MetricsFile<?,Integer>> metricsFiles, final boolean ref){
-        Utils.nonNull(metricsFiles, "files may not be null");
-        if (metricsFiles.isEmpty()) {
-            return Collections.emptyList();
-        }
-
-        final List<Histogram<Integer>> histogramList = metricsFiles.get(0).getAllHistograms();
-        if (ref){
-            Utils.validate(histogramList.size() == F1R2FilterConstants.NUM_KMERS,
-                    "The list of ref histograms need to include all kmers as enforced by CollectF1R2Counts");
-            Utils.validate(histogramList.stream().allMatch(h -> F1R2FilterConstants.ALL_KMERS.contains(h.getValueLabel())),
-                    "a histogram contains an unsupported, non-kmer header");
-        } else {
-            Utils.validate(histogramList.size() == F1R2FilterConstants.NUM_KMERS * F1R2FilterConstants.numAltHistogramsPerContext,
-                    "The list of alt histograms missing some (kmer, alt allele, f1r2) triple");
-        }
-
-        for (int i = 1; i < metricsFiles.size(); i++){
-            final List<Histogram<Integer>> ithHistograms = metricsFiles.get(i).getAllHistograms();
-            for (final Histogram<Integer> jthHistogram : ithHistograms){
-                final String refContext = jthHistogram.getValueLabel();
-                final Optional<Histogram<Integer>> hist = histogramList.stream().filter(h -> h.getValueLabel().equals(refContext)).findAny();
-                Utils.validate(hist.isPresent(),"Missing histogram header for: " + refContext);
-
-                hist.get().addHistogram(jthHistogram);
-            }
-        }
-        return histogramList;
-    }
-
+    // the records of alt tables, each of which has a reference context in its name
     @VisibleForTesting
     static List<AltSiteRecord> gatherAltSiteRecords(final List<File> tables){
         final List<AltSiteRecord> result = new ArrayList<>();
-        tables.forEach(table -> result.addAll(AltSiteRecord.readAltSiteRecords(table.toPath()).getRight()));
+        tables.forEach(table -> result.addAll(AltSiteRecord.readAltSiteRecords(table.toPath(), F1R2CountsCollector.getAltTableContext(table)).getRight()));
         return result;
     }
 

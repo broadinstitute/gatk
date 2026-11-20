@@ -1,7 +1,5 @@
 package org.broadinstitute.hellbender.tools.walkers.readorientation;
 
-import htsjdk.samtools.metrics.MetricsFile;
-import htsjdk.samtools.metrics.StringHeader;
 import htsjdk.samtools.util.Histogram;
 import java.nio.file.Path;
 import org.apache.commons.lang3.tuple.ImmutablePair;
@@ -19,6 +17,7 @@ import org.broadinstitute.hellbender.Main;
 import org.broadinstitute.hellbender.utils.MathUtils;
 import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
+import org.broadinstitute.hellbender.utils.tsv.TableWriter;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
@@ -112,7 +111,7 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         final Histogram<Integer> refSiteHistogram = F1R2FilterUtils.createRefHistogram(refContext, F1R2FilterConstants.DEFAULT_MAX_DEPTH);
 
         IntStream.range(0, numRefExamples).forEach(i -> refSiteHistogram.increment(depth));
-        IntStream.range(0, numAltExamples).forEach(i -> altDesignMatrix.add(new AltSiteRecord(refContext, refCount, altCount, refF1R2, altCount, altAllele)));
+        IntStream.range(0, numAltExamples).forEach(i -> altDesignMatrix.add(new AltSiteRecord(refContext, refCount, altCount, refF1R2, altCount, altAllele, "1", 1)));
 
         final LearnReadOrientationModelEngine engine = new LearnReadOrientationModelEngine(refSiteHistogram, Collections.emptyList(), altDesignMatrix,
                 LearnReadOrientationModel.DEFAULT_CONVERGENCE_THRESHOLD, LearnReadOrientationModel.DEFAULT_MAX_ITERATIONS,
@@ -160,7 +159,7 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         IntStream.range(0, numArtifactExamples).forEach(i -> {
             final int refCount = refDistribution.sample();
             final int altCount = new BinomialDistribution(rdg, refCount, artfiactAF).sample();
-            altDesignMatrix.add(new AltSiteRecord(refContext, refCount, altCount, refCount/2, altCount, altAllele));
+            altDesignMatrix.add(new AltSiteRecord(refContext, refCount, altCount, refCount/2, altCount, altAllele, "1", 1));
         });
 
         // This is a different artifact entirely: ACT -> AAT F1R2
@@ -168,7 +167,7 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         IntStream.range(0, numArtifactExamples).forEach(i -> {
             final int refCount = refDistribution.sample();
             final int altCount = new BinomialDistribution(rdg, refCount, artfiactAF).sample();
-            altDesignMatrix.add(new AltSiteRecord(refContext, refCount, altCount, refCount/2, altCount, altAllele2));
+            altDesignMatrix.add(new AltSiteRecord(refContext, refCount, altCount, refCount/2, altCount, altAllele2, "1", 1));
         });
 
         // Inject some somatic hets
@@ -178,7 +177,7 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
             final int refCount = refDistribution.sample();
             final int altCount = new BinomialDistribution(rdg, refCount, artfiactAF).sample();
             final Nucleotide somaticAlt = possibleAlts[new UniformIntegerDistribution(rdg, 0, possibleAlts.length-1).sample()];
-            altDesignMatrix.add(new AltSiteRecord(refContext, refCount, altCount, refCount/2, altCount/2, somaticAlt));
+            altDesignMatrix.add(new AltSiteRecord(refContext, refCount, altCount, refCount/2, altCount/2, somaticAlt, "1", 1));
         });
 
         final LearnReadOrientationModelEngine engine = new LearnReadOrientationModelEngine(refSiteHistogram, Collections.emptyList(), altDesignMatrix,
@@ -206,8 +205,6 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         final String sample = "sample";
         final File refHistogramOutput = new File(f1r2Dir, sample + F1R2CountsCollector.REF_HIST_EXTENSION);
 
-        final MetricsFile<?, Integer> refMetricsFile = new MetricsFile<>();
-
         final double epsilon = 1e-3;
         final int numRefExamples = 10_000;
         final int refDepth = 150;
@@ -226,28 +223,24 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         final Map<String, List<AltSiteRecord>> altDesignMatricesByContext = ALL_KMERS.stream()
                 .collect(Collectors.toMap(kmer -> kmer, kmer -> new ArrayList<>()));
 
-        final Map<String, Histogram<Integer>> refSiteHistograms = new HashMap<>(ALL_KMERS.size());
-        ALL_KMERS.forEach(context -> {
-            Histogram<Integer> emptyRefHistogram = F1R2FilterUtils.createRefHistogram(context, F1R2FilterConstants.DEFAULT_MAX_DEPTH);
-            refSiteHistograms.put(context, emptyRefHistogram);
-        });
+        // a ref histogram table with a column for the one depth of the ref sites
+        final int[] depths = { refDepth };
+        final TableWriter<F1R2HistogramTable.Row> refHistogramWriter = F1R2HistogramTable.writer(refHistogramOutput.toPath(), sample, false, depths);
 
         for (final Triple<String, Nucleotide, ReadOrientation> transition : transitions) {
             final String refContext = transition.getLeft();
             final Nucleotide altAllele = transition.getMiddle();
             final ReadOrientation f1r2 = transition.getRight();
 
-            refSiteHistograms.get(refContext).increment(refDepth, numRefExamples);
+            refHistogramWriter.writeRecord(new F1R2HistogramTable.Row("1", 1, refContext, null, null, depths, new int[] { numRefExamples }));
 
             final int refF1R2 = refDepth / 2;
             final int altF1R2 = f1r2 == ReadOrientation.F1R2 ? altDepth : 0;
 
-            IntStream.range(0, numArtifactExamples).forEach(i -> altDesignMatricesByContext.get(refContext).add(new AltSiteRecord(refContext, refDepth, altDepth, refF1R2, altF1R2, altAllele)));
+            IntStream.range(0, numArtifactExamples).forEach(i -> altDesignMatricesByContext.get(refContext).add(new AltSiteRecord(refContext, refDepth, altDepth, refF1R2, altF1R2, altAllele, "1", 1)));
         }
 
-        refSiteHistograms.values().forEach(hist -> refMetricsFile.addHistogram(hist));
-        refMetricsFile.addHeader(new StringHeader(sample));
-        refMetricsFile.write(refHistogramOutput);
+        refHistogramWriter.close();
 
         for (final String context : ALL_KMERS) {
             final List<AltSiteRecord> records = altDesignMatricesByContext.get(context);
@@ -400,7 +393,7 @@ public class LearnReadOrientationModelEngineUnitTest extends CommandLineProgramT
         final Nucleotide altAllele = transition.getMiddle();
 
         IntStream.range(0, numExamples).forEach(i ->
-                altDesignMatrix.add(new AltSiteRecord(refContext, refDepth, altDepth, refF1R2, altF1R2, altAllele)));
+                altDesignMatrix.add(new AltSiteRecord(refContext, refDepth, altDepth, refF1R2, altF1R2, altAllele, "1", 1)));
 
         return altDesignMatrix;
     }
