@@ -199,6 +199,17 @@ For more details on system packages, see the GATK [Base Dockerfile](scripts/dock
 * The version number is automatically derived from the git history using `git describe`, you can override it by setting the `versionOverride` property.
   ( `./gradlew -DversionOverride=my_weird_version printVersion` )
 
+* **Building from a source archive (packagers):** GATK can also be built outside of a git clone, from a source
+  archive such as a GitHub source tarball, which is useful when packaging GATK for a distribution. Since the
+  version can't be derived from the git history in that case, it has to be supplied explicitly, which also tells
+  the build not to require a git clone:
+
+        ./gradlew -DversionOverride=4.7.0.0 -Drelease=true localJar
+
+  The large runtime resource files under `src/main/resources/large` are stored in git-lfs, and a source archive
+  contains only their git-lfs stub files. When git-lfs isn't available to resolve them, the build downloads them
+  from the git-lfs server itself and verifies each one against the sha256 recorded in the stub file it replaces.
+
 ## <a name="running">Running GATK4</a>
 
 * The standard way to run GATK4 tools is via the **`gatk`** wrapper script located in the root directory of a clone of this repository.
@@ -209,6 +220,7 @@ For more details on system packages, see the GATK [Base Dockerfile](scripts/dock
         * By extracting the zip archive produced by `./gradlew bundle` to a directory, and running `gatk` from there
         * Manually putting the `gatk` script within the same directory as fully-packaged GATK jars produced by `./gradlew localJar` and/or `./gradlew sparkJar`
         * Defining the environment variables `GATK_LOCAL_JAR` and `GATK_SPARK_JAR`, and setting them to the paths to the GATK jars produced by `./gradlew localJar` and/or `./gradlew sparkJar` 
+    * By default `gatk` runs packaged jars with `java` from the `PATH`. Setting the `GATK_JAVA` environment variable to the path of a java executable uses that one instead, which lets an installation pin the java it was tested against.
     * `gatk` can run non-Spark tools as well as Spark tools, and can run Spark tools locally, on a Spark cluster, or on Google Cloud Dataproc.
     * ***Note:*** running with `java -jar` directly and bypassing `gatk` causes several important system properties to not get set, including htsjdk compression level!
     

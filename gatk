@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Launcher script for GATK tools. Delegates to java -jar, spark-submit, or gcloud as appropriate,
 # and sets many important Spark and htsjdk properties before launch.
@@ -14,6 +14,9 @@
 #     -If the GATK_SPARK_JAR environment variable is set, uses that jar
 #     -Otherwise uses the newest Spark jar in the same directory as the script or the BIN_PATH
 #      (in that order of precedence)
+#
+# The java executable used to run a packaged jar is "java" from the PATH, unless the GATK_JAVA
+# environment variable is set, in which case it names the java executable to use.
 #
 
 import sys
@@ -31,6 +34,7 @@ BUILD_LOCATION = script +"/build/install/" + projectName + "/bin/"
 GATK_RUN_SCRIPT = BUILD_LOCATION + projectName
 GATK_LOCAL_JAR_ENV_VARIABLE = "GATK_LOCAL_JAR"
 GATK_SPARK_JAR_ENV_VARIABLE = "GATK_SPARK_JAR"
+GATK_JAVA_ENV_VARIABLE = "GATK_JAVA"
 BIN_PATH = script + "/build/libs"
 
 EXTRA_JAVA_OPTIONS_SPARK= "-DGATK_STACKTRACE_ON_USER_EXCEPTION=true " \
@@ -237,7 +241,13 @@ def getLocalGatkRunCommand(javaOptions, debugPort, debugSuspend):
 
 
 def formatLocalJarCommand(localJar):
-    return ["java"] + PACKAGED_LOCAL_JAR_OPTIONS + [ "-jar", localJar]
+    return [getJavaCommand()] + PACKAGED_LOCAL_JAR_OPTIONS + [ "-jar", localJar]
+
+# The java executable to launch a packaged jar with. Defaults to "java" from the PATH, which the
+# GATK_JAVA environment variable overrides, so that an installation can pin the java it was built
+# and tested against without relying on the PATH.
+def getJavaCommand():
+    return os.environ.get(GATK_JAVA_ENV_VARIABLE, "java")
 
 def getGatkWrapperScript(throwIfNotFound=True):
     if not os.path.exists(GATK_RUN_SCRIPT):
