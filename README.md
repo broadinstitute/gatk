@@ -88,8 +88,11 @@ releases of the toolkit.
           MacOS version of the installer as appropriate.
             * This is the same version of ```miniconda``` used by the official GATK docker image.
             * If you use a different version, you may run into issues.
-            * If you have an ARM-based Mac, you must select the `MacOSX-x86_64` installer, not the `MacOSX-arm64` installer,
-              and rely on Mac OS's built-in x86 emulation.
+            * If you have an ARM-based Mac (Apple Silicon), you can now use the native `MacOSX-arm64` installer:
+              `./gradlew localDevCondaEnv` automatically selects the osx-arm64 environment definition
+              (no Intel MKL; arm64 PyTorch with Metal/MPS GPU support). See [docs/arm64/](docs/arm64/) for the
+              status of running GATK natively on Apple Silicon. Alternatively, the `MacOSX-x86_64` installer
+              run under Rosetta x86 emulation still works.
         * Set up miniconda:
             * Install miniconda to a location on your PATH such as ```/opt/miniconda```, and then restart your shell: 
               ```

@@ -27,7 +27,16 @@ public final class NativeUtils {
     public static boolean runningOn64BitX86Architecture() {
         return runningOnArchitecture("x86_64") || runningOnArchitecture("amd64");
     }
-    
+
+    /**
+     * @return True if we're running on a 64-bit ARM platform (e.g. Apple Silicon / aarch64), otherwise false.
+     *         The JVM reports "aarch64" on Apple Silicon, but "arm64" is used in some environments, so we
+     *         accept both (mirroring how {@link #runningOn64BitX86Architecture()} accepts x86_64 and amd64).
+     */
+    public static boolean runningOnAarch64Architecture() {
+        return runningOnArchitecture("aarch64") || runningOnArchitecture("arm64");
+    }
+
     /**
      * @param architecture Architecture to look for
      * @return true if we're running on the specified architecture, otherwise false

@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 
 import argparse
+import os
 import torch
 import sys
 import pytorch_lightning as pl
@@ -10,6 +11,29 @@ from scorevariants.dataset import ReferenceDataset
 from scorevariants.readers import TensorReader, ReferenceTensorReader
 from scorevariants.models.wrapper import LightningWrapper
 from scorevariants.create_output_vcf import create_output_vcf
+
+def resolve_accelerator(requested):
+    """Resolve the hardware accelerator to use for inference.
+
+    With the default 'auto', prefer an NVIDIA GPU (cuda), then the Apple GPU via Metal (mps,
+    Apple Silicon), then CPU. The Metal backend is not bit-identical to the CPU but it IS
+    bio-identical: on a representative scorevariants CNN the raw difference is ~1.8e-7 while the
+    predicted class and the score (to 3 decimals, far coarser than GATK reports) are identical
+    across 256 variants (see scripts/arm64/mps_cpu_parity.py) -- so no call or PASS/FAIL changes.
+    Use --accelerator cpu to force the CPU if exact bit-reproducibility is required.
+    PYTORCH_ENABLE_MPS_FALLBACK is set so ops missing from Metal fall back to CPU instead of erroring.
+    """
+    accelerator = requested
+    if requested == 'auto':
+        if torch.cuda.is_available():
+            accelerator = 'cuda'
+        elif getattr(torch.backends, 'mps', None) is not None and torch.backends.mps.is_available():
+            accelerator = 'mps'
+        else:
+            accelerator = 'cpu'
+    if accelerator == 'mps':
+        os.environ.setdefault('PYTORCH_ENABLE_MPS_FALLBACK', '1')
+    return accelerator
 
 def get_model(args, model_file):
     """
@@ -54,7 +78,9 @@ def main():
     else:
         sys.exit('Unknown tensor type!')
     model = get_model(args, model_file)
-    trainer = pl.Trainer(gradient_clip_val=1.0, accelerator=args.accelerator)
+    accelerator = resolve_accelerator(args.accelerator)
+    print('Using hardware accelerator: {}'.format(accelerator), file=sys.stderr)
+    trainer = pl.Trainer(gradient_clip_val=1.0, accelerator=accelerator)
 
     test_dataset = ReferenceDataset(tensor_reader)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size)
