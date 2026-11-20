@@ -156,9 +156,11 @@ public class ReadThreadingGraph extends AbstractReadThreadingGraph {
      */
     static Collection<Kmer> determineNonUniqueKmers(final SequenceForKmers seqForKmers, final int kmerSize) {
         // count up occurrences of kmers within each read
-        final Set<Kmer> allKmers = new LinkedHashSet<>();
-        final List<Kmer> nonUniqueKmers = new ArrayList<>();
         final int stopPosition = seqForKmers.stop - kmerSize;
+        // The sequence holds stopPosition + 1 kmers; size the set to hold all of them at the default
+        // 0.75 load factor so it never rehashes while they are added.
+        final Set<Kmer> allKmers = new HashSet<>(Math.max(16, (stopPosition + 1) * 4 / 3 + 1));
+        final List<Kmer> nonUniqueKmers = new ArrayList<>();
         for (int i = 0; i <= stopPosition; i++) {
             final Kmer kmer = new Kmer(seqForKmers.sequence, i, kmerSize);
             if (!allKmers.add(kmer)) {
