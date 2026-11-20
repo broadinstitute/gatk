@@ -63,6 +63,37 @@ public final class AssemblyResultSetUnitTest extends GATKBaseTest {
         Assert.assertEquals(subject.getHaplotypeList().size(), 1);
     }
 
+    @Test
+    public void testReplaceAllHaplotypesKeepsReferenceWhenReplacementHasNone() {
+        // PDHMM haplotype sets contain no reference haplotype, but the reference haplotype is still needed for GVCF mode
+        final Haplotype ref = new Haplotype("ACGT".getBytes(), true);
+        ref.setGenomeLocation(genomeLocParser.createGenomeLoc("1", 1, ref.length() + 1));
+        final Haplotype alt = new Haplotype("ACCT".getBytes(), false);
+        alt.setGenomeLocation(genomeLocParser.createGenomeLoc("1", 1, alt.length() + 1));
+        final AssemblyResultSet subject = new AssemblyResultSet();
+        subject.add(ref);
+
+        subject.replaceAllHaplotypes(Collections.singletonList(alt));
+
+        Assert.assertSame(subject.getReferenceHaplotype(), ref);
+        Assert.assertEquals(subject.getHaplotypeList(), Collections.singletonList(alt));
+    }
+
+    @Test
+    public void testReplaceAllHaplotypesUsesNewReferenceWhenPresent() {
+        final Haplotype oldRef = new Haplotype("ACGT".getBytes(), true);
+        oldRef.setGenomeLocation(genomeLocParser.createGenomeLoc("1", 1, oldRef.length() + 1));
+        final Haplotype newRef = new Haplotype("ACGA".getBytes(), true);
+        newRef.setGenomeLocation(genomeLocParser.createGenomeLoc("1", 1, newRef.length() + 1));
+        final AssemblyResultSet subject = new AssemblyResultSet();
+        subject.add(oldRef);
+
+        subject.replaceAllHaplotypes(Collections.singletonList(newRef));
+
+        Assert.assertSame(subject.getReferenceHaplotype(), newRef);
+        Assert.assertEquals(subject.getHaplotypeList(), Collections.singletonList(newRef));
+    }
+
     @Test(dataProvider="assemblyResults")
     public void testAddManyHaplotypes(final List<AssemblyResult> assemblyResults,
                                       final List<List<Haplotype>> haplotypes) {

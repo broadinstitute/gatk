@@ -589,6 +589,7 @@ public final class AssemblyResultSet {
         refHaplotype = null;
     }
     public void replaceAllHaplotypes(Collection<Haplotype> list) {
+        final Haplotype previousRefHaplotype = refHaplotype;
         haplotypes.clear();
         refHaplotype = null;
         for ( Haplotype h : list ) {
@@ -596,6 +597,11 @@ public final class AssemblyResultSet {
             if (h.isNonReference()) {
                 variationPresent = true;
             }
+        }
+        // Partially determined haplotype sets contain no reference haplotype, but downstream code (e.g. GVCF
+        // reference confidence) still needs the reference bases, so keep the previous one (not added to the haplotype list).
+        if (refHaplotype == null) {
+            refHaplotype = previousRefHaplotype;
         }
     }
 

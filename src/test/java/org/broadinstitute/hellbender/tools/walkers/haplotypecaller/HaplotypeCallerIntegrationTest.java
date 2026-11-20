@@ -2190,6 +2190,42 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         }
     }
 
+    /*
+     * Test that PDHMM mode (which has no reference haplotype in its haplotype set) can be combined with GVCF output.
+     * Previously this failed with "refHaplotype cannot be null", and spanning deletion alleles lacking haplotypes
+     * corrupted the <NON_REF> likelihoods and thus the genotypes.
+     */
+    @Test(dataProvider="HaplotypeCallerTestInputs")
+    public void testPDHMMWithGVCFMode(final String inputFileName, final String referenceFileName) throws Exception {
+        Utils.resetRandomGenerator();
+
+        final File output = createTempFile("testPDHMMWithGVCFMode", ".g.vcf");
+
+        final String[] args = {
+                "-I", inputFileName,
+                "-R", referenceFileName,
+                "-L", "20:10000000-10100000",
+                "-O", output.getAbsolutePath(),
+                "-ERC", "GVCF",
+                "--dragen-378-concordance-mode",
+                "--dragstr-params-path", TEST_FILES_DIR+"example.dragstr-params.txt",
+                "--" + StandardArgumentDefinitions.ADD_OUTPUT_VCF_COMMANDLINE, "false",
+        };
+
+        runCommandLine(args);
+
+        final List<VariantContext> variantContexts = VariantContextTestUtils.readEntireVCFIntoMemory(output.getAbsolutePath()).getRight();
+        Assert.assertFalse(variantContexts.isEmpty());
+        for (final VariantContext vc : variantContexts) {
+            Assert.assertTrue(vc.getAlternateAlleles().contains(Allele.NON_REF_ALLELE), "missing <NON_REF> at " + vc.getContig() + ":" + vc.getStart());
+            // a site with a real alternate allele should never be genotyped as homozygous for <NON_REF>
+            for (final Genotype genotype : vc.getGenotypes()) {
+                Assert.assertFalse(genotype.isCalled() && genotype.getAlleles().stream().allMatch(a -> a.equals(Allele.NON_REF_ALLELE)) && vc.getNAlleles() > 2,
+                        "<NON_REF> homozygous genotype at " + vc.getContig() + ":" + vc.getStart());
+            }
+        }
+    }
+
     @DataProvider(name="PairHMMResultsModes")
     public Object[][] PairHMMResultsModes() {
         return new Object[][] {

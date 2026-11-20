@@ -1017,8 +1017,12 @@ public class HaplotypeCallerEngine implements AssemblyRegionEvaluator {
                 // output left-flanking non-variant section, then variant-containing section, then right flank
                 trimmingResult.nonVariantLeftFlankRegion().ifPresent(flank -> result.addAll(referenceModelForNoVariation(flank, false, VCpriors)));
 
+                // PDHMM haplotype sets do not contain the reference haplotype, but the reference confidence model requires it
+                final Set<Haplotype> calledHaplotypesWithRef = new HashSet<>(calledHaplotypes.getCalledHaplotypes());
+                calledHaplotypesWithRef.add(assemblyResult.getReferenceHaplotype());
+
                 result.addAll(referenceConfidenceModel.calculateRefConfidence(assemblyResult.getReferenceHaplotype(),
-                        calledHaplotypes.getCalledHaplotypes(), assemblyResult.getPaddedReferenceLoc(), regionForGenotyping,
+                        calledHaplotypesWithRef, assemblyResult.getPaddedReferenceLoc(), regionForGenotyping,
                         subsettedReadLikelihoodsFinal, localGenotypingEngine.getPloidyModel(), calledHaplotypes.getCalls(), hcArgs.standardArgs.genotypeArgs.supportVariants != null,
                         VCpriors));
 
