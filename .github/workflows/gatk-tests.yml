@@ -26,7 +26,7 @@ jobs:
     name: check if the environment has privileges
     outputs:
       google-credentials: ${{ steps.google-credentials.outputs.defined }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - id: google-credentials
         env:
@@ -37,7 +37,7 @@ jobs:
 
   buildDocker:
     name: build and push gatk docker to artifacts
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     steps:
       - name: checkout gatk
         uses: actions/checkout@v3
@@ -71,7 +71,7 @@ jobs:
 
   #Run our non-docker tests
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     needs: check-secrets
     strategy:
       matrix:
@@ -145,7 +145,7 @@ jobs:
   #Run our docker tests
   testOnDocker:
     needs: [buildDocker, check-secrets]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     strategy:
       matrix:
         java: [ 17.0.6+10 ]
@@ -245,7 +245,7 @@ jobs:
 
   #run wdl validation on WDLs in the scripts directory
   scriptsWdlValidation:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     name: Validate script WDLs using womtools
     steps:
       - uses: actions/checkout@v3
@@ -266,7 +266,7 @@ jobs:
 
   #run wdl validation on generated WDLs
   generatedWdlValidation:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     name: Validate generated WDLs using womtools
     steps:
       - uses: actions/checkout@v3
@@ -288,7 +288,7 @@ jobs:
 
   #Run our various targeted medium scale wdl wiring tests
   wdlTests:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     strategy:
       matrix:
         wdlTest: [ 'RUN_CNV_GERMLINE_COHORT_WDL', 'RUN_CNV_GERMLINE_CASE_WDL', 'RUN_CNV_SOMATIC_WDL', 'RUN_M2_WDL', 'RUN_VCF_SITE_LEVEL_FILTERING_WDL' ]
