@@ -224,6 +224,7 @@ public final class GenomicsDBImport extends GATKTool {
     public static final String SHARED_POSIXFS_OPTIMIZATIONS = GenomicsDBArgumentCollection.SHARED_POSIXFS_OPTIMIZATIONS;
     public static final String USE_GCS_HDFS_CONNECTOR = GenomicsDBArgumentCollection.USE_GCS_HDFS_CONNECTOR;
     public static final String AVOID_NIO = "avoid-nio";
+    public static final String COMPRESSION_LONG_NAME = "genomicsdb-compression";
 
     @Argument(fullName = WORKSPACE_ARG_LONG_NAME,
               doc = "Workspace for GenomicsDB. Can be a POSIX file system absolute or relative path or a HDFS/GCS URL. " +
@@ -364,6 +365,18 @@ public final class GenomicsDBImport extends GATKTool {
             optional = true)
     private boolean sharedPosixFSOptimizations = false;
 
+    @Argument(fullName = COMPRESSION_LONG_NAME,
+            doc = "Codec for compressing the tiles of a new workspace, as <codec> or <codec>:<level>: gzip (levels 1-9), " +
+                  "zstd (levels 1-22), lz4 (acceleration 1-127, where higher is faster and compresses less) or none. " +
+                  "A codec without a level uses level 1. Defaults to GenomicsDB's own setting, gzip at zlib's default " +
+                  "level, which is gzip:6. The codec is recorded in the workspace, so tools reading it need no option. " +
+                  "zstd is loaded from the system's Zstandard library (libzstd.so.1 or libzstd.1.dylib), which must be " +
+                  "installed wherever the workspace is written or read: without it GenomicsDB aborts the JVM, with no " +
+                  "error message, when importing or reading such a workspace.",
+            optional = true,
+            mutex = {INCREMENTAL_WORKSPACE_ARG_LONG_NAME})
+    private String compressionSpec = null;
+
     @Argument(fullName = VCF_HEADER_OVERRIDE,
         doc = "Specify a vcf file to use instead of reading and combining headers from the input vcfs",
         optional = true,
@@ -465,6 +478,9 @@ public final class GenomicsDBImport extends GATKTool {
     // true if --output-interval-list-file is specified
     private Boolean getIntervalsFromExistingWorkspace = false;
 
+    // codec and level from --genomicsdb-compression, or null to use GenomicsDB's default
+    private GenomicsDBCompression tileCompression = null;
+
     /**
      * Before traversal starts, create the feature readers
      * for all the input GVCFs, create the merged header and
@@ -476,6 +492,9 @@ public final class GenomicsDBImport extends GATKTool {
         assertVariantPathsOrSampleNameFileWasSpecified();
         assertOverwriteWorkspaceAndIncrementalImportMutuallyExclusive();
         assertAvoidNioConditionsAreValid();
+        if (compressionSpec != null) {
+            tileCompression = GenomicsDBCompression.parse(COMPRESSION_LONG_NAME, compressionSpec);
+        }
         initializeHeaderAndSampleMappings();
         initializeIntervals();
         super.onStartup();
@@ -834,6 +853,10 @@ public final class GenomicsDBImport extends GATKTool {
         importConfigurationBuilder.setSegmentSize(segmentSize);
         importConfigurationBuilder.setConsolidateTiledbArrayAfterLoad(doConsolidation);
         importConfigurationBuilder.setEnableSharedPosixfsOptimizations(sharedPosixFSOptimizations);
+        if (tileCompression != null) {
+            importConfigurationBuilder.setTiledbCompressionType(tileCompression.codec().tiledbCode());
+            importConfigurationBuilder.setTiledbCompressionLevel(tileCompression.level());
+        }
         ImportConfig importConfig = new ImportConfig(importConfigurationBuilder.build(), validateSampleToReaderMap, true,
                 batchSize, mergedHeaderLines, sampleNameMap.getSampleNameToVcfPath(), bypassFeatureReader ? null : this::createSampleToReaderMap,
                 doIncrementalImport);
