@@ -31,6 +31,8 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.walkers.annotator.Annotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.StandardMutectAnnotation;
 import org.broadinstitute.hellbender.tools.walkers.annotator.VariantAnnotatorEngine;
+import org.broadinstitute.hellbender.tools.walkers.contamination.GetPileupSummaries;
+import org.broadinstitute.hellbender.tools.walkers.contamination.PileupSummaryCollector;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeAssignmentMethod;
 import org.broadinstitute.hellbender.tools.walkers.genotyper.HomogeneousPloidyModel;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.*;
@@ -130,6 +132,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
     private final Optional<F1R2CountsCollector> f1R2CountsCollector;
 
+    private final Optional<PileupSummaryCollector> pileupSummaryCollector;
+
     private PileupQualBuffer tumorPileupQualBuffer;
     private PileupQualBuffer normalPileupQualBuffer;
 
@@ -184,6 +188,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
                 MTAC.minAF, MTAC.refModelDelQual, !MTAC.overrideSoftclipFragmentCheck, isFlowBased);  //TODO: do something classier with the indel size arg
         final List<String> tumorSamples = ReadUtils.getSamplesFromHeader(header).stream().filter(this::isTumorSample).collect(Collectors.toList());
         f1R2CountsCollector = MTAC.f1r2TarGz == null ? Optional.empty() : Optional.of(new F1R2CountsCollector(MTAC.f1r2Args, header, MTAC.f1r2TarGz, tumorSamples));
+        pileupSummaryCollector = MTAC.commonVariantsForPileupSummaries == null ? Optional.empty() : Optional.of(makePileupSummaryCollector(tumorSamples));
         assembledEventMapVcfOutputWriter = Optional.ofNullable(MTAC.assemblerArgs.debugAssemblyVariantsOut != null ?
                 GATKVariantContextUtils.createVCFWriter(
                         new GATKPath(MTAC.assemblerArgs.debugAssemblyVariantsOut).toPath(),
@@ -194,6 +199,36 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         assembledEventMapVariants = Optional.ofNullable(MTAC.assemblerArgs.debugAssemblyVariantsOut != null ?
                 new PriorityQueue<>(200, new VariantContextComparator(header.getSequenceDictionary())) : null);
         assembledEventMapVcfOutputWriter.ifPresent(writer -> {VCFHeader head = new VCFHeader(); head.getSequenceDictionary(); writer.writeHeader(head);});
+    }
+
+    /**
+     * The pileup summaries of the tumor and the normal at the common variants, as GetPileupSummaries would tabulate them with
+     * its read filters, applied to the reads that Mutect2 keeps.  Each table is of one sample, since CalculateContamination
+     * estimates the contamination of one tumor and genotypes one normal.
+     */
+    private PileupSummaryCollector makePileupSummaryCollector(final List<String> tumorSamples) {
+        final PileupSummaryCollector collector = new PileupSummaryCollector(MTAC.commonVariantsForPileupSummaries, MTAC.pileupSummariesMinPopulationAF,
+                MTAC.pileupSummariesMaxPopulationAF);
+        final ReadFilter readFilter = ReadFilter.fromList(GetPileupSummaries.makeDefaultReadFilters(MTAC.pileupSummariesMinMappingQuality), header);
+        if (MTAC.tumorPileupSummaries != null) {
+            final String tumorSample = getOnlySample(tumorSamples, "tumor");
+            collector.addTable(MTAC.tumorPileupSummaries, tumorSample,
+                    read -> tumorSample.equals(ReadUtils.getSampleName(read, header)) && readFilter.test(read));
+        }
+        if (MTAC.normalPileupSummaries != null) {
+            final String normalSample = getOnlySample(normalSamples, "normal");
+            collector.addTable(MTAC.normalPileupSummaries, normalSample,
+                    read -> normalSample.equals(ReadUtils.getSampleName(read, header)) && readFilter.test(read));
+        }
+        return collector;
+    }
+
+    private static String getOnlySample(final Collection<String> samples, final String sampleType) {
+        if (samples.size() != 1) {
+            throw new UserException.BadInput(String.format("Pileup summaries require exactly one %s sample, but there are %d: %s",
+                    sampleType, samples.size(), samples));
+        }
+        return samples.iterator().next();
     }
 
     //default M2 read filters.  Cheap ones come first in order to fail fast.
@@ -454,10 +489,12 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
             collector.writeHistograms();
             collector.closeAndArchiveFiles();
         });
+        pileupSummaryCollector.ifPresent(PileupSummaryCollector::validateAlleleFrequencies);
     }
 
     @Override
     public void close() {
+        pileupSummaryCollector.ifPresent(PileupSummaryCollector::close);
         likelihoodCalculationEngine.close();
         aligner.close();
         haplotypeBAMWriter.ifPresent(HaplotypeBAMWriter::close);
@@ -468,6 +505,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
     @Override
     public ActivityProfileState isActive(final AlignmentContext context, final ReferenceContext ref, final FeatureContext features) {
+        // before any early return, so that the pileup summaries include force-called sites
+        pileupSummaryCollector.ifPresent(collector -> collector.process(context, features));
+
         final byte refBase = ref.getBase();
         final SimpleInterval refInterval = ref.getInterval();
 

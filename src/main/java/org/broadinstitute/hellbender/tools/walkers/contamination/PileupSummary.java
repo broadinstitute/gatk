@@ -10,7 +10,6 @@ import org.apache.commons.math3.util.FastMath;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.MathUtils;
-import org.broadinstitute.hellbender.utils.Nucleotide;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
@@ -37,16 +36,7 @@ public class PileupSummary implements Locatable {
 
     private final double alleleFrequency;
 
-    // N if unknown, as in tables written before these were recorded
-    private final Nucleotide refBase;
-    private final Nucleotide altBase;
-
     public PileupSummary(String contig, int position, int refCount, int altCount, int otherAltsCount, double alleleFrequency) {
-        this(contig, position, refCount, altCount, otherAltsCount, alleleFrequency, Nucleotide.N, Nucleotide.N);
-    }
-
-    public PileupSummary(String contig, int position, int refCount, int altCount, int otherAltsCount, double alleleFrequency,
-                         Nucleotide refBase, Nucleotide altBase) {
         this.contig = contig;
         this.position = position;
         this.altCount = altCount;
@@ -54,8 +44,6 @@ public class PileupSummary implements Locatable {
         this.otherAltsCount = otherAltsCount;
         this.totalCount = refCount + altCount + otherAltsCount;
         this.alleleFrequency = alleleFrequency;
-        this.refBase = Utils.nonNull(refBase);
-        this.altBase = Utils.nonNull(altBase);
     }
 
     public PileupSummary(final VariantContext vc, final ReadPileup pileup) {
@@ -69,8 +57,6 @@ public class PileupSummary implements Locatable {
         refCount = baseCounts[BaseUtils.simpleBaseToBaseIndex(refBase)];
         totalCount = (int) MathUtils.sum(baseCounts);
         otherAltsCount = totalCount - altCount - refCount;
-        this.refBase = Nucleotide.decode(refBase);
-        this.altBase = Nucleotide.decode(altBase);
     }
 
     @Override
@@ -100,12 +86,6 @@ public class PileupSummary implements Locatable {
     public double getRefFrequency() {
         return 1 - alleleFrequency;
     }
-    public Nucleotide getRefBase() {
-        return refBase;
-    }
-    public Nucleotide getAltBase() {
-        return altBase;
-    }
     public double getAltFraction() {
         return totalCount == 0 ? 0 : (double) altCount / totalCount;
     }
@@ -126,12 +106,12 @@ public class PileupSummary implements Locatable {
     }
 
     // Takes a list of PileupSummaryTable files and write them all in one output file in order
-    public static void writeToFile(final List<File> inputFiles, final File output) {
+    public static void writeToFile(final List<Path> inputFiles, final File output) {
         boolean headerWritten = false;
         String sample = "";
         try ( PileupSummaryTableWriter writer = new PileupSummaryTableWriter(output.toPath()) ) {
-            for (final File inputFile : inputFiles){
-                try ( PileupSummaryTableReader reader = new PileupSummaryTableReader(inputFile.toPath())){
+            for (final Path inputFile : inputFiles){
+                try ( PileupSummaryTableReader reader = new PileupSummaryTableReader(inputFile)){
                     if (! headerWritten){
                         sample = reader.getMetadata().get(TableUtils.SAMPLE_METADATA_TAG);
                         writer.writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sample);
@@ -171,8 +151,8 @@ public class PileupSummary implements Locatable {
     }
 
     // the first site of a table, if it has any, without reading the others
-    public static Optional<PileupSummary> readFirstSite(final File tableFile) {
-        try( PileupSummaryTableReader reader = new PileupSummaryTableReader(IOUtils.fileToPath(tableFile)) ) {
+    public static Optional<PileupSummary> readFirstSite(final Path tableFile) {
+        try( PileupSummaryTableReader reader = new PileupSummaryTableReader(tableFile) ) {
             return reader.stream().findFirst();
         } catch (IOException e){
             throw new UserException(String.format("Encountered an IO exception while reading from %s.", tableFile));
@@ -217,9 +197,7 @@ public class PileupSummary implements Locatable {
                     .set(PileupSummaryTableColumn.REF_COUNT.toString(), record.getRefCount())
                     .set(PileupSummaryTableColumn.ALT_COUNT.toString(), record.getAltCount())
                     .set(PileupSummaryTableColumn.OTHER_ALT_COUNT.toString(), record.getOtherAltCount())
-                    .set(PileupSummaryTableColumn.ALT_ALLELE_FREQUENCY.toString(), record.getAlleleFrequency())
-                    .set(PileupSummaryTableColumn.REF_BASE.toString(), record.getRefBase().encodeAsString())
-                    .set(PileupSummaryTableColumn.ALT_BASE.toString(), record.getAltBase().encodeAsString());
+                    .set(PileupSummaryTableColumn.ALT_ALLELE_FREQUENCY.toString(), record.getAlleleFrequency());
         }
     }
 
@@ -235,12 +213,8 @@ public class PileupSummary implements Locatable {
             final int otherAltCount = dataLine.getInt(PileupSummaryTableColumn.OTHER_ALT_COUNT);
             final double alleleFrequency = dataLine.getDouble(PileupSummaryTableColumn.ALT_ALLELE_FREQUENCY);
 
-            // tables written before the bases were recorded don't have them
-            final boolean hasBases = dataLine.columns().contains(PileupSummaryTableColumn.REF_BASE.toString());
-            final Nucleotide refBase = hasBases ? Nucleotide.decode(dataLine.get(PileupSummaryTableColumn.REF_BASE).charAt(0)) : Nucleotide.N;
-            final Nucleotide altBase = hasBases ? Nucleotide.decode(dataLine.get(PileupSummaryTableColumn.ALT_BASE).charAt(0)) : Nucleotide.N;
-
-            return new PileupSummary(contig, position, refCount, altCount, otherAltCount, alleleFrequency, refBase, altBase);
+            // other columns, such as the ref_base and alt_base that some earlier versions wrote, are ignored
+            return new PileupSummary(contig, position, refCount, altCount, otherAltCount, alleleFrequency);
         }
     }
 
@@ -250,9 +224,7 @@ public class PileupSummary implements Locatable {
         REF_COUNT("ref_count"),
         ALT_COUNT("alt_count"),
         OTHER_ALT_COUNT("other_alt_count"),
-        ALT_ALLELE_FREQUENCY("allele_frequency"),
-        REF_BASE("ref_base"),
-        ALT_BASE("alt_base");
+        ALT_ALLELE_FREQUENCY("allele_frequency");
 
         private final String columnName;
 
