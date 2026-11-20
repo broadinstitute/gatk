@@ -75,6 +75,9 @@ public abstract class GATKBaseTest extends BaseTest {
     public static final String NA12878_20_21_WGS_bam = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.bam";
     public static final String NA12878_20_21_WGS_mmp2_bam = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.mmp2.bam";
     public static final String NA12878_20_21_WGS_cram = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.v3.0.samtools.cram";
+    // created using samtools archive mode ("--output-fmt cram,version=3.1,archive"); contains slices that exercise all
+    // of the cram 3.1 codecs (rANSnx16, adaptive arithmetic, fqzcomp, and name tokenization)
+    public static final String NA12878_20_21_WGS_cram_31 = largeFileTestDir + "CEUTrio.HiSeq.WGS.b37.NA12878.20.21.v3.1.samtools.archive.cram";
 
     public static final String NA12878_20_21_covered_regions = publicTestDir + "wgs_calling_regions.v1.chr20_chr21.interval_list";
 
