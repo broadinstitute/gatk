@@ -334,30 +334,37 @@ public final class ReblockGVCF extends MultiVariantWalker {
         annotationEngine = new VariantAnnotatorEngine(makeVariantAnnotations(), dbsnp.dbsnp, Collections.emptyList(), false, false);
     }
 
+    @VisibleForTesting
+    void setAnnotationEngine(final VariantAnnotatorEngine annotationEngine) {
+        this.annotationEngine = annotationEngine;
+    }
+
     // get VariantContexts from input gVCFs and regenotype
     @Override
     public void apply(VariantContext variant, ReadsContext reads, ReferenceContext ref, FeatureContext features) {
         if (!variant.hasAllele(Allele.NON_REF_ALLELE)) {
             throw new UserException("Variant Context at " + variant.getContig() + ":" + variant.getStart() + " does not contain a <NON-REF> allele. This tool is only intended for use with GVCFs.");
         }
-        VariantContext newVC = formatAnnotationsToRemove.size() > 0 ? removeVCFFormatAnnotations(variant) : variant;
+        VariantContext newVC = formatAnnotationsToRemove.size() > 0 ? removeVCFFormatAnnotations(variant, formatAnnotationsToRemove) : variant;
         regenotypeVC(newVC);
     }
 
     /**
      * Remove format level annotations from genotype in variant context.
      *
-     * @param vc variant context to remove format annotations from
+     * @param vc variant context to remove format annotations from, which is not modified
+     * @param formatAnnotationsToRemove the keys of the format annotations to remove
      * @return variant context with format annotations removed from genotype
      */
-    private VariantContext removeVCFFormatAnnotations(final VariantContext vc) {
+    @VisibleForTesting
+    static VariantContext removeVCFFormatAnnotations(final VariantContext vc, final List<String> formatAnnotationsToRemove) {
         final Genotype genotype = vc.getGenotype(0);
-        Map<String, Object> extendedAttributes = genotype.getExtendedAttributes();
-        // If extendedAttributes is empty, we get an unmodifiable empty map, so skip removing any annotations
-        if (extendedAttributes.isEmpty()) {
+        if (genotype.getExtendedAttributes().isEmpty()) {
             return vc;
         }
 
+        // a copy: the genotype's own map belongs to the input record
+        final Map<String, Object> extendedAttributes = new LinkedHashMap<>(genotype.getExtendedAttributes());
         for (String annotation : formatAnnotationsToRemove) {
             extendedAttributes.remove(annotation);
         }
@@ -689,7 +696,10 @@ public final class ReblockGVCF extends MultiVariantWalker {
             builder.genotypes(g);
         }
 
-        composeUpdatedAnnotations(attrMap, doQualApprox, posteriorsKey, variant, annotationEngine, relevantIndices, updatedAllelesVC, annotationsToKeep);
+        //annotate with the zeroed non-ref AD but the genotype's original DP, which the depth annotations fall back to when the AD sums to 0
+        final VariantContext annotatedVC = g == updatedAllelesGenotype ? updatedAllelesVC :
+                new VariantContextBuilder(updatedAllelesVC).genotypes(new GenotypeBuilder(updatedAllelesGenotype).AD(g.getAD()).make()).make();
+        composeUpdatedAnnotations(attrMap, doQualApprox, posteriorsKey, variant, annotationEngine, relevantIndices, annotatedVC, annotationsToKeep);
 
         return keepFilters ? builder.attributes(attrMap).make() : builder.attributes(attrMap).unfiltered().make();
     }
@@ -891,13 +901,17 @@ public final class ReblockGVCF extends MultiVariantWalker {
      * Any AD counts for the non-ref allele get propagated to every new allele when GVCFs are merged, so zero them out
      * @param g a genotype that may or may not contain AD
      * @param nonRefInd allele index of the non-ref, -1 if missing
-     * @return  a Genotype with the non-ref AD zeroed out and new DP, or the original genotype if it doesn't have AD
+     * @return  a Genotype with the non-ref AD zeroed out and new DP, or {@code g} itself if there is nothing to zero: it has
+     * no AD, there is no non-ref allele, its AD has no entry for the non-ref, or that entry is already 0.
+     * {@code g} is not modified: its AD array may be shared with the input variant's genotype.
      */
-    private Genotype removeNonRefADs(final Genotype g, final int nonRefInd) {
+    @VisibleForTesting
+    static Genotype removeNonRefADs(final Genotype g, final int nonRefInd) {
         if (g.hasAD() && nonRefInd != -1) {
-            final int[] ad = g.getAD();
-            if (ad.length >= nonRefInd && ad[nonRefInd] > 0) { //only initialize a builder if we have to
+            final int[] originalAD = g.getAD();
+            if (originalAD.length > nonRefInd && originalAD[nonRefInd] > 0) { //only initialize a builder if we have to
                 final GenotypeBuilder gb = new GenotypeBuilder(g);
+                final int[] ad = originalAD.clone();
                 final int nonRefAdCount = ad[nonRefInd];
                 ad[nonRefInd] = 0;
                 gb.AD(ad);
