@@ -956,6 +956,7 @@ task ProcessVrsAlleles {
 
   runtime {
     docker: variants_docker
+    maxRetries: 3
   }
 }
 
