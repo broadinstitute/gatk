@@ -12,7 +12,7 @@ This document describes the VRS (Variant Representation Specification) allele ID
 
 The VRS ID feature computes standardized identifiers (ga4gh:VA.* format) for each variant allele during ingestion. When enabled, the pipeline:
 
-1. **Normalizes** each allele according to the VRS 2.0.1 specification: fully-justified normalization (trim, roll, expand across the whole ambiguous region) and state resolution. This is not left-alignment: an indel in a repeat gets an interval spanning the whole repeat, in 0-based interbase coordinates with no VCF anchor base, so it does not line up with the single position of a left-aligned vid. Multi-allelic sites are not decomposed: each ALT is normalized on its own.
+1. **Normalizes** each allele according to the VRS 2.0.1 specification: fully-justified normalization (trim, roll, expand across the whole ambiguous region) and state resolution. This is not left-alignment: an indel in a repeat gets an interval spanning the whole repeat, in 0-based interbase coordinates with no VCF anchor base, so it does not line up with the single position of a left-aligned vid. Multi-allelic sites are not decomposed: each ALT is normalized on its own. Only a pure insertion or deletion (one side empty after trimming) is rolled. A substitution, and a delins where both trimmed sides are non-empty but differ in length (`GACA`→`GT`, which trims to `ACA`→`T`), stays at its trimmed interval with a literal state, as in vrs-python.
 2. **Computes** unique identifiers from the normalized representation using SHA-512 digest
 3. **Stores** IDs in both the VET (variant extraction table) and a dedicated vrs_allele table
 4. **Supports** heterozygous variants (1/2 genotypes) with multiple alleles via array fields
@@ -37,7 +37,7 @@ This enables downstream queries to identify and retrieve specific alleles across
 ### Test Classes
 
 - `VrsAlleleCreatorUnitTest`: file naming, Parquet output, no-op scenarios
-- `VrsNormalizerTest`: trimming, rolling, expansion and state resolution for SNPs, indels and substitutions
+- `VrsNormalizerTest`: trimming, rolling, expansion and state resolution for SNPs, indels, substitutions and delins
 - `VrsIdComputerTest`: deterministic ID generation and format
 - `VrsPythonConcordanceUnitTest`: compares allele ID, location ID, normalized start and end, and state with vrs-python 2.3.3 for an SNV, an MNV, insertions of new and of repeated sequence, deletions inside and outside a repeat, a right-shifted deletion, a multi-allelic site with `*`, and two SNVs in a region chr21 N-masks. The expected values are in `VrsPythonConcordance/expected.tsv` under the test resources, beside `generate_expected.py`, which wrote them against the RefSeq sequences. One case differs on purpose: an ALT equal to the masked RefSeq base is a reference allele to vrs-python, while GVS reads N and sees a substitution (VS-2059)
 - `VrsAlleleRecordTest`, `RefGetAccessionProviderTest`

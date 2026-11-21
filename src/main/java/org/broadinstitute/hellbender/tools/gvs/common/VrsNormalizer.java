@@ -55,9 +55,11 @@ public class VrsNormalizer {
             );
         }
 
-        if (refLen == altLen) {
-            // SNP or multi-nucleotide substitution (MNP)
-            // Both are represented as LiteralSequenceExpression
+        if (refLen > 0 && altLen > 0) {
+            // SNP, multi-nucleotide substitution (MNP), or delins: both trimmed sides non-empty.
+            // A delins (e.g. ACA -> T) is not ambiguous, so VRS 2.0 does not roll it
+            // (vrs-python normalize step 2.b). All are a LiteralSequenceExpression of the
+            // trimmed ALT over the trimmed interval.
             return new NormalizedAllele(
                 trimmed.start,
                 trimmed.end,
@@ -65,7 +67,7 @@ public class VrsNormalizer {
             );
         }
 
-        // Indel path (Steps 3-5)
+        // Indel path (Steps 3-5): exactly one trimmed side is empty
         boolean isInsertion = refLen == 0;
         String seed = isInsertion ? trimmed.alt : trimmed.ref;
         int seedLength = seed.length();
