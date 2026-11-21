@@ -60,6 +60,14 @@ public class VrsNormalizerTest extends GATKBaseTest {
             builder.setCharAt(702, 'A');
             builder.setCharAt(703, 'A');
 
+            // For delins tests: [800,804) = GACA and [900,902) = GA
+            builder.setCharAt(800, 'G');
+            builder.setCharAt(801, 'A');
+            builder.setCharAt(802, 'C');
+            builder.setCharAt(803, 'A');
+            builder.setCharAt(900, 'G');
+            builder.setCharAt(901, 'A');
+
             chr20Sequence = builder.toString();
         }
 
@@ -207,5 +215,35 @@ public class VrsNormalizerTest extends GATKBaseTest {
         Assert.assertEquals(allele.end, 602L);
         Assert.assertEquals(allele.state.type, NormalizedAllele.SequenceState.StateType.LITERAL_SEQUENCE_EXPRESSION);
         Assert.assertEquals(allele.state.sequence, "AGA");
+    }
+
+    @Test
+    public void testDelinsWithShorterAltReturnsLiteralState() {
+        // GACA -> GT trims to ACA -> T: a delins, not a deletion, so no rolling and no RLE.
+        // Expected values confirmed against vrs-python 2.3.3.
+        NormalizedAllele allele = normalize("chr20", 800L, 804L, "GT");
+
+        Assert.assertNotNull(allele);
+        Assert.assertEquals(allele.start, 801L);
+        Assert.assertEquals(allele.end, 804L);
+        Assert.assertEquals(allele.state.type, NormalizedAllele.SequenceState.StateType.LITERAL_SEQUENCE_EXPRESSION);
+        Assert.assertEquals(allele.state.sequence, "T");
+        Assert.assertNull(allele.state.length);
+        Assert.assertNull(allele.state.repeatSubunitLength);
+    }
+
+    @Test
+    public void testDelinsWithLongerAltReturnsLiteralState() {
+        // GA -> GTTT trims to A -> TTT: a delins, not an insertion.
+        // Expected values confirmed against vrs-python 2.3.3.
+        NormalizedAllele allele = normalize("chr20", 900L, 902L, "GTTT");
+
+        Assert.assertNotNull(allele);
+        Assert.assertEquals(allele.start, 901L);
+        Assert.assertEquals(allele.end, 902L);
+        Assert.assertEquals(allele.state.type, NormalizedAllele.SequenceState.StateType.LITERAL_SEQUENCE_EXPRESSION);
+        Assert.assertEquals(allele.state.sequence, "TTT");
+        Assert.assertNull(allele.state.length);
+        Assert.assertNull(allele.state.repeatSubunitLength);
     }
 }
