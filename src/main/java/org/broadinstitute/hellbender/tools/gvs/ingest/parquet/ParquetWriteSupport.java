@@ -4,7 +4,6 @@ import org.apache.hadoop.conf.Configuration;
 import org.apache.parquet.hadoop.api.WriteSupport;
 import org.apache.parquet.io.api.Binary;
 import org.apache.parquet.io.api.RecordConsumer;
-import org.apache.parquet.schema.GroupType;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.Type;
 import org.jetbrains.annotations.NotNull;
@@ -17,19 +16,10 @@ import java.util.HashMap;
  * A generic WriteSupport implementation for writing JSONObject records to Parquet files
  * in the GVS system.
  *
- * <p>Supports two field shapes:
- * <ul>
- *   <li>Scalar primitives: INT64, FLOAT, BOOLEAN, BINARY (UTF8 string)</li>
- *   <li>Repeated string lists using the standard Parquet 3-level list encoding:
- *     <pre>
- *     optional group &lt;name&gt; (LIST) {
- *       repeated group list {
- *         optional binary element (UTF8);
- *       }
- *     }
- *     </pre>
- *   </li>
- * </ul>
+ * <p>Supports primitive fields only, required, optional or repeated: INT64, FLOAT, BOOLEAN and
+ * BINARY (UTF8 string). A repeated primitive is the 1-level list encoding, as in
+ * {@code repeated binary vrs_allele_ids (UTF8)}, which BigQuery loads as a REPEATED column.
+ * Group fields, including the 3-level LIST encoding, are rejected.
  */
 public class ParquetWriteSupport extends WriteSupport<JSONObject> {
     MessageType schema;
@@ -64,8 +54,7 @@ public class ParquetWriteSupport extends WriteSupport<JSONObject> {
     }
 
     /**
-     * Writes one record. Iterates top-level schema fields; handles scalar primitives
-     * and repeated string lists (3-level Parquet list encoding).
+     * Writes one record. Iterates top-level schema fields; handles scalar and repeated primitives.
      *
      * @param record one record to write to the previously provided record consumer
      */
@@ -117,39 +106,8 @@ public class ParquetWriteSupport extends WriteSupport<JSONObject> {
                     recordConsumer.endField(fieldName, fieldIndex);
                 }
             } else {
-                // Group field — only repeated string lists are supported here.
-                // Standard Parquet 3-level list encoding:
-                //   optional group <name> (LIST) {
-                //     repeated group list {
-                //       optional binary element (UTF8);
-                //     }
-                //   }
-                JSONArray jsonArray = record.getJSONArray(fieldName);
-                if (jsonArray.isEmpty()) {
-                    continue; // skip empty lists (same as null)
-                }
-
-                GroupType listGroup = fieldType.asGroupType();
-                // level 1: the outer LIST group
-                recordConsumer.startField(fieldName, fieldIndex);
-                recordConsumer.startGroup();
-
-                // level 2: the repeated "list" group
-                GroupType repeatedGroup = listGroup.getType(0).asGroupType();
-                recordConsumer.startField(repeatedGroup.getName(), 0);
-
-                for (int i = 0; i < jsonArray.length(); i++) {
-                    recordConsumer.startGroup();
-                    // level 3: the "element" primitive
-                    recordConsumer.startField(repeatedGroup.getType(0).getName(), 0);
-                    recordConsumer.addBinary(Binary.fromString(jsonArray.getString(i)));
-                    recordConsumer.endField(repeatedGroup.getType(0).getName(), 0);
-                    recordConsumer.endGroup();
-                }
-
-                recordConsumer.endField(repeatedGroup.getName(), 0);
-                recordConsumer.endGroup();
-                recordConsumer.endField(fieldName, fieldIndex);
+                throw new UnsupportedOperationException("Group fields are not supported; column '" + fieldName
+                        + "' is a group. Declare a list as a repeated primitive instead.");
             }
         }
 

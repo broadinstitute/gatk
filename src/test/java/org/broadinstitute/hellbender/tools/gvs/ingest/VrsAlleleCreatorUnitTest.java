@@ -7,6 +7,7 @@ import org.apache.parquet.hadoop.ParquetReader;
 import org.apache.parquet.hadoop.example.GroupReadSupport;
 import org.apache.parquet.schema.MessageType;
 import org.apache.parquet.schema.MessageTypeParser;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.VrsAlleleRecord;
 import org.testng.Assert;
@@ -26,8 +27,6 @@ public class VrsAlleleCreatorUnitTest {
 
     private static final long   SAMPLE_ID  = 100L;
     private static final String SAMPLE_IDENTIFIER = "test";
-    private static final String PROJECT_ID  = "proj";
-    private static final String DATASET_NAME = "ds";
 
     private static final String ALLELE_ID   = "ga4gh:VA.testAllele";
     private static final String LOCATION_ID = "ga4gh:SL.testLoc";
@@ -71,7 +70,7 @@ public class VrsAlleleCreatorUnitTest {
         private VrsAlleleCreator newCreator(CommonCode.OutputType outputType) {
                 return new VrsAlleleCreator(
                                 SAMPLE_IDENTIFIER, SAMPLE_ID, outputDir,
-                                outputType, PROJECT_ID, DATASET_NAME, VRS_PARQUET_SCHEMA);
+                                outputType, VRS_PARQUET_SCHEMA);
         }
 
         private File expectedParquetFile() {
@@ -113,6 +112,11 @@ public class VrsAlleleCreatorUnitTest {
         String filename = VrsAlleleCreator.getOutputFileName(
                 200L, "mysample", CommonCode.OutputType.PARQUET);
         Assert.assertEquals(filename, "vrs_allele_scratch_200_mysample.parquet");
+    }
+
+    @Test(expectedExceptions = UserException.class, expectedExceptionsMessageRegExp = ".*supports only --output-type PARQUET.*")
+    public void testBqOutputTypeIsRejected() {
+        newCreator(CommonCode.OutputType.BQ);
     }
 
     // ------------------------------------------------------------------
