@@ -133,7 +133,7 @@ artifacts without accounting for them is a recurring source of bugs.
 - **The VAT, and therefore vids,** hold alleles that are minimized *and*
   left-aligned, via `bcftools norm -f` in `GvsCreateVATFromVDS.wdl:731`.
 
-Four consequences worth knowing before writing anything that joins across these:
+Five consequences worth knowing before writing anything that joins across these:
 
 1. Minimize before comparing. `hl.min_rep`, or trimming by hand, reduces a VDS
    allele to the intrinsic form that `alt_allele` stores.
@@ -152,6 +152,37 @@ Four consequences worth knowing before writing anything that joins across these:
    The retired synonym search keyed on it as bcftools `ILEN` over a 200bp
    window rightward from the vid's position, left-aligned being the leftmost
    equivalent form.
+5. `vet.alt` keeps the spanning-deletion `*`. `VetFieldEnum.alt` drops only
+   `<NON_REF>` (and `<*>`), and ingest skips a row only when `*` is its sole
+   real ALT (the `SPAN_DEL` check in `CreateVariantIngestFiles.apply`), so `*` reaches `vet`
+   beside a real ALT, as in `T,*`. Any per-ALT array stored next to
+   `vet.alt`, such as `vrs_allele_ids`, must keep a slot for `*`, or every
+   later entry shifts onto the wrong allele. BigQuery arrays cannot hold
+   NULL, so the slot needs a placeholder (`VetCreator.NO_VRS_ALLELE_ID`,
+   the empty string), and any check over the array must skip it. Ingest
+   also writes the placeholder for every ALT on a contig with no refget
+   accession (alt, decoy, HLA), so such a row is all placeholders. Note that
+   `vet.alt` itself is a comma-separated STRING, not an array: only
+   `vrs_allele_ids` is REPEATED. `alt_allele_positions.sql` reads
+   `SPLIT(alt, ',')[OFFSET(allele_pos - 1)]`, so anything copied from such an
+   array into `alt_allele` must use the same offset (VS-2058, VS-2061).
+
+### The GVS reference is not the RefSeq sequence
+
+GVS's hg38 FASTA is the GRCh38 analysis set, which replaces some sequence with
+N: false duplications on chr21, among others. GA4GH sequence digests
+(`SQ.*`), and so VRS IDs, name the RefSeq sequences (NC_000021.9 for GRCh38
+chr21), as vrs-python and SeqRepo do. So a digest computed from our FASTA
+matches RefSeq on chr20 but not on chr21: `SQ.UfFHm4y…` from our FASTA,
+`SQ.5ZUqx…` from NCBI's sequence. The chr21 file is intact, and its MD5
+matches the `.dict`.
+
+So check an accession against NCBI's sequence, never against our FASTA.
+Download it with
+`efetch.fcgi?db=nuccore&id=<accession>&rettype=fasta`, uppercase it, and
+base64url-encode the first 24 bytes of its SHA-512. Where the analysis set
+masks sequence, VRS normalization reads N where the sequence the ID names has
+real bases, so an ID there may differ from vrs-python's (VS-2058, VS-2059).
 
 
 # High-Level Architecture (WDLs, BigQuery, Terra)
@@ -350,6 +381,26 @@ The idiom appears throughout the WDLs, where it is harmless because the file
 lands in the task's working directory and is discarded. Do not copy it into
 commands run locally: there it leaves a log of several hundred KB in the
 repo. Omit the flag instead.
+
+### `CREATE OR REPLACE TABLE ... AS SELECT` drops `REQUIRED`
+
+A table created from a query gets every column `NULLABLE`, whatever the
+source declared, and loses its clustering unless the statement restates it.
+So rewriting a table in place with `CREATE OR REPLACE TABLE t AS SELECT ...
+FROM t`, for example to deduplicate it, silently changes its schema. A later
+load or `INSERT` that relies on the original schema may then behave
+differently. To rewrite rows and keep the schema, stage them in a temporary
+table, then `TRUNCATE` and `INSERT`:
+
+```sql
+CREATE TEMP TABLE deduped AS SELECT DISTINCT * FROM `<project>.<dataset>.t`;
+TRUNCATE TABLE `<project>.<dataset>.t`;
+INSERT INTO `<project>.<dataset>.t` SELECT * FROM deduped;
+```
+
+Run all three as one multi-statement query, since the temporary table lasts
+only for that script. In VS-2058 this is the documented recovery for duplicate
+`vrs_allele` rows.
 
 ## Key Workflows
 
@@ -877,6 +928,20 @@ delete or on a retry (VS-2053). List what remains with `gcloud storage objects
 list --format='value(name)'`: it exits 0 with empty output when nothing matches,
 while `gcloud storage ls` exits 1, the same as for a real error.
 
+## A task that leaves no `stderr` may have failed to localize an input
+
+When a task fails on every attempt with no `stderr` or `stdout` in its
+execution directory, and its GCP Batch job exits with code 1 about 35 seconds
+after starting with nothing in `batch_task_logs`, the command never ran.
+Cromwell's localization step failed, most often because an input file does not
+exist. `maxRetries` repeats the same failure on each attempt. The task's
+`gcs_localization.sh`, which is in the execution directory, lists every file it
+downloads; check each with `gcloud storage ls -l`, starting with
+`gatk_override`, the input most often set by hand. In VS-2058 the jar had been
+copied with `gsutil cp <jar> gvs-internal-scratch/...`, without `gs://`.
+`gsutil` treated that as a local path, wrote a 408 MB file into the working
+tree, and reported success.
+
 ## A Hail script's own imports must be shipped to the cluster
 
 `run_in_hail_cluster.py` submits one script to Dataproc. Any GVS module that script
@@ -978,6 +1043,16 @@ its definition elsewhere would turn a spelling nit into broken code.
 Like `reflow-md`, this script is deliberately extensionless so that the Dockerfile's
 `COPY *.py /app/` leaves it out of the Variants image and out of the rebuild-and-bump
 obligation. Do not rename it to `check_us_spelling.py`.
+
+## JIRA tickets follow the team template
+
+Write VS tickets to `scripts/variantstore/docs/vs_ticket_template.md`. The summary is an
+imperative action phrase, with a `[Spike]` prefix for investigations, or for a bug a
+statement of the problem. The description opens with one or two paragraphs of prose
+context, then an optional `Notes:` list for links, contacts and caveats, then `AC:` with
+concrete, testable bullets. Do not use Markdown headings. A spike says what artifact or
+decision it produces, and whether it is timeboxed. The one-line-per-paragraph rule under
+Code Review Conventions applies here too.
 
 ## Editing a JIRA description through the Atlassian MCP
 
@@ -1282,6 +1357,22 @@ Where two call sites must agree on a predicate, a single mutation should break
 tests covering both. If it breaks only one, either the coverage is incomplete
 or the predicate is still duplicated.
 
+## `./gradlew test -Dfoo=bar` does not reach the test
+
+The test JVM is a separate process from Gradle's, and it sees only the system
+properties that `testsettings.gradle` names. Of those, only
+`gatk.spark.debug` is copied from a `-D` given to Gradle. So a test that reads
+`System.getProperty("x", <default>)` always gets its default when run with
+`./gradlew test -Dx=...`. If the default is a missing file and the test then
+skips, the test can never run, here or in CI. In VS-2058,
+`testCreateVrsAlleleParquetFiles` defaulted to one developer's local path and
+skipped everywhere else, and reported `SKIPPED` even with the property set.
+
+So do not make a test depend on a system property. Point it at a file under
+`src/test/resources` (`GATKBaseTest.largeFileTestDir` holds the chr20/21 subset
+of hg38). Treat a `SKIPPED` result as a test that did not run, not as one that
+passed.
+
 ## Do not trust a completion signal without checking it is fresh
 
 When polling for a marker that means "the long job finished" — a sentinel file,
@@ -1412,3 +1503,13 @@ in `GetToolVersions` as well as with the doc. In VS-2057 both pairs came out at
 12 layers / 1.29 GB for lite and 13 layers / 2.49 GB for heavy. A matching
 shape shows the right image was pushed under each tag. It does not show that
 the image holds the branch's code.
+
+To show that, run the workflow that exercises the change with `gatk_override`
+unset, so the task takes the image from `GetToolVersions`. Confirm in the
+run's metadata that `gatk_override` was unset and that `GetToolVersions`
+returned the new tag. If an earlier run tested the same code from a
+`gatk_override` jar, compare the two runs' outputs row for row, not just their
+counts. In VS-2058 an ingest on the new image (`6c0a3090`, at `82154170e`)
+produced exactly the VRS IDs of the jar run (`064fd7d1`): no ID in either
+`vrs_allele` table was missing from the other, and no `vet` row, joined on
+sample name, location, ref and alt, had different `vrs_allele_ids`.
