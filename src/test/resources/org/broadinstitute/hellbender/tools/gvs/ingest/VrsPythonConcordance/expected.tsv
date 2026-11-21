@@ -7,6 +7,8 @@ insertion_repeat	chr20	1045533	T	TCA	0	TCA	ga4gh:VA.-KUzXWxbkOs37D0B1N2lQ6ZuiF6L
 deletion_unique	chr20	1005007	GGCT	G	0	G	ga4gh:VA.M-ZGSOGBTTmPhwWozCDTpkUoawqwcdjp	ga4gh:SL.BheWVeIjjwr-O_ODtZ-lgUJ6E-hHpn9M	1005007	1005010	ReferenceLengthExpression		0	3	
 deletion_repeat	chr20	1012544	GCCA	G	0	G	ga4gh:VA.zMGPTcBvo9wkfxFyNPqzWQHsP62Tklq8	ga4gh:SL.DfS6AEl301Zi7ZC0NLtOOvXr4UdX1YUr	1012544	1012557	ReferenceLengthExpression		10	3	
 deletion_repeat_right_shifted	chr20	1012553	ACCA	A	0	A	ga4gh:VA.zMGPTcBvo9wkfxFyNPqzWQHsP62Tklq8	ga4gh:SL.DfS6AEl301Zi7ZC0NLtOOvXr4UdX1YUr	1012544	1012557	ReferenceLengthExpression		10	3	
+delins_shorter_alt	chr20	1012544	GCCA	GT	0	GT	ga4gh:VA.eXEVa-i77LE8A-OZ_H2qbYlKcvQhVA5w	ga4gh:SL.JSflcwDq8-sPTq5p6nBqdKAIYs90CFLd	1012544	1012547	LiteralSequenceExpression	T			
+delins_longer_alt	chr20	1045533	TCA	TGGGG	0	TGGGG	ga4gh:VA.dtFrWu0JFwA0ObzwVFs6usrjdBthwDA0	ga4gh:SL.AT0HOZqZX8LtBUEJfOhk-PlZGjMViHCH	1045533	1045535	LiteralSequenceExpression	GGGG			
 multiallelic	chr20	1005240	TAA	T,TA,*,TAAA,GAA	0	T	ga4gh:VA.Su1nabE5aOdF23XIoluyrL5L1NSM3SV6	ga4gh:SL.irimERp8gmK0Ne57ExSB6V3iWlzh69Pv	1005240	1005246	ReferenceLengthExpression		4	2	
 multiallelic	chr20	1005240	TAA	T,TA,*,TAAA,GAA	1	TA	ga4gh:VA.ZWeK62RoWKTaC4EzfplhLM3GJPtbYHhR	ga4gh:SL.irimERp8gmK0Ne57ExSB6V3iWlzh69Pv	1005240	1005246	ReferenceLengthExpression		5	1	
 multiallelic	chr20	1005240	TAA	T,TA,*,TAAA,GAA	2	*									

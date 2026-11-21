@@ -56,6 +56,10 @@ CASES = [
     ("deletion_repeat", "chr20", 1012544, "GCCA", ["G"], None),
     # ...and the same deletion written at the right end of the repeat. It must get the same IDs.
     ("deletion_repeat_right_shifted", "chr20", 1012553, "ACCA", ["A"], None),
+    # Delins: both sides non-empty after trimming, so VRS does not roll it. CCA -> T inside the (CCA)4 above...
+    ("delins_shorter_alt", "chr20", 1012544, "GCCA", ["GT"], None),
+    # ...and CA -> GGGG inside the (CA)5 run of insertion_repeat. Both stay a LiteralSequenceExpression at the trimmed interval.
+    ("delins_longer_alt", "chr20", 1045533, "TCA", ["TGGGG"], None),
     # TA(6)T at chr20:1005240-1005247: two deletions, an insertion and an SNV of the anchor, plus *.
     ("multiallelic", "chr20", 1005240, "TAA", ["T", "TA", SPAN_DEL, "TAAA", "GAA"], None),
     # chr21:11000000 is N in the analysis set. An SNV is unaffected, as long as ALT is not the RefSeq base.
