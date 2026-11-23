@@ -54,9 +54,9 @@ workflow GvsOppositeHaplotypePLP {
         # Without this, a scoping table that already exists fails the run instead of being replaced.
         Boolean overwrite_scoping_tables = false
 
-        String partner_vids_table_name = "preupdate_p_lp_gene_partner_vids"
-        String plp_vids_table_name = "preupdate_p_lp_vat_entries"
-        String coding_genes_table_name = "preupdate_coding_genes"
+        String partner_vids_table_name = "via_new_clinvar_p_lp_gene_partner_vids"
+        String plp_vids_table_name = "via_new_clinvar_p_lp_vat_entries"
+        String coding_genes_table_name = "via_new_clinvar_coding_genes"
 
         # Table in project_id.dataset to append the pairs to, created if it does not exist. Never replaced, so runs over
         # different contigs can share one table; a run fails rather than load a contig that already has rows there.
