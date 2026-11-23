@@ -479,6 +479,23 @@ patch this table for a set of VIDs that did not have corresponding Participant
 IDs. See the directory `pseudo_vids_only_in_vat` for more information on
 unmatched VIDs that were discovered in the VATs of the Delta and Echo callsets.
 
+### The VAT's AC and AN count only FT-passing genotypes
+
+`hail_create_vat_inputs.py` sets every genotype whose FT fails to no-call before
+it computes `gvs_all_ac`, `gvs_all_an` and the subpopulation counts
+(`failing_gts_to_no_call`). Anything computed from the same VDS without that
+step counts every genotype, so its AC and AN can be higher: Hail's `variant_qc`
+on a densified VDS, for example, or warp's AoU phasing filter. Treat the VAT's
+counts as lower bounds when comparing against such numbers. In particular, a
+VAT AC of 1 does not prove a singleton, because a second carrier may have failed
+FT.
+
+The gap is bounded, though. Only samples with a variant call at a site can fail
+FT there; hom-ref entries come from reference blocks, which carry no FT. So AN
+differs from the raw count by at most the site's carriers. For a rare variant
+that is negligible against an AN of a million or so, and a call rate computed
+from the VAT's AN is then effectively exact.
+
 ### The VAT's gnomAD version depends on reference disks
 
 `AnnotateVCF` in `GvsCreateVATfromVDS.wdl` reads its Nirvana data sources
@@ -689,6 +706,46 @@ unless its `runtime` block sets `maxRetries`. The repo's convention is
 `maxRetries` is not specific to 503s: Cromwell reruns the task on any non-zero
 exit, so a genuine failure is also attempted four times before it fails. Retries
 run on fresh VMs, so each one costs the full task.
+
+## The `Reference` struct holds Strings, so pass its paths as `File` inputs
+
+Every field of `Reference` (`structs/Reference.wdl`, filled in by
+`GetReference` in `GvsUtils.wdl`) is a `String`. A task that takes the struct
+and interpolates `~{reference.reference_fasta}` into a command therefore gets a
+`gs://` path, and Cromwell localizes nothing. GATK may cope, but htslib tools
+read the path remotely, one HTTP range request per fetch, and a single transient
+error fails the task. `bcftools norm -f` fetches reference sequence for every
+record it realigns, so on a large region that is thousands of requests. In
+`GvsOppositeHaplotypePLP` it failed four attempts in a row with `Libcurl
+reported error 92 (Stream error in the HTTP/2 framing layer)` and
+`faidx_fetch_seq failed`, at 3 GiB of memory and 0% disk, while a one-gene test
+had passed because it fetched almost nothing.
+
+So declare the task input as `File reference_fasta` plus `File
+reference_fasta_index`, and pass `GetReference.reference.reference_fasta` from
+the workflow. Cromwell then localizes both into the same directory, where htslib
+looks for the index. Each task in a scatter downloads the 3.2 GB FASTA, so
+recommend Terra's "Use reference disks" option when submitting such a workflow.
+
+## A failed pipe stage is reported by the stage before it
+
+In a pipeline such as `bcftools view | bcftools annotate | bcftools norm`, when
+a later stage dies, the stage writing into it fails on the broken pipe and is
+the one that complains: `[main_vcfview] Error: cannot write to (null)` means
+that `view` could not write to stdout, not that `view` went wrong. The real
+error is in the stderr of whichever stage died, and if that stage was killed for
+running out of memory it printed nothing at all.
+
+So do not redirect a stage's stderr to a file that is printed only after the
+pipeline succeeds. Under `errexit` the script stops first and the message is
+lost. Where the log is needed as a file, print it on failure as well:
+
+    view ... | norm ... 2> norm.log \
+        || { rc=$?; cat norm.log >&2; df -h . >&2; exit ${rc}; }
+
+Printing disk usage and the container's peak memory
+(`/sys/fs/cgroup/memory.peak` under cgroup v2) in the same handler tells a full
+disk and an out-of-memory kill apart from a real tool error.
 
 # Documentation Conventions
 

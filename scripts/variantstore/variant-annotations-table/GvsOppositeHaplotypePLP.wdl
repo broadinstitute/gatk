@@ -29,11 +29,18 @@ import "../wdl/GvsUtils.wdl" as Utils
 # `indel_padding_bp` on both sides because a non-normalized record can sit some distance from its left-aligned
 # position. The per-shard stats report how many starting vids matched a VCF record, SNVs and indels separately, which
 # is the Q17 join rate in the design doc.
+#
+# Each contig runs independently and in parallel, from PrepareShards through GatherResults, against its own phased VCF.
+# MergeContigs then combines the per-contig results, so each output covers every contig, and LoadPairs appends the
+# pairs to a BigQuery table if pairs_table_name is set.
 workflow GvsOppositeHaplotypePLP {
     input {
-        # The phased joint VCF and its index. Never localized; read remotely by region.
-        File phased_vcf
-        File? phased_vcf_index
+        # Contigs to process, named as in the VCFs, with the phased VCF for each at the same position in phased_vcfs
+        # (and its index in phased_vcf_indexes, if given). The VCFs are never localized; they are read remotely by
+        # region.
+        Array[String] contigs = ["chr20"]
+        Array[File] phased_vcfs
+        Array[File]? phased_vcf_indexes
 
         String project_id
         String dataset
@@ -51,11 +58,14 @@ workflow GvsOppositeHaplotypePLP {
         String plp_vids_table_name = "preupdate_p_lp_vat_entries"
         String coding_genes_table_name = "preupdate_coding_genes"
 
-        # Contig to process, named as in the VCF. Intervals on other contigs are ignored.
-        String contig = "chr20"
+        # Table in project_id.dataset to append the pairs to, created if it does not exist. Never replaced, so runs over
+        # different contigs can share one table; a run fails rather than load a contig that already has rows there.
+        String? pairs_table_name
+
         # Optional BED (0-based half-open) or Picard .interval_list (1-based inclusive) narrowing the *starting*
         # variants. The P/LP variants of every gene touched are always included, wherever they lie in the gene, so
-        # the answer for each starting variant inside the intervals is complete.
+        # the answer for each starting variant inside the intervals is complete. Every contig processed needs at least
+        # one interval, or its PrepareShards fails.
         File? intervals
 
         Int vids_per_shard = 50000
@@ -98,76 +108,116 @@ workflow GvsOppositeHaplotypePLP {
         }
     }
 
-    call PrepareShards {
-        input:
-            project_id = project_id,
-            dataset = dataset,
-            # The same names either way; taking them from CreateScopingTables when it ran makes PrepareShards wait
-            # for the tables to exist.
-            partner_vids_table_name = select_first([CreateScopingTables.partner_table, partner_vids_table_name]),
-            plp_vids_table_name = select_first([CreateScopingTables.plp_table, plp_vids_table_name]),
-            contig = contig,
-            intervals = intervals,
-            vids_per_shard = vids_per_shard,
-            indel_padding_bp = indel_padding_bp,
-            region_merge_gap_bp = region_merge_gap_bp,
-            variants_docker = GetToolVersions.variants_docker,
+    # zip fails unless its arrays are the same length, which makes these the checks that the inputs line up.
+    Array[Pair[String, File]] contig_vcfs = zip(contigs, phased_vcfs)
+    if (defined(phased_vcf_indexes)) {
+        Array[Pair[String, File]] contig_vcf_indexes = zip(contigs, select_first([phased_vcf_indexes]))
     }
 
-    call PhasePLPSites {
-        input:
-            phased_vcf = phased_vcf,
-            phased_vcf_index = phased_vcf_index,
-            plp_vids = PrepareShards.plp_vids,
-            plp_regions = PrepareShards.plp_regions,
-            reference_fasta = GetReference.reference.reference_fasta,
-            reference_fasta_index = GetReference.reference.reference_fasta_index,
-            requester_pays_project = requester_pays_project,
-            disk_gb = plp_disk_gb,
-            memory_gb = plp_memory_gb,
-            variants_docker = GetToolVersions.variants_docker,
-    }
+    scatter (i in range(length(contig_vcfs))) {
+        String contig = contig_vcfs[i].left
+        File phased_vcf = contig_vcfs[i].right
+        if (defined(contig_vcf_indexes)) {
+            File phased_vcf_index = select_first([contig_vcf_indexes])[i].right
+        }
 
-    scatter (shard in PrepareShards.shards) {
-        call ScanShard {
+        call PrepareShards {
             input:
-                shard = shard,
+                project_id = project_id,
+                dataset = dataset,
+                # The same names either way; taking them from CreateScopingTables when it ran makes PrepareShards wait
+                # for the tables to exist.
+                partner_vids_table_name = select_first([CreateScopingTables.partner_table, partner_vids_table_name]),
+                plp_vids_table_name = select_first([CreateScopingTables.plp_table, plp_vids_table_name]),
+                contig = contig,
+                intervals = intervals,
+                vids_per_shard = vids_per_shard,
+                indel_padding_bp = indel_padding_bp,
+                region_merge_gap_bp = region_merge_gap_bp,
+                variants_docker = GetToolVersions.variants_docker,
+        }
+
+        call PhasePLPSites {
+            input:
                 phased_vcf = phased_vcf,
                 phased_vcf_index = phased_vcf_index,
                 plp_vids = PrepareShards.plp_vids,
-                plp_haps = PhasePLPSites.plp_haps,
+                plp_regions = PrepareShards.plp_regions,
                 reference_fasta = GetReference.reference.reference_fasta,
                 reference_fasta_index = GetReference.reference.reference_fasta_index,
                 requester_pays_project = requester_pays_project,
-                indel_padding_bp = indel_padding_bp,
-                cpu = shard_cpu,
-                disk_gb = shard_disk_gb,
-                preemptible = shard_preemptible,
+                disk_gb = plp_disk_gb,
+                memory_gb = plp_memory_gb,
+                variants_docker = GetToolVersions.variants_docker,
+        }
+
+        scatter (shard in PrepareShards.shards) {
+            call ScanShard {
+                input:
+                    shard = shard,
+                    phased_vcf = phased_vcf,
+                    phased_vcf_index = phased_vcf_index,
+                    plp_vids = PrepareShards.plp_vids,
+                    plp_haps = PhasePLPSites.plp_haps,
+                    reference_fasta = GetReference.reference.reference_fasta,
+                    reference_fasta_index = GetReference.reference.reference_fasta_index,
+                    requester_pays_project = requester_pays_project,
+                    indel_padding_bp = indel_padding_bp,
+                    cpu = shard_cpu,
+                    disk_gb = shard_disk_gb,
+                    preemptible = shard_preemptible,
+                    variants_docker = GetToolVersions.variants_docker,
+            }
+        }
+
+        call GatherResults {
+            input:
+                pairs = ScanShard.pairs,
+                undetermined = ScanShard.undetermined,
+                unmatched_start_vids = ScanShard.unmatched_start_vids,
+                classified_unmatched = ScanShard.classified_unmatched,
+                shard_stats = ScanShard.stats,
+                prepare_stats = PrepareShards.stats,
+                plp_stats = PhasePLPSites.stats,
                 variants_docker = GetToolVersions.variants_docker,
         }
     }
 
-    call GatherResults {
+    call MergeContigs {
         input:
-            pairs = ScanShard.pairs,
-            undetermined = ScanShard.undetermined,
-            unmatched_start_vids = ScanShard.unmatched_start_vids,
-            classified_unmatched = ScanShard.classified_unmatched,
-            shard_stats = ScanShard.stats,
-            prepare_stats = PrepareShards.stats,
-            plp_stats = PhasePLPSites.stats,
+            contigs = contig,
+            pairs = GatherResults.all_pairs,
+            undetermined = GatherResults.all_undetermined,
+            unmatched_start_vids = GatherResults.all_unmatched_start_vids,
+            classified_unmatched = GatherResults.all_classified_unmatched,
+            summaries = GatherResults.summary,
             variants_docker = GetToolVersions.variants_docker,
     }
 
+    if (defined(pairs_table_name)) {
+        call LoadPairs {
+            input:
+                pairs = MergeContigs.pairs,
+                project_id = project_id,
+                dataset = dataset,
+                pairs_table_name = select_first([pairs_table_name]),
+                variants_docker = GetToolVersions.variants_docker,
+        }
+    }
+
     output {
-        File pairs = GatherResults.all_pairs
-        File undetermined = GatherResults.all_undetermined
-        File unmatched_start_vids = GatherResults.all_unmatched_start_vids
-        File classified_unmatched = GatherResults.all_classified_unmatched
-        File unmatched_plp_vids = PhasePLPSites.unmatched_plp_vids
-        File plp_haps = PhasePLPSites.plp_haps
-        File summary = GatherResults.summary
+        File pairs = MergeContigs.pairs
+        File undetermined = MergeContigs.undetermined
+        File unmatched_start_vids = MergeContigs.unmatched_start_vids
+        File classified_unmatched = MergeContigs.classified_unmatched
+        # Keyed by contig.
+        File summary = MergeContigs.summary
+        # Per contig, in the order of contigs. GvsExplainUnmatchedPhasingVids takes one contig's classified_unmatched.
+        Array[File] classified_unmatched_by_contig = GatherResults.all_classified_unmatched
+        Array[File] unmatched_plp_vids = PhasePLPSites.unmatched_plp_vids
+        Array[File] plp_haps = PhasePLPSites.plp_haps
         File? scoping_stats = CreateScopingTables.stats
+        File? load_stats = LoadPairs.stats
     }
 }
 
@@ -1065,5 +1115,184 @@ task GatherResults {
         File all_unmatched_start_vids = "unmatched_start_vids.tsv.gz"
         File all_classified_unmatched = "classified_unmatched.tsv.gz"
         File summary = "summary.json"
+    }
+}
+
+task MergeContigs {
+    input {
+        Array[String] contigs
+        Array[File] pairs
+        Array[File] undetermined
+        Array[File] unmatched_start_vids
+        Array[File] classified_unmatched
+        Array[File] summaries
+        String variants_docker
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        # Every per-contig file but unmatched_start_vids starts with a header line; keep only the first file's.
+        merge() {
+            local out=$1 first=$2
+            shift 2
+            { gunzip -c "${first}"; for f in "$@"; do gunzip -c "${f}" | tail -n +2; done; } | gzip > "${out}"
+        }
+        merge pairs.tsv.gz ~{sep=' ' pairs}
+        merge undetermined.tsv.gz ~{sep=' ' undetermined}
+        merge classified_unmatched.tsv.gz ~{sep=' ' classified_unmatched}
+        # Concatenated gzip members are themselves a valid gzip file.
+        cat ~{sep=' ' unmatched_start_vids} > unmatched_start_vids.tsv.gz
+
+        python3 - ~{write_lines(contigs)} ~{sep=' ' summaries} <<'PYTHON_HEREDOC'
+        import json
+        import sys
+
+        with open(sys.argv[1]) as f:
+            contigs = [line.rstrip("\n") for line in f]
+        summaries = sys.argv[2:]
+        with open("summary.json", "w") as f:
+            json.dump({contig: json.load(open(path)) for contig, path in zip(contigs, summaries)}, f, indent=2)
+        PYTHON_HEREDOC
+
+        for f in pairs undetermined classified_unmatched unmatched_start_vids
+        do
+            echo "${f}: $(gunzip -c ${f}.tsv.gz | wc -l) lines"
+        done
+    >>>
+    runtime {
+        docker: variants_docker
+        memory: "4 GiB"
+        disks: "local-disk 100 HDD"
+        cpu: 1
+        maxRetries: 3
+    }
+    output {
+        File pairs = "pairs.tsv.gz"
+        File undetermined = "undetermined.tsv.gz"
+        File unmatched_start_vids = "unmatched_start_vids.tsv.gz"
+        File classified_unmatched = "classified_unmatched.tsv.gz"
+        File summary = "summary.json"
+    }
+}
+
+task LoadPairs {
+    input {
+        File pairs
+        String project_id
+        String dataset
+        String pairs_table_name
+        String variants_docker
+    }
+    command <<<
+        # Prepend date, time and pwd to xtrace log entries.
+        PS4='\D{+%F %T} \w $ '
+        set -o errexit -o nounset -o pipefail -o xtrace
+
+        gunzip -c ~{pairs} > pairs.tsv
+
+        python3 - pairs.tsv "~{project_id}" "~{dataset}" "~{pairs_table_name}" <<'PYTHON_HEREDOC'
+        import datetime
+        import json
+        import sys
+        import uuid
+
+        from google.cloud import bigquery
+
+        pairs_path, project_id, dataset, table = sys.argv[1:]
+        target = f"{project_id}.{dataset}.{table}"
+        staging = f"{target}_staging_{uuid.uuid4().hex[:12]}"
+        client = bigquery.Client(project=project_id)
+
+
+        def run(sql, params=()):
+            job = client.query(sql, job_config=bigquery.QueryJobConfig(query_parameters=list(params)))
+            rows = list(job.result())
+            return job, rows
+
+
+        with open(pairs_path) as f:
+            expected_rows = sum(1 for _ in f) - 1
+
+        # Never replaced: created only if missing, with the shape of the table built by hand for chr20.
+        run(f"""
+            CREATE TABLE IF NOT EXISTS `{target}` (
+              vid STRING,
+              gene_id STRING,
+              sample STRING,
+              basis STRING,
+              plp_vids ARRAY<STRING>
+            )
+            CLUSTER BY vid
+            OPTIONS (description = "Samples with a ClinVar P/LP variant on the other haplotype of the same gene as vid. From GvsOppositeHaplotypePLP.")
+        """)
+
+        # The staging table expires on its own in case the task dies before the finally below can drop it.
+        staging_table = bigquery.Table(staging, schema=[
+            bigquery.SchemaField(name, "STRING") for name in ("vid", "gene_id", "sample", "basis", "plp_vids")])
+        staging_table.expires = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+        client.create_table(staging_table)
+        try:
+            with open(pairs_path, "rb") as f:
+                client.load_table_from_file(f, staging, job_config=bigquery.LoadJobConfig(
+                    source_format=bigquery.SourceFormat.CSV,
+                    field_delimiter="\t",
+                    quote_character="",
+                    skip_leading_rows=1,
+                    write_disposition=bigquery.WriteDisposition.WRITE_EMPTY,
+                )).result()
+            staged = client.get_table(staging).num_rows
+            if staged != expected_rows:
+                sys.exit(f"Staged {staged} rows but {pairs_path} has {expected_rows}")
+
+            # The chromosome is the vid's first field. Refuse any already present, so a rerun cannot double a contig.
+            _, already = run(f"""
+                WITH loading AS (SELECT DISTINCT SPLIT(vid, '-')[OFFSET(0)] AS chrom FROM `{staging}`)
+                SELECT SPLIT(t.vid, '-')[OFFSET(0)] AS chrom, COUNT(*) AS n
+                FROM `{target}` AS t
+                WHERE SPLIT(t.vid, '-')[OFFSET(0)] IN (SELECT chrom FROM loading)
+                GROUP BY chrom
+                ORDER BY chrom
+            """)
+            if already:
+                found = ", ".join(f"{row.chrom} ({row.n} rows)" for row in already)
+                sys.exit(f"{target} already has rows for chromosome(s) {found}, so nothing was loaded. To reload "
+                         f"them, first run e.g. DELETE FROM `{target}` WHERE SPLIT(vid, '-')[OFFSET(0)] = '<chrom>'.")
+
+            job, _ = run(f"""
+                INSERT INTO `{target}` (vid, gene_id, sample, basis, plp_vids)
+                SELECT vid, gene_id, sample, basis, SPLIT(plp_vids, ',')
+                FROM `{staging}`
+            """)
+            if job.num_dml_affected_rows != expected_rows:
+                sys.exit(f"Inserted {job.num_dml_affected_rows} rows into {target}, expected {expected_rows}")
+        finally:
+            client.delete_table(staging, not_found_ok=True)
+
+        _, by_chrom = run(f"""
+            SELECT SPLIT(vid, '-')[OFFSET(0)] AS chrom, COUNT(*) AS n
+            FROM `{target}`
+            GROUP BY chrom
+            ORDER BY chrom
+        """)
+        with open("load_stats.json", "w") as f:
+            json.dump({
+                "table": target,
+                "rows_loaded": expected_rows,
+                "table_rows_by_chromosome": {row.chrom: row.n for row in by_chrom},
+            }, f, indent=2)
+        PYTHON_HEREDOC
+
+        cat load_stats.json
+    >>>
+    runtime {
+        docker: variants_docker
+        memory: "4 GiB"
+        disks: "local-disk 100 HDD"
+        cpu: 1
+    }
+    output {
+        File stats = "load_stats.json"
     }
 }
