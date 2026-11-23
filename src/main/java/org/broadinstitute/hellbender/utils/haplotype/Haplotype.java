@@ -168,9 +168,22 @@ public class Haplotype extends SimpleAllele implements Locatable{
                 && Arrays.equals(getBases(), ((Haplotype) h).getBases());
     }
 
+    /**
+     * Cached hash of the bases; 0 means not yet computed. The vectorized PairHMM looks haplotypes up
+     * in a map once per (read, haplotype) pair, so hashing the whole base array every time is a
+     * measurable cost in regions with many haplotypes. Bases are immutable, so the cache never goes
+     * stale; a haplotype whose bases genuinely hash to 0 is simply rehashed on each call.
+     */
+    private transient int cachedHashCode = 0;
+
     @Override
     public int hashCode() {
-        return Arrays.hashCode(getBases());
+        int h = cachedHashCode;
+        if (h == 0) {
+            h = Arrays.hashCode(getBases());
+            cachedHashCode = h;
+        }
+        return h;
     }
 
     public EventMap getEventMap() {
