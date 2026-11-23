@@ -63,7 +63,10 @@ workflow GvsBulkIngestGenomes {
         # the initial validation pass regardless of this setting. Set this to true only when bypassing
         # validation (validate_vcf_headers=false) while still wanting headers loaded in a single direct pass.
         Boolean load_vcf_headers = false
-        Boolean enable_vrs_ids = false
+        # Compute VRS allele IDs at ingest (VS-2058). Unset (the default) follows the dataset: on if its vet
+        # tables have vrs_allele_ids, off if they do not, and off for a new dataset. Set true to start a new
+        # VRS dataset. A value that contradicts an existing dataset fails before any sample gets an ID.
+        Boolean? enable_vrs_ids
         Boolean tighter_gcp_quotas = false
         Boolean is_wgs = true
         # End GvsImportGenomes
@@ -292,7 +295,8 @@ workflow GvsBulkIngestGenomes {
                 use_compressed_references = use_compressed_references,
                 load_vet_and_ref_ranges = load_vet_and_ref_ranges,
                 load_vcf_headers = data_pass_loads_vcf_headers,
-                enable_vrs_ids = enable_vrs_ids,
+                # The value GvsAssignIds resolved against the dataset, which also decided the vet tables' schema.
+                enable_vrs_ids = AssignIds.enable_vrs_ids,
                 is_rate_limited_beta_customer = tighter_gcp_quotas,
                 use_parquet_ingest = use_parquet_ingest,
                 parquet_output_gcs_dir = data_parquet_output_gcs_dir,
