@@ -47,7 +47,8 @@ workflow GvsImportGenomes {
     # At least one of these "load" inputs must be true
     Boolean load_vet_and_ref_ranges = true
     Boolean load_vcf_headers = false
-    Boolean enable_vrs_ids = false
+    # Unset follows the dataset, as in GvsAssignIds; a value that contradicts the dataset fails.
+    Boolean? enable_vrs_ids
     String? basic_docker
     String? cloud_sdk_docker
     String? variants_docker
@@ -198,6 +199,20 @@ workflow GvsImportGenomes {
 
   Int effective_load_data_maxretries = select_first([load_data_maxretries_override, 5])
 
+  # Checked again here, not only in GvsAssignIds, so a direct run of this workflow cannot load VRS-off rows
+  # into a VRS dataset, or the reverse. A headers-only pass loads no vet rows, so it needs no check.
+  if (load_vet_and_ref_ranges) {
+    call Utils.ResolveEnableVrsIds as ResolveVrsIds {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        enable_vrs_ids = enable_vrs_ids,
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+  }
+  # Internal, not forwarded, so a concrete default is fine: a headers-only pass computes no VRS IDs.
+  Boolean effective_enable_vrs_ids = select_first([ResolveVrsIds.enable_vrs_ids, false])
+
   call CreateSampleDataViews {
     input:
       project_id = project_id,
@@ -207,7 +222,7 @@ workflow GvsImportGenomes {
 
   call GetUningestedSampleIds {
     input:
-      go = CreateSampleDataViews.done,
+      go = CreateSampleDataViews.done && select_first([ResolveVrsIds.done, true]),
       dataset_name = dataset_name,
       project_id = project_id,
       external_sample_names = external_sample_names,
@@ -248,9 +263,9 @@ workflow GvsImportGenomes {
           drop_state_includes_greater_than = false,
           input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
           input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
-          reference_fasta = if enable_vrs_ids then effective_reference_fasta else reference_fasta,
-          reference_fasta_index = if enable_vrs_ids then effective_reference_fasta_index else reference_fasta_index,
-          reference_dict = if enable_vrs_ids then effective_reference_dict else reference_dict,
+          reference_fasta = if effective_enable_vrs_ids then effective_reference_fasta else reference_fasta,
+          reference_fasta_index = if effective_enable_vrs_ids then effective_reference_fasta_index else reference_fasta_index,
+          reference_dict = if effective_enable_vrs_ids then effective_reference_dict else reference_dict,
           interval_list = effective_interval_list,
           gatk_docker = effective_gatk_docker,
           gatk_override = load_data_gatk_override,
@@ -260,7 +275,7 @@ workflow GvsImportGenomes {
           sample_map = GetUningestedSampleIds.sample_map,
           load_vet_and_ref_ranges = load_vet_and_ref_ranges,
           load_vcf_headers = load_vcf_headers,
-          enable_vrs_ids = enable_vrs_ids,
+          enable_vrs_ids = effective_enable_vrs_ids,
           billing_project_id = billing_project_id,
           use_compressed_references = use_compressed_references,
           parquet_output_gcs_dir = parquet_output_gcs_dir,
@@ -278,9 +293,9 @@ workflow GvsImportGenomes {
           drop_state_includes_greater_than = false,
           input_vcf_indexes = read_lines(CreateFOFNs.vcf_batch_vcf_index_fofns[i]),
           input_vcfs = read_lines(CreateFOFNs.vcf_batch_vcf_fofns[i]),
-          reference_fasta = if enable_vrs_ids then effective_reference_fasta else reference_fasta,
-          reference_fasta_index = if enable_vrs_ids then effective_reference_fasta_index else reference_fasta_index,
-          reference_dict = if enable_vrs_ids then effective_reference_dict else reference_dict,
+          reference_fasta = if effective_enable_vrs_ids then effective_reference_fasta else reference_fasta,
+          reference_fasta_index = if effective_enable_vrs_ids then effective_reference_fasta_index else reference_fasta_index,
+          reference_dict = if effective_enable_vrs_ids then effective_reference_dict else reference_dict,
           interval_list = effective_interval_list,
           gatk_docker = effective_gatk_docker,
           gatk_override = load_data_gatk_override,
@@ -290,7 +305,7 @@ workflow GvsImportGenomes {
           sample_map = GetUningestedSampleIds.sample_map,
           load_vet_and_ref_ranges = load_vet_and_ref_ranges,
           load_vcf_headers = load_vcf_headers,
-            enable_vrs_ids = enable_vrs_ids,
+            enable_vrs_ids = effective_enable_vrs_ids,
           billing_project_id = billing_project_id,
           use_compressed_references = use_compressed_references,
           use_parquet_ingest = false,
@@ -314,7 +329,7 @@ workflow GvsImportGenomes {
     Array[String] parquet_regular_prefixes = flatten([
       ["sample_chromosome_ploidy"],
       if load_vcf_headers then ["vcf_header_lines_scratch"] else [],
-      if enable_vrs_ids then ["vrs_allele_scratch"] else []
+      if effective_enable_vrs_ids then ["vrs_allele_scratch"] else []
     ])
     Array[String] parquet_superpartitioned_prefixes = ["vet", "ref_ranges"]
 
@@ -487,7 +502,7 @@ workflow GvsImportGenomes {
   # reference is there, then empty the scratch rows. Gated the same way as ProcessVCFHeaders: on
   # VerifyParquetLoading, so the footer row count check sees the scratch rows before they are drained,
   # or on the BQ Write API load.
-  if (enable_vrs_ids && load_vet_and_ref_ranges) {
+  if (effective_enable_vrs_ids && load_vet_and_ref_ranges) {
     call ProcessVrsAlleles {
       input:
         variants_docker = effective_variants_docker,
@@ -956,6 +971,7 @@ task ProcessVrsAlleles {
 
   runtime {
     docker: variants_docker
+    maxRetries: 3
   }
 }
 

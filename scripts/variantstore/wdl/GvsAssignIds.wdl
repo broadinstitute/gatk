@@ -20,7 +20,10 @@ workflow GvsAssignIds {
 
     Boolean load_vet_and_ref_ranges
     Boolean load_vcf_headers
-    Boolean enable_vrs_ids = false
+    # Unset (the default) follows the dataset: on if its vet tables have vrs_allele_ids, off if they do not,
+    # and off for a new dataset. Set it to choose for a new dataset; on an existing one, a value that
+    # contradicts the dataset fails (see ResolveEnableVrsIds in GvsUtils.wdl).
+    Boolean? enable_vrs_ids
 
     Boolean use_compressed_references = false
     String? cloud_sdk_docker
@@ -148,15 +151,17 @@ workflow GvsAssignIds {
     }
   }
 
-  if (enable_vrs_ids) {
-    call ValidateVetTablesHaveVrsColumn {
-      input:
-        project_id = project_id,
-        dataset_name = dataset_name,
-        go = ValidateDatasetExists.done,
-        cloud_sdk_docker = effective_cloud_sdk_docker,
-    }
+  # Runs on every ingest, VRS or not: it is what keeps a dataset all-VRS or all-non-VRS.
+  call Utils.ResolveEnableVrsIds as ResolveVrsIds {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      enable_vrs_ids = enable_vrs_ids,
+      go = ValidateDatasetExists.done,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
 
+  if (ResolveVrsIds.enable_vrs_ids) {
     # Ingest writes each sample's VRS alleles here, tagged with its sample_id so the Parquet ingest
     # verification covers them; ProcessVrsAlleles in GvsImportGenomes merges the distinct alleles into
     # vrs_allele and then empties this table. Same pattern as vcf_header_lines_scratch.
@@ -166,7 +171,7 @@ workflow GvsAssignIds {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
-        go = ValidateSamples.done && ValidateVetTablesHaveVrsColumn.done,
+        go = ValidateSamples.done && ResolveVrsIds.done,
         table_name = "vrs_allele_scratch",
         schema_json = vrs_allele_scratch_schema_json,
         clustering_fields = "sample_id",
@@ -180,7 +185,7 @@ workflow GvsAssignIds {
       input:
         project_id = project_id,
         dataset_name = dataset_name,
-        go = ValidateSamples.done && ValidateVetTablesHaveVrsColumn.done,
+        go = ValidateSamples.done && ResolveVrsIds.done,
         table_name = "vrs_allele",
         schema_json = vrs_allele_schema_json,
         clustering_fields = "vrs_allele_id",
@@ -205,8 +210,8 @@ workflow GvsAssignIds {
       dataset_name = dataset_name,
       sample_info_table = sample_info_table,
       samples_are_controls = samples_are_controls,
-      # With VRS on, assign no IDs to samples whose ingest the vet table check has ruled out.
-      go = CreateSampleInfoTable.done && select_first([ValidateVetTablesHaveVrsColumn.done, true]),
+      # Assign no IDs to samples whose ingest the VRS check has ruled out.
+      go = CreateSampleInfoTable.done && ResolveVrsIds.done,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -220,6 +225,7 @@ workflow GvsAssignIds {
         max_table_id = AssignIds.max_table_id,
         cloud_sdk_docker = effective_cloud_sdk_docker,
         use_compressed_references = use_compressed_references,
+        enable_vrs_ids = ResolveVrsIds.enable_vrs_ids,
     }
   }
 
@@ -227,6 +233,8 @@ workflow GvsAssignIds {
     Boolean done = true
     File gvs_ids_tsv = AssignIds.gvs_ids_tsv
     String recorded_git_hash = effective_git_hash
+    # Resolved against the dataset. Callers pass this, not their own input, on to GvsImportGenomes.
+    Boolean enable_vrs_ids = ResolveVrsIds.enable_vrs_ids
   }
 }
 
@@ -501,72 +509,6 @@ task ValidateSamples {
       exit 1;
     fi
 
-  >>>
-
-  runtime {
-    docker: cloud_sdk_docker
-    memory: "3 GB"
-    cpu: 1
-    preemptible: 1
-    maxRetries: 0
-    disks: "local-disk 100 HDD"
-  }
-
-  output {
-    Boolean done = true
-  }
-}
-
-task ValidateVetTablesHaveVrsColumn {
-  input {
-    String project_id
-    String dataset_name
-    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
-    # is passed here to prevent this task from running until the upstream task has completed.
-    #@ except: UnusedInput
-    Boolean go
-    String cloud_sdk_docker
-  }
-
-  meta {
-    description: "Preflight check that no existing vet table predates the vrs_allele_ids column, failing fast if one does."
-    volatile: true
-  }
-
-  command <<<
-    # Prepend date, time and pwd to xtrace log entries.
-    PS4='\D{+%F %T} \w $ '
-    set -o errexit -o nounset -o pipefail -o xtrace
-
-    echo "project_id = ~{project_id}" > ~/.bigqueryrc
-
-    # Vet tables created before VS-2058 lack vrs_allele_ids, and the Parquet load cannot add it, so a VRS
-    # ingest into one would fail at load. Tables this run creates get the column; a new dataset has none.
-    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=10000 '
-      SELECT
-        table_name
-      FROM
-        `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES`
-      WHERE
-        REGEXP_CONTAINS(table_name, r"^vet_[0-9]{3}$")
-      AND table_name NOT IN (
-        SELECT table_name
-        FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
-        WHERE column_name = "vrs_allele_ids")
-      ORDER BY table_name ' | sed 1d > vet_tables_without_vrs.txt
-
-    if [ -s vet_tables_without_vrs.txt ]; then
-      # Turn off xtrace so the message below is easy to read in the task log.
-      set +o xtrace
-      echo "ERROR: enable_vrs_ids is true, but these vet tables in '~{project_id}:~{dataset_name}' predate the" >&2
-      echo "vrs_allele_ids column:" >&2
-      sed 's/^/    /' vet_tables_without_vrs.txt >&2
-      echo "" >&2
-      echo "VRS IDs can only be computed at ingest into a dataset whose vet tables all have that column, such" >&2
-      echo "as a new dataset. Either ingest with enable_vrs_ids = false, or ingest into a new dataset." >&2
-      echo "Adding VRS IDs to an existing dataset is tracked in VS-2064." >&2
-      exit 1
-    fi
   >>>
 
   runtime {

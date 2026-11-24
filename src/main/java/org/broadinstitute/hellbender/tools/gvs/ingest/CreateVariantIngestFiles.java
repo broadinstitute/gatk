@@ -86,7 +86,8 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     @Argument(fullName = "enable-vrs-ids",
             shortName = "vrs",
             doc = "compute and write VRS allele IDs into the vrs_allele_ids column of VET output, " +
-                  "and produce a vrs_allele_scratch output file. Requires a reference (--reference) and --ref-version 38.",
+                  "and produce a vrs_allele_scratch output file. Requires a reference (--reference), --ref-version 38 " +
+                  "and --output-type PARQUET.",
             optional = true)
     public boolean enableVrsIds = false;
 
@@ -295,6 +296,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             throw new UserException("--enable-vrs-ids requires --ref-version 38: VRS IDs use GRCh38 RefGet accessions, " +
                     "and GVS supports no other reference");
         }
+        if (enableVrsIds && outputType != CommonCode.OutputType.PARQUET) {
+            throw new UserException("--enable-vrs-ids requires --output-type PARQUET: VRS IDs are loaded only through " +
+                    "Parquet ingest, and the BigQuery Write API path does not write them");
+        }
 
         // Set up output directory:
         if (!outputDir.exists() && !outputDir.mkdir()) {
@@ -427,7 +432,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (enableVet && vetRowsExist == Boolean.FALSE) {
             logger.info("Writing vet data for sample id = {}, name = {}", sampleId, sampleName);
             if (enableVrsIds) {
-                vrsAlleleCreator = new VrsAlleleCreator(inputVcfFileName, sampleId, outputDir, outputType, projectID, datasetName, vrsAlleleRowSchema);
+                vrsAlleleCreator = new VrsAlleleCreator(inputVcfFileName, sampleId, outputDir, outputType, vrsAlleleRowSchema);
             }
             vetCreator = new VetCreator(inputVcfFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, variantRowSchema(enableVrsIds), enableVrsIds, vrsAlleleCreator);
         }
@@ -535,6 +540,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         if (vetCreator != null) {
             vetCreator.commitData();
+        }
+        if (vrsAlleleCreator != null) {
+            vrsAlleleCreator.commitData();
         }
 
         if (outputType == CommonCode.OutputType.BQ || outputType == CommonCode.OutputType.PARQUET) {

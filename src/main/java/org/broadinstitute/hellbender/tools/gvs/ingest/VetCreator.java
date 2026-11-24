@@ -160,15 +160,11 @@ public class VetCreator {
         if (vetWriter != null) {
             vetWriter.commitData();
         }
-        if (vrsAlleleCreator != null) {
-            vrsAlleleCreator.commitData();
-        }
     }
 
     public void closeTool() {
         try {
             if (vetWriter != null) vetWriter.close();
-            if (vrsAlleleCreator != null) vrsAlleleCreator.closeTool();
         } catch (final Exception e) {
             throw new IllegalArgumentException(e);
         }

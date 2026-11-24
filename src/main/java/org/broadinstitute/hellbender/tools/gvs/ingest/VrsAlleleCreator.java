@@ -6,7 +6,6 @@ import org.apache.parquet.schema.MessageType;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.CommonCode;
 import org.broadinstitute.hellbender.tools.gvs.common.VrsAlleleRecord;
-import org.broadinstitute.hellbender.tools.gvs.ingest.bq.VrsAlleleBQWriter;
 import org.broadinstitute.hellbender.tools.gvs.ingest.parquet.VrsAlleleParquetFileWriter;
 
 import java.io.File;
@@ -37,26 +36,17 @@ public class VrsAlleleCreator {
                             Long sampleId,
                             File outputDirectory,
                             CommonCode.OutputType outputType,
-                            String projectId,
-                            String datasetName,
                             MessageType parquetSchema) {
         this.sampleId = sampleId;
+        if (outputType != CommonCode.OutputType.PARQUET) {
+            // CreateVariantIngestFiles rejects this combination at startup; this guards any other caller.
+            throw new UserException("VRS allele output supports only --output-type PARQUET, not " + outputType);
+        }
         try {
-            switch (outputType) {
-                case BQ:
-                    if (projectId == null || datasetName == null) {
-                        throw new UserException("Must specify project-id and dataset-name when using BQ output mode.");
-                    }
-                    // All samples write to a single scratch table (no sharding needed)
-                    vrsAlleleWriter = new VrsAlleleBQWriter(projectId, datasetName, SCRATCH_TABLE_NAME);
-                    break;
-                case PARQUET:
-                    final String filename = getOutputFileName(sampleId, inputVcfFileName, outputType);
-                    final File parquetOutputFile = new File(outputDirectory, filename);
-                    vrsAlleleWriter = new VrsAlleleParquetFileWriter(
-                            new Path(parquetOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
-                    break;
-            }
+            final String filename = getOutputFileName(sampleId, inputVcfFileName, outputType);
+            final File parquetOutputFile = new File(outputDirectory, filename);
+            vrsAlleleWriter = new VrsAlleleParquetFileWriter(
+                    new Path(parquetOutputFile.toURI()), parquetSchema, CompressionCodecName.SNAPPY);
         } catch (final IOException e) {
             throw new RuntimeException(e);
         }

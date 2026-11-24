@@ -313,6 +313,28 @@ public class VrsNormalizer {
         return new String(bases).toUpperCase();
     }
 
+    /**
+     * One reference base, fetched on its own.
+     *
+     * <p>Rolling ({@link #determineRollBounds}) calls this once per base it moves, so an indel in a
+     * repeat makes one {@code getBases} call per base of the repeat. That is deliberately left simple.
+     * The alternative, fetching a window around the variant and extending it when a roll reaches its
+     * edge, adds window-boundary logic to the part of normalization that decides the VRS ID, where a
+     * mistake would change IDs rather than speed.
+     *
+     * <p>Each call is an in-memory copy, not file I/O. With {@code --reference}, the walker's
+     * {@code ReferenceContext} reads from a {@code ReferenceFileSource}, whose
+     * {@link org.broadinstitute.hellbender.utils.fasta.CachingIndexedFastaSequenceFile} holds the last
+     * 1 Mb of the contig in memory ({@code DEFAULT_CACHE_SIZE}). Variants arrive in position order, so
+     * the FASTA is read about once per megabase, and a per-base call costs a few small allocations: two
+     * intervals, a one-byte array copy and a String.
+     *
+     * <p>What we know of the cost (VS-2058): on the 25 integration samples, {@code CreateVariantIngestFiles}
+     * took 167 minutes summed with VRS IDs on and 129 with them off, about 30% more. That is one run
+     * of each, and the 30% also covers trimming, SHA-512 digests and writing the VRS rows, so how much
+     * of it is reference fetching has not been measured. Profile before replacing this with a windowed
+     * fetch, and check any replacement against the vrs-python concordance test.
+     */
     private char getReferenceBase(String contig, long position, ReferenceContext refContext) {
         String base = getRefSequence(contig, position, position + 1, refContext);
         if (base.isEmpty()) {
