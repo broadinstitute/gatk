@@ -899,12 +899,20 @@ public final class AlignmentUtils {
         // the number of reference bases consumed during this traversal gives us the reference start
         int refBasesConsumedBeforeReadStart = 0;
         int haplotypeBasesConsumed = 0;
-        for (final CigarElement element : haplotypeVsRefCigar) {
+        final List<CigarElement> elements = haplotypeVsRefCigar.getCigarElements();
+        for (int i = 0; i < elements.size(); i++) {
+            final CigarElement element = elements.get(i);
             refBasesConsumedBeforeReadStart += lengthOnReference(element);
             haplotypeBasesConsumed += lengthOnRead(element);
 
             if (haplotypeBasesConsumed >= readStartOnHaplotype) {
                 final int excess = element.getOperator().consumesReferenceBases() ? haplotypeBasesConsumed - readStartOnHaplotype : 0;
+                // a read that starts exactly where this element ends starts after any deletion that follows it
+                if (haplotypeBasesConsumed == readStartOnHaplotype) {
+                    for (int j = i + 1; j < elements.size() && elements.get(j).getOperator() == CigarOperator.D; j++) {
+                        refBasesConsumedBeforeReadStart += lengthOnReference(elements.get(j));
+                    }
+                }
                 return refBasesConsumedBeforeReadStart - excess;
             }
         }
