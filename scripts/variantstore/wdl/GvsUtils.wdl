@@ -146,7 +146,7 @@ task GetToolVersions {
     # Must stay in lockstep with `cloud_sdk_docker_decl` above -- 565.0.0 is the last tag whose `-slim`
     # sibling is Debian 12 / Python 3.11. See the note there before bumping.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-11-17-alpine-1b62aba46c1a"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-11-24-alpine-71d062d7d48c"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     # The hex suffix on a GATK tag is the Docker image ID that `build_docker_tag.py` was handed, but *which* digest
     # that ID refers to depends on the Docker version of the machine that built it, so do not compare suffixes across
@@ -1276,7 +1276,8 @@ task ResolveEnableVrsIds {
     memory: "3 GB"
     cpu: 1
     preemptible: 1
-    maxRetries: 0
+    # Retries a transient BigQuery error. A contradiction fails the same way each time, in seconds.
+    maxRetries: 3
     disks: "local-disk 100 HDD"
   }
 
