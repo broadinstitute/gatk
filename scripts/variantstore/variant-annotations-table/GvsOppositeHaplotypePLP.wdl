@@ -110,16 +110,18 @@ workflow GvsOppositeHaplotypePLP {
 
     # zip fails unless its arrays are the same length, which makes these the checks that the inputs line up.
     Array[Pair[String, File]] contig_vcfs = zip(contigs, phased_vcfs)
-    if (defined(phased_vcf_indexes)) {
-        Array[Pair[String, File]] contig_vcf_indexes = zip(contigs, select_first([phased_vcf_indexes]))
-    }
+    Array[Pair[String, File]] contig_vcf_indexes = if defined(phased_vcf_indexes)
+        then zip(contigs, select_first([phased_vcf_indexes])) else []
+
+    # Everything the ScanShard scatter below reads from outside it must be a defined value. Cromwell runs an inner
+    # scatter as a sub-workflow and does not pass it an unset optional, so a File? or String? left unset fails with
+    # "Failed to lookup input value for required input". The tasks treat an empty string as "not set", via `-n`.
+    String requester_pays = select_first([requester_pays_project, ""])
 
     scatter (i in range(length(contig_vcfs))) {
         String contig = contig_vcfs[i].left
         File phased_vcf = contig_vcfs[i].right
-        if (defined(contig_vcf_indexes)) {
-            File phased_vcf_index = select_first([contig_vcf_indexes])[i].right
-        }
+        String phased_vcf_index = if i < length(contig_vcf_indexes) then "~{contig_vcf_indexes[i].right}" else ""
 
         call PrepareShards {
             input:
@@ -145,7 +147,7 @@ workflow GvsOppositeHaplotypePLP {
                 plp_regions = PrepareShards.plp_regions,
                 reference_fasta = GetReference.reference.reference_fasta,
                 reference_fasta_index = GetReference.reference.reference_fasta_index,
-                requester_pays_project = requester_pays_project,
+                requester_pays_project = requester_pays,
                 disk_gb = plp_disk_gb,
                 memory_gb = plp_memory_gb,
                 variants_docker = GetToolVersions.variants_docker,
@@ -161,7 +163,7 @@ workflow GvsOppositeHaplotypePLP {
                     plp_haps = PhasePLPSites.plp_haps,
                     reference_fasta = GetReference.reference.reference_fasta,
                     reference_fasta_index = GetReference.reference.reference_fasta_index,
-                    requester_pays_project = requester_pays_project,
+                    requester_pays_project = requester_pays,
                     indel_padding_bp = indel_padding_bp,
                     cpu = shard_cpu,
                     disk_gb = shard_disk_gb,
@@ -572,7 +574,7 @@ task PrepareShards {
 task PhasePLPSites {
     input {
         File phased_vcf
-        File? phased_vcf_index
+        String? phased_vcf_index
         File plp_vids
         File plp_regions
         # Files, not the Reference struct's Strings: given a gs:// path, norm -f fetches sequence over HTTP for
@@ -587,9 +589,6 @@ task PhasePLPSites {
     }
     parameter_meta {
         phased_vcf: {
-            localization_optional: true
-        }
-        phased_vcf_index: {
             localization_optional: true
         }
     }
@@ -763,7 +762,7 @@ task ScanShard {
     input {
         File shard
         File phased_vcf
-        File? phased_vcf_index
+        String? phased_vcf_index
         File plp_vids
         File plp_haps
         # Files, not the Reference struct's Strings: given a gs:// path, norm -f fetches sequence over HTTP for
@@ -780,9 +779,6 @@ task ScanShard {
     }
     parameter_meta {
         phased_vcf: {
-            localization_optional: true
-        }
-        phased_vcf_index: {
             localization_optional: true
         }
     }
