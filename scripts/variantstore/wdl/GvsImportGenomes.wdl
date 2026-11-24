@@ -211,7 +211,7 @@ workflow GvsImportGenomes {
     }
   }
   # Internal, not forwarded, so a concrete default is fine: a headers-only pass computes no VRS IDs.
-  Boolean effective_enable_vrs_ids = select_first([ResolveVrsIds.enable_vrs_ids, false])
+  Boolean effective_enable_vrs_ids = select_first([ResolveVrsIds.resolved_enable_vrs_ids, false])
 
   call CreateSampleDataViews {
     input:
