@@ -484,5 +484,53 @@ class TestLocalSsdCounts(unittest.TestCase):
         self.assertIn('--num-master-local-ssds 1', command)
 
 
+class TestSecondaryWorkerMachineTypes(TestLocalSsdCounts):
+    """Secondary workers can run a machine type of their own (VS-2067).
+
+    Inherits the stubbed run_in_cluster from TestLocalSsdCounts; the SSD tests rerun here too,
+    which costs nothing and shows the secondary types leave the master and workers alone.
+    """
+
+    def test_unset_leaves_the_command_as_before(self):
+        command = self._start_command()
+        self.assertNotIn('secondary-worker', command)
+
+    def test_an_lssd_shape_uses_hyperdisk_and_requests_no_ssds(self):
+        """The shape's built-in SSD comes regardless; asking for one attaches a SCSI disk,
+        which -lssd shapes reject, and C4 does not boot from pd-ssd."""
+        command = self._start_command(secondary_worker_machine_types='c4-highmem-8-lssd')
+        self.assertIn('--secondary-worker-machine-types=type=c4-highmem-8-lssd,rank=0', command)
+        self.assertIn('--secondary-worker-boot-disk-type=hyperdisk-balanced', command)
+        self.assertIn('--num-secondary-worker-local-ssds=0', command)
+
+    def test_the_primary_workers_keep_their_own_disks(self):
+        command = self._start_command(secondary_worker_machine_types='c4-highmem-8-lssd',
+                                      num_local_ssds=1)
+        self.assertIn('--worker-boot-disk-type=pd-ssd', command)
+        self.assertIn('--num-worker-local-ssds 1', command)
+
+    def test_a_pd_family_follows_the_worker_ssd_count(self):
+        command = self._start_command(secondary_worker_machine_types='n2-highmem-8',
+                                      num_local_ssds=1)
+        self.assertIn('--secondary-worker-boot-disk-type=pd-ssd', command)
+        self.assertIn('--num-secondary-worker-local-ssds=1', command)
+
+    def test_types_are_ranked_in_the_order_given(self):
+        command = self._start_command(
+            secondary_worker_machine_types='c4-highmem-8-lssd, c4d-highmem-8-lssd')
+        first = command.index('type=c4-highmem-8-lssd,rank=0')
+        second = command.index('type=c4d-highmem-8-lssd,rank=1')
+        self.assertLess(first, second)
+
+    def test_types_needing_different_disks_are_refused(self):
+        """Dataproc gives every secondary worker one disk configuration."""
+        with self.assertRaisesRegex(ValueError, 'different disk'):
+            runner.secondary_worker_args('c4-highmem-8-lssd,n2d-highmem-8', 1)
+
+    def test_a_hyperdisk_family_without_lssd_gets_no_ssds(self):
+        self.assertIn('--num-secondary-worker-local-ssds=0',
+                      runner.secondary_worker_args('c4-highmem-8', 1))
+
+
 if __name__ == '__main__':
     unittest.main()
