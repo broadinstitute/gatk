@@ -4,6 +4,8 @@ import com.google.common.collect.Lists;
 import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.positional.PositionalAssembler;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.readthreading.ReadThreadingAssembler;
 import org.broadinstitute.hellbender.utils.MathUtils;
 
@@ -25,6 +27,8 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public static final String KMER_SIZE_LONG_NAME = "kmer-size";
     public static final String DONT_INCREASE_KMER_SIZE_LONG_NAME = "dont-increase-kmer-sizes-for-cycles";
     public static final String LINKED_DE_BRUIJN_GRAPH_LONG_NAME = "linked-de-bruijn-graph";
+    public static final String POSITIONAL_ASSEMBLY_LONG_NAME = "positional-assembly";
+    public static final String POSITIONAL_ASSEMBLY_KMER_SIZE_LONG_NAME = "positional-assembly-kmer-size";
     public static final String ALLOW_NON_UNIQUE_KMERS_IN_REF_LONG_NAME = "allow-non-unique-kmers-in-ref";
     public static final String NUM_PRUNING_SAMPLES_LONG_NAME = "num-pruning-samples";
     public static final String MIN_DANGLING_BRANCH_LENGTH_LONG_NAME = "min-dangling-branch-length";
@@ -164,6 +168,10 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     @Argument(fullName= LINKED_DE_BRUIJN_GRAPH_LONG_NAME, doc = "If enabled, the Assembly Engine will construct a Linked De Bruijn graph to recover better haplotypes", optional = true)
     public boolean useLinkedDeBruijnGraph = false;
 
+    @Advanced
+    @Argument(fullName = POSITIONAL_ASSEMBLY_KMER_SIZE_LONG_NAME, doc = "Kmer size of the positional assembler", optional = true, minValue = 5, maxValue = 31)
+    public int positionalAssemblyKmerSize = PositionalAssembler.DEFAULT_KMER_SIZE;
+
 
     /**
      * This is used to disable the recovery of paths that were dropped in the graph based on the junction trees. Disabling this
@@ -246,4 +254,28 @@ public abstract class ReadThreadingAssemblerArgumentCollection implements Serial
     public int minObservationsForKmerToBeSolid = 20;
 
     public abstract ReadThreadingAssembler makeReadThreadingAssembler();
+
+    /**
+     * @return whether the assembly graph is pruned adaptively rather than with a fixed multiplicity cutoff
+     */
+    public abstract boolean adaptivePruningEnabled();
+
+    /**
+     * EXPERIMENTAL: whether to assemble with a kmer graph whose nodes are anchored to reference positions, and choose
+     * haplotypes from the combinations of events that fragments carry, instead of from paths through de Bruijn graphs.
+     * The graph is acyclic for any kmer size, so this mode uses one kmer size and ignores the read threading assembler's
+     * other arguments (kmer sizes, linked de Bruijn graphs) except for pruning: an event needs at least --min-pruning
+     * reads and, with adaptive pruning (Mutect2's default), enough reads at its depth to pass the adaptive pruning test
+     * (--adaptive-pruning-initial-error-rate, --pruning-lod-threshold).  As in a de Bruijn graph, a read's dangling end
+     * shorter than --min-dangling-branch-length kmers can't make an event by itself.
+     */
+    public abstract boolean positionalAssemblyEnabled();
+
+    /**
+     * EXPERIMENTAL: the positional assembler, pruning events as the read threading assembler prunes its graph
+     */
+    public PositionalAssembler makePositionalAssembler(final int minBaseQuality, final SWParameters eventScores) {
+        return new PositionalAssembler(positionalAssemblyKmerSize, minPruneFactor, adaptivePruningEnabled(), initialErrorRateForPruning,
+                pruningLogOddsThreshold, minBaseQuality, minDanglingBranchLength, maxNumHaplotypesInPopulation, eventScores, debugAssembly);
+    }
 }

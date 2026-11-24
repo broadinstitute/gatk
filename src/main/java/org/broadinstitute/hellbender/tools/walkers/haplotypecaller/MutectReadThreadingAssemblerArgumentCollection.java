@@ -20,6 +20,24 @@ public class MutectReadThreadingAssemblerArgumentCollection extends ReadThreadin
     public boolean disableAdaptivePruning = false;
 
     @Override
+    public boolean adaptivePruningEnabled() {
+        return !disableAdaptivePruning;
+    }
+
+    /**
+     * EXPERIMENTAL: Mutect2 assembles with the positional assembler by default; with --positional-assembly false it
+     * assembles with de Bruijn graphs
+     */
+    @Advanced
+    @Argument(fullName = POSITIONAL_ASSEMBLY_LONG_NAME, doc = "EXPERIMENTAL: use the positional assembler instead of de Bruijn graphs", optional = true)
+    public boolean usePositionalAssembly = true;
+
+    @Override
+    public boolean positionalAssemblyEnabled() {
+        return usePositionalAssembly;
+    }
+
+    @Override
     public ReadThreadingAssembler makeReadThreadingAssembler() {
         final ReadThreadingAssembler assemblyEngine = new ReadThreadingAssembler(maxNumHaplotypesInPopulation, Collections.unmodifiableList(kmerSizes),
                 dontIncreaseKmerSizesForCycles, allowNonUniqueKmersInRef, numPruningSamples, disableAdaptivePruning ? minPruneFactor : 0,

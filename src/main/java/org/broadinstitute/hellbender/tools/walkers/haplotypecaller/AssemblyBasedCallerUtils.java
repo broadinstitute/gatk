@@ -383,7 +383,11 @@ public final class AssemblyBasedCallerUtils {
         try {
             final AssemblyResultSet assemblyResultSet =
                     !bypassAssembly
-                            ? assemblyEngine.runLocalAssembly(
+                            ? (argumentCollection.assemblerArgs.positionalAssemblyEnabled()
+                            ? argumentCollection.assemblerArgs.makePositionalAssembler(argumentCollection.minBaseQualityScore,
+                            haplotypeToReferenceSWParameters).runLocalAssembly(region, refHaplotype, fullReferenceWithPadding,
+                            paddedReferenceLoc, header, aligner, haplotypeToReferenceSWParameters)
+                            : assemblyEngine.runLocalAssembly(
                             region,
                             refHaplotype,
                             fullReferenceWithPadding,
@@ -391,7 +395,7 @@ public final class AssemblyBasedCallerUtils {
                             readErrorCorrector,
                             header, aligner,
                             haplotypeCollapsing,
-                            danglingEndSWParameters, haplotypeToReferenceSWParameters)
+                            danglingEndSWParameters, haplotypeToReferenceSWParameters))
                             : assemblyEngine.generateEmptyLLocalAssemblyResult(
                             region,
                             refHaplotype,

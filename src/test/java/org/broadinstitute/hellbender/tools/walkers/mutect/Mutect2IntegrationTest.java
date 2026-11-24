@@ -865,12 +865,30 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<String> expectedKeys = Arrays.asList(
                 "chrM:152-152 T*, [C]",
                 "chrM:263-263 A*, [G]",
-                "chrM:302-302 A*, [AC, ACC, ACCCCCCCCCCCCC, C]",
-                "chrM:310-310 T*, [C, TC]",
                 "chrM:750-750 A*, [G]");
         Assert.assertTrue(variantKeys.containsAll(expectedKeys));
+        assertD310Alleles(variants, "AC");
 
-        Assert.assertEquals(variants.get(0).getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), 1741);
+        // every read in this bam was realigned to chrM from another contig
+        final VariantContext snv = variants.stream().filter(vc -> vc.getStart() == 152).findFirst().get();
+        Assert.assertEquals(snv.getAttributeAsInt(GATKVCFConstants.ORIGINAL_CONTIG_MISMATCH_KEY, 0), snv.getGenotype(0).getAD()[1]);
+    }
+
+    /**
+     * Nearly every read spanning the D310 poly-C tract (chrM:303-315) of this sample reads C(8)TC(6): chrM:302 A>AC and
+     * chrM:310 T>TC.  Reads that end inside the tract misread its T as C in long runs of C, and the other alleles they
+     * suggest depend on the assembler, so only the alleles that spanning reads carry are required.
+     */
+    private static void assertD310Alleles(final List<VariantContext> variants, final String... alleles302) {
+        for (final String allele : alleles302) {
+            assertHasAllele(variants, 302, allele);
+        }
+        assertHasAllele(variants, 310, "TC");
+    }
+
+    private static void assertHasAllele(final List<VariantContext> variants, final int start, final String allele) {
+        Assert.assertTrue(variants.stream().anyMatch(vc -> vc.getStart() == start && vc.getAlternateAlleles().stream().anyMatch(a -> a.basesMatch(allele))),
+                "no call of " + allele + " at chrM:" + start);
     }
 
     // basic test on a small chunk of NA12878 mitochondria. This is intended to be a sanity check to ensure that the pileup-caller
@@ -887,7 +905,8 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                         .add(PileupDetectionArgumentCollection.PILEUP_DETECTION_ENABLE_INDELS, true)
                         //.add(PileupDetectionArgumentCollection.PILEUP_DETECTION_ACTIVE_REGION_LOD_THRESHOLD_LONG_NAME, 0) // This is currently incompatible with Mutect 2 (isActive() doesn't store the original activity scores in M2Engine)
 
-                        // NOTE: These arguments are intended to force the assembly to fail at all sites in order to test what gets recovered by the pileup code
+                        // NOTE: These arguments are intended to force de Bruijn graph assembly to fail at all sites in order to test what gets recovered by the pileup code
+                        .add(ReadThreadingAssemblerArgumentCollection.POSITIONAL_ASSEMBLY_LONG_NAME, false)
                         .add(ReadThreadingAssemblerArgumentCollection.KMER_SIZE_LONG_NAME, 1)
                         .add(ReadThreadingAssemblerArgumentCollection.DONT_INCREASE_KMER_SIZE_LONG_NAME, true)
         );
@@ -1130,12 +1149,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         final List<String> expectedKeys = Arrays.asList(
                 "chrM:152-152 T*, [<NON_REF>, C]",
                 "chrM:263-263 A*, [<NON_REF>, G]",
-                //"chrM:297-297 A*, [<NON_REF>, AC, C]",
-                //"chrM:301-301 A*, [<NON_REF>, AC, ACC, ACCC]",
-                "chrM:302-302 A*, [<NON_REF>, AC, ACC, ACCC, C]",  //one of these commented out variants has an allele that only appears in debug mode
-                "chrM:310-310 T*, [<NON_REF>, TC]",
                 "chrM:750-750 A*, [<NON_REF>, G]");
         Assert.assertTrue(variantKeys.containsAll(expectedKeys));
+        // the D310 calls are left out of the TLOD comparison below: the rerun downsamples differently, which changes their TLODs and allele order
+        assertD310Alleles(variants, "AC", "ACC");
         //First entry should be a homRef block
         Assert.assertTrue(VariantContextTestUtils.keyForVariant(variants.get(0)).contains("*, [<NON_REF>]"));
 
@@ -1170,7 +1187,10 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
                 "chrM:218-218 A*, [<NON_REF>]",
                 "chrM:264-266 C*, [<NON_REF>]",
                 "chrM:475-483 A*, [<NON_REF>]",
-                "chrM:488-492 T*, [<NON_REF>]");
+                "chrM:488-492 T*, [<NON_REF>]",
+                // the blocks of the positional assembler
+                "chrM:264-296 C*, [<NON_REF>]",
+                "chrM:475-498 A*, [<NON_REF>]");
 
         //ref block boundaries aren't particularly stable, so try a few and make sure we check at least one
         final List<String> refBlockKeys = expectedRefKeys.stream()

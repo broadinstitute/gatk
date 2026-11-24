@@ -23,6 +23,23 @@ public class HaplotypeCallerReadThreadingAssemblerArgumentCollection extends Rea
     @Argument(fullName= ADAPTIVE_PRUNING_LONG_NAME, doc = "Use Mutect2's adaptive graph pruning algorithm", optional = true)
     public boolean useAdaptivePruning = false;
 
+    @Override
+    public boolean adaptivePruningEnabled() {
+        return useAdaptivePruning;
+    }
+
+    /**
+     * EXPERIMENTAL: assemble with the positional assembler instead of de Bruijn graphs
+     */
+    @Advanced
+    @Argument(fullName = POSITIONAL_ASSEMBLY_LONG_NAME, doc = "EXPERIMENTAL: use the positional assembler instead of de Bruijn graphs", optional = true)
+    public boolean usePositionalAssembly = false;
+
+    @Override
+    public boolean positionalAssemblyEnabled() {
+        return usePositionalAssembly;
+    }
+
     /**
      * By default, the read threading assembler will attempt to recover dangling heads and tails. See the `minDanglingBranchLength` argument documentation for more details.
      */
