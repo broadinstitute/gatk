@@ -31,10 +31,21 @@ workflow GvsPopulateAltAllele {
   String effective_variants_docker = select_first([variants_docker, GetToolVersions.variants_docker])
   String effective_git_hash = select_first([git_hash, GetToolVersions.git_hash])
 
+  # With enable_vrs_ids unset, this reports whether the dataset carries VRS IDs, from its vet tables, and fails if
+  # they disagree. alt_allele follows the vet tables: it has vrs_allele_id only when they have vrs_allele_ids.
+  call Utils.ResolveEnableVrsIds as ResolveVrsIds {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+  Boolean dataset_has_vrs_ids = ResolveVrsIds.enable_vrs_ids
+
   call CreateAltAlleleTable {
     input:
       dataset_name = dataset_name,
       project_id = project_id,
+      vrs_ids = dataset_has_vrs_ids,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -73,6 +84,7 @@ workflow GvsPopulateAltAllele {
         vet_table_names_file = vet_table_names_file,
         last_modified_timestamp = GetBQTableLastModifiedDatetime.last_modified_timestamp,
         max_sample_id = GetMaxSampleId.max_sample_id,
+        vrs_ids = dataset_has_vrs_ids,
         variants_docker = effective_variants_docker,
     }
   }
@@ -207,6 +219,8 @@ task CreateAltAlleleTable {
     Boolean go = true
     String dataset_name
     String project_id
+    # Whether the dataset carries VRS IDs, as ResolveEnableVrsIds reads it from the vet tables.
+    Boolean vrs_ids
     String cloud_sdk_docker
   }
   meta {
@@ -223,6 +237,38 @@ task CreateAltAlleleTable {
     set -o errexit -o nounset -o pipefail -o xtrace
 
     echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+    # alt_allele has the vrs_allele_id column exactly when the vet tables have vrs_allele_ids. An existing alt_allele
+    # that disagrees cannot be fixed by adding or ignoring the column, so fail. alt_allele is derived entirely from the
+    # vet tables, so dropping it and rerunning rebuilds it to match.
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=1 ~{bq_labels} '
+      SELECT
+        COUNT(*) > 0 AS table_exists,
+        COUNTIF(column_name = "vrs_allele_id") > 0 AS has_vrs_allele_id
+      FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+      WHERE table_name = "alt_allele"' | sed 1d > alt_allele_columns.csv
+
+    table_exists=$(cut -d, -f1 alt_allele_columns.csv)
+    has_vrs_allele_id=$(cut -d, -f2 alt_allele_columns.csv)
+    vrs_ids="~{vrs_ids}"
+    where="~{project_id}:~{dataset_name}"
+
+    if [ "${table_exists}" = "true" ] && [ "${has_vrs_allele_id}" != "${vrs_ids}" ]; then
+      # Turn off xtrace so the message is easy to read in the task log.
+      set +o xtrace
+      if [ "${vrs_ids}" = "true" ]; then
+        echo "ERROR: the vet tables in ${where} have the vrs_allele_ids column, so the dataset carries VRS IDs," >&2
+        echo "but its alt_allele table has no vrs_allele_id column. It was built before the dataset had VRS IDs." >&2
+      else
+        echo "ERROR: the vet tables in ${where} have no vrs_allele_ids column, so the dataset does not carry" >&2
+        echo "VRS IDs, but its alt_allele table has a vrs_allele_id column." >&2
+      fi
+      echo "alt_allele is built entirely from the vet tables. Drop it with" >&2
+      echo "    bq rm -f -t ${where}.alt_allele" >&2
+      echo "and rerun GvsPopulateAltAllele to rebuild it to match them." >&2
+      exit 1
+    fi
+
     # bq query --max_rows check: ok create table
     bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false ~{bq_labels} \
     'CREATE TABLE IF NOT EXISTS `~{project_id}.~{dataset_name}.alt_allele` (
@@ -249,7 +295,7 @@ task CreateAltAlleleTable {
       sb_alt_minus INT64,
       call_AD STRING,
       ref_ad INT64,
-      ad INT64
+      ad INT64~{if vrs_ids then ", vrs_allele_id STRING" else ""}
     ) PARTITION BY RANGE_BUCKET(location, GENERATE_ARRAY(0, 25000000000000, 1000000000000))
     CLUSTER BY location, sample_id;'
 
@@ -282,6 +328,8 @@ task PopulateAltAlleleTable {
     # Intentionally unused: passed solely to bust WDL call-caching when the referenced BigQuery table has been modified.
     #@ except: UnusedInput
     String last_modified_timestamp
+    # Whether the dataset carries VRS IDs; if so, alt_allele has vrs_allele_id and the script fills it.
+    Boolean vrs_ids
 
     String variants_docker
   }
@@ -304,7 +352,7 @@ task PopulateAltAlleleTable {
         --query_project ~{project_id} \
         --vet_table_name ${vet_table} \
         --fq_dataset ~{project_id}.~{dataset_name} \
-        --max_sample_id ~{max_sample_id}
+        --max_sample_id ~{max_sample_id} ~{if vrs_ids then "--include_vrs_allele_id" else ""}
     done
   >>>
   runtime {

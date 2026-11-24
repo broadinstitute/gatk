@@ -19,6 +19,7 @@ select location, sample_id,
        call_AD,
        cast(SPLIT(call_AD,',')[OFFSET(0)] as int64) as ref_ad,
        cast(SPLIT(call_AD,',')[OFFSET(1)] as int64) as ad
+       ${vrs_allele_id_alt1}
 from position1
 
 union all
@@ -44,6 +45,7 @@ select location, sample_id,
        call_AD,
        cast(SPLIT(call_AD,',')[OFFSET(0)] as int64) as ref_ad,
        cast(SPLIT(call_AD,',')[OFFSET(1)] as int64) as ad
+       ${vrs_allele_id_alt1}
 from position2
 
 union all
@@ -69,4 +71,5 @@ select location, sample_id,
        call_AD,
        cast(SPLIT(call_AD,',')[OFFSET(0)] as int64) as ref_ad,
        cast(SPLIT(call_AD,',')[OFFSET(2)] as int64) as ad
+       ${vrs_allele_id_alt2}
 from position2;
