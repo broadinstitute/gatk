@@ -50,12 +50,26 @@ CASES = [
     ("insertion_novel", "chr20", 1005007, "G", ["GTC"], None),
     # One more CA in the (CA)5 run at chr20:1045534-1045543: reference-derived, so a ReferenceLengthExpression.
     ("insertion_repeat", "chr20", 1045533, "T", ["TCA"], None),
+    # The same insertion written one base into the run, as AC after its first C. It must get the same IDs.
+    ("insertion_repeat_rotated", "chr20", 1045534, "C", ["CAC"], None),
+    # Two more CA. vrs-python gives repeatSubunitLength 4, the inserted length, not the run's period of 2.
+    ("insertion_repeat_two_units", "chr20", 1045533, "T", ["TCACA"], None),
+    # Six more CA, 12 bases inserted into a 10-base run: longer than the repeat it lands in.
+    ("insertion_longer_than_repeat", "chr20", 1045533, "T", ["TCACACACACACA"], None),
+    # CAC is not a whole number of CA units, so the insertion rolls only part way into the run.
+    ("insertion_repeat_partial_unit", "chr20", 1045533, "T", ["TCAC"], None),
+    # Two more CCA in the (CCA)4 at chr20:1012545-1012556 below: a multiple of a 3-base unit.
+    ("insertion_repeat_triplet_two_units", "chr20", 1012544, "G", ["GCCACCA"], None),
     # Deletes GCT from ...GGG GCT TGT...; neither flank continues the deleted sequence, so nothing rolls.
     ("deletion_unique", "chr20", 1005007, "GGCT", ["G"], None),
     # Deletes one CCA from (CCA)4 at chr20:1012545-1012556, written left-aligned...
     ("deletion_repeat", "chr20", 1012544, "GCCA", ["G"], None),
     # ...and the same deletion written at the right end of the repeat. It must get the same IDs.
     ("deletion_repeat_right_shifted", "chr20", 1012553, "ACCA", ["A"], None),
+    # Two of the four CCA units deleted...
+    ("deletion_repeat_two_units", "chr20", 1012544, "GCCACCA", ["G"], None),
+    # ...and all four, which leaves no copy of the unit in the reference interval.
+    ("deletion_whole_repeat", "chr20", 1012544, "GCCACCACCACCA", ["G"], None),
     # Delins: both sides non-empty after trimming, so VRS does not roll it. CCA -> T inside the (CCA)4 above...
     ("delins_shorter_alt", "chr20", 1012544, "GCCA", ["GT"], None),
     # ...and CA -> GGGG inside the (CA)5 run of insertion_repeat. Both stay a LiteralSequenceExpression at the trimmed interval.
