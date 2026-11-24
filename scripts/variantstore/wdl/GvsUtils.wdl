@@ -1276,7 +1276,8 @@ task ResolveEnableVrsIds {
     memory: "3 GB"
     cpu: 1
     preemptible: 1
-    maxRetries: 0
+    # Retries a transient BigQuery error. A contradiction fails the same way each time, in seconds.
+    maxRetries: 3
     disks: "local-disk 100 HDD"
   }
 
