@@ -4,10 +4,13 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.gatk.nativebindings.pdhmm.PDHMMNativeArguments;
 
+import java.io.Serializable;
+
 /**
  * Arguments for native PairHMM implementations
  */
-public class PDPairHMMNativeArgumentCollection {
+public class PDPairHMMNativeArgumentCollection implements Serializable {
+    private static final long serialVersionUID = 1L;
 
     public static final int THREADS = 8;
     public static final PDHMMNativeArguments.AVXLevel AVX_LEVEL = PDHMMNativeArguments.AVXLevel.FASTEST_AVAILABLE;

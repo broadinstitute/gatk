@@ -16,11 +16,10 @@ import org.broadinstitute.hellbender.tools.walkers.readorientation.CollectF1R2Co
 import org.broadinstitute.hellbender.utils.MathUtils;
 
 import java.io.File;
-import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
-public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection implements Serializable {
+public class M2ArgumentCollection extends AssemblyBasedCallerArgumentCollection {
     private static final long serialVersionUID = 9341L;
     public static final String TUMOR_SAMPLE_LONG_NAME = "tumor-sample";
     public static final String TUMOR_SAMPLE_SHORT_NAME = "tumor";
