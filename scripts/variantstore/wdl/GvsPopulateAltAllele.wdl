@@ -39,7 +39,7 @@ workflow GvsPopulateAltAllele {
       dataset_name = dataset_name,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
-  Boolean dataset_has_vrs_ids = ResolveVrsIds.enable_vrs_ids
+  Boolean dataset_has_vrs_ids = ResolveVrsIds.resolved_enable_vrs_ids
 
   call CreateAltAlleleTable {
     input:
