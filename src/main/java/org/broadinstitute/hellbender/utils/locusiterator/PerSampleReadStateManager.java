@@ -195,8 +195,11 @@ final class PerSampleReadStateManager implements Iterable<AlignmentStateMachine>
             // already processed. Keeping the read state that returned null upon stepForwardOnGenome() is safe
             // as the next call to stepForwardOnGenome() will return null again AND will clear hadIndel() flag.
             if (op != null) {
-                // Move the surviving state into the next kept slot, which is at or before its current one.
-                states.set(kept++, state);
+                // Move the surviving state into the next kept slot, unless it is already there.
+                if (kept != next) {
+                    states.set(kept, state);
+                }
+                kept++;
             }
         }
         if (kept < n) {
