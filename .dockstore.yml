@@ -135,6 +135,7 @@ workflows:
          branches:
              - master
              - ah_var_store
+             - ng_vs_2061_alt_allele_vrs_ids
          tags:
              - /.*/
    - name: GvsCreateTables
