@@ -331,6 +331,31 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertTrue(ponSitesCalled > ponStarts.size() / 2, "most pon sites were not called");
     }
 
+    // Panel of normals sites that also look germline are genotyped when generating Permutect training data, even when the
+    // germline fraction discards every germline-only cluster, because they supply examples of artifacts
+    @Test
+    public void testPermutectTrainingIncludesGermlinePonSites() {
+        Utils.resetRandomGenerator();
+        final File tumor = new File(NA12878_20_21_WGS_bam);
+        final String interval = "20:10000000-10100000";
+        final File ponVcf = createTempFile("pon", ".vcf");
+        final File calls = createTempFile("calls", ".vcf");
+        final File dataset = createTempFile("dataset", ".txt");
+
+        // NA12878 is not a tumor, so its tumor-only calls are germline variants, most of which the germline resource identifies as such
+        runMutect2(tumor, ponVcf, interval, b37Reference, Optional.of(GNOMAD),
+                args -> args.addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME));
+        runMutect2(tumor, calls, interval, b37Reference, Optional.of(GNOMAD),
+                args -> args.add(M2ArgumentCollection.PANEL_OF_NORMALS_LONG_NAME, ponVcf)
+                        .add(M2ArgumentCollection.PERMUTECT_TRAINING_DATASET_LONG_NAME, dataset)
+                        .add(AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, 0.0));
+
+        final Set<Integer> ponStarts = VariantContextTestUtils.streamVcf(ponVcf).map(VariantContext::getStart).collect(Collectors.toSet());
+        final long ponSitesCalled = VariantContextTestUtils.streamVcf(calls).filter(vc -> ponStarts.contains(vc.getStart())).count();
+        Assert.assertTrue(ponStarts.size() > 10, "too few pon sites for a meaningful test");
+        Assert.assertTrue(ponSitesCalled > ponStarts.size() / 2, "most pon sites were not called: " + ponSitesCalled + " of " + ponStarts.size());
+    }
+
     // run tumor-normal mode using the original DREAM synthetic sample 1 tumor and normal restricted to
     // 1/3 of our dbSNP interval, in which there is only one true positive.
     // we want to see that the number of false positives is small

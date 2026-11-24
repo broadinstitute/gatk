@@ -500,7 +500,11 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         // and keeps a fraction of germline-only clusters when genotyping germline sites, which generating Permutect training
         // data implies.  Other activity profiles see only probabilities, so for them germline sites are inactive unless we
         // genotype germline sites, in which case they are candidates like any other site.
-        if (isGermlineSite(pileup, refBase, refInterval, features, bestTumorAltAllele)) {
+        // Genotyped panel of normals sites, which Permutect training data uses as examples of artifacts, are candidates like
+        // any other site even if they also look germline, so that germline subsampling never discards them.
+        final SimpleInterval locus = new SimpleInterval(context.getContig(), (int) context.getPosition(), (int) context.getPosition());
+        final boolean genotypedPonSite = MTAC.genotypePonSites && !features.getValues(MTAC.pon, locus).isEmpty();
+        if (!genotypedPonSite && isGermlineSite(pileup, refBase, refInterval, features, bestTumorAltAllele)) {
             if (usesMutect2ActivityProfile) {
                 return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.GERMLINE, null);
             } else if (!MTAC.genotypeGermlineSites) {
@@ -510,7 +514,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
         // likewise, panel of normals sites are not inherently active, but the Mutect2 activity profile uses them for phasing.
         // We genotype them when generating Permutect training data, which uses them as examples of artifacts.
-        if (!MTAC.genotypePonSites && !features.getValues(MTAC.pon, new SimpleInterval(context.getContig(), (int) context.getPosition(), (int) context.getPosition())).isEmpty()) {
+        if (!MTAC.genotypePonSites && !features.getValues(MTAC.pon, locus).isEmpty()) {
             return new ActivityProfileState(refInterval, usesMutect2ActivityProfile ? 1.0 : 0.0, ActivityProfileState.Type.ARTIFACT, null);
         }
 

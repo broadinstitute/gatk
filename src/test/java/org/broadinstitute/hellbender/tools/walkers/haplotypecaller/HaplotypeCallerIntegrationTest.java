@@ -12,6 +12,7 @@ import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.tuple.Pair;
+import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
@@ -29,6 +30,7 @@ import org.broadinstitute.hellbender.tools.walkers.genotyper.GenotypeCalculation
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.broadinstitute.hellbender.utils.Utils;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 import org.broadinstitute.hellbender.utils.gcs.BucketUtils;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pairhmm.PairHMM;
@@ -1040,6 +1042,19 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
         runCommandLine(args);
 
         IntegrationTestSpec.assertEqualTextFiles(output, expected);
+    }
+
+    // The MUTECT2 activity profile needs the SOMATIC, GERMLINE and ARTIFACT activity states that only Mutect2 emits.  With
+    // HaplotypeCaller's untyped states every region would be inactive and nothing would be called.
+    @Test(expectedExceptions = CommandLineException.BadArgumentValue.class)
+    public void testMutect2ActivityProfileIsRejected() {
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(NA12878_20_21_WGS_bam)
+                .addReference(b37_reference_20_21)
+                .addInterval("20:10000000-10001000")
+                .addOutput(createTempFile("output", ".vcf"))
+                .add(AssemblyRegionArgumentCollection.ACTIVITY_PROFILE_TYPE_LONG_NAME, ActivityProfile.ProfileType.MUTECT2);
+        runCommandLine(args);
     }
 
     // Tests the somewhat ad hoc implementation of copying hcArgs instances in the engine, used for managing multiple ploidies used based on user inputs

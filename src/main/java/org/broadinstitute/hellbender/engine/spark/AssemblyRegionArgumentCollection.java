@@ -182,6 +182,12 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      */
     protected int defaultMaxProbPropagationDistance() { return DEFAULT_MAX_PROB_PROPAGATION_DISTANCE; }
 
+    /**
+     * @return whether this tool's evaluator labels activity states as SOMATIC, GERMLINE or ARTIFACT, which the
+     * MUTECT2 activity profile requires
+     */
+    protected boolean supportsMutect2ActivityProfile() { return false; }
+
     public void validate() {
         if ( minAssemblyRegionSize <= 0 || maxAssemblyRegionSize <= 0 ) {
             throw new CommandLineException.BadArgumentValue("min/max assembly region size must be > 0");
@@ -205,6 +211,11 @@ public class AssemblyRegionArgumentCollection implements Serializable {
 
         if ( indelPaddingForGenotyping < 0 ) {
             throw new CommandLineException.BadArgumentValue("paddingAroundIndels", "" + indelPaddingForGenotyping + "< 0");
+        }
+
+        if ( activityProfileType == ActivityProfile.ProfileType.MUTECT2 && !supportsMutect2ActivityProfile() ) {
+            throw new CommandLineException.BadArgumentValue(ACTIVITY_PROFILE_TYPE_LONG_NAME, activityProfileType.name(),
+                    "the MUTECT2 activity profile is only supported by Mutect2");
         }
     }
 

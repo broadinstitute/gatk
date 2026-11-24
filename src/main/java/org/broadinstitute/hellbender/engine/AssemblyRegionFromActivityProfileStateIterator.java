@@ -3,12 +3,12 @@ package org.broadinstitute.hellbender.engine;
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionWalkerSpark;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
-import org.broadinstitute.hellbender.utils.activityprofile.BandPassActivityProfile;
 
 import java.util.*;
 
@@ -34,38 +34,25 @@ public class AssemblyRegionFromActivityProfileStateIterator implements Iterator<
      * Constructs an AssemblyRegionIterator over a provided read shard
      *
      * @param readHeader header for the reads
-     * @param minRegionSize minimum size of an assembly region
-     * @param maxRegionSize maximum size of an assembly region
-     * @param assemblyRegionPadding number of bases of padding on either side of an assembly region
-     * @param activeProbThreshold minimum probability for a locus to be considered active
-     * @param maxProbPropagationDistance upper limit on how many bases away probability mass can be moved around
-     *                                   when calculating the boundaries between active and inactive assembly regions
+     * @param assemblyRegionArgs arguments for finding assembly regions, including the activity profile type
      */
     public AssemblyRegionFromActivityProfileStateIterator(final Iterator<ActivityProfileState> activityProfileStateIterator,
                                                           final SAMFileHeader readHeader,
-                                                          final int minRegionSize,
-                                                          final int maxRegionSize,
-                                                          final int assemblyRegionPadding,
-                                                          final double activeProbThreshold,
-                                                          final int maxProbPropagationDistance) {
+                                                          final AssemblyRegionArgumentCollection assemblyRegionArgs) {
 
         Utils.nonNull(readHeader);
-        Utils.validateArg(minRegionSize >= 1, "minRegionSize must be >= 1");
-        Utils.validateArg(maxRegionSize >= 1, "maxRegionSize must be >= 1");
-        Utils.validateArg(minRegionSize <= maxRegionSize, "minRegionSize must be <= maxRegionSize");
-        Utils.validateArg(assemblyRegionPadding >= 0, "assemblyRegionPadding must be >= 0");
-        Utils.validateArg(activeProbThreshold >= 0.0, "activeProbThreshold must be >= 0.0");
-        Utils.validateArg(maxProbPropagationDistance >= 0, "maxProbPropagationDistance must be >= 0");
+        Utils.nonNull(assemblyRegionArgs);
+        assemblyRegionArgs.validate();
 
         this.activityProfileStateIterator = activityProfileStateIterator;
         this.readHeader = readHeader;
-        this.minRegionSize = minRegionSize;
-        this.maxRegionSize = maxRegionSize;
-        this.assemblyRegionPadding = assemblyRegionPadding;
+        this.minRegionSize = assemblyRegionArgs.minAssemblyRegionSize;
+        this.maxRegionSize = assemblyRegionArgs.maxAssemblyRegionSize;
+        this.assemblyRegionPadding = assemblyRegionArgs.assemblyRegionPadding;
 
         this.readyRegion = null;
         this.pendingRegions = new ArrayDeque<>();
-        this.activityProfile = new BandPassActivityProfile(maxProbPropagationDistance, activeProbThreshold, BandPassActivityProfile.MAX_FILTER_SIZE, BandPassActivityProfile.DEFAULT_SIGMA, readHeader);
+        this.activityProfile = ActivityProfile.create(assemblyRegionArgs, readHeader);
 
         readyRegion = loadNextAssemblyRegion();
     }

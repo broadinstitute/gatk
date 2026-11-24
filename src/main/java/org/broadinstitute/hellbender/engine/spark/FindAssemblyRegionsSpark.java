@@ -14,7 +14,6 @@ import org.apache.spark.broadcast.Broadcast;
 import org.broadinstitute.hellbender.engine.*;
 import org.broadinstitute.hellbender.tools.DownsampleableSparkReadShard;
 import org.broadinstitute.hellbender.utils.Utils;
-import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileStateRange;
 import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
@@ -209,11 +208,7 @@ public class FindAssemblyRegionsSpark {
                         new AssemblyRegionFromActivityProfileStateIterator(
                                 ActivityProfileStateRange.toIteratorActivityProfileState(iter._2.iterator()),
                                 header,
-                                assemblyRegionArgs.minAssemblyRegionSize,
-                                assemblyRegionArgs.maxAssemblyRegionSize,
-                                assemblyRegionArgs.assemblyRegionPadding,
-                                assemblyRegionArgs.activeProbThreshold,
-                                assemblyRegionArgs.maxProbPropagationDistance), new com.google.common.base.Function<AssemblyRegion, ReadlessAssemblyRegion>() {
+                                assemblyRegionArgs), new com.google.common.base.Function<AssemblyRegion, ReadlessAssemblyRegion>() {
                             @Nullable
                             @Override
                             public ReadlessAssemblyRegion apply(@Nullable AssemblyRegion input) {
