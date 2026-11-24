@@ -1,12 +1,14 @@
 package org.broadinstitute.hellbender.tools.walkers.haplotypecaller.positional;
 
 import htsjdk.samtools.CigarElement;
+import htsjdk.samtools.CigarOperator;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceModel;
 import org.broadinstitute.hellbender.utils.BaseUtils;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -24,17 +26,45 @@ final class PositionalRead {
     final boolean[] clipped;
     /** [start, end) runs of bases of quality at least the minimum and without N, at least a kmer long */
     final List<int[]> segments;
+    /** alignment start (of the reverted soft clips, if any), whether the read is its fragment's first, and the numbers
+     * of deletions, insertions and soft-clipped ends in its alignment */
+    final int start;
+    final boolean firstOfPair;
+    final int deletions, insertions, clippedEnds;
     /** for each segment, the graph node of each of its kmers */
     int[][] paths;
 
+    /**
+     * The order in which reads are threaded, which makes the graph independent of the order of the region's reads.
+     * Reads likely to make the fewest new nodes go first: reads without indels or soft clips make nodes only at
+     * mismatches, reads with deletions only at the junctions, reads with insertions at the inserted bases, and soft-clipped
+     * reads at every clipped base that doesn't rejoin the reference.  Then fewer indels and clips, earlier starts, and
+     * the fragment and mate break ties.
+     */
+    static final Comparator<PositionalRead> THREADING_ORDER = Comparator.comparingInt(PositionalRead::threadingClass)
+            .thenComparingInt(read -> read.deletions + read.insertions + read.clippedEnds)
+            .thenComparingInt(read -> read.start)
+            .thenComparing(read -> read.fragment)
+            .thenComparing(read -> !read.firstOfPair);
+
     private PositionalRead(final String fragment, final byte[] bases, final byte[] qualities, final double[] projection,
-                           final boolean[] clipped, final List<int[]> segments) {
+                           final boolean[] clipped, final List<int[]> segments, final int start, final boolean firstOfPair,
+                           final int deletions, final int insertions) {
         this.fragment = fragment;
         this.bases = bases;
         this.qualities = qualities;
         this.projection = projection;
         this.clipped = clipped;
         this.segments = segments;
+        this.start = start;
+        this.firstOfPair = firstOfPair;
+        this.deletions = deletions;
+        this.insertions = insertions;
+        this.clippedEnds = (clipped[0] ? 1 : 0) + (clipped[clipped.length - 1] ? 1 : 0);
+    }
+
+    private int threadingClass() {
+        return clippedEnds > 0 ? 3 : insertions > 0 ? 2 : deletions > 0 ? 1 : 0;
     }
 
     int length() {
@@ -65,7 +95,7 @@ final class PositionalRead {
 
         final double[] projection = new double[length];
         final boolean[] clipped = new boolean[length];
-        int firstAligned = -1, lastAligned = -1;
+        int firstAligned = -1, lastAligned = -1, deletions = 0, insertions = 0;
         int offset = 0, refPosition = read.getStart();
         double lastAlignedProjection = refPosition - windowStart - 1;
         for (final CigarElement element : read.getCigarElements()) {
@@ -83,11 +113,15 @@ final class PositionalRead {
                     }
                 }
                 case I, S -> {
+                    insertions += element.getOperator() == CigarOperator.I ? 1 : 0;
                     for (int i = 0; i < n; i++, offset++) {
                         projection[offset] = lastAlignedProjection + 0.5;
                     }
                 }
-                case D, N -> refPosition += n;
+                case D, N -> {
+                    deletions += element.getOperator() == CigarOperator.D ? 1 : 0;
+                    refPosition += n;
+                }
                 default -> { }
             }
         }
@@ -117,6 +151,7 @@ final class PositionalRead {
                 segmentStart = -1;
             }
         }
-        return segments.isEmpty() ? null : new PositionalRead(sample + '\t' + read.getName(), bases, qualities, projection, clipped, segments);
+        return segments.isEmpty() ? null : new PositionalRead(sample + '\t' + read.getName(), bases, qualities, projection, clipped, segments,
+                read.getStart(), !read.isPaired() || read.isFirstOfPair(), deletions, insertions);
     }
 }

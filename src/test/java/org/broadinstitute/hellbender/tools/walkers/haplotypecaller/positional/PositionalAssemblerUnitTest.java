@@ -18,6 +18,7 @@ import org.testng.annotations.Test;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -83,19 +84,12 @@ public class PositionalAssemblerUnitTest extends GATKBaseTest {
     public void testTrueHaplotypesAreAssembled(final String name, final String reference, final List<TrueHaplotype> truth,
                                                final int spanStart, final int spanEnd, final int depth) {
         final SAMFileHeader header = header(reference.length());
-
-        // 0-based half-open span -> 1-based assembly region
-        final AssemblyRegion region = new AssemblyRegion(new SimpleInterval(CONTIG, spanStart + 1, spanEnd), PADDING, header);
-        simulate(header, reference, truth, depth, new Random(1)).stream()
-                .filter(read -> region.getPaddedSpan().overlaps(read))
-                .forEach(region::add);
-        AssemblyBasedCallerUtils.finalizeRegion(region, false, false, (byte) 9, header, new IndexedSampleList(SAMPLE),
-                false, false, false, false);
+        final List<GATKRead> reads = finalizedReads(header, reference, truth, spanStart, spanEnd, depth);
 
         final PositionalAssembler assembler = assembler();
         final byte[] window = reference.getBytes(StandardCharsets.US_ASCII);
         final int low = spanStart - PADDING, high = spanEnd + PADDING;
-        final Set<List<PositionalEvent>> found = assembler.assemble(region.getReads(), window, 1, header).stream()
+        final Set<List<PositionalEvent>> found = assembler.assemble(reads, window, 1, header).stream()
                 .map(h -> h.events().stream().filter(e -> e.position() >= low && e.position() < high).collect(Collectors.toList()))
                 .collect(Collectors.toSet());
         final Set<List<PositionalEvent>> expected = new HashSet<>();
@@ -115,6 +109,55 @@ public class PositionalAssemblerUnitTest extends GATKBaseTest {
         for (final List<PositionalEvent> haplotype : expected) {
             Assert.assertTrue(found.contains(haplotype), name + ": true haplotype " + haplotype + " not among assembled " + found);
         }
+    }
+
+    /** reads are threaded in an order of their own, so the haplotypes don't depend on the order of the region's reads */
+    @Test(dataProvider = "cases")
+    public void testHaplotypesDontDependOnReadOrder(final String name, final String reference, final List<TrueHaplotype> truth,
+                                                    final int spanStart, final int spanEnd, final int depth) {
+        final SAMFileHeader header = header(reference.length());
+        final List<GATKRead> reads = finalizedReads(header, reference, truth, spanStart, spanEnd, depth);
+        final List<GATKRead> reversed = new ArrayList<>(reads);
+        Collections.reverse(reversed);
+        final byte[] window = reference.getBytes(StandardCharsets.US_ASCII);
+        Assert.assertEquals(assembler().assemble(reversed, window, 1, header), assembler().assemble(reads, window, 1, header), name);
+    }
+
+    /** reads likely to make the fewest new nodes are threaded first */
+    @Test
+    public void testThreadingOrder() {
+        final String reference = randomBases(new Random(5), 300);
+        final SAMFileHeader header = header(reference.length());
+        final String bases = reference.substring(100, 160);
+        final List<GATKRead> reads = List.of(read(header, "clipped", 100, bases, "5S55M"), read(header, "insertion", 100, bases, "30M2I28M"),
+                read(header, "deletion", 100, bases, "30M3D30M"), read(header, "plain", 100, bases, "60M"));
+        final List<String> order = reads.stream().map(read -> PositionalRead.create(read, SAMPLE, 1, PositionalAssembler.DEFAULT_KMER_SIZE, 10))
+                .sorted(PositionalRead.THREADING_ORDER).map(read -> read.fragment.substring(read.fragment.indexOf('\t') + 1)).toList();
+        Assert.assertEquals(order, List.of("plain", "deletion", "insertion", "clipped"));
+    }
+
+    /**
+     * A kmer that occurs once in the reference stays unique whatever copies of it reads make, so a deletion longer than
+     * delta rejoins the reference whatever reads were threaded before it.  Reads a carry a 60-base deletion and too few
+     * bases after it to rejoin the reference, so they make copies of the kmers after the deletion; reads b, threaded after
+     * them, carry the same deletion and enough bases to rejoin.
+     */
+    @Test
+    public void testDeletionsRejoinWhateverCopiesReadsMade() {
+        final String reference = randomBases(new Random(11), 400);
+        final SAMFileHeader header = header(reference.length());
+        final List<GATKRead> reads = new ArrayList<>();
+        for (int i = 0; i < 10; i++) {
+            reads.add(read(header, reference, 60 + 20 * i, 72, null, "ref" + i));
+        }
+        // soft-clipped as an aligner would leave them: the bases after the deletion don't align
+        for (int i = 0; i < 5; i++) {
+            reads.add(read(header, "a" + i, 100, reference.substring(100, 150) + reference.substring(210, 225), "50M15S"));
+            reads.add(read(header, "b" + i, 100, reference.substring(100, 150) + reference.substring(210, 232), "50M22S"));
+        }
+        final boolean assembled = assembler().assemble(reads, reference.getBytes(StandardCharsets.US_ASCII), 1, header).stream()
+                .anyMatch(h -> h.events().stream().anyMatch(e -> e.ref().length() == 60 && e.alt().isEmpty()));
+        Assert.assertTrue(assembled);
     }
 
     /**
@@ -199,12 +242,30 @@ public class PositionalAssemblerUnitTest extends GATKBaseTest {
         if (snv != null) {
             bases[snv.position() - start] = (byte) snv.alt().charAt(0);
         }
-        final byte[] qualities = new byte[length];
+        return read(header, name, start, new String(bases, StandardCharsets.US_ASCII), length + "M");
+    }
+
+    /** an unpaired read with these bases and this cigar, aligned from 0-based offset start */
+    private static GATKRead read(final SAMFileHeader header, final String name, final int start, final String bases, final String cigar) {
+        final byte[] qualities = new byte[bases.length()];
         Arrays.fill(qualities, (byte) 30);
-        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, name, 0, start + 1, bases, qualities, length + "M");
+        final GATKRead read = ArtificialReadUtils.createArtificialRead(header, name, 0, start + 1, bases.getBytes(StandardCharsets.US_ASCII), qualities, cigar);
         read.setReadGroup(READ_GROUP);
         read.setMappingQuality(60);
         return read;
+    }
+
+    /** the finalized reads of an assembly region of reads simulated from the true haplotypes */
+    private static List<GATKRead> finalizedReads(final SAMFileHeader header, final String reference, final List<TrueHaplotype> truth,
+                                                 final int spanStart, final int spanEnd, final int depth) {
+        // 0-based half-open span -> 1-based assembly region
+        final AssemblyRegion region = new AssemblyRegion(new SimpleInterval(CONTIG, spanStart + 1, spanEnd), PADDING, header);
+        simulate(header, reference, truth, depth, new Random(1)).stream()
+                .filter(read -> region.getPaddedSpan().overlaps(read))
+                .forEach(region::add);
+        AssemblyBasedCallerUtils.finalizeRegion(region, false, false, (byte) 9, header, new IndexedSampleList(SAMPLE),
+                false, false, false, false);
+        return region.getReads();
     }
 
     private static int cost(final byte[] haplotype, final String read, final int lowQualityBase, final boolean readEnded) {

@@ -7,7 +7,8 @@ import org.broadinstitute.gatk.nativebindings.smithwaterman.SWParameters;
  *
  * @param k kmer size
  * @param delta how far (in bases) a repeated kmer may join a node from where the read expects it
- * @param maxJump how far a kmer unique in the graph may join a node from where the read expects it ...
+ * @param maxJump how far a unique kmer (once in the reference, or on a single read node) may join a node from where the
+ *                read expects it ...
  * @param lookahead ... and, beyond delta, only if the read then matches the reference for this many more bases
  * @param minSupport reads needed for an event, fragments needed for an allele read pattern or a new haplotype
  * @param adaptivePruning whether an event also needs the log odds against sequencing error that adaptive pruning

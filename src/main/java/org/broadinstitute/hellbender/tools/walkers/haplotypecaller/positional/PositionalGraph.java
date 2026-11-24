@@ -53,7 +53,8 @@ final class PositionalGraph {
     /**
      * @param reference the reference window, upper case
      * @param delta how far (in bases) a repeated kmer may join a node from where the read expects it
-     * @param maxJump how far a kmer unique in the graph may join a node from where the read expects it ...
+     * @param maxJump how far a unique kmer (once in the reference, or on a single read node) may join a node from where
+     *                the read expects it ...
      * @param lookahead ... and, beyond delta, only if the read then matches the reference for this many more bases
      */
     PositionalGraph(final byte[] reference, final int k, final double delta, final int maxJump, final int lookahead) {
@@ -160,13 +161,25 @@ final class PositionalGraph {
         }
     }
 
+    /**
+     * Is a kmer unique, so that a read may join its node far from where the read expects it, without the deletion gate?
+     * A kmer that occurs once in the reference is, whatever copies of it reads have made: otherwise the order of the
+     * reads would decide whether a deletion can rejoin the reference.  A kmer not in the reference is unique if a single
+     * read node has it.
+     */
     private boolean isUnique(final long kmer) {
         final IntArrayList nodes = index.get(kmer);
-        return nodes != null && nodes.size() == 1 && !repeatedInReference.contains(kmer);
+        return nodes != null && !repeatedInReference.contains(kmer) && (nodes.size() == 1 || referenceOffsets[nodes.getInt(0)] >= 0);
+    }
+
+    /** the reference node of a kmer that occurs once in the reference, or -1 */
+    private int uniqueReferenceNode(final long kmer) {
+        final IntArrayList nodes = index.get(kmer);
+        return nodes != null && !repeatedInReference.contains(kmer) && referenceOffsets[nodes.getInt(0)] >= 0 ? nodes.getInt(0) : -1;
     }
 
     /**
-     * May a kmer unique in the graph join node c although it is dist (more than delta) from where the read expects
+     * May a unique kmer join node c although it is dist (more than delta) from where the read expects
      * it?  Only within maxJump and, for a reference node, only if the read keeps matching the reference for lookahead
      * more bases.
      */
@@ -191,10 +204,18 @@ final class PositionalGraph {
         final IntArrayList candidates = index.get(kmer);
         if (candidates == null || candidates.isEmpty()) {
             return -1;
-        } else if (isUnique(kmer)) {
-            final int c = candidates.getInt(0);
+        }
+        final int referenceNode = uniqueReferenceNode(kmer);
+        if (referenceNode >= 0 || candidates.size() == 1) {
+            // a unique kmer joins its reference node, or its single read node, however far within maxJump
+            final int c = referenceNode >= 0 ? referenceNode : candidates.getInt(0);
             final double dist = Math.abs(ranks[c] - expected);
-            return dist <= delta || farJoinAllowed(c, dist, seq, pos, true) ? c : -1;
+            if (dist <= delta || farJoinAllowed(c, dist, seq, pos, true)) {
+                return c;
+            } else if (candidates.size() == 1) {
+                return -1;
+            }
+            // a kmer unique in the reference whose reference node is out of reach: the copies reads have made, below
         }
         final IntArrayList within = new IntArrayList(candidates.size());
         for (int i = 0; i < candidates.size(); i++) {
@@ -302,10 +323,25 @@ final class PositionalGraph {
         }
         if (ok.isEmpty()) {
             return -1;
-        } else if (isUnique(kmer)) {
-            final int c = ok.getInt(0);
-            final double dist = distance(c, q, expected);
-            return dist <= delta || farJoinAllowed(c, dist, seq, pos, forward) ? c : -1;
+        }
+        final int referenceNode = uniqueReferenceNode(kmer);
+        if (referenceNode >= 0 || candidates.size() == 1) {
+            // a unique kmer joins its reference node, or its single read node, however far within maxJump
+            final int c = referenceNode >= 0 ? referenceNode : candidates.getInt(0);
+            if (ok.contains(c)) {
+                final double dist = distance(c, q, expected);
+                if (dist <= delta || farJoinAllowed(c, dist, seq, pos, forward)) {
+                    return c;
+                }
+            }
+            if (candidates.size() == 1) {
+                return -1;
+            }
+            // a kmer unique in the reference whose reference node is out of reach: the copies reads have made
+            ok.rem(referenceNode);
+            if (ok.isEmpty()) {
+                return -1;
+            }
         }
         // a copy that continues an existing edge from the neighbor
         final IntArrayList adjacent = forward ? successors[neighbor] : predecessors[neighbor];

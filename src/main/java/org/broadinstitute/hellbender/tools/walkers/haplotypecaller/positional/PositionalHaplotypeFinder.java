@@ -66,12 +66,15 @@ final class PositionalHaplotypeFinder {
     /** extra positions of supported events, (read, site) pairs given the allele the read spans, and pairs rescued by alignment */
     int extraEventPositions, spanningReadAlleles, alignedReadAlleles;
 
+    /**
+     * @param reads the reads, in any order: they are threaded in {@link PositionalRead#THREADING_ORDER}
+     */
     PositionalHaplotypeFinder(final PositionalAssemblyParameters params, final byte[] windowBases, final List<PositionalRead> reads) {
         this.params = params;
         this.k = params.k();
         this.windowBases = windowBases;
         this.window = new String(windowBases, StandardCharsets.US_ASCII);
-        this.reads = reads;
+        this.reads = reads.stream().sorted(PositionalRead.THREADING_ORDER).toList();
     }
 
     private List<PositionalEvent> normalize(final int position, final String ref, final String alt, final int floor) {
