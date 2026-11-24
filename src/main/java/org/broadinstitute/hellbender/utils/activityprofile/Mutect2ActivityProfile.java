@@ -2,7 +2,7 @@ package org.broadinstitute.hellbender.utils.activityprofile;
 
 import htsjdk.samtools.SAMFileHeader;
 import org.apache.commons.lang3.tuple.Pair;
-import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.engine.spark.Mutect2AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.utils.Utils;
 
 import java.util.Collection;
@@ -27,10 +27,10 @@ public class Mutect2ActivityProfile extends ActivityProfile {
 
     private static final int PADDING = 15;
 
-    private final AssemblyRegionArgumentCollection args;
+    private final Mutect2AssemblyRegionArgumentCollection args;
     private final Random rng = Utils.getRandomGenerator();
 
-    public Mutect2ActivityProfile(final AssemblyRegionArgumentCollection args, final SAMFileHeader header) {
+    public Mutect2ActivityProfile(final Mutect2AssemblyRegionArgumentCollection args, final SAMFileHeader header) {
         // In this class maxProbPropagationDistance is interpreted as a maximum phasing distance.
         // It doesn't "propagate" probability like the BandPassActivityFilter
         super(args.maxProbPropagationDistance, args.activeProbThreshold, header);

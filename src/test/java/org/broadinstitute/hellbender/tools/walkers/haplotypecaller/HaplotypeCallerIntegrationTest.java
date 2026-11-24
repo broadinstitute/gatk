@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.ReadsDataSource;
 import org.broadinstitute.hellbender.engine.ReadsPathDataSource;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.engine.spark.Mutect2AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
@@ -1054,6 +1055,18 @@ public class HaplotypeCallerIntegrationTest extends CommandLineProgramTest {
                 .addInterval("20:10000000-10001000")
                 .addOutput(createTempFile("output", ".vcf"))
                 .add(AssemblyRegionArgumentCollection.ACTIVITY_PROFILE_TYPE_LONG_NAME, ActivityProfile.ProfileType.MUTECT2);
+        runCommandLine(args);
+    }
+
+    // only the MUTECT2 activity profile uses the germline fraction, so it is a Mutect2 argument
+    @Test(expectedExceptions = CommandLineException.class)
+    public void testGenotypeGermlineSitesFractionIsNotAnArgument() {
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addInput(NA12878_20_21_WGS_bam)
+                .addReference(b37_reference_20_21)
+                .addInterval("20:10000000-10001000")
+                .addOutput(createTempFile("output", ".vcf"))
+                .add(Mutect2AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, 0.5);
         runCommandLine(args);
     }
 

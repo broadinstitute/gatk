@@ -224,8 +224,16 @@ public final class Mutect2 extends AssemblyRegionWalker {
      public static final String MUTECT_STATS_SHORT_NAME = "stats";
      public static final String DEFAULT_STATS_EXTENSION = ".stats";
 
+    // the same object as assemblyRegionArgs, typed to give access to the arguments that only Mutect2 has
+    private final Mutect2AssemblyRegionArgumentCollection mutect2AssemblyRegionArgs;
+
     public Mutect2() {
-        super(new Mutect2AssemblyRegionArgumentCollection());
+        this(new Mutect2AssemblyRegionArgumentCollection());
+    }
+
+    private Mutect2(final Mutect2AssemblyRegionArgumentCollection assemblyRegionArgs) {
+        super(assemblyRegionArgs);
+        this.mutect2AssemblyRegionArgs = assemblyRegionArgs;
     }
 
     @ArgumentCollection
@@ -345,14 +353,14 @@ public final class Mutect2 extends AssemblyRegionWalker {
 
         // the activity profile keeps a fraction of germline-only clusters, but only when we genotype germline sites
         if (!MTAC.genotypeGermlineSites) {
-            if (assemblyRegionArgs.genotypeGermlineSitesFraction != AssemblyRegionArgumentCollection.DEFAULT_GENOTYPE_GERMLINE_SITES_FRACTION) {
-                logger.warn("--" + AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME + " has no effect without --" +
+            if (mutect2AssemblyRegionArgs.genotypeGermlineSitesFraction != Mutect2AssemblyRegionArgumentCollection.DEFAULT_GENOTYPE_GERMLINE_SITES_FRACTION) {
+                logger.warn("--" + Mutect2AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME + " has no effect without --" +
                         M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME);
             }
-            assemblyRegionArgs.genotypeGermlineSitesFraction = 0.0;
-        } else if (assemblyRegionArgs.genotypeGermlineSitesFraction != AssemblyRegionArgumentCollection.DEFAULT_GENOTYPE_GERMLINE_SITES_FRACTION &&
+            mutect2AssemblyRegionArgs.genotypeGermlineSitesFraction = 0.0;
+        } else if (mutect2AssemblyRegionArgs.genotypeGermlineSitesFraction != Mutect2AssemblyRegionArgumentCollection.DEFAULT_GENOTYPE_GERMLINE_SITES_FRACTION &&
                 assemblyRegionArgs.activityProfileType != ActivityProfile.ProfileType.MUTECT2) {
-            throw new CommandLineException.BadArgumentValue(AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME,
+            throw new CommandLineException.BadArgumentValue(Mutect2AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME,
                     "requires --" + AssemblyRegionArgumentCollection.ACTIVITY_PROFILE_TYPE_LONG_NAME + " " + ActivityProfile.ProfileType.MUTECT2);
         }
         return null;

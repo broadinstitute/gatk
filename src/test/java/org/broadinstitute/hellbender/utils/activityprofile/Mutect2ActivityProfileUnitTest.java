@@ -5,6 +5,7 @@ import htsjdk.samtools.SAMSequenceDictionary;
 import htsjdk.samtools.SAMSequenceRecord;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.engine.spark.Mutect2AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
 import org.testng.Assert;
 import org.testng.annotations.DataProvider;
@@ -41,7 +42,7 @@ public class Mutect2ActivityProfileUnitTest extends GATKBaseTest {
      */
     private static List<String> popRegions(final int numStates, final Sites sites, final double germlineFraction,
                                            final int maxPhasingDistance, final boolean forceConversion) {
-        final AssemblyRegionArgumentCollection args = new AssemblyRegionArgumentCollection();
+        final Mutect2AssemblyRegionArgumentCollection args = new Mutect2AssemblyRegionArgumentCollection();
         args.genotypeGermlineSitesFraction = germlineFraction;
         args.maxProbPropagationDistance = maxPhasingDistance;
         final Mutect2ActivityProfile profile = new Mutect2ActivityProfile(args, HEADER);

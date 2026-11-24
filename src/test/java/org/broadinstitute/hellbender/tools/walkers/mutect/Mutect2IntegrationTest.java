@@ -14,6 +14,7 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.engine.spark.Mutect2AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
@@ -307,7 +308,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
             final File dataset = createTempFile("dataset", ".txt");
             runMutect2(DREAM_4_TUMOR, DREAM_4_NORMAL, unfilteredVcf, "20:1-10000000", b37Reference, Optional.empty(),
                     args -> args.add(M2ArgumentCollection.PERMUTECT_TRAINING_DATASET_LONG_NAME, dataset)
-                            .add(AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, germlineFraction));
+                            .add(Mutect2AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, germlineFraction));
             callCounts.add(VariantContextTestUtils.streamVcf(unfilteredVcf).count());
         }
         Assert.assertTrue(callCounts.get(0) < callCounts.get(1), "germline fraction had no effect: " + callCounts);
@@ -348,7 +349,7 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         runMutect2(tumor, calls, interval, b37Reference, Optional.of(GNOMAD),
                 args -> args.add(M2ArgumentCollection.PANEL_OF_NORMALS_LONG_NAME, ponVcf)
                         .add(M2ArgumentCollection.PERMUTECT_TRAINING_DATASET_LONG_NAME, dataset)
-                        .add(AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, 0.0));
+                        .add(Mutect2AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, 0.0));
 
         final Set<Integer> ponStarts = VariantContextTestUtils.streamVcf(ponVcf).map(VariantContext::getStart).collect(Collectors.toSet());
         final long ponSitesCalled = VariantContextTestUtils.streamVcf(calls).filter(vc -> ponStarts.contains(vc.getStart())).count();
