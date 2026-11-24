@@ -390,11 +390,69 @@ def delete_failed_cluster(cluster_name, region, workspace_project):
         info(f"Nothing to remove, or removal failed (continuing anyway): {output.strip()}")
 
 
+# Families that boot only from Hyperdisk, so the pd-ssd boot disk used for every other node is
+# rejected. None of them accepts attached local SSDs either: where they have local SSD at all it
+# comes built into a fixed "-lssd" shape.
+HYPERDISK_ONLY_FAMILIES = ('c4', 'c4d', 'n4', 'n4d')
+
+
+def secondary_worker_args(secondary_worker_machine_types, num_local_ssds):
+    """gcloud flags giving the secondary workers machine types of their own.
+
+    Returns '' when no types are given, so the secondary workers keep the worker machine type.
+    Otherwise the types use Dataproc's flexible VM option, ranked in the order given, so a
+    stockout of the first falls back to the next rather than leaving the cluster short. hailctl
+    passes these flags through to gcloud unexamined, and does not need the types in its
+    MACHINE_MEM table: it sizes Spark executors from the worker machine type, so a secondary
+    type must have at least the worker type's YARN memory. A c4-highmem-8-lssd (58,888 MB)
+    against an n2d-highmem-8 worker (58,288 MB) does (VS-2067).
+
+    All the types share one disk configuration, so they must agree on it:
+      * Hyperdisk-only families (HYPERDISK_ONLY_FAMILIES) boot from hyperdisk-balanced, the rest
+        from pd-ssd as elsewhere in this script.
+      * An "-lssd" shape carries its own local SSD, which Dataproc mounts and gives to YARN
+        without being asked. Requesting more attaches SCSI disks, which these shapes reject, so
+        the count is 0. A Hyperdisk-only family without "-lssd" has no local SSD to give, so its
+        count is 0 too. Any other type takes num_local_ssds, like the primary workers.
+    """
+    types = [t.strip() for t in (secondary_worker_machine_types or '').split(',') if t.strip()]
+    if not types:
+        return ''
+
+    def disk_config(machine_type):
+        hyperdisk_only = machine_type.split('-')[0] in HYPERDISK_ONLY_FAMILIES
+        boot_disk_type = 'hyperdisk-balanced' if hyperdisk_only else 'pd-ssd'
+        if machine_type.endswith('-lssd') or hyperdisk_only:
+            local_ssds = 0
+        else:
+            local_ssds = num_local_ssds
+        return boot_disk_type, local_ssds
+
+    configs = {disk_config(t) for t in types}
+    if len(configs) > 1:
+        raise ValueError(
+            f"Secondary worker machine types {', '.join(types)} need different disk "
+            f"configurations (boot disk type, local SSD count), but Dataproc gives all secondary "
+            f"workers one. List types from the same group: Hyperdisk-only families "
+            f"({', '.join(HYPERDISK_ONLY_FAMILIES)}) with the same local SSD arrangement, or "
+            f"other families only.")
+    boot_disk_type, local_ssds = configs.pop()
+
+    ranked = ' '.join(f'--secondary-worker-machine-types=type={t},rank={rank}'
+                      for rank, t in enumerate(types))
+    return (f'{ranked} --secondary-worker-boot-disk-type={boot_disk_type} '
+            f'--num-secondary-worker-local-ssds={local_ssds}')
+
+
 def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_type, region, use_tiny_dataproc_cluster, workspace_project,
                    script_path, secondary_script_path_list, script_arguments_json_path, leave_cluster_running_at_end, cluster_max_idle_minutes, cluster_max_age_minutes, master_memory_fraction,
                    num_primary_workers=DEFAULT_NUM_WORKERS, max_secondary_workers=DEFAULT_MAX_SECONDARY,
                    zones=None, num_local_ssds=1, num_master_local_ssds=None,
-                   create_attempts_per_zone=CREATE_ATTEMPTS_PER_ZONE):
+                   create_attempts_per_zone=CREATE_ATTEMPTS_PER_ZONE,
+                   secondary_worker_machine_types=None):
+
+    # Before anything is created, so that a bad combination fails without leaving a policy behind.
+    secondary_args = secondary_worker_args(secondary_worker_machine_types, num_local_ssds)
 
     # The master gets its own count because Compute Engine's valid local SSD counts depend on
     # machine family and vCPU count, so a count that suits the workers can be invalid for the
@@ -456,6 +514,7 @@ def run_in_cluster(cluster_name, account, worker_machine_type, master_machine_ty
              --num-worker-local-ssds {num_local_ssds} 
              --master-boot-disk-type=pd-ssd
              --worker-boot-disk-type=pd-ssd
+             {secondary_args}
              --subnet=projects/{workspace_project}/regions/{region}/subnetworks/subnetwork
              --properties=dataproc:dataproc.monitoring.stackdriver.enable=true,dataproc:dataproc.logging.stackdriver.enable=true,core:fs.gs.outputstream.sync.min.interval=5
              --packages={CLUSTER_PIP_PACKAGES}
@@ -690,6 +749,17 @@ if __name__ == "__main__":
                              'Defaults to the value of --num-local-ssds, except that 1 becomes '
                              '2 so that the default n2d-highmem-32 master is valid; any other '
                              'N2 or N2D master should set this explicitly.')
+    parser.add_argument('--secondary-worker-machine-types', type=str, required=False, default=None,
+                        help='Comma-separated machine types for the secondary workers, in order '
+                             'of preference; Dataproc falls back to a later type when an '
+                             'earlier one is stocked out. Omit to give secondary workers the '
+                             'worker machine type. Secondary workers are Spot, and on-demand '
+                             'capacity for newer families can be scarce while Spot is not: in '
+                             'VS-2067 on-demand C4 and C4D could not be had in any us-central1 '
+                             'zone while Spot C4 secondaries came up every time. Use the '
+                             '"-lssd" shape of a Hyperdisk-only family (C4, C4D, N4, N4D) to get '
+                             'local SSD. Each type needs at least the YARN memory of the worker '
+                             'machine type, since Spark executors are sized from that.')
 
     args = parser.parse_args()
 
@@ -713,4 +783,5 @@ if __name__ == "__main__":
                    create_attempts_per_zone=args.create_attempts_per_zone,
                    num_local_ssds=args.num_local_ssds,
                    num_master_local_ssds=args.num_master_local_ssds,
+                   secondary_worker_machine_types=args.secondary_worker_machine_types,
                    )
