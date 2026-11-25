@@ -161,7 +161,7 @@ workflow GvsAssignIds {
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
-  if (ResolveVrsIds.enable_vrs_ids) {
+  if (ResolveVrsIds.resolved_enable_vrs_ids) {
     # Ingest writes each sample's VRS alleles here, tagged with its sample_id so the Parquet ingest
     # verification covers them; ProcessVrsAlleles in GvsImportGenomes merges the distinct alleles into
     # vrs_allele and then empties this table. Same pattern as vcf_header_lines_scratch.
@@ -225,7 +225,7 @@ workflow GvsAssignIds {
         max_table_id = AssignIds.max_table_id,
         cloud_sdk_docker = effective_cloud_sdk_docker,
         use_compressed_references = use_compressed_references,
-        enable_vrs_ids = ResolveVrsIds.enable_vrs_ids,
+        enable_vrs_ids = ResolveVrsIds.resolved_enable_vrs_ids,
     }
   }
 
@@ -234,7 +234,7 @@ workflow GvsAssignIds {
     File gvs_ids_tsv = AssignIds.gvs_ids_tsv
     String recorded_git_hash = effective_git_hash
     # Resolved against the dataset. Callers pass this, not their own input, on to GvsImportGenomes.
-    Boolean enable_vrs_ids = ResolveVrsIds.enable_vrs_ids
+    Boolean enable_vrs_ids = ResolveVrsIds.resolved_enable_vrs_ids
   }
 }
 

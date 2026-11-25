@@ -1268,7 +1268,7 @@ task ResolveEnableVrsIds {
     fi
 
     echo "VRS IDs: ${resolved} for ${where}, because ${reason}."
-    echo "${resolved}" > enable_vrs_ids.txt
+    echo "${resolved}" > resolved_enable_vrs_ids.txt
   >>>
 
   runtime {
@@ -1282,7 +1282,7 @@ task ResolveEnableVrsIds {
   }
 
   output {
-    Boolean enable_vrs_ids = read_boolean("enable_vrs_ids.txt")
+    Boolean resolved_enable_vrs_ids = read_boolean("resolved_enable_vrs_ids.txt")
     Boolean done = true
   }
 }
