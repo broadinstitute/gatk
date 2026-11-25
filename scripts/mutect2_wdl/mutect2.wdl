@@ -231,10 +231,8 @@ workflow Mutect2 {
 
     # Disk sizes used for dynamic sizing
     Int ref_size = ceil(size(reference, "GB"))
-    # each sample's reads, including the index if the array has it
+    # the tumor's reads, including the index if the array has it
     Int tumor_reads_size = ceil(size(tumor_reads, "GB"))
-    Int germline_resource_vcf_size = ceil(size(germline_resource_with_index, "GB"))
-    Int normal_reads_size = ceil(size(normal_reads, "GB"))
 
     # This is added to every task as padding, should increase if systematically you need more disk for every call
     Int disk_pad = 10 + emergency_extra_disk
@@ -244,9 +242,10 @@ workflow Mutect2 {
             "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
             "disk": small_task_disk + disk_pad}
 
+    # M2 localizes the reference and streams its other inputs, so its disk holds the reference and its outputs, which
+    # m2_output_size bounds by the tumor reads in a scatter's share of the genome, as for a bamout
     Int m2_output_size = tumor_reads_size / scatter_count
-    #TODO: do we need to change this disk size now that NIO is always going to happen (for the google backend only)
-    Int m2_per_scatter_size = (tumor_reads_size + normal_reads_size) + ref_size + germline_resource_vcf_size + m2_output_size + disk_pad
+    Int m2_per_scatter_size = ref_size + m2_output_size + disk_pad
 
     Boolean calculate_contamination = length(common_variants_vcf) > 0 && !skip_filtering
         && !skip_calculate_contamination
@@ -368,7 +367,7 @@ workflow Mutect2 {
                 artifact_priors_tar_gz = LearnReadOrientationModel.artifact_prior_table,
                 m2_extra_filtering_args = m2_extra_filtering_args,
                 runtime_params = standard_runtime,
-                disk_space = ceil(size(MergeMutect2Outputs.merged_vcf, "GB") * 4) + disk_pad
+                disk_space = ref_size + ceil(size(MergeMutect2Outputs.merged_vcf, "GB") * 4) + disk_pad
         }
 
         if (defined(realignment_index_bundle)) {
@@ -383,6 +382,10 @@ workflow Mutect2 {
                     input_vcf_idx = Filter.filtered_vcf_idx,
                     runtime_params = standard_runtime,
                     mem = filter_alignment_artifacts_mem,
+                    # it localizes the reference and the BWA-MEM index image and streams the VCF and reads; its output
+                    # VCF is no bigger than its input
+                    disk_space = ref_size + ceil(size(select_first([realignment_index_bundle]), "GB"))
+                        + ceil(size(Filter.filtered_vcf, "GB")) + disk_pad,
                     gcs_project_for_requester_pays = gcs_project_for_requester_pays
             }
         }
@@ -501,7 +504,6 @@ task M2 {
         Int? max_retries
         Int? disk_space
         Int? cpu
-        Boolean use_ssd = false
     }
 
     String output_vcf = "output" + if compress_vcfs then ".vcf.gz" else ".vcf"
@@ -522,9 +524,12 @@ task M2 {
     Int machine_mem = if defined(mem) then mem * 1000 else 3500
     Int command_mem = machine_mem - 500
 
+    # The reference is localized rather than streamed.  GATK reads a streamed FASTA one 128 kB request at a time, and
+    # on Terra in November 2026 that cost each scatter about 4 to 7 minutes of waiting, while localizing the reference
+    # to an SSD took half a minute.  Once GATK streams FASTAs efficiently, this may be reversed: mark the reference
+    # localization_optional again, leave it out of the disk size, and drop the SSD.
     parameter_meta{
         intervals: {localization_optional: true}
-        reference: {localization_optional: true}
         tumor_reads: {localization_optional: true}
         normal_reads: {localization_optional: true}
         pon: {localization_optional: true}
@@ -590,7 +595,9 @@ task M2 {
         docker: gatk_docker
         bootDiskSizeGb: 4
         memory: machine_mem + " MB"
-        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
+        # an SSD, which localizes the reference (3.2 GB for hg38) in half a minute, against more than a minute and a
+        # half for a standard disk of any size
+        disks: "local-disk " + select_first([disk_space, 100]) + " SSD"
         preemptible: preemptible
         maxRetries: select_first([max_retries, 0])
         cpu: select_first([cpu, 1])
@@ -815,9 +822,11 @@ task Filter {
     String output_vcf = if compress_vcfs then "filtered.vcf.gz" else "filtered.vcf"
     String output_vcf_idx = output_vcf + if compress_vcfs then ".tbi" else ".idx"
 
-    parameter_meta{
-      reference: {localization_optional: true}
-    }
+    # The reference is localized rather than streamed.  With read orientation priors FilterMutectCalls reads reference
+    # bases around every SNV on each of its passes, and GATK reads a streamed FASTA one 128 kB request at a time: on
+    # Terra in November 2026 the task took 52 to 128 minutes per sample with its CPUs 11% to 18% busy.  This may be
+    # reversed (reference: {localization_optional: true}, the reference left out of the disk size and a standard disk)
+    # once GATK streams FASTAs efficiently.
 
     command {
         set -e
@@ -839,7 +848,9 @@ task Filter {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: 4
         memory: runtime_params.machine_mem + " MB"
-        disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " HDD"
+        # an SSD, which localizes the reference (3.2 GB for hg38) in half a minute, against more than a minute and a
+        # half for a standard disk of any size
+        disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " SSD"
         preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
@@ -868,6 +879,7 @@ task FilterAlignmentArtifacts {
       Runtime runtime_params
       Int preemptible = 2
       Int mem
+      Int? disk_space
     }
 
     String output_vcf = if compress_vcfs then "filtered.vcf.gz" else "filtered.vcf"
@@ -876,8 +888,11 @@ task FilterAlignmentArtifacts {
     Int machine_mem = mem
     Int command_mem = machine_mem - 500
 
+    # The reference is localized rather than streamed: FilterAlignmentArtifacts assembles around every variant, and
+    # GATK reads a streamed FASTA one 128 kB request at a time, so on Terra in November 2026 it spent about half its
+    # time waiting on exomes.  This may be reversed (localization_optional, the reference left out of the disk size
+    # and a standard disk) once GATK streams FASTAs efficiently.
     parameter_meta{
-      reference: {localization_optional: true}
       input_vcf: {localization_optional: true}
       input_vcf_idx: {localization_optional: true}
       reads: {localization_optional: true}
@@ -902,7 +917,8 @@ task FilterAlignmentArtifacts {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: 4
         memory: machine_mem + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
+        # an SSD, which localizes the reference (3.2 GB for hg38) and the index image quickly
+        disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " SSD"
         preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
