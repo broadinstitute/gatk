@@ -6,7 +6,7 @@ version 1.0
 ## and performs additional filtering.
 ##
 ## Main requirements/expectations :
-## - One analysis-ready BAM file (and its index) for each sample
+## - One analysis-ready BAM or CRAM file for each sample, with its index beside it (see tumor_reads below)
 ##
 ## Description of inputs:
 ##
@@ -35,8 +35,25 @@ version 1.0
 ##     For example Homo_sapiens_assembly38.fasta, Homo_sapiens_assembly38.fasta.fai and Homo_sapiens_assembly38.dict.
 ##     The workflow passes these files to tasks along with the FASTA, so that backends that localize files put them
 ##     beside it.  (Earlier versions took the index and dictionary as the inputs ref_fai and ref_dict.)
-## tumor_reas, tumor_reads_index: BAM and index for the tumor sample
-## normal_reads, normal_reads_index: BAM and index for the normal sample
+## tumor_reads: the tumor sample's reads, as an array whose first element is a BAM or CRAM file and whose optional second
+##     element is its index, eg ["gs://bucket/tumor.bam"] or ["/data/tumor.bam", "/data/tumor.bai"].  Tasks use
+##     tumor_reads[0] as the reads, and take the whole array so that the index travels with them.  GATK finds the index
+##     only by name in the reads' directory, so it must be there under one of these names, whether or not the array
+##     includes it:
+##     - for x.bam: x.bai, x.bam.bai, x.csi or x.bam.csi
+##     - for x.cram: x.crai or x.cram.crai
+##     Whether to include the index depends on the backend:
+##     - On Terra and other Google Cloud backends, the tasks stream the reads from the bucket rather than localizing them,
+##       and GATK finds the index there, so the BAM or CRAM alone suffices.  In a Terra configuration, an attribute
+##       expression such as this.tumor_bam gives a one-element array, and [this.tumor_bam, this.tumor_bai] a two-element
+##       one.
+##     - On backends that localize files, such as a local Cromwell or a cluster with a shared filesystem, include the
+##       index, so that it is localized beside the reads.  Otherwise Mutect2 may fail for lack of an index.
+##     Including the index always works.  (Earlier versions took it as the separate input tumor_reads_index.)
+## normal_reads: the normal sample's reads, likewise, or [] for tumor-only calling.  In a Terra configuration,
+##     this.normal_bam or [this.normal_bam, this.normal_bai] gives [] if the attributes are unset.  (Earlier versions took
+##     the index as the separate input normal_reads_index, and the reads as an optional input that was left unset for
+##     tumor-only calling.)
 ##
 ## ** Primary resources ** (optional but strongly recommended)
 ## pon: optional panel of normals in VCF format containing probable technical artifacts (false positves)
@@ -90,10 +107,13 @@ workflow Mutect2 {
         # the reference FASTA, whose index and dictionary must be beside it under the names GATK expects (see the
         # derivation of reference below)
         File ref_fasta
-        File tumor_reads
-        File tumor_reads_index
-        File? normal_reads
-        File? normal_reads_index
+        # The tumor's reads: a BAM or CRAM, optionally followed by its index, eg ["gs://bucket/tumor.bam"] on Terra or
+        # ["/data/tumor.bam", "/data/tumor.bai"] on a backend that localizes files, which needs the index.  The index must
+        # be beside the reads under a name GATK looks for, such as tumor.bai or tumor.bam.bai (see tumor_reads in the
+        # header).  Tasks use tumor_reads[0] as the reads.
+        Array[File]+ tumor_reads
+        # the normal's reads, likewise, or [] for tumor-only calling
+        Array[File] normal_reads
 
         # VCFs: optional but usually recommended resources (germline_resource, pon, common_variants_vcf), alleles to
         # force-call (gga_vcf), and truth VCFs for Permutect datasets
@@ -218,9 +238,10 @@ workflow Mutect2 {
 
     # Disk sizes used for dynamic sizing
     Int ref_size = ceil(size(reference, "GB"))
-    Int tumor_reads_size = ceil(size(tumor_reads, "GB") + size(tumor_reads_index, "GB"))
+    # each sample's reads, including the index if the array has it
+    Int tumor_reads_size = ceil(size(tumor_reads, "GB"))
     Int germline_resource_vcf_size = if defined(germline_resource_or_alias) then ceil(size(germline_resource_or_alias, "GB")) else 0
-    Int normal_reads_size = if defined(normal_reads) then ceil(size(normal_reads, "GB") + size(normal_reads_index, "GB")) else 0
+    Int normal_reads_size = ceil(size(normal_reads, "GB"))
 
     # This is added to every task as padding, should increase if systematically you need more disk for every call
     Int disk_pad = 10 + emergency_extra_disk
@@ -229,9 +250,6 @@ workflow Mutect2 {
             "max_retries": max_retries, "preemptible": preemptible, "cpu": small_task_cpu,
             "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
             "disk": small_task_disk + disk_pad, "boot_disk_size": boot_disk_size}
-
-    Int tumor_reads_size = ceil(size(tumor_reads, "GB") + size(tumor_reads_index, "GB"))
-    Int normal_reads_size = if defined(normal_reads) then ceil(size(normal_reads, "GB") + size(normal_reads_index, "GB")) else 0
 
     Int m2_output_size = tumor_reads_size / scatter_count
     #TODO: do we need to change this disk size now that NIO is always going to happen (for the google backend only)
@@ -256,9 +274,7 @@ workflow Mutect2 {
                 intervals = subintervals,
                 reference = reference,
                 tumor_reads = tumor_reads,
-                tumor_reads_index = tumor_reads_index,
                 normal_reads = normal_reads,
-                normal_reads_index = normal_reads_index,
                 pon = pon,
                 pon_idx = pon_idx_or_conventional,
                 germline_resource = germline_resource_or_alias,
@@ -374,7 +390,6 @@ workflow Mutect2 {
                 input:
                     reference = reference,
                     reads = tumor_reads,
-                    reads_index = tumor_reads_index,
                     realignment_index_bundle = select_first([realignment_index_bundle]),
                     realignment_extra_args = realignment_extra_args,
                     compress_vcfs = compress_vcfs,
@@ -457,10 +472,11 @@ task M2 {
         File? intervals
         # the reference FASTA, then its .fai index, its .dict dictionary and, if it's bgzipped, its .gzi block index
         Array[File] reference
-        File tumor_reads
-        File tumor_reads_index
-        File? normal_reads
-        File? normal_reads_index
+        # Each sample's reads: a BAM or CRAM, optionally followed by its index, which GATK finds by name beside the reads
+        # (see tumor_reads in the workflow's header).  The command uses tumor_reads[0] and normal_reads[0] as the reads,
+        # and there is no normal if normal_reads is empty.
+        Array[File]+ tumor_reads
+        Array[File] normal_reads
         File? pon
         File? pon_idx
         File? germline_resource
@@ -503,10 +519,12 @@ task M2 {
 
     String output_stats = output_vcf + ".stats"
 
+    Boolean has_normal = length(normal_reads) > 0
+
     # Mutect2 tabulates the pileup summaries of the tumor and normal at the common variants as it traverses the reads
     String pileup_summaries_args = if defined(common_variants_vcf) then
         "--tumor-pileup-summaries tumor-pileups.table" +
-        (if defined(normal_reads) then " --normal-pileup-summaries normal-pileups.table" else "") +
+        (if has_normal then " --normal-pileup-summaries normal-pileups.table" else "") +
         " --pileup-summaries-min-population-af ~{pileups_min_population_af} --pileup-summaries-max-population-af ~{pileups_max_population_af}"
         else ""
 
@@ -518,9 +536,7 @@ task M2 {
         intervals: {localization_optional: true}
         reference: {localization_optional: true}
         tumor_reads: {localization_optional: true}
-        tumor_reads_index: {localization_optional: true}
         normal_reads: {localization_optional: true}
-        normal_reads_index: {localization_optional: true}
         pon: {localization_optional: true}
         pon_idx: {localization_optional: true}
         germline_resource: {localization_optional: true}
@@ -546,18 +562,24 @@ task M2 {
         touch contigs.table
         touch read-groups.table
 
-        if [[ ! -z "~{normal_reads}" ]]; then
-            gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{reference[0]} -I ~{normal_reads} -O normal_names.txt -encode \
+        # The normal's BAM or CRAM, or "" without a normal.  Cromwell evaluates every placeholder, even in a part of the
+        # script that doesn't run, so the condition keeps it from indexing an empty array.  (A declaration such as
+        # String normal = normal_reads[0] wouldn't do, because it would hold the path from before localization.)
+        normal_bam_or_cram="~{if has_normal then normal_reads[0] else ""}"
+
+        if [[ -n "$normal_bam_or_cram" ]]; then
+            gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{reference[0]} -I $normal_bam_or_cram -O normal_names.txt -encode \
             ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
             # add "-normal " to the start of each line and " " to the end, then remove newlines
             # to get -normal sample1 -normal sample2 etc
             normal_sample_line=`awk '{ print "-normal", $0 }' normal_names.txt | tr '\n' ' '`
+            normal_input="-I $normal_bam_or_cram"
         fi
 
         gatk --java-options "-Xmx~{command_mem}m" Mutect2 \
             -R ~{reference[0]} \
-            -I ~{tumor_reads} \
-            ~{"-I " + normal_reads} \
+            -I ~{tumor_reads[0]} \
+            $normal_input \
             $normal_sample_line \
             ~{"--germline-resource " + germline_resource} \
             ~{"-pon " + pon} \
@@ -844,8 +866,9 @@ task FilterAlignmentArtifacts {
       Array[File] reference
       File input_vcf
       File input_vcf_idx
-      File reads
-      File reads_index
+      # the reads: a BAM or CRAM, which the command uses as reads[0], optionally followed by its index, which GATK finds
+      # by name beside the reads (see tumor_reads in the workflow's header)
+      Array[File]+ reads
       Boolean compress_vcfs
       File realignment_index_bundle
       String? realignment_extra_args
@@ -865,7 +888,6 @@ task FilterAlignmentArtifacts {
       input_vcf: {localization_optional: true}
       input_vcf_idx: {localization_optional: true}
       reads: {localization_optional: true}
-      reads_index: {localization_optional: true}
     }
 
     command {
@@ -876,7 +898,7 @@ task FilterAlignmentArtifacts {
         gatk --java-options "-Xmx~{command_mem}m" FilterAlignmentArtifacts \
             -R ~{reference[0]} \
             -V ~{input_vcf} \
-            -I ~{reads} \
+            -I ~{reads[0]} \
             --bwa-mem-index-image ~{realignment_index_bundle} \
             ~{realignment_extra_args} \
             -O ~{output_vcf} \

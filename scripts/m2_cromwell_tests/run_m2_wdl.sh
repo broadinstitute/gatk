@@ -46,9 +46,9 @@ echo "JSON FILE (modified) ======="
 cat $WORKING_DIR/test_mitochondria_m2_wdl_mod.json
 echo "=================="
 
-# Create the tumor-only jsons by removing normal_reads and normal_reads_index from the input jsons
-grep -v 'Mutect2.normal_reads' $WORKING_DIR/test_m2_wdl_mod.json >$WORKING_DIR/test_m2_wdl_mod_to.json
-grep -v 'Mutect2.normal_reads' $WORKING_DIR/test_m2_wdl_segments_mod.json >$WORKING_DIR/test_m2_wdl_segments_mod_to.json
+# Create the tumor-only jsons by setting normal_reads to the empty array in the input jsons
+sed -r 's/("Mutect2\.normal_reads": )\[[^]]*\]/\1[]/' $WORKING_DIR/test_m2_wdl_mod.json >$WORKING_DIR/test_m2_wdl_mod_to.json
+sed -r 's/("Mutect2\.normal_reads": )\[[^]]*\]/\1[]/' $WORKING_DIR/test_m2_wdl_segments_mod.json >$WORKING_DIR/test_m2_wdl_segments_mod_to.json
 cd $WORKING_DIR/
 
 # sudo resets PATH, so plain "sudo java" would run the runner's default Java instead of the Java 17 that setup-java installed

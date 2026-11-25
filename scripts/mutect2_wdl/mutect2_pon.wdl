@@ -6,7 +6,8 @@ version 1.0
 #  intervals: genomic intervals
 #  ref_fasta: reference genome FASTA, with its index (.fai) and sequence dictionary (.dict) beside it under the names
 #  GATK expects, which mutect2.wdl describes
-#  normal_bams: arrays of normal bams
+#  normal_bams, normal_bais: the normals' BAMs or CRAMs and their indices, in the same order.  mutect2.wdl takes each
+#  BAM or CRAM and its index as its tumor_reads.
 #  scatter_count: number of parallel jobs when scattering over intervals
 #  pon_name: the resulting panel of normals is {pon_name}.vcf
 #  m2_extra_args: additional command line parameters for Mutect2.  This should not involve --max-mnp-distance,
@@ -63,8 +64,8 @@ workflow Mutect2_Panel {
             input:
                 intervals = intervals,
                 ref_fasta = ref_fasta,
-                tumor_reads = normal_bam.left,
-                tumor_reads_index = normal_bam.right,
+                tumor_reads = [normal_bam.left, normal_bam.right],
+                normal_reads = [],
                 scatter_count = scatter_count,
                 m2_extra_args = select_first([m2_extra_args, ""]) + "--max-mnp-distance 0",
                 gatk_override = gatk_override,
