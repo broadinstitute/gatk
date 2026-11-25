@@ -93,9 +93,7 @@ Recommended default values (where possible) are found in ``mutect2_template.json
 
 - ``Mutect2.gatk4_jar`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.intervals`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2.ref_fasta`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2.ref_fasta_index`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2.ref_dict`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2.ref_fasta`` -- File path or storage location (depending on backend) of the reference FASTA.  Its index and sequence dictionary are not inputs.  Please see "Reference" below.
 - ``Mutect2.tumor_bam`` -- File path or storage location (depending on backend) of the tumor bam file.
 - ``Mutect2.tumor_bam_index`` --  File path or storage location (depending on backend) of the tumor bam file index.
 - ``Mutect2.normal_bam`` -- (optional) File path or storage location (depending on backend) of the normal bam file.
@@ -109,6 +107,12 @@ Recommended default values (where possible) are found in ``mutect2_template.json
 - ``Mutect2.common_variants_vcf_idx`` -- (optional, usually unnecessary) The index of ``Mutect2.common_variants_vcf``.  Please see "VCF indices" below.
 - ``Mutect2.gnomad``, ``Mutect2.gnomad_idx``, ``Mutect2.variants_for_contamination``, ``Mutect2.variants_for_contamination_idx`` -- (deprecated) The former names of ``Mutect2.germline_resource``, ``Mutect2.germline_resource_idx``, ``Mutect2.common_variants_vcf`` and ``Mutect2.common_variants_vcf_idx``.  They are still accepted, but will be removed in a future release.  Each is used only if the input that replaced it is not given.
 - VCF indices: ``Mutect2.germline_resource_idx``, ``Mutect2.pon_idx``, ``Mutect2.gga_vcf_idx``, ``Mutect2.common_variants_vcf_idx`` and the indices of the Permutect truth VCFs are usually unnecessary, on both local and cloud backends.  The workflow assumes that each VCF's index is the VCF's path plus ``.tbi`` for a bgzipped VCF (``.vcf.gz`` or ``.vcf.bgz``) or ``.idx`` for a plain ``.vcf``, and passes it to tasks along with the VCF, so that backends that localize files put it beside the VCF.  Specify an index only to override that, for example for an index with a non-standard extension.
+- Reference: the workflow takes only the reference FASTA, ``Mutect2.ref_fasta``.  GATK finds the FASTA's companion files by name in the FASTA's directory and accepts no other names, so they must exist there under these names:
+  - its index, the FASTA's path plus ``.fai``
+  - its sequence dictionary, the FASTA's path with its extension (``.fasta``, ``.fa``, ``.fna``, ``.fas`` or ``.txt``, optionally followed by ``.gz``) replaced by ``.dict``
+  - for a bgzipped FASTA (``.gz``), its block index, the FASTA's path plus ``.gzi``
+
+  For example ``Homo_sapiens_assembly38.fasta``, ``Homo_sapiens_assembly38.fasta.fai`` and ``Homo_sapiens_assembly38.dict``.  ``samtools faidx`` makes the index and ``gatk CreateSequenceDictionary`` the dictionary under these names.  The workflow derives the companion files' paths and passes them to tasks along with the FASTA, so that backends that localize files, such as a local Cromwell, put them beside it; on Terra, tasks stream them from the bucket.  If a companion file is missing, the workflow fails early, with an error naming the file, when it measures the reference's size.  Earlier versions of the workflow took the index and dictionary as the inputs ``Mutect2.ref_fai`` and ``Mutect2.ref_dict``, which are gone.
 - ``Mutect2.pileups_min_population_af``, ``Mutect2.pileups_max_population_af`` -- (optional) The range of population allele frequencies of the common variants at which Mutect2 tabulates pileup summaries.  The minimum defaults to 0.01 and the maximum to ``Mutect2.contamination_max_population_af``.
 - ``Mutect2.contamination_min_population_af``, ``Mutect2.contamination_max_population_af`` -- (optional, defaults 0.01 and 0.2) The range of population allele frequencies of the common variants that ``CalculateContamination`` uses.  At sites of higher allele frequency the contamination estimate depends more on the accuracy of the population allele frequencies.
 - ``Mutect2.skip_calculate_contamination`` -- (optional, default false) Whether to skip ``CalculateContamination``, for example when another tool estimates the contamination from the ``tumor_pileups`` and ``normal_pileups`` outputs.  ``FilterMutectCalls`` then runs without a contamination estimate.

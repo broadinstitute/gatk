@@ -6,8 +6,6 @@
   "Mutect2.m2_extra_args": "--downsampling-stride 20 --max-reads-per-alignment-start 6 --max-suspicious-reads-per-alignment-start 6",
 
   "Mutect2.ref_fasta": "gs://gatk-best-practices/somatic-b37/Homo_sapiens_assembly19.fasta",
-  "Mutect2.ref_dict": "gs://gatk-best-practices/somatic-b37/Homo_sapiens_assembly19.dict",
-  "Mutect2.ref_fai": "gs://gatk-best-practices/somatic-b37/Homo_sapiens_assembly19.fasta.fai",
   "Mutect2.normal_reads": "gs://gatk-best-practices/somatic-b37/HCC1143_normal.bam",
   "Mutect2.normal_reads_index": "gs://gatk-best-practices/somatic-b37/HCC1143_normal.bai",
   "Mutect2.tumor_reads": "gs://gatk-best-practices/somatic-b37/HCC1143.bam",

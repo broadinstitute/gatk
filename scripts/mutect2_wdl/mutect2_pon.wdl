@@ -4,7 +4,8 @@ version 1.0
 #
 #  Description of inputs
 #  intervals: genomic intervals
-#  ref_fasta, ref_fai, ref_dict: reference genome, index, and dictionary
+#  ref_fasta: reference genome FASTA, with its index (.fai) and sequence dictionary (.dict) beside it under the names
+#  GATK expects, which mutect2.wdl describes
 #  normal_bams: arrays of normal bams
 #  scatter_count: number of parallel jobs when scattering over intervals
 #  pon_name: the resulting panel of normals is {pon_name}.vcf
@@ -16,8 +17,6 @@ workflow Mutect2_Panel {
   input {
     File? intervals
     File ref_fasta
-    File ref_fai
-    File ref_dict
     Int scatter_count
     Array[String] normal_bams
     Array[String] normal_bais
@@ -46,6 +45,14 @@ workflow Mutect2_Panel {
     Int boot_disk_size = 12
   }
 
+  # The reference FASTA and its companion files, which GATK finds by name in the FASTA's directory: its index (.fai),
+  # its sequence dictionary (.dict) and, if it's bgzipped, its block index (.gzi).  See mutect2.wdl, which derives them
+  # the same way.
+  String ref_fasta_path = "~{ref_fasta}"
+  Array[String] ref_gzi = if sub(ref_fasta_path, "\\.gz$", "") != ref_fasta_path then [ref_fasta_path + ".gzi"] else []
+  Array[File] reference = flatten([[ref_fasta_path, ref_fasta_path + ".fai",
+      sub(ref_fasta_path, "\\.(fasta|fas|fa|fna|txt)(\\.gz)?$", "") + ".dict"], ref_gzi])
+
   Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
             "max_retries": max_retries, "preemptible": preemptible, "cpu": small_task_cpu,
             "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
@@ -56,8 +63,6 @@ workflow Mutect2_Panel {
             input:
                 intervals = intervals,
                 ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
                 tumor_reads = normal_bam.left,
                 tumor_reads_index = normal_bam.right,
                 scatter_count = scatter_count,
@@ -72,9 +77,7 @@ workflow Mutect2_Panel {
 
     call m2.SplitIntervals {
         input:
-            ref_fasta = ref_fasta,
-            ref_fai = ref_fai,
-            ref_dict = ref_dict,
+            reference = reference,
             scatter_count = create_panel_scatter_count,
             split_intervals_extra_args = "--dont-mix-contigs --min-contig-size " + min_contig_size,
             runtime_params = standard_runtime
@@ -85,9 +88,7 @@ workflow Mutect2_Panel {
                 input:
                     input_vcfs = Mutect2.filtered_vcf,
                     intervals = subintervals,
-                    ref_fasta = ref_fasta,
-                    ref_fai = ref_fai,
-                    ref_dict = ref_dict,
+                    reference = reference,
                     gnomad = gnomad,
                     gnomad_idx = gnomad_idx,
                     output_vcf_name = pon_name,
@@ -116,9 +117,8 @@ task CreatePanel {
     input {
       File intervals
       Array[String] input_vcfs
-      File ref_fasta
-      File ref_fai
-      File ref_dict
+      # the reference FASTA, then its .fai index, its .dict dictionary and, if it's bgzipped, its .gzi block index
+      Array[File] reference
       String output_vcf_name
       File gnomad
       File gnomad_idx
@@ -140,9 +140,9 @@ task CreatePanel {
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
 
-        gatk GenomicsDBImport --genomicsdb-workspace-path pon_db -R ~{ref_fasta} -V ~{sep=' -V ' input_vcfs} -L ~{intervals}
+        gatk GenomicsDBImport --genomicsdb-workspace-path pon_db -R ~{reference[0]} -V ~{sep=' -V ' input_vcfs} -L ~{intervals}
 
-        gatk --java-options "-Xmx~{command_mem}g"  CreateSomaticPanelOfNormals -R ~{ref_fasta} --germline-resource ~{gnomad} \
+        gatk --java-options "-Xmx~{command_mem}g"  CreateSomaticPanelOfNormals -R ~{reference[0]} --germline-resource ~{gnomad} \
             -V gendb://pon_db -O ~{output_vcf_name}.vcf ~{create_pon_extra_args}
     }
 

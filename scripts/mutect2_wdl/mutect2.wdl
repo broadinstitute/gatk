@@ -26,7 +26,15 @@ version 1.0
 ## run_orientation_bias_mixture_model_filter: (optional) if true, filter orientation bias sites with the read orientation artifact mixture model.
 ##
 ## ** Primary inputs **
-## ref_fasta, ref_fai, ref_dict: reference genome, index, and dictionary
+## ref_fasta: reference genome FASTA.  Its companion files are not inputs: GATK finds them by name in the FASTA's directory
+##     and accepts no other names, so they must exist there under these names:
+##     - its index, the FASTA's path plus .fai
+##     - its sequence dictionary, the FASTA's path with its extension (.fasta, .fa, .fna, .fas or .txt, optionally
+##       followed by .gz) replaced by .dict
+##     - for a bgzipped FASTA (.gz), its block index, the FASTA's path plus .gzi
+##     For example Homo_sapiens_assembly38.fasta, Homo_sapiens_assembly38.fasta.fai and Homo_sapiens_assembly38.dict.
+##     The workflow passes these files to tasks along with the FASTA, so that backends that localize files put them
+##     beside it.  (Earlier versions took the index and dictionary as the inputs ref_fai and ref_dict.)
 ## tumor_reas, tumor_reads_index: BAM and index for the tumor sample
 ## normal_reads, normal_reads_index: BAM and index for the normal sample
 ##
@@ -79,9 +87,9 @@ workflow Mutect2 {
         # basic inputs
         File? intervals
         File? masked_intervals
+        # the reference FASTA, whose index and dictionary must be beside it under the names GATK expects (see the
+        # derivation of reference below)
         File ref_fasta
-        File ref_fai
-        File ref_dict
         File tumor_reads
         File tumor_reads_index
         File? normal_reads
@@ -193,8 +201,23 @@ workflow Mutect2 {
     File? permutect_training_dataset_truth_vcf_idx_or_conventional = if vcf_idx_path[4] == "" then NONE else vcf_idx_path[4]
     File? permutect_test_dataset_truth_vcf_idx_or_conventional = if vcf_idx_path[5] == "" then NONE else vcf_idx_path[5]
 
+    # The reference FASTA and its companion files, which GATK finds by name in the FASTA's directory, accepting no other
+    # names:
+    # - its index, the FASTA's path plus .fai
+    # - its sequence dictionary, the FASTA's path with its extension (.fasta, .fa, .fna, .fas or .txt, optionally followed
+    #   by .gz) replaced by .dict
+    # - for a bgzipped FASTA (.gz), its block index, the FASTA's path plus .gzi
+    # Since only these names work, the workflow derives them rather than taking them as inputs.  Tasks take the files as
+    # one array, so that a backend that localizes files puts them beside the FASTA, while on Terra the tasks that mark the
+    # array localization_optional stream all of them from the bucket.  Keep the order: tasks use reference[0] as the
+    # FASTA, and MergeMutect2Outputs takes reference[2], the dictionary.
+    String ref_fasta_path = "~{ref_fasta}"
+    Array[String] ref_gzi = if sub(ref_fasta_path, "\\.gz$", "") != ref_fasta_path then [ref_fasta_path + ".gzi"] else []
+    Array[File] reference = flatten([[ref_fasta_path, ref_fasta_path + ".fai",
+        sub(ref_fasta_path, "\\.(fasta|fas|fa|fna|txt)(\\.gz)?$", "") + ".dict"], ref_gzi])
+
     # Disk sizes used for dynamic sizing
-    Int ref_size = ceil(size(ref_fasta, "GB") + size(ref_dict, "GB") + size(ref_fai, "GB"))
+    Int ref_size = ceil(size(reference, "GB"))
     Int tumor_reads_size = ceil(size(tumor_reads, "GB") + size(tumor_reads_index, "GB"))
     Int germline_resource_vcf_size = if defined(germline_resource_or_alias) then ceil(size(germline_resource_or_alias, "GB")) else 0
     Int normal_reads_size = if defined(normal_reads) then ceil(size(normal_reads, "GB") + size(normal_reads_index, "GB")) else 0
@@ -221,9 +244,7 @@ workflow Mutect2 {
         input:
             intervals = intervals,
             masked_intervals = masked_intervals,
-            ref_fasta = ref_fasta,
-            ref_fai = ref_fai,
-            ref_dict = ref_dict,
+            reference = reference,
             scatter_count = scatter_count,
             split_intervals_extra_args = split_intervals_extra_args,
             runtime_params = standard_runtime
@@ -233,9 +254,7 @@ workflow Mutect2 {
         call M2 {
             input:
                 intervals = subintervals,
-                ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
+                reference = reference,
                 tumor_reads = tumor_reads,
                 tumor_reads_index = tumor_reads_index,
                 normal_reads = normal_reads,
@@ -290,16 +309,14 @@ workflow Mutect2 {
             stats = M2.stats,
             tumor_pileups = flatten(M2.tumor_pileups),
             normal_pileups = flatten(M2.normal_pileups),
-            ref_dict = ref_dict,
+            ref_dict = reference[2],
             runtime_params = standard_runtime
     }
 
     if (make_bamout) {
         call MergeBamOuts {
             input:
-                ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
+                reference = reference,
                 bam_outs = M2.output_bamOut,
                 runtime_params = standard_runtime,
                 disk_space = ceil(merged_bamout_size * 10) + disk_pad,
@@ -338,9 +355,7 @@ workflow Mutect2 {
     if (!skip_filtering) {
         call Filter {
             input:
-                ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
+                reference = reference,
                 intervals = intervals,
                 unfiltered_vcf = MergeMutect2Outputs.merged_vcf,
                 unfiltered_vcf_idx = MergeMutect2Outputs.merged_vcf_idx,
@@ -357,9 +372,7 @@ workflow Mutect2 {
         if (defined(realignment_index_bundle)) {
             call FilterAlignmentArtifacts {
                 input:
-                    ref_fasta = ref_fasta,
-                    ref_fai = ref_fai,
-                    ref_dict = ref_dict,
+                    reference = reference,
                     reads = tumor_reads,
                     reads_index = tumor_reads_index,
                     realignment_index_bundle = select_first([realignment_index_bundle]),
@@ -400,9 +413,8 @@ task SplitIntervals {
     input {
       File? intervals
       File? masked_intervals
-      File ref_fasta
-      File ref_fai
-      File ref_dict
+      # the reference FASTA, then its .fai index, its .dict dictionary and, if it's bgzipped, its .gzi block index
+      Array[File] reference
       Int scatter_count
       String? split_intervals_extra_args
 
@@ -416,7 +428,7 @@ task SplitIntervals {
 
         mkdir interval-files
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" SplitIntervals \
-            -R ~{ref_fasta} \
+            -R ~{reference[0]} \
             ~{"-L " + intervals} \
             ~{"-XL " + masked_intervals} \
             -scatter ~{scatter_count} \
@@ -443,9 +455,8 @@ task SplitIntervals {
 task M2 {
     input {
         File? intervals
-        File ref_fasta
-        File ref_fai
-        File ref_dict
+        # the reference FASTA, then its .fai index, its .dict dictionary and, if it's bgzipped, its .gzi block index
+        Array[File] reference
         File tumor_reads
         File tumor_reads_index
         File? normal_reads
@@ -505,9 +516,7 @@ task M2 {
 
     parameter_meta{
         intervals: {localization_optional: true}
-        ref_fasta: {localization_optional: true}
-        ref_fai: {localization_optional: true}
-        ref_dict: {localization_optional: true}
+        reference: {localization_optional: true}
         tumor_reads: {localization_optional: true}
         tumor_reads_index: {localization_optional: true}
         normal_reads: {localization_optional: true}
@@ -538,7 +547,7 @@ task M2 {
         touch read-groups.table
 
         if [[ ! -z "~{normal_reads}" ]]; then
-            gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{normal_reads} -O normal_names.txt -encode \
+            gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{reference[0]} -I ~{normal_reads} -O normal_names.txt -encode \
             ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
             # add "-normal " to the start of each line and " " to the end, then remove newlines
             # to get -normal sample1 -normal sample2 etc
@@ -546,7 +555,7 @@ task M2 {
         fi
 
         gatk --java-options "-Xmx~{command_mem}m" Mutect2 \
-            -R ~{ref_fasta} \
+            -R ~{reference[0]} \
             -I ~{tumor_reads} \
             ~{"-I " + normal_reads} \
             $normal_sample_line \
@@ -660,9 +669,8 @@ task MergeMutect2Outputs {
 
 task MergeBamOuts {
     input {
-      File ref_fasta
-      File ref_fai
-      File ref_dict
+      # the reference FASTA, then its .fai index, its .dict dictionary and, if it's bgzipped, its .gzi block index
+      Array[File] reference
       Array[File]+ bam_outs
       Runtime runtime_params
       Int? disk_space   #override to request more disk than default small task params
@@ -674,7 +682,7 @@ task MergeBamOuts {
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherBamFiles \
-            -I ~{sep=" -I " bam_outs} -O unsorted.out.bam -R ~{ref_fasta}
+            -I ~{sep=" -I " bam_outs} -O unsorted.out.bam -R ~{reference[0]}
 
         # We must sort because adjacent scatters may have overlapping (padded) assembly regions, hence
         # overlapping bamouts
@@ -775,9 +783,8 @@ task CalculateContamination {
 task Filter {
     input {
         File? intervals
-        File ref_fasta
-        File ref_fai
-        File ref_dict
+        # the reference FASTA, then its .fai index, its .dict dictionary and, if it's bgzipped, its .gzi block index
+        Array[File] reference
         File unfiltered_vcf
         File unfiltered_vcf_idx
         Boolean compress_vcfs
@@ -795,9 +802,7 @@ task Filter {
     String output_vcf_idx = output_vcf + if compress_vcfs then ".tbi" else ".idx"
 
     parameter_meta{
-      ref_fasta: {localization_optional: true}
-      ref_fai: {localization_optional: true}
-      ref_dict: {localization_optional: true}
+      reference: {localization_optional: true}
     }
 
     command {
@@ -806,7 +811,7 @@ task Filter {
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
 
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" FilterMutectCalls -V ~{unfiltered_vcf} \
-            -R ~{ref_fasta} \
+            -R ~{reference[0]} \
             -O ~{output_vcf} \
             ~{"--contamination-table " + contamination_table} \
             ~{"--tumor-segmentation " + maf_segments} \
@@ -835,9 +840,8 @@ task Filter {
 
 task FilterAlignmentArtifacts {
     input {
-      File ref_fasta
-      File ref_fai
-      File ref_dict
+      # the reference FASTA, then its .fai index, its .dict dictionary and, if it's bgzipped, its .gzi block index
+      Array[File] reference
       File input_vcf
       File input_vcf_idx
       File reads
@@ -857,9 +861,7 @@ task FilterAlignmentArtifacts {
     Int command_mem = machine_mem - 500
 
     parameter_meta{
-      ref_fasta: {localization_optional: true}
-      ref_fai: {localization_optional: true}
-      ref_dict: {localization_optional: true}
+      reference: {localization_optional: true}
       input_vcf: {localization_optional: true}
       input_vcf_idx: {localization_optional: true}
       reads: {localization_optional: true}
@@ -872,7 +874,7 @@ task FilterAlignmentArtifacts {
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
 
         gatk --java-options "-Xmx~{command_mem}m" FilterAlignmentArtifacts \
-            -R ~{ref_fasta} \
+            -R ~{reference[0]} \
             -V ~{input_vcf} \
             -I ~{reads} \
             --bwa-mem-index-image ~{realignment_index_bundle} \
