@@ -45,7 +45,6 @@ workflow Mutect2_Panel {
     Int max_retries = 2
     Int small_task_mem = 4
     Int small_task_disk = 100
-    Int boot_disk_size = 12
   }
 
   # The reference FASTA and its companion files, which GATK finds by name in the FASTA's directory: its index (.fai),
@@ -67,7 +66,7 @@ workflow Mutect2_Panel {
   Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
             "max_retries": max_retries, "preemptible": preemptible,
             "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
-            "disk": small_task_disk, "boot_disk_size": boot_disk_size}
+            "disk": small_task_disk}
 
     scatter (normal_bam in zip(normal_bams, normal_bais)) {
         call m2.Mutect2 {
@@ -164,7 +163,7 @@ task CreatePanel {
 
     runtime {
         docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
+        bootDiskSizeGb: 4
         memory: machine_mem + " GB"
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
@@ -199,7 +198,7 @@ task MergeVCFs {
 
     runtime {
         docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
+        bootDiskSizeGb: 4
         memory: runtime_params.machine_mem + " MB"
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible

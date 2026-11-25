@@ -105,6 +105,9 @@ version 1.0
 
 # Every task but M2 runs on 1 CPU, since its tools are single-threaded.  Mutect2's native PairHMM can use more threads,
 # but a larger scatter_count is a cheaper way to speed up M2 than more CPUs per scatter.
+# Every task requests 4 GB of boot disk, beyond the 30 GB that Cromwell on GCP Batch adds for the OS and the docker image
+# (Terra records 42 GB for a request of 12).  That leaves room for the GATK and Permutect images, 2.4 and 3.9 GB
+# compressed, and tasks write their files to the working disk, not the boot disk.
 struct Runtime {
     String gatk_docker
     File? gatk_override
@@ -113,7 +116,6 @@ struct Runtime {
     Int machine_mem
     Int command_mem
     Int disk
-    Int boot_disk_size
 }
 
 workflow Mutect2 {
@@ -181,7 +183,6 @@ workflow Mutect2 {
         Int max_retries = 1
         Int small_task_mem = 4
         Int small_task_disk = 100
-        Int boot_disk_size = 12
         Int learn_read_orientation_mem = 8000
         Int filter_alignment_artifacts_mem = 9000
         String? gcs_project_for_requester_pays
@@ -238,7 +239,7 @@ workflow Mutect2 {
     Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
             "max_retries": max_retries, "preemptible": preemptible,
             "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
-            "disk": small_task_disk + disk_pad, "boot_disk_size": boot_disk_size}
+            "disk": small_task_disk + disk_pad}
 
     Int m2_output_size = tumor_reads_size / scatter_count
     #TODO: do we need to change this disk size now that NIO is always going to happen (for the google backend only)
@@ -438,7 +439,7 @@ task SplitIntervals {
 
     runtime {
         docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
+        bootDiskSizeGb: 4
         memory: runtime_params.machine_mem + " MB"
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
@@ -578,7 +579,7 @@ task M2 {
 
     runtime {
         docker: gatk_docker
-        bootDiskSizeGb: 12
+        bootDiskSizeGb: 4
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
         preemptible: select_first([preemptible, 10])
@@ -649,7 +650,7 @@ task MergeMutect2Outputs {
 
     runtime {
         docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
+        bootDiskSizeGb: 4
         memory: runtime_params.machine_mem + " MB"
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
@@ -684,16 +685,17 @@ task MergeBamOuts {
             -I ~{sep=" -I " bam_outs} -O unsorted.out.bam -R ~{reference[0]}
 
         # We must sort because adjacent scatters may have overlapping (padded) assembly regions, hence
-        # overlapping bamouts
+        # overlapping bamouts.  SortSam spills to the working disk, which is sized for it, rather than to /tmp on the
+        # boot disk.
 
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" SortSam -I unsorted.out.bam \
-            -O bamout.bam --SORT_ORDER coordinate -VALIDATION_STRINGENCY LENIENT
+            -O bamout.bam --SORT_ORDER coordinate -VALIDATION_STRINGENCY LENIENT --TMP_DIR .
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" BuildBamIndex -I bamout.bam -VALIDATION_STRINGENCY LENIENT
     >>>
 
     runtime {
         docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
+        bootDiskSizeGb: 4
         memory: runtime_params.machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " HDD"
         preemptible: runtime_params.preemptible
@@ -729,7 +731,7 @@ task LearnReadOrientationModel {
 
     runtime {
         docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
+        bootDiskSizeGb: 4
         memory: machine_mem + " MB"
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
@@ -765,7 +767,7 @@ task CalculateContamination {
 
     runtime {
         docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
+        bootDiskSizeGb: 4
         memory: runtime_params.machine_mem + " MB"
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
@@ -821,7 +823,7 @@ task Filter {
 
     runtime {
         docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
+        bootDiskSizeGb: 4
         memory: runtime_params.machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " HDD"
         preemptible: runtime_params.preemptible
@@ -883,7 +885,7 @@ task FilterAlignmentArtifacts {
 
     runtime {
         docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
+        bootDiskSizeGb: 4
         memory: machine_mem + " MB"
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
@@ -912,7 +914,7 @@ task Concatenate {
 
     runtime {
         docker: gatk_docker
-        bootDiskSizeGb: 12
+        bootDiskSizeGb: 4
         memory: machine_mem + " MB"
         disks: "local-disk 100 HDD"
         preemptible: 1
