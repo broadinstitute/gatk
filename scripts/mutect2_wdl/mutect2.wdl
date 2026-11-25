@@ -425,6 +425,12 @@ task SplitIntervals {
       Int preemptible = 3
     }
 
+    # SplitIntervals needs only the reference's dictionary and index, so on Terra GATK streams them rather than the
+    # whole FASTA being copied to the disk
+    parameter_meta {
+      reference: {localization_optional: true}
+    }
+
     command {
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
