@@ -103,12 +103,13 @@ version 1.0
 ## pertaining to the included programs.
 
 
+# Every task but M2 runs on 1 CPU, since its tools are single-threaded.  Mutect2's native PairHMM can use more threads,
+# but a larger scatter_count is a cheaper way to speed up M2 than more CPUs per scatter.
 struct Runtime {
     String gatk_docker
     File? gatk_override
     Int max_retries
     Int preemptible
-    Int cpu
     Int machine_mem
     Int command_mem
     Int disk
@@ -178,7 +179,6 @@ workflow Mutect2 {
         Int scatter_count
         Int preemptible = 2
         Int max_retries = 1
-        Int small_task_cpu = 2
         Int small_task_mem = 4
         Int small_task_disk = 100
         Int boot_disk_size = 12
@@ -236,7 +236,7 @@ workflow Mutect2 {
     Int disk_pad = 10 + emergency_extra_disk
 
     Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
-            "max_retries": max_retries, "preemptible": preemptible, "cpu": small_task_cpu,
+            "max_retries": max_retries, "preemptible": preemptible,
             "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
             "disk": small_task_disk + disk_pad, "boot_disk_size": boot_disk_size}
 
@@ -443,7 +443,7 @@ task SplitIntervals {
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
+        cpu: 1
     }
 
     output {
@@ -654,7 +654,7 @@ task MergeMutect2Outputs {
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
+        cpu: 1
     }
 
     output {
@@ -698,7 +698,7 @@ task MergeBamOuts {
         disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
+        cpu: 1
     }
 
     output {
@@ -734,7 +734,7 @@ task LearnReadOrientationModel {
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
+        cpu: 1
     }
 
     output {
@@ -770,7 +770,7 @@ task CalculateContamination {
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
+        cpu: 1
     }
 
     output {
@@ -826,7 +826,7 @@ task Filter {
         disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
+        cpu: 1
     }
 
     output {
@@ -888,7 +888,7 @@ task FilterAlignmentArtifacts {
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
+        cpu: 1
     }
 
     output {
@@ -917,7 +917,7 @@ task Concatenate {
         disks: "local-disk 100 HDD"
         preemptible: 1
         maxRetries: 1
-        cpu: 2
+        cpu: 1
     }
 
     output {

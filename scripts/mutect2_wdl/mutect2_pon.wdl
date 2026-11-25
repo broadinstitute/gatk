@@ -43,7 +43,6 @@ workflow Mutect2_Panel {
 
     Int preemptible = 2
     Int max_retries = 2
-    Int small_task_cpu = 2
     Int small_task_mem = 4
     Int small_task_disk = 100
     Int boot_disk_size = 12
@@ -66,7 +65,7 @@ workflow Mutect2_Panel {
       else germline_resource
 
   Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
-            "max_retries": max_retries, "preemptible": preemptible, "cpu": small_task_cpu,
+            "max_retries": max_retries, "preemptible": preemptible,
             "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
             "disk": small_task_disk, "boot_disk_size": boot_disk_size}
 
@@ -170,7 +169,7 @@ task CreatePanel {
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
+        cpu: 1
     }
 
     output {
@@ -205,7 +204,7 @@ task MergeVCFs {
         disks: "local-disk " + runtime_params.disk + " HDD"
         preemptible: runtime_params.preemptible
         maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
+        cpu: 1
     }
 
     output {
