@@ -121,7 +121,7 @@ Recommended default values (where possible) are found in ``mutect2_template.json
 - ``Mutect2.gatk_docker`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.oncotator_docker`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.gatk4_jar_override`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2.preemptible_attempts`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2.<task>.preemptible``, eg ``Mutect2.M2.preemptible`` -- (optional) Each task's number of preemptible VMs to try on Google before a regular one.  The defaults are 3 for tasks that take minutes, 2 for tasks that can take an hour or two, and 1 for ``M2``, whose scatters can take hours on genomes.  Earlier versions of the workflow took one ``Mutect2.preemptible`` for every task.
 - ``Mutect2.onco_ds_tar_gz`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.onco_ds_local_db_dir`` -- Please see parameter description above in the mutect2_multi_sample.
 - ``Mutect2.artifact_modes`` -- Please see parameter description above in the mutect2_multi_sample.

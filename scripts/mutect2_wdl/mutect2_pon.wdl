@@ -41,7 +41,6 @@ workflow Mutect2_Panel {
     File? gatk_override
     String basic_bash_docker = "ubuntu:16.04"
 
-    Int preemptible = 2
     Int max_retries = 2
     Int small_task_mem = 4
     Int small_task_disk = 100
@@ -64,7 +63,7 @@ workflow Mutect2_Panel {
       else germline_resource
 
   Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
-            "max_retries": max_retries, "preemptible": preemptible,
+            "max_retries": max_retries,
             "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
             "disk": small_task_disk}
 
@@ -83,7 +82,6 @@ workflow Mutect2_Panel {
                 m2_extra_args = select_first([m2_extra_args, ""]) + "--max-mnp-distance 0",
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                preemptible = preemptible,
                 max_retries = max_retries,
                 gcs_project_for_requester_pays = gcs_project_for_requester_pays
         }
@@ -141,6 +139,7 @@ task CreatePanel {
 
       # runtime
       Runtime runtime_params
+      Int preemptible = 2
     }
 
     Int machine_mem = 8
@@ -166,7 +165,7 @@ task CreatePanel {
         bootDiskSizeGb: 4
         memory: machine_mem + " GB"
         disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
+        preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
     }
@@ -183,6 +182,7 @@ task MergeVCFs {
       Array[File] input_vcf_indices
       Boolean compress_vcfs
       Runtime runtime_params
+      Int preemptible = 3
     }
 
     String output_vcf = if compress_vcfs then "merged.vcf.gz" else "merged.vcf"
@@ -201,7 +201,7 @@ task MergeVCFs {
         bootDiskSizeGb: 4
         memory: runtime_params.machine_mem + " MB"
         disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
+        preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
     }

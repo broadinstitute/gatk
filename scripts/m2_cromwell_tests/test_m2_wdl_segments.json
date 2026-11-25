@@ -8,6 +8,5 @@
   "Mutect2.pon": [],
   "Mutect2.common_variants_vcf": ["/home/runner/work/gatk/gatk/scripts/m2_cromwell_tests/m2_segmentation_test_sites.vcf", "/home/runner/work/gatk/gatk/scripts/m2_cromwell_tests/m2_segmentation_test_sites.vcf.idx"],
   "Mutect2.scatter_count": 2,
-  "Mutect2.preemptible": 2,
   "Mutect2.compress_vcfs": false
 }

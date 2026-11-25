@@ -12,7 +12,8 @@ version 1.0
 ##
 ## ** Runtime **
 ## gatk_docker: docker image to use for GATK 4 Mutect2
-## preemptible: how many preemptions to tolerate before switching to a non-preemptible machine (on Google)
+## <task>.preemptible, eg M2.preemptible: each task's own number of preemptible VMs to try on Google before a regular
+##     one (see above the Runtime struct for the defaults)
 ## max_retries: how many times to retry failed tasks -- very important on the cloud when there are transient errors
 ## gatk_override: (optional) local file or Google bucket path to a GATK 4 java jar file to be used instead of the GATK 4 jar
 ##                in the docker image.  This must be supplied when running in an environment that does not support docker
@@ -108,11 +109,13 @@ version 1.0
 # Every task requests 4 GB of boot disk, beyond the 30 GB that Cromwell on GCP Batch adds for the OS and the docker image
 # (Terra records 42 GB for a request of 12).  That leaves room for the GATK and Permutect images, 2.4 and 3.9 GB
 # compressed, and tasks write their files to the working disk, not the boot disk.
+# Each task's preemptible input is how many preemptible (spot) VMs Google tries before a regular one: 3 for tasks that
+# take minutes, 2 for tasks that can take an hour or two, and 1 for M2, whose scatters can take hours on genomes and
+# hold up the workflow when they're preempted.
 struct Runtime {
     String gatk_docker
     File? gatk_override
     Int max_retries
-    Int preemptible
     Int machine_mem
     Int command_mem
     Int disk
@@ -179,7 +182,7 @@ workflow Mutect2 {
         File? gatk_override
         String basic_bash_docker = "ubuntu:16.04"
         Int scatter_count
-        Int preemptible = 2
+        # each task has its own preemptible input (see above the Runtime struct)
         Int max_retries = 1
         Int small_task_mem = 4
         Int small_task_disk = 100
@@ -237,7 +240,7 @@ workflow Mutect2 {
     Int disk_pad = 10 + emergency_extra_disk
 
     Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
-            "max_retries": max_retries, "preemptible": preemptible,
+            "max_retries": max_retries,
             "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
             "disk": small_task_disk + disk_pad}
 
@@ -268,7 +271,6 @@ workflow Mutect2 {
                 normal_reads = normal_reads,
                 pon = pon_with_index,
                 germline_resource = germline_resource_with_index,
-                preemptible = preemptible,
                 max_retries = max_retries,
                 m2_extra_args = m2_extra_args,
                 common_variants_vcf = common_variants_vcf_with_index,
@@ -420,6 +422,7 @@ task SplitIntervals {
 
       # runtime
       Runtime runtime_params
+      Int preemptible = 3
     }
 
     command {
@@ -442,7 +445,7 @@ task SplitIntervals {
         bootDiskSizeGb: 4
         memory: runtime_params.machine_mem + " MB"
         disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
+        preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
     }
@@ -488,7 +491,7 @@ task M2 {
         # runtime
         String gatk_docker
         Int? mem
-        Int? preemptible
+        Int preemptible = 1
         Int? max_retries
         Int? disk_space
         Int? cpu
@@ -582,7 +585,7 @@ task M2 {
         bootDiskSizeGb: 4
         memory: machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
-        preemptible: select_first([preemptible, 10])
+        preemptible: preemptible
         maxRetries: select_first([max_retries, 0])
         cpu: select_first([cpu, 1])
     }
@@ -615,6 +618,7 @@ task MergeMutect2Outputs {
       Array[File] normal_pileups = []
       File ref_dict
       Runtime runtime_params
+      Int preemptible = 3
     }
 
     String output_vcf = if compress_vcfs then "merged.vcf.gz" else "merged.vcf"
@@ -653,7 +657,7 @@ task MergeMutect2Outputs {
         bootDiskSizeGb: 4
         memory: runtime_params.machine_mem + " MB"
         disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
+        preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
     }
@@ -673,6 +677,7 @@ task MergeBamOuts {
       Array[File] reference
       Array[File]+ bam_outs
       Runtime runtime_params
+      Int preemptible = 2
       Int? disk_space   #override to request more disk than default small task params
     }
 
@@ -698,7 +703,7 @@ task MergeBamOuts {
         bootDiskSizeGb: 4
         memory: runtime_params.machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " HDD"
-        preemptible: runtime_params.preemptible
+        preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
     }
@@ -714,6 +719,7 @@ task LearnReadOrientationModel {
     input {
       Array[File] f1r2_tar_gz
       Runtime runtime_params
+      Int preemptible = 3
       Int? mem  #override memory
     }
 
@@ -734,7 +740,7 @@ task LearnReadOrientationModel {
         bootDiskSizeGb: 4
         memory: machine_mem + " MB"
         disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
+        preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
     }
@@ -753,6 +759,7 @@ task CalculateContamination {
       Float min_population_af = 0.01
       Float max_population_af = 0.2
       Runtime runtime_params
+      Int preemptible = 3
     }
 
     command {
@@ -770,7 +777,7 @@ task CalculateContamination {
         bootDiskSizeGb: 4
         memory: runtime_params.machine_mem + " MB"
         disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
+        preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
     }
@@ -795,6 +802,7 @@ task Filter {
         String? m2_extra_filtering_args
 
         Runtime runtime_params
+        Int preemptible = 2
         Int? disk_space
     }
 
@@ -826,7 +834,7 @@ task Filter {
         bootDiskSizeGb: 4
         memory: runtime_params.machine_mem + " MB"
         disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " HDD"
-        preemptible: runtime_params.preemptible
+        preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
     }
@@ -852,6 +860,7 @@ task FilterAlignmentArtifacts {
       String? realignment_extra_args
       String? gcs_project_for_requester_pays
       Runtime runtime_params
+      Int preemptible = 2
       Int mem
     }
 
@@ -888,7 +897,7 @@ task FilterAlignmentArtifacts {
         bootDiskSizeGb: 4
         memory: machine_mem + " MB"
         disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
+        preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
     }
@@ -904,6 +913,7 @@ task Concatenate {
         Array[File] input_files
         Int? mem
         String gatk_docker
+        Int preemptible = 3
     }
 
     Int machine_mem = if defined(mem) then mem * 1000 else 7000
@@ -917,7 +927,7 @@ task Concatenate {
         bootDiskSizeGb: 4
         memory: machine_mem + " MB"
         disks: "local-disk 100 HDD"
-        preemptible: 1
+        preemptible: preemptible
         maxRetries: 1
         cpu: 1
     }
