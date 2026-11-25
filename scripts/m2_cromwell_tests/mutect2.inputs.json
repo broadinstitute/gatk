@@ -9,12 +9,9 @@
   "Mutect2.normal_reads": ["gs://gatk-best-practices/somatic-b37/HCC1143_normal.bam", "gs://gatk-best-practices/somatic-b37/HCC1143_normal.bai"],
   "Mutect2.tumor_reads": ["gs://gatk-best-practices/somatic-b37/HCC1143.bam", "gs://gatk-best-practices/somatic-b37/HCC1143.bai"],
 
-  "Mutect2.pon": "gs://gatk-best-practices/somatic-b37/Mutect2-exome-panel.vcf",
-  "Mutect2.pon_idx": "gs://gatk-best-practices/somatic-b37/Mutect2-exome-panel.vcf.idx",
-  "Mutect2.germline_resource": "gs://gatk-best-practices/somatic-b37/af-only-gnomad.raw.sites.vcf",
-  "Mutect2.germline_resource_idx": "gs://gatk-best-practices/somatic-b37/af-only-gnomad.raw.sites.vcf.idx",
-  "Mutect2.common_variants_vcf": "gs://gatk-best-practices/somatic-b37/small_exac_common_3.vcf",
-  "Mutect2.common_variants_vcf_idx": "gs://gatk-best-practices/somatic-b37/small_exac_common_3.vcf.idx",
+  "Mutect2.pon": ["gs://gatk-best-practices/somatic-b37/Mutect2-exome-panel.vcf"],
+  "Mutect2.germline_resource": ["gs://gatk-best-practices/somatic-b37/af-only-gnomad.raw.sites.vcf"],
+  "Mutect2.common_variants_vcf": ["gs://gatk-best-practices/somatic-b37/small_exac_common_3.vcf"],
   "Mutect2.realignment_index_bundle": "gs://gatk-test-data/mutect2/Homo_sapiens_assembly38.index_bundle"
 
 }

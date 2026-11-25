@@ -8,6 +8,10 @@ version 1.0
 #  GATK expects, which mutect2.wdl describes
 #  normal_bams, normal_bais: the normals' BAMs or CRAMs and their indices, in the same order.  mutect2.wdl takes each
 #  BAM or CRAM and its index as its tumor_reads.
+#  germline_resource: a germline resource with population allele frequencies, such as gnomAD's, with which
+#  CreateSomaticPanelOfNormals excludes germline variants from the panel: an array of the VCF and, optionally, its
+#  index, [vcf] or [vcf, idx], or [] to go without one.  mutect2.wdl's "VCFs and their indices" describes the index.
+#  (Earlier versions took the VCF and its index as the inputs gnomad and gnomad_idx.)
 #  scatter_count: number of parallel jobs when scattering over intervals
 #  pon_name: the resulting panel of normals is {pon_name}.vcf
 #  m2_extra_args: additional command line parameters for Mutect2.  This should not involve --max-mnp-distance,
@@ -21,8 +25,7 @@ workflow Mutect2_Panel {
     Int scatter_count
     Array[String] normal_bams
     Array[String] normal_bais
-    File gnomad
-    File gnomad_idx
+    Array[File] germline_resource
     String? m2_extra_args
     String? create_pon_extra_args
     Boolean compress = false
@@ -54,6 +57,14 @@ workflow Mutect2_Panel {
   Array[File] reference = flatten([[ref_fasta_path, ref_fasta_path + ".fai",
       sub(ref_fasta_path, "\\.(fasta|fas|fa|fna|txt)(\\.gz)?$", "") + ".dict"], ref_gzi])
 
+  # the germline resource with its index, derived as mutect2.wdl derives the indices of its VCFs: given only the VCF,
+  # its path plus .tbi if it's bgzipped or .idx if not
+  String germline_resource_path = if length(germline_resource) > 0 then "~{germline_resource[0]}" else ""
+  Array[File] germline_resource_with_index = if length(germline_resource) == 1
+      then [germline_resource_path, germline_resource_path +
+          (if sub(germline_resource_path, "\\.b?gz$", "") != germline_resource_path then ".tbi" else ".idx")]
+      else germline_resource
+
   Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
             "max_retries": max_retries, "preemptible": preemptible, "cpu": small_task_cpu,
             "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
@@ -66,6 +77,10 @@ workflow Mutect2_Panel {
                 ref_fasta = ref_fasta,
                 tumor_reads = [normal_bam.left, normal_bam.right],
                 normal_reads = [],
+                # each normal's calls, without the resources that would remove artifacts and germline variants from them
+                germline_resource = [],
+                pon = [],
+                common_variants_vcf = [],
                 scatter_count = scatter_count,
                 m2_extra_args = select_first([m2_extra_args, ""]) + "--max-mnp-distance 0",
                 gatk_override = gatk_override,
@@ -92,8 +107,7 @@ workflow Mutect2_Panel {
                     input_vcfs = Mutect2.filtered_vcf,
                     intervals = subintervals,
                     reference = reference,
-                    gnomad = gnomad,
-                    gnomad_idx = gnomad_idx,
+                    germline_resource = germline_resource_with_index,
                     output_vcf_name = pon_name,
                     create_pon_extra_args = create_pon_extra_args,
                     runtime_params = standard_runtime
@@ -123,8 +137,8 @@ task CreatePanel {
       # the reference FASTA, then its .fai index, its .dict dictionary and, if it's bgzipped, its .gzi block index
       Array[File] reference
       String output_vcf_name
-      File gnomad
-      File gnomad_idx
+      # the germline resource with its index, or [] for none
+      Array[File] germline_resource
       String? create_pon_extra_args
 
       # runtime
@@ -135,8 +149,7 @@ task CreatePanel {
     Int command_mem = machine_mem - 1
 
         parameter_meta{
-          gnomad: {localization_optional: true}
-          gnomad_idx: {localization_optional: true}
+          germline_resource: {localization_optional: true}
         }
 
     command {
@@ -145,7 +158,8 @@ task CreatePanel {
 
         gatk GenomicsDBImport --genomicsdb-workspace-path pon_db -R ~{reference[0]} -V ~{sep=' -V ' input_vcfs} -L ~{intervals}
 
-        gatk --java-options "-Xmx~{command_mem}g"  CreateSomaticPanelOfNormals -R ~{reference[0]} --germline-resource ~{gnomad} \
+        gatk --java-options "-Xmx~{command_mem}g"  CreateSomaticPanelOfNormals -R ~{reference[0]} \
+            ~{if length(germline_resource) > 0 then "--germline-resource " + germline_resource[0] else ""} \
             -V gendb://pon_db -O ~{output_vcf_name}.vcf ~{create_pon_extra_args}
     }
 
