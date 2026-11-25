@@ -1142,6 +1142,13 @@ public final class AlignmentUtilsUnitTest {
         tests.add(new Object[]{ "30M5D30M5D30M", 80, 90 });
         tests.add(new Object[]{ "30M5D30M5I30M", 80, 80 });
         tests.add(new Object[]{ "30M5D30M5I30M", 80, 80 });
+        // a read that starts right after a deletion starts after the deleted reference bases
+        tests.add(new Object[]{ "10M1D20M", 10, 11 });
+        tests.add(new Object[]{ "10M3D2D20M", 10, 15 });
+        tests.add(new Object[]{ "10M1D20M", 9, 9 });
+        tests.add(new Object[]{ "10M1D20M", 11, 12 });
+        tests.add(new Object[]{ "10M2I1D20M", 10, 10 });
+        tests.add(new Object[]{ "10M1D2I20M", 10, 11 });
 
         return tests.toArray(new Object[][]{});
     }
