@@ -4,7 +4,7 @@
 
 This document describes the VRS (Variant Representation Specification) allele ID feature integrated into GATK's variant store ingest pipeline. VRS IDs provide standardized, globally-unique identifiers for genomic alleles, enabling interoperability across bioinformatics tools and databases.
 
-**Current status**: Implemented from the Java ingest tool through WDL orchestration to BigQuery loading, behind `enable_vrs_ids`. A dataset either carries VRS IDs or does not, and an ingest follows the dataset (see Enable VRS ID Computation). The IDs have not yet been checked against vrs-python beyond a single normalizer case (VS-2059), and `alt_allele` does not carry them yet (VS-2061).
+**Current status**: Implemented from the Java ingest tool through WDL orchestration to BigQuery loading, behind `enable_vrs_ids`. A dataset either carries VRS IDs or does not, and an ingest follows the dataset (see Enable VRS ID Computation). The IDs match vrs-python 2.3.3 on a fixed set of chr20 and chr21 cases, except where the GVS reference N-masks sequence (VS-2059), and `alt_allele` does not carry them yet (VS-2061).
 
 ---
 
@@ -38,7 +38,8 @@ This enables downstream queries to identify and retrieve specific alleles across
 
 - `VrsAlleleCreatorUnitTest`: file naming, Parquet output, no-op scenarios
 - `VrsNormalizerTest`: trimming, rolling, expansion and state resolution for SNPs, indels, substitutions and delins
-- `VrsIdComputerTest`: deterministic ID generation and format; it does not compare IDs with known values (VS-2059)
+- `VrsIdComputerTest`: deterministic ID generation and format
+- `VrsPythonConcordanceUnitTest`: compares allele ID, location ID, normalized start and end, and state with vrs-python 2.3.3 for an SNV, an MNV, insertions of new and of repeated sequence, deletions inside and outside a repeat, a right-shifted deletion, repeat insertions and deletions of several units (including one longer than its repeat, one rotated into the run, one of a partial unit, and the whole repeat deleted), a delins inside a repeat with a shorter and with a longer ALT, a multi-allelic site with `*`, and two SNVs in a region chr21 N-masks. The expected values are in `VrsPythonConcordance/expected.tsv` under the test resources, beside `generate_expected.py`, which wrote them against the RefSeq sequences. One case differs on purpose: an ALT equal to the masked RefSeq base is a reference allele to vrs-python, while GVS reads N and sees a substitution (VS-2059)
 - `VrsAlleleRecordTest`, `RefGetAccessionProviderTest`
 - `VetCreatorUnitTest`: a spanning-deletion `*` ALT, and every ALT on a contig with no refget accession, gets the placeholder and keeps `vrs_allele_ids` aligned with `alt`
 - `CreateVariantIngestFilesIntegrationTest`: end-to-end VRS ID computation from a gVCF, against the checked-in chr20/21 subset of hg38.
@@ -149,6 +150,8 @@ For het-vars with multiple alternate alleles (e.g., GT=1/2 with alts ["T", "ATG"
 **Deduplication**: Allele records are duplicated across samples in `vrs_allele_scratch`. `ProcessVrsAlleles` deduplicates them on `vrs_allele_id` when merging into `vrs_allele`.
 
 **Coordinate Systems**: Input is 1-based inclusive (VCF/gVCF standard); VRS normalization and IDs use 0-based interbase coordinates per VRS 2.0.1 specification.
+
+**N-masked regions**: GVS normalizes against its own reference, the GRCh38 analysis set, which replaces some sequence with N, such as the false duplications on chr21. The refget accessions name the RefSeq sequences, which have real bases there, so vrs-python and other implementations normalize against different bases in those regions and can compute different IDs. For example, a 1-base deletion at chr21:11000000 rolls across the whole 2.15 Mb N run in GVS, but only across a 3-base A run in RefSeq. Callers do not emit variants at N positions, so a variant inside a masked region is not expected. An indel just outside one can still differ, though. GVS stops rolling or expanding it at the first N, while vrs-python continues if the repeat carries on into the RefSeq bases there. This is expected to be rare. The team decided to document it rather than change the behavior (VS-2059).
 
 ---
 
