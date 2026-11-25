@@ -13,6 +13,13 @@ needs network access to NCBI unless --refseq-dir already holds the sequences:
     python3 -m venv vrsenv && vrsenv/bin/pip install 'ga4gh.vrs[extras]==2.3.3'
     vrsenv/bin/python generate_expected.py --refseq-dir /tmp/refseq > expected.tsv
 
+On a machine without PostgreSQL's pg_config (macOS by default), that install fails building psycopg2,
+which the extras pull in through hgvs. hgvs never connects to a database here, so install the binary
+wheel and exclude the source package instead:
+
+    printf 'psycopg2 ; sys_platform == "never"\\n' > override.txt
+    uv venv vrsenv && VIRTUAL_ENV=vrsenv uv pip install psycopg2-binary 'ga4gh.vrs[extras]==2.3.3' --override override.txt
+
 If the download fails, for example with CERTIFICATE_VERIFY_FAILED, fetch the files with any other tool
 into --refseq-dir as <accession>.fa, from
 https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=nuccore&id=<accession>&rettype=fasta

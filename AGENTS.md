@@ -1629,10 +1629,12 @@ its new n2d defaults. The `ah_var_store` image had no `process_vrs_alleles.py`
 at all. The refresh check above passes with either tag, because the tag string
 changed. So run `build_docker.sh` on the merged tree, before committing the
 merge, and put the new tag in the merge commit. Then diff every baked-in
-script against the merge, not just the ones your branch touched:
+script against the merge, not just the ones your branch touched. The loop
+covers what the Dockerfile copies into `/app/`, the top-level `*.py` and
+`*.sql` files. The VAT schema JSON it copies into `/data/` is not covered:
 
     docker cp "${CID}":/app/. ./img/
-    for f in $(git ls-files 'scripts/variantstore/scripts/*.py' | grep -v /test/ | awk -F/ 'NF==4'); do
+    for f in $(git ls-files 'scripts/variantstore/scripts/*.py' 'scripts/variantstore/scripts/*.sql' | grep -v /test/ | awk -F/ 'NF==4'); do
       git show ":${f}" | cmp -s - "./img/$(basename "${f}")" || echo "stale: ${f}"
     done
 
