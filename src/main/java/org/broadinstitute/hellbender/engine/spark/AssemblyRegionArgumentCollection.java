@@ -4,12 +4,14 @@ import org.broadinstitute.barclay.argparser.Advanced;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineException;
 import org.broadinstitute.barclay.argparser.Hidden;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 
 import java.io.Serializable;
 
 public class AssemblyRegionArgumentCollection implements Serializable {
     public static final String ASSEMBLY_REGION_OUT_LONG_NAME = "assembly-region-out";
     public static final String FORCE_ACTIVE_REGIONS_LONG_NAME = "force-active";
+    public static final String ACTIVITY_PROFILE_TYPE_LONG_NAME = "activity-profile-type";
     private static final long serialVersionUID = 1L;
 
     public static final String MIN_ASSEMBLY_LONG_NAME = "min-assembly-region-size";
@@ -67,6 +69,9 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      * Parameters that control active regions
      */
 
+    @Argument(fullName = ACTIVITY_PROFILE_TYPE_LONG_NAME, doc = "Activity profile type", optional = true)
+    public ActivityProfile.ProfileType activityProfileType = defaultActivityProfileType();
+
     @Argument(fullName = MIN_ASSEMBLY_LONG_NAME, doc = "Minimum size of an assembly region", optional = true)
     public int minAssemblyRegionSize = defaultMinAssemblyRegionSize();
 
@@ -84,6 +89,7 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     @Advanced
     @Argument(fullName = FORCE_ACTIVE_REGIONS_LONG_NAME, doc = "If provided, all regions will be marked as active", optional = true)
     public boolean forceActive = false;
+
 
     /**
      * Parameters that control assembly regions
@@ -128,6 +134,11 @@ public class AssemblyRegionArgumentCollection implements Serializable {
     public boolean enableLegacyAssemblyRegionTrimming = false;
 
     /**
+     * @return Default value for the {@link #activityProfileType} parameter, if none is provided on the command line
+     */
+    protected ActivityProfile.ProfileType defaultActivityProfileType() { return ActivityProfile.ProfileType.BAND_PASS; }
+
+    /**
      * @return Default value for the {@link #minAssemblyRegionSize} parameter, if none is provided on the command line
      */
     protected int defaultMinAssemblyRegionSize() { return DEFAULT_MIN_ASSEMBLY_REGION_SIZE; }
@@ -157,6 +168,12 @@ public class AssemblyRegionArgumentCollection implements Serializable {
      */
     protected int defaultMaxProbPropagationDistance() { return DEFAULT_MAX_PROB_PROPAGATION_DISTANCE; }
 
+    /**
+     * @return whether this tool's evaluator labels activity states as SOMATIC, GERMLINE or ARTIFACT, which the
+     * MUTECT2 activity profile requires
+     */
+    protected boolean supportsMutect2ActivityProfile() { return false; }
+
     public void validate() {
         if ( minAssemblyRegionSize <= 0 || maxAssemblyRegionSize <= 0 ) {
             throw new CommandLineException.BadArgumentValue("min/max assembly region size must be > 0");
@@ -180,6 +197,11 @@ public class AssemblyRegionArgumentCollection implements Serializable {
 
         if ( indelPaddingForGenotyping < 0 ) {
             throw new CommandLineException.BadArgumentValue("paddingAroundIndels", "" + indelPaddingForGenotyping + "< 0");
+        }
+
+        if ( activityProfileType == ActivityProfile.ProfileType.MUTECT2 && !supportsMutect2ActivityProfile() ) {
+            throw new CommandLineException.BadArgumentValue(ACTIVITY_PROFILE_TYPE_LONG_NAME, activityProfileType.name(),
+                    "the MUTECT2 activity profile is only supported by Mutect2");
         }
     }
 

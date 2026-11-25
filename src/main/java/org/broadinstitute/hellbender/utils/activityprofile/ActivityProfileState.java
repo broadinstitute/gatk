@@ -66,7 +66,10 @@ public final class ActivityProfileState {
      */
     public enum Type {
         NONE,
-        HIGH_QUALITY_SOFT_CLIPS
+        HIGH_QUALITY_SOFT_CLIPS,
+        GERMLINE,
+        SOMATIC,
+        ARTIFACT
     }
 
     /**

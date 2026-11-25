@@ -14,10 +14,12 @@ import org.broadinstitute.hellbender.cmdline.StandardArgumentDefinitions;
 import org.broadinstitute.hellbender.cmdline.argumentcollections.IntervalArgumentCollection;
 import org.broadinstitute.hellbender.engine.FeatureDataSource;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.engine.spark.Mutect2AssemblyRegionArgumentCollection;
 import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.VariantContextTestUtils;
 import org.broadinstitute.hellbender.tools.walkers.annotator.AnnotationUtils;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.AssemblyBasedCallerArgumentCollection;
+import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.HaplotypeCaller;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.PileupDetectionArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReadThreadingAssemblerArgumentCollection;
 import org.broadinstitute.hellbender.tools.walkers.haplotypecaller.ReferenceConfidenceMode;
@@ -30,6 +32,7 @@ import org.broadinstitute.hellbender.tools.walkers.validation.Concordance;
 import org.broadinstitute.hellbender.tools.walkers.validation.ConcordanceSummaryRecord;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
 import org.broadinstitute.hellbender.utils.*;
+import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfile;
 import org.broadinstitute.hellbender.utils.variant.GATKVCFConstants;
 import org.broadinstitute.hellbender.utils.variant.VariantContextGetters;
 import org.testng.Assert;
@@ -259,6 +262,101 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(numVariants, 0);
     }
 
+    // Mutect2 supplies its own assembly region arguments, whose default activity profile is MUTECT2
+    @Test
+    public void testDefaultActivityProfile() {
+        Assert.assertEquals(new Mutect2().assemblyRegionArgs.activityProfileType, ActivityProfile.ProfileType.MUTECT2);
+        Assert.assertEquals(new HaplotypeCaller().assemblyRegionArgs.activityProfileType, ActivityProfile.ProfileType.BAND_PASS);
+    }
+
+    // With the band-pass activity profile, as in mitochondria mode, panel of normals sites and, unless we genotype germline
+    // sites, germline sites are not active, as was the case before the Mutect2 activity profile
+    @Test
+    public void testBandPassActivityProfile() {
+        final Function<ArgumentsBuilder, ArgumentsBuilder> bandPass =
+                args -> args.add(AssemblyRegionArgumentCollection.ACTIVITY_PROFILE_TYPE_LONG_NAME, ActivityProfile.ProfileType.BAND_PASS);
+
+        // panel of normals sites: as in testPon, make a pon from a tumor and call the same tumor with it
+        Utils.resetRandomGenerator();
+        final File ponVcf = createTempFile("pon", ".vcf");
+        final File callsWithPon = createTempFile("calls-with-pon", ".vcf");
+        runMutect2(DREAM_1_TUMOR, DREAM_1_NORMAL, ponVcf, CHROMOSOME_20, b37Reference, Optional.empty(), bandPass);
+        runMutect2(DREAM_1_TUMOR, DREAM_1_NORMAL, callsWithPon, CHROMOSOME_20, b37Reference, Optional.empty(), bandPass,
+                args -> args.add(M2ArgumentCollection.PANEL_OF_NORMALS_LONG_NAME, ponVcf));
+        final long ponSites = VariantContextTestUtils.streamVcf(ponVcf).count();
+        Assert.assertTrue(ponSites > 10, "too few pon sites for a meaningful test");
+        Assert.assertTrue(VariantContextTestUtils.streamVcf(callsWithPon).count() < ponSites / 2, "most pon sites were called");
+
+        // germline sites: tumor-only calls with the germline resource on NA12878, which is not a tumor
+        final File callsWithoutGermline = createTempFile("calls-without-germline", ".vcf");
+        final File callsWithGermline = createTempFile("calls-with-germline", ".vcf");
+        runMutect2(new File(NA12878_20_21_WGS_bam), callsWithoutGermline, "20:10000000-10010000", b37Reference, Optional.of(GNOMAD), bandPass);
+        runMutect2(new File(NA12878_20_21_WGS_bam), callsWithGermline, "20:10000000-10010000", b37Reference, Optional.of(GNOMAD), bandPass,
+                args -> args.addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME));
+        Assert.assertTrue(VariantContextTestUtils.streamVcf(callsWithoutGermline).count() < VariantContextTestUtils.streamVcf(callsWithGermline).count() / 2,
+                "most germline sites were called without genotyping germline sites");
+    }
+
+    // Generating Permutect training data implies genotyping germline sites, and the germline fraction controls how many
+    // clusters of germline variants without nearby somatic variants are genotyped
+    @Test
+    public void testPermutectTrainingGermlineFraction() {
+        final List<Long> callCounts = new ArrayList<>();
+        for (final double germlineFraction : new double[] {0.0, 1.0}) {
+            Utils.resetRandomGenerator();
+            final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+            final File dataset = createTempFile("dataset", ".txt");
+            runMutect2(DREAM_4_TUMOR, DREAM_4_NORMAL, unfilteredVcf, "20:1-10000000", b37Reference, Optional.empty(),
+                    args -> args.add(M2ArgumentCollection.PERMUTECT_TRAINING_DATASET_LONG_NAME, dataset)
+                            .add(Mutect2AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, germlineFraction));
+            callCounts.add(VariantContextTestUtils.streamVcf(unfilteredVcf).count());
+        }
+        Assert.assertTrue(callCounts.get(0) < callCounts.get(1), "germline fraction had no effect: " + callCounts);
+    }
+
+    // Generating Permutect training data implies genotyping panel of normals sites, which supply examples of artifacts
+    @Test
+    public void testPermutectTrainingIncludesPonSites() {
+        Utils.resetRandomGenerator();
+        final File ponVcf = createTempFile("pon", ".vcf");
+        final File callsWithPon = createTempFile("calls-with-pon", ".vcf");
+        final File dataset = createTempFile("dataset", ".txt");
+        runMutect2(DREAM_1_TUMOR, DREAM_1_NORMAL, ponVcf, CHROMOSOME_20, b37Reference, Optional.empty());
+        runMutect2(DREAM_1_TUMOR, DREAM_1_NORMAL, callsWithPon, CHROMOSOME_20, b37Reference, Optional.empty(),
+                args -> args.add(M2ArgumentCollection.PANEL_OF_NORMALS_LONG_NAME, ponVcf)
+                        .add(M2ArgumentCollection.PERMUTECT_TRAINING_DATASET_LONG_NAME, dataset));
+
+        final Set<Integer> ponStarts = VariantContextTestUtils.streamVcf(ponVcf).map(VariantContext::getStart).collect(Collectors.toSet());
+        final long ponSitesCalled = VariantContextTestUtils.streamVcf(callsWithPon).filter(vc -> ponStarts.contains(vc.getStart())).count();
+        Assert.assertTrue(ponStarts.size() > 10, "too few pon sites for a meaningful test");
+        Assert.assertTrue(ponSitesCalled > ponStarts.size() / 2, "most pon sites were not called");
+    }
+
+    // Panel of normals sites that also look germline are genotyped when generating Permutect training data, even when the
+    // germline fraction discards every germline-only cluster, because they supply examples of artifacts
+    @Test
+    public void testPermutectTrainingIncludesGermlinePonSites() {
+        Utils.resetRandomGenerator();
+        final File tumor = new File(NA12878_20_21_WGS_bam);
+        final String interval = "20:10000000-10100000";
+        final File ponVcf = createTempFile("pon", ".vcf");
+        final File calls = createTempFile("calls", ".vcf");
+        final File dataset = createTempFile("dataset", ".txt");
+
+        // NA12878 is not a tumor, so its tumor-only calls are germline variants, most of which the germline resource identifies as such
+        runMutect2(tumor, ponVcf, interval, b37Reference, Optional.of(GNOMAD),
+                args -> args.addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME));
+        runMutect2(tumor, calls, interval, b37Reference, Optional.of(GNOMAD),
+                args -> args.add(M2ArgumentCollection.PANEL_OF_NORMALS_LONG_NAME, ponVcf)
+                        .add(M2ArgumentCollection.PERMUTECT_TRAINING_DATASET_LONG_NAME, dataset)
+                        .add(Mutect2AssemblyRegionArgumentCollection.GENOTYPE_GERMLINE_SITES_FRACTION_LONG_NAME, 0.0));
+
+        final Set<Integer> ponStarts = VariantContextTestUtils.streamVcf(ponVcf).map(VariantContext::getStart).collect(Collectors.toSet());
+        final long ponSitesCalled = VariantContextTestUtils.streamVcf(calls).filter(vc -> ponStarts.contains(vc.getStart())).count();
+        Assert.assertTrue(ponStarts.size() > 10, "too few pon sites for a meaningful test");
+        Assert.assertTrue(ponSitesCalled > ponStarts.size() / 2, "most pon sites were not called: " + ponSitesCalled + " of " + ponStarts.size());
+    }
+
     // run tumor-normal mode using the original DREAM synthetic sample 1 tumor and normal restricted to
     // 1/3 of our dbSNP interval, in which there is only one true positive.
     // we want to see that the number of false positives is small
@@ -448,11 +546,14 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
 
         final SimpleInterval interval = new SimpleInterval("20", start, start + 25000);
 
+        // NA12878 is not a tumor, so we genotype germline sites in order to call its germline indels
         final File calls1 = createTempFile("unfiltered", ".vcf");
-        runMutect2(tumor, calls1, interval.toString(), b37Reference, Optional.of(GNOMAD));
+        runMutect2(tumor, calls1, interval.toString(), b37Reference, Optional.of(GNOMAD),
+                args -> args.addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME));
 
         final File calls2 = createTempFile("unfiltered", ".vcf");
         runMutect2(tumor, calls2, interval.toString(), b37Reference, Optional.of(GNOMAD),
+                args -> args.addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME),
                 args -> args.addFlag(AssemblyBasedCallerArgumentCollection.DONT_USE_SOFT_CLIPPED_BASES_LONG_NAME));
 
         final List<VariantContext> indelsWithSoftClips = VariantContextTestUtils.streamVcf(calls1).filter(VariantContext::isIndel).collect(Collectors.toList());
@@ -522,11 +623,29 @@ public class Mutect2IntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(startToAFArray.get(position3), new double[] {0.1}, 1e-8);
     }
 
+    // In tumor-only mode, SNVs matching common alleles in the germline resource are germline, and therefore not active
+    // unless they are near somatic variants or we genotype germline sites.  With the germline resource of
+    // testUnparsimoniousGermlineResource, which calls 20:1366255 G->A and 20:1401389 G->C when genotyping germline sites,
+    // these SNVs are not called otherwise.  Note that the resource represents them as GT -> AT and GT -> CA.
+    @Test
+    public void testTumorOnlyGermlineSnvsAreInactive() {
+        final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
+        final List<Integer> positions = List.of(1366255, 1401389);
+        final List<String> intervals = positions.stream().map(position -> "20:" + (position - 1000) + "-" + (position + 1000)).toList();
+        runMutect2(DREAM_4_TUMOR, unfilteredVcf, intervals.get(0), b37Reference, Optional.of(UNPARSIMONIOUS_GNOMAD_SNIPPET),
+                args -> args.addInterval(intervals.get(1)));
+
+        final Set<Integer> calledPositions = VariantContextTestUtils.streamVcf(unfilteredVcf).map(VariantContext::getStart).collect(Collectors.toSet());
+        positions.forEach(position -> Assert.assertFalse(calledPositions.contains(position), "germline SNV at " + position + " was called"));
+    }
+
     @Test
     public void testContaminationFilter() {
         Utils.resetRandomGenerator();
         final File unfilteredVcf = createTempFile("unfiltered", ".vcf");
-        runMutect2(new File(NA12878_20_21_WGS_bam), unfilteredVcf, "20:10000000-20010000", b37Reference, Optional.of(GNOMAD));
+        // NA12878 is not a tumor, so we genotype germline sites in order to call its germline variants and subject them to filtering
+        runMutect2(new File(NA12878_20_21_WGS_bam), unfilteredVcf, "20:10000000-20010000", b37Reference, Optional.of(GNOMAD),
+                args -> args.addFlag(M2ArgumentCollection.GENOTYPE_GERMLINE_SITES_LONG_NAME));
 
         final Map<Integer, Set<VariantContext>> filteredVariants = Arrays.stream(new int[] {0, 5, 10}).boxed().collect(Collectors.toMap(pct -> pct, pct -> {
             final File filteredVcf = createTempFile("filtered-" + pct, ".vcf");

@@ -11,6 +11,7 @@ import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IGVUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
 import org.broadinstitute.hellbender.utils.SimpleInterval;
+import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.downsampling.PositionalDownsampler;
 import org.broadinstitute.hellbender.utils.downsampling.ReadsDownsampler;
 
@@ -41,7 +42,19 @@ import java.util.List;
 public abstract class AssemblyRegionWalker extends WalkerBase {
 
     @ArgumentCollection
-    public final AssemblyRegionArgumentCollection assemblyRegionArgs = new AssemblyRegionArgumentCollection();
+    public final AssemblyRegionArgumentCollection assemblyRegionArgs;
+
+    protected AssemblyRegionWalker() {
+        this(new AssemblyRegionArgumentCollection());
+    }
+
+    /**
+     * @param assemblyRegionArgs assembly region arguments, for example a subclass of {@link AssemblyRegionArgumentCollection}
+     *                           with different defaults
+     */
+    protected AssemblyRegionWalker(final AssemblyRegionArgumentCollection assemblyRegionArgs) {
+        this.assemblyRegionArgs = Utils.nonNull(assemblyRegionArgs);
+    }
 
     /**
      * If provided, this walker will write out its assembly regions
