@@ -131,7 +131,7 @@ artifacts without accounting for them is a recurring source of bugs.
   therefore a property of the site's allele set, not of the variant: the same
   variant is written differently at a site with different neighbours.
 - **The VAT, and therefore vids,** hold alleles that are minimized *and*
-  left-aligned, via `bcftools norm -f` in `GvsCreateVATFromVDS.wdl:731`.
+  left-aligned, via `bcftools norm -f` in `GvsCreateVATFromVDS.wdl:781`.
 
 Four consequences worth knowing before writing anything that joins across these:
 
@@ -152,6 +152,39 @@ Four consequences worth knowing before writing anything that joins across these:
    The retired synonym search keyed on it as bcftools `ILEN` over a 200bp
    window rightward from the vid's position, left-aligned being the leftmost
    equivalent form.
+
+
+### A gap in `ref_ranges` is not a no-call
+
+AoU datasets drop GQ0 reference blocks at ingest (`drop_state` ZERO), so it is
+tempting to read "no reference block at this location" as "no-call". A sample
+lacks a reference block at a location for three reasons, and only the first
+fits that reading:
+
+1. a GQ0 block was dropped there;
+2. the sample has a `vet` row there, which is a call unless it has GQ 0 or
+   fails the filter;
+3. the sample's own upstream deletion spans the location. No reference block
+   is written under the deletion, so the sample is a no-call there in the VDS
+   and in the VCF extract.
+
+AN in the VAT is `hl.agg.call_stats` over the densified VDS
+(`hail_create_vat_inputs.py`), after sites are hard filtered and FT-failing
+genotypes are set to no-call. Per sample at a site, the first match applies:
+
+| Sample at the site                           | Contribution to AN                  |
+|----------------------------------------------|-------------------------------------|
+| Variant call with GQ 0 (`import_gvs.py:262`) | 0                                   |
+| Variant call failing FT                      | 0                                   |
+| Any other variant call                       | ploidy of the stored genotype       |
+| No variant call, a reference block covers it | ploidy from the ploidy table (2, 1) |
+| Neither                                      | 0                                   |
+
+So SQL over `ref_ranges_%` alone cannot reproduce the VAT's AN, and SQL over
+`ref_ranges_%` and `vet_%` would also need the per-genotype FT rule. The
+tables and a given VDS can differ as well: a VDS with dropouts has no-calls
+that the tables do not. Derive per-sample call status from the VDS the VAT was
+built from (VS-2054).
 
 
 # High-Level Architecture (WDLs, BigQuery, Terra)
@@ -555,6 +588,24 @@ ones. Sorting moves the header out of line 1, so read it from the unsorted
 file. A per-column diff separates ClinVar changes from gnomAD changes. In
 VS-2029 it showed that the flag-on VAT matched the VS-1994 VAT in every ClinVar
 column, with every remaining difference in gnomAD.
+
+### A vid from several VDS rows reports one row's AC and AN
+
+`vet_%` alleles are not left-aligned, so the same indel can sit at different
+positions in different samples and occupy several VDS rows. `bcftools norm`
+brings those rows to one vid. `RemoveDuplicatesFromSitesOnlyVCF` in
+`GvsCreateVATfromVDS.wdl` then keeps the row with the highest AC and drops the
+others, so that the vid is reported at all. For such a vid, `gvs_all_ac`,
+`gvs_all_an` and `gvs_all_af` describe one representation, not the variant.
+The participant mapping takes carriers from every row, so its carrier count
+can exceed what the VAT's AC implies. Do not treat the VAT's value as ground
+truth when validating anything computed across all of a vid's rows; restrict
+such comparisons to vids that come from a single VDS row.
+
+Only the VAT's Hail pass densifies the VDS (`hl.vds.to_dense_mt` in
+`hail_create_vat_inputs.py`). The participant mapping pass reads variant data
+only, so anything that needs reference calls has to go in the VAT's pass or
+densify again.
 
 # Data Handling
 
