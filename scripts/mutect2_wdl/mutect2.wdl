@@ -19,7 +19,10 @@ version 1.0
 ##                (e.g. SGE cluster on a Broad on-prem VM)
 ##
 ## ** Workflow options **
-## intervals: genomic intervals (will be used for scatter)
+## intervals: files of the genomic intervals to call, such as .interval_list or .bed files, or [] to call the whole
+##     genome.  Tasks give GATK each file with its own -L, and GATK takes the union of their intervals, which the
+##     workflow splits into scatter_count parts.  In a Terra configuration, an attribute expression such as
+##     workspace.intervals gives a one-element array.  (Earlier versions took a single, optional file.)
 ## scatter_count: number of parallel jobs to generate when scattering over intervals
 ## m2_extra_args, m2_extra_filtering_args: additional arguments for Mutect2 calling and filtering (optional)
 ## split_intervals_extra_args: additional arguments for splitting intervals before scattering (optional)
@@ -102,7 +105,8 @@ struct Runtime {
 workflow Mutect2 {
     input {
         # basic inputs
-        File? intervals
+        # files of the genomic intervals to call, whose union the workflow calls, or [] for the whole genome
+        Array[File] intervals
         File? masked_intervals
         # the reference FASTA, whose index and dictionary must be beside it under the names GATK expects (see the
         # derivation of reference below)
@@ -372,7 +376,6 @@ workflow Mutect2 {
         call Filter {
             input:
                 reference = reference,
-                intervals = intervals,
                 unfiltered_vcf = MergeMutect2Outputs.merged_vcf,
                 unfiltered_vcf_idx = MergeMutect2Outputs.merged_vcf_idx,
                 compress_vcfs = compress_vcfs,
@@ -426,7 +429,8 @@ workflow Mutect2 {
 
 task SplitIntervals {
     input {
-      File? intervals
+      # files of genomic intervals, whose union the task splits, or none for the whole genome
+      Array[File] intervals
       File? masked_intervals
       # the reference FASTA, then its .fai index, its .dict dictionary and, if it's bgzipped, its .gzi block index
       Array[File] reference
@@ -444,7 +448,7 @@ task SplitIntervals {
         mkdir interval-files
         gatk --java-options "-Xmx~{runtime_params.command_mem}m" SplitIntervals \
             -R ~{reference[0]} \
-            ~{"-L " + intervals} \
+            ~{if length(intervals) > 0 then "-L " else ""}~{sep=" -L " intervals} \
             ~{"-XL " + masked_intervals} \
             -scatter ~{scatter_count} \
             -O interval-files \
@@ -804,7 +808,6 @@ task CalculateContamination {
 
 task Filter {
     input {
-        File? intervals
         # the reference FASTA, then its .fai index, its .dict dictionary and, if it's bgzipped, its .gzi block index
         Array[File] reference
         File unfiltered_vcf

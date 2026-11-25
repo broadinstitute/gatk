@@ -3,7 +3,7 @@ version 1.0
 #  Create a Mutect2 panel of normals
 #
 #  Description of inputs
-#  intervals: genomic intervals
+#  intervals: files of the genomic intervals to call, whose union the workflow calls, or [] for the whole genome
 #  ref_fasta: reference genome FASTA, with its index (.fai) and sequence dictionary (.dict) beside it under the names
 #  GATK expects, which mutect2.wdl describes
 #  normal_bams, normal_bais: the normals' BAMs or CRAMs and their indices, in the same order.  mutect2.wdl takes each
@@ -16,7 +16,7 @@ version 1.0
 import "mutect2.wdl" as m2
 workflow Mutect2_Panel {
   input {
-    File? intervals
+    Array[File] intervals
     File ref_fasta
     Int scatter_count
     Array[String] normal_bams
@@ -78,6 +78,8 @@ workflow Mutect2_Panel {
 
     call m2.SplitIntervals {
         input:
+            # the whole genome
+            intervals = [],
             reference = reference,
             scatter_count = create_panel_scatter_count,
             split_intervals_extra_args = "--dont-mix-contigs --min-contig-size " + min_contig_size,

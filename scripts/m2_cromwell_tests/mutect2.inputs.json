@@ -1,7 +1,7 @@
 {
   "Mutect2.gatk_docker": "broadinstitute/gatk:4.1.4.1",
 
-  "Mutect2.intervals": "gs://gatk-best-practices/somatic-b37/whole_exome_agilent_1.1_refseq_plus_3_boosters.Homo_sapiens_assembly19.baits.interval_list",
+  "Mutect2.intervals": ["gs://gatk-best-practices/somatic-b37/whole_exome_agilent_1.1_refseq_plus_3_boosters.Homo_sapiens_assembly19.baits.interval_list"],
   "Mutect2.scatter_count": 50,
   "Mutect2.m2_extra_args": "--downsampling-stride 20 --max-reads-per-alignment-start 6 --max-suspicious-reads-per-alignment-start 6",
 

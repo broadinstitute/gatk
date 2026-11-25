@@ -92,7 +92,7 @@ override:NCBI_Build=37,Strand=+,status=Somatic,phase=Phase_I,sequencer=Illumina,
 Recommended default values (where possible) are found in ``mutect2_template.json``
 
 - ``Mutect2.gatk4_jar`` -- Please see parameter description above in the mutect2_multi_sample.
-- ``Mutect2.intervals`` -- Please see parameter description above in the mutect2_multi_sample.
+- ``Mutect2.intervals`` -- An array of files of the genomic intervals to call, such as ``.interval_list`` or ``.bed`` files, or ``[]`` to call the whole genome.  The tasks give GATK each file with its own ``-L``, and GATK takes the union of their intervals.  In a Terra configuration, an attribute expression such as ``workspace.intervals`` gives a one-element array.  Earlier versions of the workflow took a single, optional file.
 - ``Mutect2.ref_fasta`` -- File path or storage location (depending on backend) of the reference FASTA.  Its index and sequence dictionary are not inputs.  Please see "Reference" below.
 - ``Mutect2.tumor_reads`` -- The tumor's reads: an array whose first element is the file path or storage location (depending on backend) of a BAM or CRAM file and whose optional second element is that of its index.  Please see "Reads and their indices" below.
 - ``Mutect2.normal_reads`` -- The normal's reads, likewise, or ``[]`` for tumor-only calling.  Please see "Reads and their indices" below.
