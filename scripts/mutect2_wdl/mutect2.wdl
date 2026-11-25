@@ -15,6 +15,9 @@ version 1.0
 ## <task>.preemptible, eg M2.preemptible: each task's own number of preemptible VMs to try on Google before a regular
 ##     one (see above the Runtime struct for the defaults)
 ## max_retries: how many times to retry failed tasks -- very important on the cloud when there are transient errors
+## <task>.mem, <task>.disk_space, eg Filter.mem: each task sizes its memory and disk from its inputs (see above the
+##     Runtime struct), and these override that: memory in MB (in GB for M2.mem), disk in GB
+## emergency_extra_disk: GB added to every task's disk, as a last resort for ill-behaved data
 ## gatk_override: (optional) local file or Google bucket path to a GATK 4 java jar file to be used instead of the GATK 4 jar
 ##                in the docker image.  This must be supplied when running in an environment that does not support docker
 ##                (e.g. SGE cluster on a Broad on-prem VM)
@@ -112,13 +115,18 @@ version 1.0
 # Each task's preemptible input is how many preemptible (spot) VMs Google tries before a regular one: 3 for tasks that
 # take minutes, 2 for tasks that can take an hour or two, and 1 for M2, whose scatters can take hours on genomes and
 # hold up the workflow when they're preempted.
+# Each task sizes its memory and its disk from the sizes of its inputs, by rules fit to a benchmark on Terra in November
+# 2026 of exomes, genomes and FFPE samples, in which each JVM's heap after garbage collection and each disk's peak use
+# were logged.  The JVMs get the machine's memory less 500 MB, and a disk is at least 10 GB.  Every disk is an SSD: the
+# disks are small, an SSD localizes files several times faster than a standard disk of any size (half a minute against
+# 1.6 minutes for the 3.2 GB hg38 reference), and the price of a small SSD is a few percent of the VM's.  Backends other
+# than Google's ignore disk sizes and types.
 struct Runtime {
     String gatk_docker
     File? gatk_override
     Int max_retries
-    Int machine_mem
-    Int command_mem
-    Int disk
+    # GB added to every disk
+    Int emergency_extra_disk
 }
 
 workflow Mutect2 {
@@ -182,12 +190,8 @@ workflow Mutect2 {
         File? gatk_override
         String basic_bash_docker = "ubuntu:16.04"
         Int scatter_count
-        # each task has its own preemptible input (see above the Runtime struct)
+        # each task has its own preemptible input, and sizes its memory and disk (see above the Runtime struct)
         Int max_retries = 1
-        Int small_task_mem = 4
-        Int small_task_disk = 100
-        Int learn_read_orientation_mem = 8000
-        Int filter_alignment_artifacts_mem = 9000
         String? gcs_project_for_requester_pays
 
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
@@ -229,23 +233,14 @@ workflow Mutect2 {
     Array[File] reference = flatten([[ref_fasta_path, ref_fasta_path + ".fai",
         sub(ref_fasta_path, "\\.(fasta|fas|fa|fna|txt)(\\.gz)?$", "") + ".dict"], ref_gzi])
 
-    # Disk sizes used for dynamic sizing
-    Int ref_size = ceil(size(reference, "GB"))
-    # the tumor's reads, including the index if the array has it
-    Int tumor_reads_size = ceil(size(tumor_reads, "GB"))
-
-    # This is added to every task as padding, should increase if systematically you need more disk for every call
-    Int disk_pad = 10 + emergency_extra_disk
-
     Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
-            "max_retries": max_retries,
-            "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
-            "disk": small_task_disk + disk_pad}
+            "max_retries": max_retries, "emergency_extra_disk": emergency_extra_disk}
 
-    # M2 localizes the reference and streams its other inputs, so its disk holds the reference and its outputs, which
-    # m2_output_size bounds by the tumor reads in a scatter's share of the genome, as for a bamout
-    Int m2_output_size = tumor_reads_size / scatter_count
-    Int m2_per_scatter_size = ref_size + m2_output_size + disk_pad
+    # M2 localizes the reference and streams its other inputs, so its disk holds the reference and its outputs: at most
+    # 0.25 GB on Terra in November 2026, but for a bamout, which this bounds by the tumor reads in a scatter's share of
+    # the genome.  The workflow sizes M2's disk because the task doesn't know the scatter count.
+    Int m2_output_size = if make_bamout then ceil(size(tumor_reads, "GB")) / scatter_count + 1 else 1
+    Int m2_disk_size = ceil(size(reference, "GB")) + m2_output_size + 5 + emergency_extra_disk
 
     Boolean calculate_contamination = length(common_variants_vcf) > 0 && !skip_filtering
         && !skip_calculate_contamination
@@ -286,20 +281,16 @@ workflow Mutect2 {
                 permutect_test_dataset_truth_vcf = permutect_test_dataset_truth_vcf_with_index,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                disk_space = m2_per_scatter_size,
+                disk_space = m2_disk_size,
                 gcs_project_for_requester_pays = gcs_project_for_requester_pays
         }
     }
-
-    Int merged_vcf_size = ceil(size(M2.unfiltered_vcf, "GB"))
-    Int merged_bamout_size = ceil(size(M2.output_bamOut, "GB"))
 
     if (run_orientation_bias_mixture_model_filter && (!skip_filtering)) {
         call LearnReadOrientationModel {
             input:
                 f1r2_tar_gz = M2.f1r2_counts,
-                runtime_params = standard_runtime,
-                mem = learn_read_orientation_mem
+                runtime_params = standard_runtime
         }
     }
 
@@ -318,10 +309,8 @@ workflow Mutect2 {
     if (make_bamout) {
         call MergeBamOuts {
             input:
-                reference = reference,
                 bam_outs = M2.output_bamOut,
-                runtime_params = standard_runtime,
-                disk_space = ceil(merged_bamout_size * 10) + disk_pad,
+                runtime_params = standard_runtime
         }
     }
 
@@ -342,7 +331,7 @@ workflow Mutect2 {
         call Concatenate as ConcatenatePermutectTrainingData {
             input:
                 input_files = M2.permutect_training_dataset,
-                gatk_docker = gatk_docker
+                runtime_params = standard_runtime
         }
     }
 
@@ -350,7 +339,7 @@ workflow Mutect2 {
         call Concatenate as ConcatenatePermutectTestData {
             input:
                 input_files = M2.permutect_test_dataset,
-                gatk_docker = gatk_docker
+                runtime_params = standard_runtime
         }
     }
 
@@ -366,8 +355,7 @@ workflow Mutect2 {
                 maf_segments = CalculateContamination.maf_segments,
                 artifact_priors_tar_gz = LearnReadOrientationModel.artifact_prior_table,
                 m2_extra_filtering_args = m2_extra_filtering_args,
-                runtime_params = standard_runtime,
-                disk_space = ref_size + ceil(size(MergeMutect2Outputs.merged_vcf, "GB") * 4) + disk_pad
+                runtime_params = standard_runtime
         }
 
         if (defined(realignment_index_bundle)) {
@@ -381,11 +369,6 @@ workflow Mutect2 {
                     input_vcf = Filter.filtered_vcf,
                     input_vcf_idx = Filter.filtered_vcf_idx,
                     runtime_params = standard_runtime,
-                    mem = filter_alignment_artifacts_mem,
-                    # it localizes the reference and the BWA-MEM index image and streams the VCF and reads; its output
-                    # VCF is no bigger than its input
-                    disk_space = ref_size + ceil(size(select_first([realignment_index_bundle]), "GB"))
-                        + ceil(size(Filter.filtered_vcf, "GB")) + disk_pad,
                     gcs_project_for_requester_pays = gcs_project_for_requester_pays
             }
         }
@@ -426,7 +409,15 @@ task SplitIntervals {
       # runtime
       Runtime runtime_params
       Int preemptible = 3
+      Int? mem
+      Int? disk_space
     }
+
+    # memory in MB and disk in GB, from the interval files (a heap of 320 MB for 17 MB of hg38 intervals)
+    Float intervals_mb = size(intervals, "MB") + size(masked_intervals, "MB")
+    Int machine_mem = select_first([mem, 1500 + ceil(30 * intervals_mb)])
+    Int disk_needed = ceil(3 * intervals_mb / 1000) + 5 + runtime_params.emergency_extra_disk
+    Int disk = select_first([disk_space, if disk_needed > 10 then disk_needed else 10])
 
     # SplitIntervals needs only the reference's dictionary and index, so on Terra GATK streams them rather than the
     # whole FASTA being copied to the disk
@@ -439,7 +430,7 @@ task SplitIntervals {
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
 
         mkdir interval-files
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" SplitIntervals \
+        gatk --java-options "-Xmx~{machine_mem - 500}m" SplitIntervals \
             -R ~{reference[0]} \
             ~{if length(intervals) > 0 then "-L " else ""}~{sep=" -L " intervals} \
             ~{"-XL " + masked_intervals} \
@@ -452,8 +443,8 @@ task SplitIntervals {
     runtime {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: 4
-        memory: runtime_params.machine_mem + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
+        memory: machine_mem + " MB"
+        disks: "local-disk " + disk + " SSD"
         preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
@@ -504,6 +495,11 @@ task M2 {
         Int? max_retries
         Int? disk_space
         Int? cpu
+        # The CPU platform Google gives the scatters.  On Terra in November 2026, Intel Ice Lake ran scatters in 0.51
+        # to 0.66 times the time on the default CPUs (2.3 GHz Haswell) for 0.97 to 1.03 times the cost: Cromwell gives
+        # it an N2 machine, with at least 2 CPUs, both of which the native PairHMM uses, and its AVX-512 instructions.
+        # "Intel Skylake" gives a 1-CPU N1 machine with AVX-512 at the default's price, for 0.8 to 0.9 times the time.
+        String cpu_platform = "Intel Ice Lake"
     }
 
     String output_vcf = "output" + if compress_vcfs then ".vcf.gz" else ".vcf"
@@ -601,6 +597,7 @@ task M2 {
         preemptible: preemptible
         maxRetries: select_first([max_retries, 0])
         cpu: select_first([cpu, 1])
+        cpuPlatform: cpu_platform
     }
 
     output {
@@ -632,10 +629,21 @@ task MergeMutect2Outputs {
       File ref_dict
       Runtime runtime_params
       Int preemptible = 3
+      Int? mem
+      Int? disk_space
     }
 
     String output_vcf = if compress_vcfs then "merged.vcf.gz" else "merged.vcf"
     String output_vcf_idx = output_vcf + if compress_vcfs then ".tbi" else ".idx"
+
+    # memory in MB and disk in GB, from the VCFs and pileups (for a genome's 0.3 to 0.4 GB of VCFs and 0.54 GB of
+    # pileups, a heap of 1 GB and 1.3 GB of disk)
+    Float vcfs_gb = size(input_vcfs, "GB") + size(input_vcf_indices, "GB")
+    Float pileups_gb = size(tumor_pileups, "GB") + size(normal_pileups, "GB")
+    Int machine_mem = select_first([mem, 2000 + ceil(2000 * (vcfs_gb + pileups_gb))])
+    Int command_mem = machine_mem - 500
+    Int disk_needed = ceil(2 * vcfs_gb + pileups_gb) + 5 + runtime_params.emergency_extra_disk
+    Int disk = select_first([disk_space, if disk_needed > 10 then disk_needed else 10])
 
     # GatherPileupSummaries streams the pileups from the bucket on Terra
     parameter_meta {
@@ -649,18 +657,18 @@ task MergeMutect2Outputs {
 
         # using MergeVcfs instead of GatherVcfs so we can create indices
         # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" MergeVcfs -I ~{sep=' -I ' input_vcfs} -O ~{output_vcf}
+        gatk --java-options "-Xmx~{command_mem}m" MergeVcfs -I ~{sep=' -I ' input_vcfs} -O ~{output_vcf}
 
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" MergeMutectStats \
+        gatk --java-options "-Xmx~{command_mem}m" MergeMutectStats \
             -stats ~{sep=" -stats " stats} -O merged.stats
 
         if [ ~{length(tumor_pileups)} -gt 0 ]; then
-            gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherPileupSummaries \
+            gatk --java-options "-Xmx~{command_mem}m" GatherPileupSummaries \
                 --sequence-dictionary ~{ref_dict} -I ~{sep=' -I ' tumor_pileups} -O tumor-pileups.tsv
         fi
 
         if [ ~{length(normal_pileups)} -gt 0 ]; then
-            gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherPileupSummaries \
+            gatk --java-options "-Xmx~{command_mem}m" GatherPileupSummaries \
                 --sequence-dictionary ~{ref_dict} -I ~{sep=' -I ' normal_pileups} -O normal-pileups.tsv
         fi
     >>>
@@ -668,8 +676,8 @@ task MergeMutect2Outputs {
     runtime {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: 4
-        memory: runtime_params.machine_mem + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
+        memory: machine_mem + " MB"
+        disks: "local-disk " + disk + " SSD"
         preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
@@ -686,36 +694,42 @@ task MergeMutect2Outputs {
 
 task MergeBamOuts {
     input {
-      # the reference FASTA, then its .fai index, its .dict dictionary and, if it's bgzipped, its .gzi block index
-      Array[File] reference
       Array[File]+ bam_outs
       Runtime runtime_params
       Int preemptible = 2
-      Int? disk_space   #override to request more disk than default small task params
+      Int? mem
+      Int? disk_space
     }
+
+    # memory in MB, enough for the 500,000 reads SortSam keeps in memory, and disk in GB, from the bamouts (sorting
+    # used 4.2 times their size)
+    Int machine_mem = select_first([mem, 4000])
+    Int command_mem = machine_mem - 500
+    Int disk_needed = ceil(5 * size(bam_outs, "GB")) + 5 + runtime_params.emergency_extra_disk
+    Int disk = select_first([disk_space, if disk_needed > 10 then disk_needed else 10])
 
     command <<<
         # This command block assumes that there is at least one file in bam_outs.
         #  Do not call this task if len(bam_outs) == 0
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherBamFiles \
-            -I ~{sep=" -I " bam_outs} -O unsorted.out.bam -R ~{reference[0]}
+        gatk --java-options "-Xmx~{command_mem}m" GatherBamFiles \
+            -I ~{sep=" -I " bam_outs} -O unsorted.out.bam
 
         # We must sort because adjacent scatters may have overlapping (padded) assembly regions, hence
         # overlapping bamouts.  SortSam spills to the working disk, which is sized for it, rather than to /tmp on the
         # boot disk.
 
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" SortSam -I unsorted.out.bam \
+        gatk --java-options "-Xmx~{command_mem}m" SortSam -I unsorted.out.bam \
             -O bamout.bam --SORT_ORDER coordinate -VALIDATION_STRINGENCY LENIENT --TMP_DIR .
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" BuildBamIndex -I bamout.bam -VALIDATION_STRINGENCY LENIENT
+        gatk --java-options "-Xmx~{command_mem}m" BuildBamIndex -I bamout.bam -VALIDATION_STRINGENCY LENIENT
     >>>
 
     runtime {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: 4
-        memory: runtime_params.machine_mem + " MB"
-        disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " HDD"
+        memory: machine_mem + " MB"
+        disks: "local-disk " + disk + " SSD"
         preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
@@ -733,11 +747,17 @@ task LearnReadOrientationModel {
       Array[File] f1r2_tar_gz
       Runtime runtime_params
       Int preemptible = 3
-      Int? mem  #override memory
+      Int? mem
+      Int? disk_space
     }
 
-    Int machine_mem = select_first([mem, runtime_params.machine_mem])
-    Int command_mem = machine_mem - 1000
+    # memory in MB and disk in GB, from the F1R2 counts (for a genome's 80 MB, a heap of 150 MB; they extract to 5 times
+    # their size)
+    Float f1r2_gb = size(f1r2_tar_gz, "GB")
+    Int machine_mem = select_first([mem, 2000 + ceil(4000 * f1r2_gb)])
+    Int command_mem = machine_mem - 500
+    Int disk_needed = ceil(6 * f1r2_gb) + 5 + runtime_params.emergency_extra_disk
+    Int disk = select_first([disk_space, if disk_needed > 10 then disk_needed else 10])
 
     command {
         set -e
@@ -752,7 +772,7 @@ task LearnReadOrientationModel {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: 4
         memory: machine_mem + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
+        disks: "local-disk " + disk + " SSD"
         preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
@@ -773,14 +793,24 @@ task CalculateContamination {
       Float max_population_af = 0.2
       Runtime runtime_params
       Int preemptible = 3
+      Int? mem
+      Int? disk_space
     }
+
+    # memory in MB and disk in GB, from the pileups (for a genome's 0.43 to 0.54 GB of tumor and normal pileups, a heap
+    # of up to 2.2 GB)
+    Float pileups_gb = size(tumor_pileups, "GB") + size(normal_pileups, "GB")
+    Int machine_mem = select_first([mem, 2000 + ceil(10000 * pileups_gb)])
+    Int command_mem = machine_mem - 500
+    Int disk_needed = ceil(2 * pileups_gb) + 5 + runtime_params.emergency_extra_disk
+    Int disk = select_first([disk_space, if disk_needed > 10 then disk_needed else 10])
 
     command {
         set -e
 
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
 
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" CalculateContamination -I ~{tumor_pileups} \
+        gatk --java-options "-Xmx~{command_mem}m" CalculateContamination -I ~{tumor_pileups} \
         -O contamination.table --tumor-segmentation segments.table ~{"-matched " + normal_pileups} \
         --minimum-population-allele-frequency ~{min_population_af} --maximum-population-allele-frequency ~{max_population_af}
     }
@@ -788,8 +818,8 @@ task CalculateContamination {
     runtime {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: 4
-        memory: runtime_params.machine_mem + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
+        memory: machine_mem + " MB"
+        disks: "local-disk " + disk + " SSD"
         preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
@@ -816,8 +846,17 @@ task Filter {
 
         Runtime runtime_params
         Int preemptible = 2
+        Int? mem
         Int? disk_space
     }
+
+    # memory in MB, from the VCF (for a 0.4 GB VCF, a heap of 0.9 GB), and disk in GB, for the reference, the VCF and
+    # the outputs, twice its size
+    Float vcf_gb = size(unfiltered_vcf, "GB")
+    Int machine_mem = select_first([mem, 2000 + ceil(4000 * vcf_gb)])
+    Int command_mem = machine_mem - 500
+    Int disk_needed = ceil(size(reference, "GB") + 3 * vcf_gb) + 5 + runtime_params.emergency_extra_disk
+    Int disk = select_first([disk_space, if disk_needed > 10 then disk_needed else 10])
 
     String output_vcf = if compress_vcfs then "filtered.vcf.gz" else "filtered.vcf"
     String output_vcf_idx = output_vcf + if compress_vcfs then ".tbi" else ".idx"
@@ -833,7 +872,7 @@ task Filter {
 
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
 
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" FilterMutectCalls -V ~{unfiltered_vcf} \
+        gatk --java-options "-Xmx~{command_mem}m" FilterMutectCalls -V ~{unfiltered_vcf} \
             -R ~{reference[0]} \
             -O ~{output_vcf} \
             ~{"--contamination-table " + contamination_table} \
@@ -847,10 +886,8 @@ task Filter {
     runtime {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: 4
-        memory: runtime_params.machine_mem + " MB"
-        # an SSD, which localizes the reference (3.2 GB for hg38) in half a minute, against more than a minute and a
-        # half for a standard disk of any size
-        disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " SSD"
+        memory: machine_mem + " MB"
+        disks: "local-disk " + disk + " SSD"
         preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
@@ -878,15 +915,21 @@ task FilterAlignmentArtifacts {
       String? gcs_project_for_requester_pays
       Runtime runtime_params
       Int preemptible = 2
-      Int mem
+      Int? mem
       Int? disk_space
     }
 
     String output_vcf = if compress_vcfs then "filtered.vcf.gz" else "filtered.vcf"
     String output_vcf_idx = output_vcf +  if compress_vcfs then ".tbi" else ".idx"
 
-    Int machine_mem = mem
-    Int command_mem = machine_mem - 500
+    # Memory in MB for the BWA-MEM index image, which BWA maps into memory outside the JVM's heap, and the heap (at most
+    # 0.6 GB), and disk in GB for the reference, the image and the output VCF, which is no bigger than the input VCF
+    Float image_gb = size(realignment_index_bundle, "GB")
+    Int machine_mem = select_first([mem, 3500 + ceil(1000 * image_gb)])
+    Int command_mem = machine_mem - ceil(1000 * image_gb) - 1000
+    Int disk_needed = ceil(size(reference, "GB") + image_gb + size(input_vcf, "GB")) + 5
+        + runtime_params.emergency_extra_disk
+    Int disk = select_first([disk_space, if disk_needed > 10 then disk_needed else 10])
 
     # The reference is localized rather than streamed: FilterAlignmentArtifacts assembles around every variant, and
     # GATK reads a streamed FASTA one 128 kB request at a time, so on Terra in November 2026 it spent about half its
@@ -917,8 +960,7 @@ task FilterAlignmentArtifacts {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: 4
         memory: machine_mem + " MB"
-        # an SSD, which localizes the reference (3.2 GB for hg38) and the index image quickly
-        disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " SSD"
+        disks: "local-disk " + disk + " SSD"
         preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
@@ -933,24 +975,28 @@ task FilterAlignmentArtifacts {
 task Concatenate {
     input {
         Array[File] input_files
-        Int? mem
-        String gatk_docker
+        Runtime runtime_params
         Int preemptible = 3
+        Int? mem
+        Int? disk_space
     }
 
-    Int machine_mem = if defined(mem) then mem * 1000 else 7000
+    # memory in MB, which cat hardly uses, and disk in GB for the files and their concatenation
+    Int machine_mem = select_first([mem, 2000])
+    Int disk_needed = ceil(2 * size(input_files, "GB")) + 5 + runtime_params.emergency_extra_disk
+    Int disk = select_first([disk_space, if disk_needed > 10 then disk_needed else 10])
 
     command {
         cat ~{sep=' ' input_files} > output.txt
     }
 
     runtime {
-        docker: gatk_docker
+        docker: runtime_params.gatk_docker
         bootDiskSizeGb: 4
         memory: machine_mem + " MB"
-        disks: "local-disk 100 HDD"
+        disks: "local-disk " + disk + " SSD"
         preemptible: preemptible
-        maxRetries: 1
+        maxRetries: runtime_params.max_retries
         cpu: 1
     }
 

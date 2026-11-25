@@ -42,6 +42,7 @@ workflow Mutect2_Panel {
     String basic_bash_docker = "ubuntu:16.04"
 
     Int max_retries = 2
+    # GB for MergeVCFs' memory and for CreatePanel's and MergeVCFs' disks; the Mutect2 workflow's tasks size their own
     Int small_task_mem = 4
     Int small_task_disk = 100
   }
@@ -63,9 +64,7 @@ workflow Mutect2_Panel {
       else germline_resource
 
   Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
-            "max_retries": max_retries,
-            "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
-            "disk": small_task_disk}
+            "max_retries": max_retries, "emergency_extra_disk": 0}
 
     scatter (normal_bam in zip(normal_bams, normal_bais)) {
         call m2.Mutect2 {
@@ -100,13 +99,14 @@ workflow Mutect2_Panel {
     scatter (subintervals in SplitIntervals.interval_files ) {
             call CreatePanel {
                 input:
-                    input_vcfs = Mutect2.filtered_vcf,
+                    input_vcfs = Mutect2.output_vcf,
                     intervals = subintervals,
                     reference = reference,
                     germline_resource = germline_resource_with_index,
                     output_vcf_name = pon_name,
                     create_pon_extra_args = create_pon_extra_args,
-                    runtime_params = standard_runtime
+                    runtime_params = standard_runtime,
+                    disk = small_task_disk
             }
     }
 
@@ -115,14 +115,16 @@ workflow Mutect2_Panel {
             input_vcfs = CreatePanel.output_vcf,
             input_vcf_indices = CreatePanel.output_vcf_index,
             compress_vcfs = compress,
-            runtime_params = standard_runtime
+            runtime_params = standard_runtime,
+            mem = small_task_mem,
+            disk = small_task_disk
     }
 
     output {
         File pon = MergeVCFs.merged_vcf
         File pon_idx = MergeVCFs.merged_vcf_idx
-        Array[File] normal_calls = Mutect2.filtered_vcf
-        Array[File] normal_calls_idx = Mutect2.filtered_vcf_idx
+        Array[File] normal_calls = Mutect2.output_vcf
+        Array[File] normal_calls_idx = Mutect2.output_vcf_idx
     }
 }
 
@@ -140,6 +142,7 @@ task CreatePanel {
       # runtime
       Runtime runtime_params
       Int preemptible = 2
+      Int disk
     }
 
     Int machine_mem = 8
@@ -164,7 +167,7 @@ task CreatePanel {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: 4
         memory: machine_mem + " GB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
+        disks: "local-disk " + disk + " HDD"
         preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
@@ -183,6 +186,9 @@ task MergeVCFs {
       Boolean compress_vcfs
       Runtime runtime_params
       Int preemptible = 3
+      # memory and disk in GB
+      Int mem
+      Int disk
     }
 
     String output_vcf = if compress_vcfs then "merged.vcf.gz" else "merged.vcf"
@@ -193,14 +199,14 @@ task MergeVCFs {
     command {
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" MergeVcfs -I ~{sep=' -I ' input_vcfs} -O ~{output_vcf}
+        gatk --java-options "-Xmx~{mem * 1000 - 500}m" MergeVcfs -I ~{sep=' -I ' input_vcfs} -O ~{output_vcf}
     }
 
     runtime {
         docker: runtime_params.gatk_docker
         bootDiskSizeGb: 4
-        memory: runtime_params.machine_mem + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
+        memory: mem + " GB"
+        disks: "local-disk " + disk + " HDD"
         preemptible: preemptible
         maxRetries: runtime_params.max_retries
         cpu: 1
