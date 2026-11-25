@@ -134,8 +134,10 @@ public class GenotypeGVCFsEngine
         }
         genotypingEngine.setReferenceContext(ref);
         final VariantContext mergedVC = merger.merge(variantsToProcess, loc, ref.getBase(), true, false);
+        final VariantContext phaseSource = variantsToProcess.size() == 1 && variantsToProcess.get(0).getStart() == loc.getStart()
+                ? variantsToProcess.get(0) : null;
         final VariantContext regenotypedVC = somaticInput ? regenotypeSomaticVC(mergedVC, ref, features, outputNonVariants, tlodThreshold, sqThreshold, afTolerance) :
-                regenotypeVC(mergedVC, ref, features, outputNonVariants);
+                regenotypeVC(mergedVC, ref, features, outputNonVariants, phaseSource);
 
         return regenotypedVC;
     }
@@ -145,10 +147,12 @@ public class GenotypeGVCFsEngine
      * Re-genotype (and re-annotate) a combined genomic VC
      * @return a new VariantContext or null if the site turned monomorphic and we don't want such sites
      */
-    private VariantContext regenotypeVC(final VariantContext originalVC, final ReferenceContext ref, final FeatureContext features, boolean includeNonVariants) {
+    private VariantContext regenotypeVC(final VariantContext originalVC, final ReferenceContext ref, final FeatureContext features,
+                                       boolean includeNonVariants, final VariantContext phaseSource) {
         Utils.nonNull(originalVC);
 
         final VariantContext result;
+        final List<Allele> retainedAlleles;
 
         // only re-genotype polymorphic sites
         if ( originalVC.isVariant()  && originalVC.getAttributeAsInt(VCFConstants.DEPTH_KEY,0) > 0 ) {
@@ -164,6 +168,7 @@ public class GenotypeGVCFsEngine
                 final VariantContext withGenotypingAnnotations = addGenotypingAnnotations(originalVC.getAttributes(), regenotypedVC);
                 final VariantContext withAnnotations = annotationEngine.finalizeAnnotations(withGenotypingAnnotations, originalVC);
                 final int[] relevantIndices = regenotypedVC.getAlleles().stream().mapToInt(a -> originalVC.getAlleles().indexOf(a)).toArray();
+                retainedAlleles = withAnnotations.getAlleles();
                 final VariantContext trimmed = GATKVariantContextUtils.reverseTrimAlleles(withAnnotations);
                 final GenotypesContext updatedGTs = subsetAlleleSpecificFormatFields(outputHeader, trimmed.getGenotypes(), relevantIndices);
                 result = new VariantContextBuilder(trimmed).genotypes(updatedGTs).make();
@@ -172,6 +177,7 @@ public class GenotypeGVCFsEngine
             }
         } else {
             result = originalVC;
+            retainedAlleles = originalVC.getAlleles();
         }
 
 
@@ -187,14 +193,90 @@ public class GenotypeGVCFsEngine
             //don't count sites with no depth and no confidence towards things like AN and InbreedingCoeff
             vcBuilder.genotypes(assignNoCallsAnnotationExcludedGenotypes(result.getGenotypes()));
             VariantContext annotated = annotationEngine.annotateContext(vcBuilder.make(), features, ref, null, a -> true);
-            return new VariantContextBuilder(annotated).genotypes(cleanupGenotypeAnnotations(annotated, false, keepSB)).make();
+            final VariantContext cleaned = new VariantContextBuilder(annotated).genotypes(cleanupGenotypeAnnotations(annotated, false, keepSB)).make();
+            return restoreSingleSamplePhase(cleaned, retainedAlleles, phaseSource);
         } else if (includeNonVariants) {
             // For monomorphic sites we need to make sure e.g. the hom ref genotypes are created and only then are passed to the annotation engine.
             VariantContext preannotated = new VariantContextBuilder(result).genotypes(cleanupGenotypeAnnotations(result, true, false)).make();
-            return annotationEngine.annotateContext(preannotated, features, ref, null, GenotypeGVCFsEngine::annotationShouldBeSkippedForHomRefSites);
+            final VariantContext annotated = annotationEngine.annotateContext(preannotated, features, ref, null, GenotypeGVCFsEngine::annotationShouldBeSkippedForHomRefSites);
+            return restoreSingleSamplePhase(annotated, retainedAlleles, phaseSource);
         } else {
             return null;
         }
+    }
+
+    private static VariantContext restoreSingleSamplePhase(final VariantContext result, final List<Allele> retainedAlleles,
+                                                           final VariantContext source) {
+        if (result.getNSamples() != 1) {
+            return result;
+        }
+        final Genotype after = result.getGenotype(0);
+        final Genotype before = source != null && source.getNSamples() == 1 ? source.getGenotype(after.getSampleName()) : null;
+        final String pgtKey = GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY;
+        final String pidKey = GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY;
+        final String psKey = VCFConstants.PHASE_SET_KEY;
+        if (!after.isPhased() && !after.hasExtendedAttribute(pgtKey) && !after.hasExtendedAttribute(pidKey)
+                && !after.hasExtendedAttribute(psKey) && (before == null ||
+                (!before.isPhased() && !before.hasExtendedAttribute(pgtKey)))) {
+            return result;
+        }
+
+        // Reverse trimming changes allele strings while retaining the site allele order.
+        final List<Allele> ordered = new ArrayList<>(2);
+        if (before != null && before.getPloidy() == 2 && after.getPloidy() == 2
+                && retainedAlleles.size() == result.getNAlleles()) {
+            for (final Allele allele : before.getAlleles()) {
+                final int index = retainedAlleles.indexOf(allele);
+                if (!allele.isCalled() || allele.equals(Allele.NON_REF_ALLELE) || index < 0) {
+                    break;
+                }
+                ordered.add(result.getAlleles().get(index));
+            }
+        }
+        final boolean sameCall = ordered.size() == 2 && (ordered.equals(after.getAlleles())
+                || ordered.get(0).equals(after.getAllele(1)) && ordered.get(1).equals(after.getAllele(0)));
+        final boolean phased = sameCall && before.isPhased();
+        final GenotypeBuilder builder = new GenotypeBuilder(after).phased(phased);
+        final Map<String, Object> attributes = new HashMap<>(after.getExtendedAttributes());
+        attributes.remove(pgtKey);
+        attributes.remove(pidKey);
+        attributes.remove(psKey);
+        if (phased) {
+            builder.alleles(ordered);
+            if (before.hasExtendedAttribute(psKey)) {
+                attributes.put(psKey, before.getExtendedAttribute(psKey));
+            }
+        }
+        if (sameCall && before.hasExtendedAttribute(pgtKey)) {
+            final String pgt = mapPhysicalPhase(source, before, String.valueOf(before.getExtendedAttribute(pgtKey)));
+            if (pgt != null) {
+                attributes.put(pgtKey, pgt);
+                if (before.hasExtendedAttribute(pidKey)) {
+                    attributes.put(pidKey, before.getExtendedAttribute(pidKey));
+                }
+            }
+        }
+        return new VariantContextBuilder(result).genotypes(builder.noAttributes().attributes(attributes).make()).make();
+    }
+
+    private static String mapPhysicalPhase(final VariantContext source, final Genotype before, final String pgt) {
+        final List<Allele> siteAlts = source.getAlternateAlleles().stream()
+                .filter(a -> !a.isSymbolic() && !a.equals(Allele.SPAN_DEL)).collect(Collectors.toList());
+        if (siteAlts.size() != 1 || !before.getAlleles().contains(siteAlts.get(0))) {
+            return null;
+        }
+        // Physical phase describes the site-specific ALT. A spanning deletion counts as 0 here.
+        if (pgt.equals("0|1") || pgt.equals("1|0") || pgt.equals("1|1")) {
+            return pgt;
+        }
+        final Allele left = before.getAllele(0);
+        final Allele right = before.getAllele(1);
+        final String indexed = source.getAlleleIndex(left) + "|" + source.getAlleleIndex(right);
+        if (before.isPhased() && pgt.equals(indexed)) {
+            final Allele alt = siteAlts.get(0);
+            return (left.equals(alt) ? "1" : "0") + "|" + (right.equals(alt) ? "1" : "0");
+        }
+        return null;
     }
 
     private static boolean annotationShouldBeSkippedForHomRefSites(VariantAnnotation annotation) {
