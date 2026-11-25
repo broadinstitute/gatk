@@ -212,9 +212,10 @@ public final class ValidateVariants extends VariantWalker {
     private SimpleInterval previousInterval;
     private int previousStart = -1;
     private String previousContig = null;
-    private boolean previousIntervalIsReference = true;
-    private boolean sawOverlap = false;
-    private SimpleInterval firstOverlap;
+    private SimpleInterval furthestPriorRecord;
+    private boolean furthestPriorRecordIsReference;
+    private SimpleInterval furthestPriorReferenceBlock;
+    private String firstOverlap;
 
     @Override
     public void onTraversalStart() {
@@ -264,16 +265,12 @@ public final class ValidateVariants extends VariantWalker {
 
             final boolean thisIntervalIsReference =  vc.getAlternateAlleles().size() == 1 && vc.getAlternateAllele(0).equals(Allele.NON_REF_ALLELE);
 
+            checkGVCFOverlap(refInterval, thisIntervalIsReference);
+
             // GenomeLocSortedSet will automatically merge intervals that are overlapping when setting `mergeIfIntervalOverlaps`
             // to true.  In a GVCF most blocks are adjacent to each other so they wouldn't normally get merged.  We check
             // if the current record is adjacent to the previous record and "overlap" them if they are so our set is as
             // small as possible while still containing the same bases.
-            if (previousInterval != null && previousInterval.overlapsWithMargin(refInterval, 0) &&
-                    (previousIntervalIsReference || thisIntervalIsReference)) {
-                logger.warn("Current interval " + refInterval.toString() + " overlaps previous interval ending at " + previousInterval.getEnd());
-                sawOverlap = true;
-                firstOverlap = refInterval;
-            }
             final int start = (previousInterval != null && previousInterval.overlapsWithMargin(refInterval, 1)) ?
                     previousInterval.getStart() : refInterval.getStart();
             final int end = (previousInterval != null && previousInterval.overlapsWithMargin(refInterval, 1)) ?
@@ -283,7 +280,6 @@ public final class ValidateVariants extends VariantWalker {
 
             previousInterval = new SimpleInterval(possiblyMergedGenomeLoc);
             previousStart = vc.getStart();
-            previousIntervalIsReference = thisIntervalIsReference;
             validateGVCFVariant(vc);
         }
 
@@ -315,9 +311,9 @@ public final class ValidateVariants extends VariantWalker {
                         uncoveredIntervals.iterator().next());
                 throwOrWarn(e);
             }
-            if (FAIL_ON_OVERLAP && sawOverlap) {
-                final UserException e = new UserException.ValidationFailure("This GVCF contained overlapping reference blocks.  The first overlapping interval is " +
-                        firstOverlap.toString());
+            if (FAIL_ON_OVERLAP && firstOverlap != null) {
+                final UserException e = new UserException.ValidationFailure(
+                        "This GVCF failed the reference-block overlap check. First overlap: " + firstOverlap);
                 throwOrWarn(e);
             }
         }
@@ -375,12 +371,37 @@ public final class ValidateVariants extends VariantWalker {
         }
     }
 
+    private void checkGVCFOverlap(final SimpleInterval current, final boolean isReferenceBlock) {
+        // For nondecreasing starts, the greatest prior end suffices. Keep the earliest
+        // record on equal ends. The intersection check also prevents false warnings if
+        // the existing order validation warned and allowed an out-of-order record through.
+        final SimpleInterval witness = isReferenceBlock ? furthestPriorRecord : furthestPriorReferenceBlock;
+        if (witness != null && current.overlaps(witness)) {
+            final String diagnostic = "Current interval " + current + (isReferenceBlock ? " (reference block)" : " (variant)") +
+                    " overlaps prior record " + witness +
+                    (!isReferenceBlock || furthestPriorRecordIsReference ? " (reference block)" : " (variant)");
+            logger.warn(diagnostic);
+            if (firstOverlap == null) {
+                firstOverlap = diagnostic;
+            }
+        }
+        if (furthestPriorRecord == null || current.getEnd() > furthestPriorRecord.getEnd()) {
+            furthestPriorRecord = current;
+            furthestPriorRecordIsReference = isReferenceBlock;
+        }
+        if (isReferenceBlock && (furthestPriorReferenceBlock == null || current.getEnd() > furthestPriorReferenceBlock.getEnd())) {
+            furthestPriorReferenceBlock = current;
+        }
+    }
+
     private void validateVariantsOrder(final VariantContext vc) {
         // Check if the current VC belongs to the same contig as the previous one.
         // If not, reset the start position to -1.
         if (previousContig == null || !previousContig.equals(vc.getContig())) {
             previousContig = vc.getContig();
             previousStart = -1;
+            furthestPriorRecord = null;
+            furthestPriorReferenceBlock = null;
         }
 
         //if next VC refers to a previous genomic position, throw an error
