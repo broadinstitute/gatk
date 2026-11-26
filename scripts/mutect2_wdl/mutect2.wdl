@@ -47,6 +47,8 @@ version 1.0
 ## Outputs :
 ## - One VCF file and its index with primary filtering applied; secondary filtering if requested; a bamout.bam
 ##   file of reassembled reads if requested
+## - The F1R2 counts of the scatters (f1r2_counts), a tar.gz for each, if run_orientation_bias_mixture_model_filter
+##   is true, for learning a read orientation model from them, even when skip_filtering is true
 ##
 ## Cromwell version support
 ## - Successfully tested on v34
@@ -389,6 +391,8 @@ workflow Mutect2 {
         File permutect_read_groups_table = select_first(M2.permutect_read_groups_table)
         File? tumor_pileups = MergeMutect2Outputs.merged_tumor_pileups
         File? normal_pileups = MergeMutect2Outputs.merged_normal_pileups
+        # without the orientation bias filter, M2's F1R2 counts are empty placeholder files
+        Array[File] f1r2_counts = if run_orientation_bias_mixture_model_filter then M2.f1r2_counts else []
     }
 }
 
