@@ -1536,6 +1536,11 @@ that contains the script name and reports a process that does not exist.
 More generally: when a check returns the answer you were hoping for
 suspiciously early, spend one command confirming it means what you think.
 
+The same holds for a report that a Terra run has finished. Check the
+submission's status, and the timestamps of its tasks' `rc` files, before
+verifying its outputs. In VS-2054 a run reported as finished was still
+creating its Dataproc cluster; the finished one was a different submission.
+
 ## Check repository state before reporting it
 
 Before telling the user that work is uncommitted, unpushed, or on some branch,
