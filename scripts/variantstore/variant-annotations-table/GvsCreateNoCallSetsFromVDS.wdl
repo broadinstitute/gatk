@@ -24,8 +24,6 @@ workflow GvsCreateNoCallSetsFromVDS {
         Int? num_test_cohorts
         String? nocall_sets_path
         Boolean use_existing_hail_outputs = false
-        # Until hail_create_nocall_sets.py is in the Variants image and among GetHailScripts' outputs.
-        File? hail_create_nocall_sets_script
         String reference_name = "hg38"
 
         String region = "us-central1"
@@ -72,9 +70,6 @@ workflow GvsCreateNoCallSetsFromVDS {
         }
         use_existing_hail_outputs: {
             help: "Skip the Hail job and build the tables from outputs already at nocall_sets_path. The Hail job has no resume state of its own, so use this to rerun the table build after it has finished."
-        }
-        hail_create_nocall_sets_script: {
-            help: "hail_create_nocall_sets.py. Required unless use_existing_hail_outputs is set."
         }
         max_secondary_workers: {
             help: "Ceiling on the preemptible secondary workers the autoscaling policy may add."
@@ -157,7 +152,7 @@ workflow GvsCreateNoCallSetsFromVDS {
                 hail_version = effective_hail_version,
                 hail_wheel = hail_wheel,
                 run_in_hail_cluster_script = GetHailScripts.run_in_hail_cluster_script,
-                hail_create_nocall_sets_script = select_first([hail_create_nocall_sets_script]),
+                hail_create_nocall_sets_script = GetHailScripts.hail_create_nocall_sets_script,
                 hail_create_participant_mapping_inputs_script = GetHailScripts.hail_create_participant_mapping_inputs_script,
                 hail_create_vat_inputs_script = GetHailScripts.hail_create_vat_inputs_script,
                 create_vat_inputs_script = GetHailScripts.create_vat_inputs_script,
