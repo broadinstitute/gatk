@@ -56,43 +56,20 @@ public abstract class PairHMM implements Closeable{
             logger.info("Using the non-hardware-accelerated Java LOGLESS_CACHING PairHMM implementation");
             return hmm;
         }),
-        /* Optimized AVX implementation of LOGLESS_CACHING called through JNI. Throws if AVX is not available */
-        AVX_LOGLESS_CACHING(args -> {
-            // Constructor will throw a UserException if AVX is not available
-            final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM(VectorLoglessPairHMM.Implementation.AVX, args);
-            logger.info("Using the AVX-accelerated native PairHMM implementation");
-            return hmm;
-        }),
-        /* OpenMP Multi-threaded AVX implementation of LOGLESS_CACHING called through JNI. Throws if OpenMP AVX is not available */
-        AVX_LOGLESS_CACHING_OMP(args -> {
-            // Constructor will throw a UserException if OpenMP AVX is not available
-            final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM(VectorLoglessPairHMM.Implementation.OMP, args);
-            logger.info("Using the OpenMP multi-threaded AVX-accelerated native PairHMM implementation");
-            return hmm;
-        }),
-        /* Uses the fastest available PairHMM implementation supported on the platform.
-           Order of precedence:
-            1. AVX_LOGLESS_CACHING_OMP
-            2. AVX_LOGLESS_CACHING
-            3. LOGLESS_CACHING
-         */
+        /* Native SIMD implementation of LOGLESS_CACHING called through JNI. Throws if no native library is available for this platform */
+        AVX_LOGLESS_CACHING(VectorLoglessPairHMM::new),
+        /* Accepted for compatibility: the native implementation runs on the calling thread, so this is the same as AVX_LOGLESS_CACHING */
+        AVX_LOGLESS_CACHING_OMP(VectorLoglessPairHMM::new),
+        /* Uses the native implementation when a native library is available for this platform, and LOGLESS_CACHING otherwise */
         FASTEST_AVAILABLE(args -> {
             try {
-                final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM(VectorLoglessPairHMM.Implementation.OMP, args);
-                logger.info("Using the OpenMP multi-threaded AVX-accelerated native PairHMM implementation");
-                return hmm;
+                return new VectorLoglessPairHMM(args);
             }
             catch ( UserException.HardwareFeatureException e ) {
-                logger.info("OpenMP multi-threaded AVX-accelerated native PairHMM implementation is not supported");
-            }
-            try {
-                final VectorLoglessPairHMM hmm = new VectorLoglessPairHMM(VectorLoglessPairHMM.Implementation.AVX, args);
-                logger.info("Using the AVX-accelerated native PairHMM implementation");
-                return hmm;
-            }
-            catch ( UserException.HardwareFeatureException e ) {
-                logger.warn("***WARNING: Machine does not have the AVX instruction set support needed for the accelerated AVX PairHmm. " +
-                            "Falling back to the MUCH slower LOGLESS_CACHING implementation!");
+                logger.warn("***********************************************************************************************");
+                logger.warn("*** WARNING: no native PairHMM library is available for this platform: " + e.getMessage());
+                logger.warn("*** Falling back to the MUCH slower Java LOGLESS_CACHING PairHMM implementation!");
+                logger.warn("***********************************************************************************************");
                 return new LoglessPairHMM();
             }
         });
