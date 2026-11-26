@@ -751,6 +751,28 @@ public final class AssemblyBasedCallerUtils {
                                                                                    final Set<Haplotype> calledHaplotypes) {
         final Map<VariantContext, Set<Haplotype>> haplotypeMap = new HashMap<>(originalCalls.size());
         for ( final VariantContext call : originalCalls ) {
+            final Genotype genotype = call.getNSamples() == 1 ? call.getGenotype(0) : null;
+            if (hasCalledSpanningDeletion(call, genotype)) {
+                final Map<Allele, List<Haplotype>> support =
+                        createAlleleMapper(call, call.getStart(), new ArrayList<>(calledHaplotypes), true);
+                haplotypeMap.put(call, new HashSet<>(support.getOrDefault(Allele.SPAN_DEL, Collections.emptyList())));
+                continue;
+            }
+
+            final Allele deletion = getCalledDeletionForPhasing(call, genotype);
+            if (deletion != null) {
+                final Map<Allele, List<Haplotype>> support =
+                        createAlleleMapper(call, call.getStart(), new ArrayList<>(calledHaplotypes), true);
+                final Allele other = genotype.getAllele(0).equals(deletion) ? genotype.getAllele(1) : genotype.getAllele(0);
+                final Set<Haplotype> deletionHaplotypes = new HashSet<>(support.getOrDefault(deletion, Collections.emptyList()));
+                final Set<Haplotype> otherHaplotypes = new HashSet<>(support.getOrDefault(other, Collections.emptyList()));
+                if (!deletionHaplotypes.isEmpty() && !otherHaplotypes.isEmpty()
+                        && Collections.disjoint(deletionHaplotypes, otherHaplotypes)) {
+                    haplotypeMap.put(call, deletionHaplotypes);
+                    continue;
+                }
+            }
+
             // don't try to phase if there is not exactly 1 alternate allele
             if ( ! isBiallelicWithOneSiteSpecificAlternateAllele(call) ) {
                 haplotypeMap.put(call, Collections.emptySet());
@@ -776,6 +798,31 @@ public final class AssemblyBasedCallerUtils {
      */
     private static Allele getSiteSpecificAlternateAllele(final VariantContext call) {
         return call.getAlternateAlleles().stream().filter(AssemblyBasedCallerUtils::isSiteSpecificAltAllele).findFirst().orElse(null);
+    }
+
+    private static boolean hasCalledSpanningDeletion(final VariantContext call, final Genotype genotype) {
+        return call.getNSamples() == 1 && genotype != null && genotype.getPloidy() == 2
+                && isBiallelicWithOneSiteSpecificAlternateAllele(call)
+                && genotype.getAlleles().stream().noneMatch(Allele::isNoCall)
+                && Collections.frequency(genotype.getAlleles(), Allele.SPAN_DEL) == 1;
+    }
+
+    // At multiallelic sites only phase a called one-base-anchor deletion against another called concrete ALT.
+    private static Allele getCalledDeletionForPhasing(final VariantContext call, final Genotype genotype) {
+        if (call.getNSamples() != 1 || genotype == null || genotype.getPloidy() != 2 || !genotype.isHet()
+                || genotype.getAlleles().stream().anyMatch(a -> a.isNoCall() || a.isSymbolic())) {
+            return null;
+        }
+        final List<Allele> siteAlts = call.getAlternateAlleles().stream()
+                .filter(AssemblyBasedCallerUtils::isSiteSpecificAltAllele).toList();
+        if (siteAlts.size() != 2 || !siteAlts.containsAll(genotype.getAlleles())) {
+            return null;
+        }
+        final String ref = call.getReference().getDisplayString();
+        final List<Allele> deletions = siteAlts.stream()
+                .filter(a -> ref.length() > 1 && a.length() == 1 && a.getDisplayString().charAt(0) == ref.charAt(0))
+                .toList();
+        return deletions.size() == 1 ? deletions.get(0) : null;
     }
 
     /**
@@ -984,20 +1031,34 @@ public final class AssemblyBasedCallerUtils {
     private static VariantContext phaseVC(final VariantContext vc, final String ID, final PhaseGroup phaseGT, final int phaseSetID) {
         final List<Genotype> phasedGenotypes = new ArrayList<>();
         for ( final Genotype g : vc.getGenotypes() ) {
-            final List<Allele> alleles = g.getAlleles();
-            final List<Allele> newAlleles = new ArrayList<>(alleles);
-            final int phasedAltAlleleIndex = phaseGT.getAltAlleleIndex();
-            if (g.isHet() && ! isSiteSpecificAltAllele(newAlleles.get(phasedAltAlleleIndex))) {
-                Collections.reverse(newAlleles);
+            final List<Allele> newAlleles = new ArrayList<>(g.getAlleles());
+            final boolean phaseStar = hasCalledSpanningDeletion(vc, g);
+            final Allele selectedAllele = phaseStar ? Allele.SPAN_DEL : getCalledDeletionForPhasing(vc, g);
+            if (g.isHet()) {
+                final Allele alleleInPhase = newAlleles.get(phaseGT.getAltAlleleIndex());
+                if (selectedAllele == null ? !isSiteSpecificAltAllele(alleleInPhase)
+                        : !selectedAllele.equals(alleleInPhase)) {
+                    Collections.reverse(newAlleles);
+                }
             }
-            final Genotype genotype = new GenotypeBuilder(g)
-                .alleles(newAlleles)
-                .phased(true)
-                .attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, ID)
-                .attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, phaseGT.getDescription())
-                .attribute(VCFConstants.PHASE_SET_KEY, phaseSetID)
-                .make();
-            phasedGenotypes.add(genotype);
+            final GenotypeBuilder builder = new GenotypeBuilder(g).alleles(newAlleles).phased(true);
+            if (selectedAllele == null) {
+                builder.attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, ID)
+                        .attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY, phaseGT.getDescription());
+            } else {
+                // Legacy PGT is relative to one site ALT. GT and PS also describe calls outside that model.
+                final Map<String, Object> retained = new HashMap<>(g.getExtendedAttributes());
+                retained.remove(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY);
+                retained.remove(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY);
+                builder.noAttributes().attributes(retained);
+                final Allele siteAlt = phaseStar ? getSiteSpecificAlternateAllele(vc) : null;
+                if (siteAlt != null && newAlleles.contains(siteAlt)) {
+                    builder.attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, ID)
+                            .attribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY,
+                                    newAlleles.get(0).equals(siteAlt) ? "1|0" : "0|1");
+                }
+            }
+            phasedGenotypes.add(builder.attribute(VCFConstants.PHASE_SET_KEY, phaseSetID).make());
         }
         return new VariantContextBuilder(vc).genotypes(phasedGenotypes).make();
     }

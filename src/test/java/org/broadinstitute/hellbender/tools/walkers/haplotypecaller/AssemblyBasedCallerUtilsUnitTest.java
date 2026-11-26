@@ -1177,6 +1177,155 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
         Assert.assertEquals(starSlot, deletionSlot, "The deletion and its spanning-deletion allele must be on the same haplotype");
     }
 
+    @DataProvider
+    public Object[][] calledSpanningDeletionCases() {
+        return new Object[][] {{false, false}, {false, true}, {true, false}, {true, true}};
+    }
+
+    @Test(dataProvider = "calledSpanningDeletionCases")
+    public void testPhaseCalledSpanningDeletion(final boolean siteAltCalled, final boolean reversed) {
+        final Allele deletion = Allele.create("A");
+        final Allele snp = Allele.create("G");
+        final VariantContext firstAnchor = phasingCall(5, List.of(Allele.create("C", true), deletion), 1, 1);
+        final VariantContext secondAnchor = phasingCall(9, List.of(Allele.create("T", true), snp), 1, 1);
+        final VariantContext parent = phasingCall(15, List.of(Allele.create("AGTCCT", true), deletion), 0, 1);
+        final Allele childRef = Allele.create("C", true);
+        final int childOther = siteAltCalled ? 1 : 0;
+        final VariantContext child = phasingCall(18, List.of(childRef, snp, Allele.SPAN_DEL, Allele.NON_REF_ALLELE),
+                reversed ? 2 : childOther, reversed ? childOther : 2);
+        final VariantContext downstream = phasingCall(24, List.of(Allele.create("A", true), Allele.create("T")), 0, 1);
+        final Event anchor1 = vcToEvent(firstAnchor);
+        final Event anchor2 = vcToEvent(secondAnchor);
+
+        final Haplotype deleted = phasingHaplotype("GTACACTGGGCTATAGTGAACTGGTAC", anchor1, anchor2, vcToEvent(parent));
+        final Haplotype withSiteAlt = phasingHaplotype("GTACACTGGGCTATAGTGCTGTGTACTGGTAC", anchor1, anchor2,
+                new Event(child.getContig(), child.getStart(), childRef, snp), vcToEvent(downstream));
+        final Haplotype withSiteRef = phasingHaplotype("GTACACTGGGCTATAGTCCTGTGAACTGGTAC", anchor1, anchor2);
+
+        // Without called-allele mapping, the child groups with the downstream SNP on withSiteAlt.
+        final List<VariantContext> calls = List.of(firstAnchor, secondAnchor, parent, child, downstream);
+        final List<VariantContext> phased = phaseCalls(calls, Set.of(deleted, withSiteAlt, withSiteRef));
+        assertOnlyPhaseChanged(phased, calls);
+        final Genotype phasedChild = phased.get(3).getGenotype(0);
+        assertDeletionAndStarInPhase(phased.get(2).getGenotype(0), phasedChild, deletion);
+
+        final String pgt = GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY;
+        final String pid = GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY;
+        if (siteAltCalled) {
+            Assert.assertTrue(phasedChild.hasExtendedAttribute(pid), "PID is informative for the called site ALT");
+            Assert.assertEquals(phasedChild.getExtendedAttribute(pgt), phasedChild.getAllele(0).equals(snp) ? "1|0" : "0|1");
+        } else {
+            Assert.assertFalse(phasedChild.hasExtendedAttribute(pid));
+            Assert.assertFalse(phasedChild.hasExtendedAttribute(pgt));
+        }
+    }
+
+    @Test(dataProvider = "calledSpanningDeletionCases")
+    public void testPhaseSpanningDeletionFromMultiallelicParent(final boolean hasOtherAlleleSupport, final boolean reversed) {
+        final Allele deletion = Allele.create("A");
+        final Allele insertion = Allele.create("ATGTCCT");
+        final Allele snp = Allele.create("G");
+        final VariantContext firstAnchor = phasingCall(5, List.of(Allele.create("C", true), deletion), 1, 1);
+        final VariantContext secondAnchor = phasingCall(9, List.of(Allele.create("T", true), snp), 1, 1);
+        final Allele parentRef = Allele.create("AGTCCT", true);
+        final VariantContext parent = phasingCall(15, List.of(parentRef, deletion, insertion, Allele.NON_REF_ALLELE),
+                reversed ? 2 : 1, reversed ? 1 : 2);
+        final Allele childRef = Allele.create("C", true);
+        final VariantContext child = phasingCall(18, List.of(childRef, snp, Allele.SPAN_DEL, Allele.NON_REF_ALLELE),
+                reversed ? 2 : 1, reversed ? 1 : 2);
+        final Event anchor1 = vcToEvent(firstAnchor);
+        final Event anchor2 = vcToEvent(secondAnchor);
+        final String contig = parent.getContig();
+        final Haplotype deleted = phasingHaplotype("GTACACTGGGCTATAGTGAACTGGTAC", anchor1, anchor2,
+                new Event(contig, parent.getStart(), parentRef, deletion));
+        final Event childSnp = new Event(contig, child.getStart(), childRef, snp);
+        final Haplotype intact = hasOtherAlleleSupport
+                ? phasingHaplotype("GTACACTGGGCTATATGTGCTGTGAACTGGTAC", anchor1, anchor2, childSnp,
+                        new Event(contig, parent.getStart(), Allele.create("A", true), Allele.create("AT")))
+                : phasingHaplotype("GTACACTGGGCTATAGTGCTGTGAACTGGTAC", anchor1, anchor2, childSnp);
+
+        final List<VariantContext> calls = List.of(firstAnchor, secondAnchor, parent, child);
+        final List<VariantContext> phased = phaseCalls(calls, Set.of(deleted, intact));
+        assertOnlyPhaseChanged(phased, calls);
+        final Genotype phasedParent = phased.get(2).getGenotype(0);
+        if (hasOtherAlleleSupport) {
+            assertDeletionAndStarInPhase(phasedParent, phased.get(3).getGenotype(0), deletion);
+        } else {
+            Assert.assertFalse(phasedParent.isPhased(), "The other called parent allele has no supporting haplotype");
+            Assert.assertFalse(phasedParent.hasExtendedAttribute(VCFConstants.PHASE_SET_KEY));
+        }
+        Assert.assertFalse(phasedParent.hasExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
+        Assert.assertFalse(phasedParent.hasExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
+    }
+
+    @Test
+    public void testDoNotChooseBetweenTwoSpanningDeletions() {
+        final Allele snp = Allele.create("G");
+        final VariantContext firstDeletion = phasingCall(15, List.of(Allele.create("AGTCCT", true), Allele.create("A")), 0, 1);
+        final VariantContext secondDeletion = phasingCall(16, List.of(Allele.create("GTCCT", true), snp), 0, 1);
+        final Allele childRef = Allele.create("C", true);
+        final VariantContext child = phasingCall(18, List.of(childRef, snp, Allele.SPAN_DEL, Allele.NON_REF_ALLELE), 1, 2);
+        final VariantContext downstream = phasingCall(24, List.of(Allele.create("A", true), Allele.create("T")), 0, 1);
+
+        final Haplotype first = phasingHaplotype("GTACCCTGTGCTATAGTGAACTGGTAC", vcToEvent(firstDeletion));
+        final Haplotype second = phasingHaplotype("GTACCCTGTGCTATAGGTGAACTGGTAC", vcToEvent(secondDeletion));
+        final Haplotype intact = phasingHaplotype("GTACCCTGTGCTATAGTGCTGTGTACTGGTAC",
+                new Event(child.getContig(), child.getStart(), childRef, snp), vcToEvent(downstream));
+        final List<VariantContext> calls = List.of(firstDeletion, secondDeletion, child, downstream);
+        final Set<Haplotype> haplotypes = Set.of(first, second, intact);
+        Assert.assertEquals(constructHaplotypeMapping(calls, haplotypes).get(child), Set.of(first, second),
+                "Both deletion haplotypes support the spanning-deletion allele");
+        final List<VariantContext> phased = phaseCalls(calls, haplotypes);
+        assertOnlyPhaseChanged(phased, calls);
+        Assert.assertFalse(phased.get(0).getGenotype(0).isPhased());
+        Assert.assertFalse(phased.get(1).getGenotype(0).isPhased());
+    }
+
+    private static VariantContext phasingCall(final int pos, final List<Allele> alleles, final int first, final int second) {
+        final int[] ad = new int[alleles.size()];
+        ad[first] += 9;
+        ad[second] += 11;
+        final int[] pl = new int[alleles.size() * (alleles.size() + 1) / 2];
+        Arrays.fill(pl, 40);
+        pl[GenotypeLikelihoods.calculatePLindex(first, second)] = 0;
+        final Genotype genotype = new GenotypeBuilder("sample", List.of(alleles.get(first), alleles.get(second)))
+                .DP(20).GQ(40).AD(ad).PL(pl).attribute("X", 1).make();
+        return new VariantContextBuilder("synthetic", "1", pos, pos + alleles.get(0).length() - 1, alleles)
+                .attribute(VCFConstants.DEPTH_KEY, 20).genotypes(genotype).make();
+    }
+
+    private static Haplotype phasingHaplotype(final String bases, final Event... events) {
+        final Haplotype haplotype = new Haplotype(bases.getBytes(StandardCharsets.US_ASCII));
+        haplotype.setEventMap(EventMap.of(events));
+        return haplotype;
+    }
+
+    private static void assertDeletionAndStarInPhase(final Genotype parent, final Genotype child, final Allele deletion) {
+        final int deletionIndex = parent.getAlleles().indexOf(deletion);
+        final int starIndex = child.getAlleles().indexOf(Allele.SPAN_DEL);
+        Assert.assertTrue(deletionIndex >= 0 && starIndex >= 0, "Deletion and spanning deletion must both be called");
+        Assert.assertTrue(parent.isPhased() && child.isPhased(), "Both calls must be phased");
+        Assert.assertTrue(parent.hasExtendedAttribute(VCFConstants.PHASE_SET_KEY));
+        Assert.assertEquals(child.getExtendedAttribute(VCFConstants.PHASE_SET_KEY),
+                parent.getExtendedAttribute(VCFConstants.PHASE_SET_KEY), "Calls must share a phase set");
+        Assert.assertEquals(starIndex, deletionIndex, "Deletion and spanning deletion must be on the same haplotype");
+    }
+
+    private static void assertOnlyPhaseChanged(final List<VariantContext> phased, final List<VariantContext> calls) {
+        final List<String> phaseKeys = List.of(VCFConstants.PHASE_SET_KEY,
+                GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY, GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY);
+        Assert.assertEquals(phased.size(), calls.size());
+        for (int i = 0; i < calls.size(); i++) {
+            final Genotype actual = phased.get(i).getGenotype(0);
+            final Genotype expected = calls.get(i).getGenotype(0);
+            Assert.assertEquals(actual.getAlleles().stream().sorted().toList(), expected.getAlleles().stream().sorted().toList(),
+                    "Called alleles and dosage at " + calls.get(i).getStart());
+            final Genotype unphased = new GenotypeBuilder(actual).phased(false).alleles(expected.getAlleles()).make();
+            VariantContextTestUtils.assertVariantContextsAreEqual(
+                    new VariantContextBuilder(phased.get(i)).genotypes(unphased).make(), calls.get(i), phaseKeys, List.of());
+        }
+    }
+
     @Test
     public void testAddGivenAlleles() {
         final int assemblyRegionStart = 1;
