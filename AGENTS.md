@@ -133,7 +133,7 @@ artifacts without accounting for them is a recurring source of bugs.
 - **The VAT, and therefore vids,** hold alleles that are minimized *and*
   left-aligned, via `bcftools norm -f` in `GvsCreateVATFromVDS.wdl:781`.
 
-Four consequences worth knowing before writing anything that joins across these:
+Five consequences worth knowing before writing anything that joins across these:
 
 1. Minimize before comparing. `hl.min_rep`, or trimming by hand, reduces a VDS
    allele to the intrinsic form that `alt_allele` stores.
@@ -152,6 +152,18 @@ Four consequences worth knowing before writing anything that joins across these:
    The retired synonym search keyed on it as bcftools `ILEN` over a 200bp
    window rightward from the vid's position, left-aligned being the leftmost
    equivalent form.
+5. An indel can also be stored without its anchor base: a deletion whose ALT
+   is REF's *last* base, not its first. Minimizing leaves such a key alone,
+   and its position is not the variant's, because `bcftools norm` re-anchors
+   it to the left. The AnVIL 3K VDS has 279 of them, all deletions of more
+   than 200 bases, which moved between 1 and 442 bases (VS-2054). `key_class`
+   in `hail_create_participant_mapping_inputs.py` calls the class
+   `unanchored`, and that script fails on it by design, so
+   `GvsCreateParticipantMappingFromVDS` would fail on AnVIL 3K. It ran
+   genome-wide on Foxtrot, which therefore has none. Anything that maps VDS
+   keys to vids has to normalize this class along with the shiftable ones.
+   Treating them as ordinary keys put 179 vids at the wrong locus in the
+   VS-2054 prototype, and only a comparison against the VAT's AN showed it.
 
 
 ### A gap in `ref_ranges` is not a no-call
@@ -572,6 +584,35 @@ run that was meant to test a reference-disk change, check that the `AnnotateVCF`
 shards were not cache hits. When suggesting such a run, recommend turning call
 caching off for that submission.
 
+### A Jasix JSON error in `AnnotateVCF` is a quoted ClinVar trait name
+
+Nirvana writes ClinVar phenotype strings into its JSON without escaping
+double quotes. A trait name that contains them, such as `"See Cases"` on
+VCV001344805 at chr2:20447683, comes out as `""See Cases""`. Nirvana itself
+finishes, and so does Jasix `--section genes`. Jasix `--section positions`
+then fails:
+
+    ERROR: After parsing a value an unexpected character was encountered: S.
+    Path 'variants[0].clinvar[0].phenotypes[0]', line 1, position 601.
+
+The character it names is the first letter of the trait. The failure is
+deterministic, so only the shards holding such a position fail, identically
+on every attempt, and `maxRetries` does not help. It does not depend on
+`use_manual_clinvar_update`: the same position failed in June 2025 with the
+bundled ClinVar and in VS-2054 with the 2025-07 build.
+
+The workaround is the `sites_to_exclude` input (VS-1676), a file with one
+bcftools-style region per line. It drops every allele at each listed
+position before annotation, so the VAT has no row there. AnVIL 3K needs
+`chr2:20447683` excluded on every VAT run. The underlying bug is unfixed, so
+a callset with a variant at any other ClinVar position with a quoted trait
+name fails the same way.
+
+To find the position, download the failed shard's partial positions JSON and
+take its last `"position"`. The culprit is the next row of the shard's input
+VCF. Before treating the failure as new, grep the WDL for that position:
+the `sites_to_exclude` help text names the one already known.
+
 ### Comparing VATs after the BigQuery dataset has expired
 
 Integration-test VAT datasets expire after 14 days, but the workflow's TSV
@@ -589,6 +630,24 @@ file. A per-column diff separates ClinVar changes from gnomAD changes. In
 VS-2029 it showed that the flag-on VAT matched the VS-1994 VAT in every ClinVar
 column, with every remaining difference in gnomAD.
 
+### A VAT run's AC and AN outlive an `AnnotateVCF` failure
+
+`StripCustomAnnotationsFromSitesOnlyVCF` runs before `AnnotateVCF` and
+writes one `*.custom_annotations.tsv` per shard, after normalization and
+deduplication. Its `AC`, `AN` and `AF` columns are what the VAT would report
+as `gvs_all_ac`, `gvs_all_an` and `gvs_all_af`, followed by the same for each
+subpopulation. So a run that fails in annotation still supports any
+comparison that needs only those values, with no rerun. In VS-2054, 523
+shards gave 125 million vids this way.
+
+One `bq load` takes all the shards, with a wildcard over
+`call-StripCustomAnnotationsFromSitesOnlyVCF/shard-*/*.custom_annotations.tsv`,
+`--skip_leading_rows=7` for the header block and `--quote=''`. Load the
+subpopulation columns as STRING and `SAFE_CAST` them: a subpopulation's AF
+is `.` where its AN is 0, which fails a typed load with "Unable to parse".
+The files can also hold a few exact duplicate rows (20 in VS-2054), so use
+`SELECT DISTINCT` before joining on the vid.
+
 ### A vid from several VDS rows reports one row's AC and AN
 
 `vet_%` alleles are not left-aligned, so the same indel can sit at different
@@ -601,6 +660,14 @@ The participant mapping takes carriers from every row, so its carrier count
 can exceed what the VAT's AC implies. Do not treat the VAT's value as ground
 truth when validating anything computed across all of a vid's rows; restrict
 such comparisons to vids that come from a single VDS row.
+
+A VDS key can also have no carriers at all, when every genotype carrying it
+has GQ 0 or fails FT. On the AnVIL 3K VDS that was 38 of the 113 vids that
+non-left-aligned keys normalize to (VS-2054). An inner join from keys to
+carriers drops such a key, and with it a vid whose only keys have none. So
+when building anything per key or per vid, start from the keys and LEFT JOIN
+the carriers. The participant mapping's `_realigned_inputs` table lists only
+keys with carriers, so it undercounts keys for the same reason.
 
 Only the VAT's Hail pass densifies the VDS (`hl.vds.to_dense_mt` in
 `hail_create_vat_inputs.py`). The participant mapping pass reads variant data
@@ -745,6 +812,40 @@ only when the task runs, and neither error message names its cause.
    script using `CREATE TABLE` rather than `CREATE OR REPLACE` then fails on
    rerun until they are dropped. Create the view in a separate `bq query` call.
 
+## `ARRAY_LENGTH` bills the whole array
+
+BigQuery bills an array column in full for any expression that touches it,
+`ARRAY_LENGTH` included. So counting carriers in the participant mapping's
+`_base` table (`het_ids`, `hom_ids`, `hemi_ids`) reads nearly all of that
+table's bytes, however few rows the rest of the query keeps. In VS-2054 a
+query that looked like a scan of two vid columns was estimated at 18.75 TB
+on Foxtrot for this reason.
+
+A filter only reduces the bill if it lets BigQuery skip blocks. `_base` is
+clustered by `vid`, so that means a filter on `vid` itself against
+constants:
+
+- `WHERE vid IN (SELECT ...)` and a join on `vid` are not reliably pruned.
+  Collect the vids first and pass them as a script variable:
+  `SET vids = (SELECT ARRAY_AGG(vid) FROM ...)`, then
+  `WHERE vid IN UNNEST(vids)`.
+- A filter on an expression over the column, such as
+  `SPLIT(vid, '-')[OFFSET(0)] = '21'`, prunes nothing. The chr21 run of the
+  VS-2054 query scanned the VAT's whole `vid` column.
+
+So do the cheap narrowing first, on columns that are small, and go to the
+array columns only for the rows that survive. Rewritten that way, the
+VS-2054 query billed 283 GB genome-wide. The same pattern probed
+`alt_allele`, which is clustered by `location`, at 1,053 locations for about
+57 GB.
+
+A dry run cannot see clustering pruning: for a clustered table it reports
+an upper bound, and for a multi-statement script the console gives no
+estimate at all. When suggesting such a query, tell the user to set
+"Maximum bytes billed" (`--maximum_bytes_billed` in `bq`), so a query that
+fails to prune stops without charge. Then ask for the bytes billed
+afterward, since that is the only evidence the pruning worked.
+
 ## A `bq load` wildcard over Spark output also reads `_temporary/`
 
 A `*` in a BigQuery source URI matches across `/`, so `gs://.../out.parquet/*.parquet`
@@ -765,6 +866,20 @@ matching nothing fails the load. `LoadMappingInputs` in
 `GvsCreateParticipantMappingFromVDS.wdl` does this. Local readers are exposed in
 the same way: DuckDB pointed at `out.parquet/**/*.parquet` reads the partial file
 too.
+
+Output that is not partitioned has its part files directly in the directory,
+so there are no subdirectories to name. List the files with gcloud instead,
+whose `*` does not cross `/`:
+
+    gcloud storage objects list "<dir>/part-*.parquet" --format='value(name)'
+
+This skips `_temporary/`, and it exits 0 with empty output when nothing
+matches, so an empty result can be told from an error. The names come back
+without `gs://<bucket>/`, so prepend it. Do not use `value(storage_url)`,
+which appends `#<generation>`. A wide table has too many parts to pass one
+URI each, so collapse them to one wildcard per part-number prefix
+(`part-00*.parquet`, `part-01*.parquet`, and so on). `LoadNoCallSets` in
+`GvsCreateNoCallSetsFromVDS.wdl` does this.
 
 ## A Hail export from a wide table finishes on the master alone
 
@@ -954,6 +1069,38 @@ Allow for leading whitespace, as above: `hail_gvs_import.py` imports `import_gvs
 inside a function. The list is transitive, so `GvsCreateVDS` ships `import_gvs_ploidy`
 because `import_gvs` imports it. `GvsCreateVDS` and `GvsMergeAndRescoreVDSes` ship
 their modules correctly and are the examples to copy.
+
+## Running a one-off Hail script needs no WDL and no image rebuild
+
+`GvsRunHailScript.wdl` takes its `script` and `secondary_scripts` as GCS
+paths and runs them on a Dataproc cluster through `run_in_hail_cluster.py`.
+A prototype or one-off analysis therefore needs only its files copied to the
+workspace bucket, including any GVS module it imports (see the section
+above). Nothing comes from the Variants image, so there is no rebuild and no
+tag bump. `script_arguments` is a `Map[String, String]` rendered as
+`--key value`. So every argument needs a value, a key cannot repeat, and a
+list has to be passed as one comma-separated value. In VS-2054 this ran the
+no-call set prototype on the AnVIL 3K VDS without a new workflow.
+
+The workflow reads the script when the task starts, so re-upload after
+editing. A stale copy in the bucket runs without complaint.
+
+## A dense MatrixTable has missing entries, and aggregations skip them
+
+`hl.vds.to_dense_mt` gives a sample a missing *entry*, not an entry with a
+missing `GT`, wherever it has neither a variant call nor a covering
+reference block. Hail leaves missing entries out of entry aggregations, as
+it does filtered ones. So `hl.agg.count_where(hl.is_missing(mt.GT))` counts
+only the samples whose entry exists with a missing `GT`, such as a call
+failing FT, and silently omits most no-calls. `call_stats` is unaffected,
+because a missing entry contributes nothing to AN either way, so AN still
+ties out while the no-call count is far too low. In VS-2054 a site reported
+15 no-calls before the fix, against a true count several times that.
+
+Call `mt.unfilter_entries()` before aggregating over anything that must see
+every sample. To test such an aggregation, compare it against a model that
+enumerates samples, not against another Hail aggregation over the same
+MatrixTable.
 
 # Documentation Conventions
 
@@ -1332,6 +1479,45 @@ suspicion, since the cheapest way to write one is also the vacuous way.
 Where two call sites must agree on a predicate, a single mutation should break
 tests covering both. If it breaks only one, either the coverage is incomplete
 or the predicate is still duplicated.
+
+## Run a task's `bq` commands locally before its first Terra run
+
+`womtool validate` and `check-wdl-heredocs` treat a command block as a
+string, so a wrong query in a task that only runs `bq` and `gcloud` is found
+on its first run in Terra. Such a task needs no cluster, so its command can
+be run from a laptop first. Extract the block, dedent it, substitute each
+`~{...}` with a real value, and run it with bash against a scratch table
+prefix in a dataset that expires. A dozen lines of Python do the extraction:
+slice from `task <name> {` to `command <<<` and `>>>`, apply
+`textwrap.dedent`, then `re.sub` over a dictionary of values, and assert
+that no `~{` is left.
+
+Strip `--apilog=false` from the rendered script, for the reason given in
+"`bq --apilog=false` writes a file named `false`". Then compare the tables
+it builds with ones built another way, since a query that runs is not
+thereby correct. In VS-2054 this found a table function that fell back to a
+vid's own location where it should have returned NULL, before the workflow
+had run anywhere.
+
+This exercises the command only. Input localization, call wiring,
+conditionals and the runtime block are still untested until Cromwell runs
+the workflow, so say that when reporting.
+
+## `bcftools norm` can read the reference over https
+
+A task that normalizes against the reference, such as `NormalizeKeys` in
+`GvsCreateParticipantMappingFromVDS.wdl`, can be reproduced on a laptop
+without downloading the 3 GB fasta. bcftools reads it and its `.fai` by
+range request from the public bucket:
+
+    REF=https://storage.googleapis.com/gcp-public-data--broad-references/hg38/v0/Homo_sapiens_assembly38.fasta
+    bcftools norm -m- --check-ref w -f "${REF}" keys.vcf.bgz -O v -o normalized.vcf
+
+Use the `https://storage.googleapis.com/` form, not `gs://`, which needs
+credentials and an htslib built with GCS support. In VS-2054 this normalized
+395 keys from the AnVIL 3K VDS in seconds (bcftools 1.23.1 from Homebrew).
+Check the `Lines total/split/joined/realigned` summary on stderr: the total
+should equal the input's row count, with nothing removed or skipped.
 
 ## Do not trust a completion signal without checking it is fresh
 

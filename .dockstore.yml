@@ -518,6 +518,16 @@ workflows:
          - ah_var_store
        tags:
          - /.*/
+   - name: GvsCreateNoCallSetsFromVDS
+     subclass: WDL
+     primaryDescriptorPath: /scripts/variantstore/variant-annotations-table/GvsCreateNoCallSetsFromVDS.wdl
+     filters:
+       branches:
+         - master
+         - ah_var_store
+         - vs_2054_an_no_calls_query
+       tags:
+         - /.*/
    - name: GvsRunHailScript
      subclass: WDL
      primaryDescriptorPath: /scripts/variantstore/wdl/GvsRunHailScript.wdl
