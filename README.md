@@ -660,7 +660,7 @@ or a [pull request](https://github.com/broadinstitute/gatk/pulls). If you're not
 need to [make a fork](https://help.github.com/articles/fork-a-repo/) of the gatk repository 
 and [issue a pull request](https://help.github.com/articles/be-social/) from your fork.
 
-For ideas on what to contribute, check issues labeled ["Help wanted (Community)"](https://github.com/broadinstitute/gatk/issues?q=is%3Aopen+is%3Aissue+label%3A%22Help+Wanted+%28Community%29%22). Comment on the issue to indicate you're interested in contibuting code and for sharing your questions and ideas.
+For ideas on what to contribute, check issues labeled ["Help wanted (Community)"](https://github.com/broadinstitute/gatk/issues?q=is%3Aopen+is%3Aissue+label%3A%22Help+Wanted+%28Community%29%22). Comment on the issue to indicate you're interested in contributing code and for sharing your questions and ideas.
 
 To contribute a patch:
 * Break your work into small, single-purpose patches if possible. It’s much harder to merge in a large change with a lot of disjoint features.
