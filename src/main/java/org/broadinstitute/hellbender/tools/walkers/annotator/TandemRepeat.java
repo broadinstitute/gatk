@@ -52,12 +52,18 @@ public final class TandemRepeat implements InfoFieldAnnotation, StandardMutectAn
     public static Pair<List<Integer>, byte[]> getNumTandemRepeatUnits(final ReferenceContext ref, final Event event) {
         final byte[] refBases = ref.getBases();
         final int startIndex = event.getStart() + 1 - ref.getWindow().getStart();  // +1 to exclude leading match base common to VC's ref and alt alleles
+        if (startIndex < 0 || startIndex >= refBases.length) {
+            return null;
+        }
         return GATKVariantContextUtils.getNumTandemRepeatUnits(event.refAllele(), Collections.singletonList(event.altAllele()), Arrays.copyOfRange(refBases, startIndex, refBases.length));
     }
 
     public static Pair<List<Integer>, byte[]> getNumTandemRepeatUnits(final ReferenceContext ref, final VariantContext vc) {
         final byte[] refBases = ref.getBases();
         final int startIndex = vc.getStart() + 1 - ref.getWindow().getStart();  // +1 to exclude leading match base common to VC's ref and alt alleles
+        if (startIndex < 0 || startIndex >= refBases.length) {
+            return null;
+        }
         return GATKVariantContextUtils.getNumTandemRepeatUnits(vc, Arrays.copyOfRange(refBases, startIndex, refBases.length));
     }
 
