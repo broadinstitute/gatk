@@ -96,7 +96,7 @@ workflow Mutect2_Panel {
             }
     }
 
-    call m2.MergeVCFs {
+    call MergeVCFs {
         input:
             input_vcfs = CreatePanel.output_vcf,
             input_vcf_indices = CreatePanel.output_vcf_index,
@@ -159,5 +159,40 @@ task CreatePanel {
     output {
         File output_vcf = "~{output_vcf_name}.vcf"
         File output_vcf_index = "~{output_vcf_name}.vcf.idx"
+    }
+}
+
+task MergeVCFs {
+    input {
+      Array[File] input_vcfs
+      Array[File] input_vcf_indices
+      Boolean compress_vcfs
+      Runtime runtime_params
+    }
+
+    String output_vcf = if compress_vcfs then "merged.vcf.gz" else "merged.vcf"
+    String output_vcf_idx = output_vcf + if compress_vcfs then ".tbi" else ".idx"
+
+    # using MergeVcfs instead of GatherVcfs so we can create indices
+    # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
+    command {
+        set -e
+        export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
+        gatk --java-options "-Xmx~{runtime_params.command_mem}m" MergeVcfs -I ~{sep=' -I ' input_vcfs} -O ~{output_vcf}
+    }
+
+    runtime {
+        docker: runtime_params.gatk_docker
+        bootDiskSizeGb: runtime_params.boot_disk_size
+        memory: runtime_params.machine_mem + " MB"
+        disks: "local-disk " + runtime_params.disk + " HDD"
+        preemptible: runtime_params.preemptible
+        maxRetries: runtime_params.max_retries
+        cpu: runtime_params.cpu
+    }
+
+    output {
+        File merged_vcf = "~{output_vcf}"
+        File merged_vcf_idx = "~{output_vcf_idx}"
     }
 }

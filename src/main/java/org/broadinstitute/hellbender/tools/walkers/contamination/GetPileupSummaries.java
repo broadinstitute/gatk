@@ -1,7 +1,6 @@
 package org.broadinstitute.hellbender.tools.walkers.contamination;
 
 import htsjdk.variant.variantcontext.VariantContext;
-import htsjdk.variant.vcf.VCFConstants;
 import htsjdk.variant.vcf.VCFHeader;
 import org.broadinstitute.barclay.argparser.Argument;
 import org.broadinstitute.barclay.argparser.CommandLineProgramProperties;
@@ -13,14 +12,9 @@ import org.broadinstitute.hellbender.engine.filters.MappingQualityReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
-import org.broadinstitute.hellbender.exceptions.UserException;
-import org.broadinstitute.hellbender.utils.io.IOUtils;
-import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
-import org.broadinstitute.hellbender.utils.tsv.TableUtils;
 
 import java.io.File;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -81,16 +75,16 @@ import java.util.List;
  * case in which sites and variants differ is when the variants resources is a large file and the sites is an interval list subset from that file.
  *
  * <p>
- * GetPileupSummaries tabulates results into eight columns as shown below.
- * The alt_count, allele_frequency and alt_base correspond to the ALT allele in the germline resource.
+ * GetPileupSummaries tabulates results into six columns as shown below.
+ * The alt_count and allele_frequency correspond to the ALT allele in the germline resource.
  * </p>
  *
  * <pre>
- * contig	position	ref_count	alt_count	other_alt_count	allele_frequency	ref_base	alt_base
- * chr6	29942512	9	0	0	0.063	G	C
- * chr6	29942517	13	1	0	0.062	C	A
- * chr6	29942525	13	7	0	0.063	G	C
- * chr6	29942547	36	0	0	0.077	G	C
+ * contig	position	ref_count	alt_count	other_alt_count	allele_frequency
+ * chr6	29942512	9	0	0	0.063
+ * chr6	29942517	13	1	0	0.062
+ * chr6	29942525	13	7	0	0.063
+ * chr6	29942547	36	0	0	0.077
  * </pre>
  *
  * <p>
@@ -99,35 +93,22 @@ import java.util.List;
  * AF of 0.2 or less. Likewise, the default minimum population AF ({@code --minimum-population-allele-frequency}
  * or {@code -min-af}) is set to 0.01, which limits the sites the tool considers to those in the variants resource
  * file that have AF of 0.01 or more.  {@link CalculateContamination} accepts the same arguments, so one can collect
- * a wider range of sites here, for example to use as allelic counts for ModelSegments via
- * {@link GatherPileupSummaries}, and restrict the contamination estimate to the usual range there.
+ * a wider range of sites here and restrict the contamination estimate to the usual range there.
  * </p>
- *
- * <p>
- * By default the output omits sites with no reads.  With {@code --include-uncovered-sites} it includes them with
- * counts of zero, so that samples run with the same variants and intervals have exactly the same sites, as ModelSegments
- * requires of a case sample and its matched normal.  {@link CalculateContamination} ignores sites with low coverage
- * in any case.  The tool then visits every position in the intervals, whether or not reads cover it, so the intervals
- * should be the variants themselves, as in the examples above, not broad intervals such as whole chromosomes or exome
- * targets.  To restrict the sites to other intervals as well, intersect them with the variants, as the Mutect2 WDL does:
- * </p>
- *
- * <pre>
- * gatk GetPileupSummaries \
- *   -I tumor.bam \
- *   -V common_biallelic.vcf.gz \
- *   -L common_biallelic.vcf.gz \
- *   -L exome.interval_list \
- *   --interval-set-rule INTERSECTION \
- *   --include-uncovered-sites \
- *   -O pileups.table
- * </pre>
  *
  * <p>
  * Finally for those using mappers other than bwa mem or dragen-os, {@code --minimum-mapping-quality} threshold is
  * set to 50, which limits the usable reads that tool considers for generating pileups. Certain mappers are known to
  * assign scores less that this threshold even for the unique mappings. If you observe all empty results in your
  * summary file please adjust the {@code --minimum-mapping-quality} parameter according to your input files.
+ * </p>
+ *
+ * <p>
+ * Mutect2 can tabulate the same pileup summaries for its tumor and normal while it calls variants, saving a pass over the
+ * reads, with {@code --common-variants-for-pileup-summaries} and {@code --tumor-pileup-summaries} or
+ * {@code --normal-pileup-summaries}.  It applies this tool's read filters to the reads that Mutect2 keeps, so its counts can
+ * be slightly lower: Mutect2 also downsamples reads that start at the same position, filters reads shorter than 30 bases, and
+ * clips artifacts near inverted tandem repeats.
  * </p>
  *
  */
@@ -142,11 +123,10 @@ public class GetPileupSummaries extends LocusWalker {
     public static final String MIN_SITE_AF_LONG_NAME = "minimum-population-allele-frequency";
     public static final String MAX_SITE_AF_SHORT_NAME = "max-af";
     public static final String MIN_SITE_AF_SHORT_NAME = "min-af";
-    public static final String INCLUDE_UNCOVERED_SITES_LONG_NAME = "include-uncovered-sites";
 
-    private static final double DEFAULT_MIN_POPULATION_AF = 0.01;
-    private static final double DEFAULT_MAX_POPULATION_AF = 0.2;
-    private static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 50;
+    public static final double DEFAULT_MIN_POPULATION_AF = 0.01;
+    public static final double DEFAULT_MAX_POPULATION_AF = 0.2;
+    public static final int DEFAULT_MINIMUM_MAPPING_QUALITY = 50;
 
     @Argument(fullName = StandardArgumentDefinitions.OUTPUT_LONG_NAME,
             shortName = StandardArgumentDefinitions.OUTPUT_SHORT_NAME,
@@ -166,16 +146,7 @@ public class GetPileupSummaries extends LocusWalker {
             doc = "Maximum population allele frequency of sites to consider.", optional = true)
     private double maxPopulationAlleleFrequency = DEFAULT_MAX_POPULATION_AF;
 
-    @Argument(fullName = INCLUDE_UNCOVERED_SITES_LONG_NAME,
-            doc = "Include sites with no reads, with counts of zero, so that samples run with the same variants and intervals have the same sites.  " +
-                    "The tool then visits every position in the intervals, so pass the variants as intervals too (-L), intersected with any " +
-                    "other intervals by --interval-set-rule INTERSECTION.", optional = true)
-    private boolean includeUncoveredSites = false;
-
-    private boolean sawVariantsWithoutAlleleFrequency = false;
-    private boolean sawVariantsWithAlleleFrequency = false;
-
-    PileupSummary.PileupSummaryTableWriter writer;
+    private PileupSummaryCollector collector;
 
     @Override
     public boolean requiresReads() {
@@ -198,14 +169,16 @@ public class GetPileupSummaries extends LocusWalker {
     }
 
     @Override
-    public boolean emitEmptyLoci() {
-        return includeUncoveredSites;
+    public List<ReadFilter> getDefaultReadFilters() {
+        return makeDefaultReadFilters(DEFAULT_MINIMUM_MAPPING_QUALITY);
     }
 
-    @Override
-    public List<ReadFilter> getDefaultReadFilters() {
+    /**
+     * The default read filters of this tool, which Mutect2 also applies to the reads of its pileup summaries
+     */
+    public static List<ReadFilter> makeDefaultReadFilters(final int minimumMappingQuality) {
         final List<ReadFilter> filters = new ArrayList<>();
-        filters.add(new MappingQualityReadFilter(DEFAULT_MINIMUM_MAPPING_QUALITY));
+        filters.add(new MappingQualityReadFilter(minimumMappingQuality));
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_AVAILABLE);
         filters.add(ReadFilterLibrary.MAPPING_QUALITY_NOT_ZERO);
         filters.add(ReadFilterLibrary.MAPPED);
@@ -221,71 +194,29 @@ public class GetPileupSummaries extends LocusWalker {
 
     @Override
     public void onTraversalStart() {
-        final boolean alleleFrequencyInHeader = ((VCFHeader) getHeaderForFeatures(variants)).getInfoHeaderLines().stream()
-                .anyMatch(line -> line.getID().equals(VCFConstants.ALLELE_FREQUENCY_KEY));
-        if (!alleleFrequencyInHeader) {
-            throw new UserException.BadInput("Population vcf does not have an allele frequency (AF) info field in its header.");
-        }
+        PileupSummaryCollector.validateHeader((VCFHeader) getHeaderForFeatures(variants));
 
-        try {
-            writer = new PileupSummary.PileupSummaryTableWriter(IOUtils.fileToPath(outputTable));
-            final String sampleName = ReadUtils.getSamplesFromHeader(getHeaderForReads()).stream().findFirst().get();
-            writer.writeMetadata(TableUtils.SAMPLE_METADATA_TAG, sampleName);
-        } catch (IOException ex) {
-            throw new UserException.CouldNotCreateOutputFile(outputTable, ex);
-        }
-
+        // the engine has already filtered the reads, and the table counts the reads of every sample under the first sample's name
+        collector = new PileupSummaryCollector(variants, minPopulationAlleleFrequency, maxPopulationAlleleFrequency);
+        final String sampleName = ReadUtils.getSamplesFromHeader(getHeaderForReads()).stream().findFirst().get();
+        collector.addTable(outputTable, sampleName, read -> true);
     }
 
     @Override
     public void apply(AlignmentContext alignmentContext, ReferenceContext referenceContext, FeatureContext featureContext) {
-        final List<VariantContext> vcs = featureContext.getValues(variants);
-        if (vcs.isEmpty()) {
-            return;
-        }
-        final VariantContext vc = vcs.get(0);
-
-        if ( vc.isBiallelic() && vc.isSNP() && alleleFrequencyInRange(vc) ) {
-            final ReadPileup pileup = alignmentContext.getBasePileup();
-            try {
-                writer.writeRecord(new PileupSummary(vc, pileup));
-            } catch (final IOException ex) {
-                throw new UserException(String.format("Encountered an IO exception while writing to %s", outputTable));
-            }
-        }
+        collector.process(alignmentContext, featureContext);
     }
 
     @Override
     public Object onTraversalSuccess() {
-        if (sawVariantsWithoutAlleleFrequency && !sawVariantsWithAlleleFrequency) {
-            throw new UserException.BadInput("No variants in population vcf had an allele frequency (AF) field.");
-        }
-
+        collector.validateAlleleFrequencies();
         return "SUCCESS";
     }
 
     @Override
     public void closeTool() {
-        try {
-            if (writer != null) {
-                writer.close();
-            }
-        } catch (IOException ex) {
-            throw new UserException(String.format("Encountered an IO exception while closing %s", outputTable));
-        }
-    }
-
-    private boolean alleleFrequencyInRange(final VariantContext vc) {
-        if (!vc.hasAttribute(VCFConstants.ALLELE_FREQUENCY_KEY)) {
-            if (!sawVariantsWithoutAlleleFrequency) {
-                logger.warn(String.format("Variant context at %s:%d lacks allele frequency (AF) field.", vc.getContig(), vc.getStart()));
-                sawVariantsWithoutAlleleFrequency = true;
-            }
-            return false;
-        } else {
-            sawVariantsWithAlleleFrequency = true;
-            final double alleleFrequency = vc.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, -1.0);
-            return minPopulationAlleleFrequency < alleleFrequency && alleleFrequency < maxPopulationAlleleFrequency;
+        if (collector != null) {
+            collector.close();
         }
     }
 }
