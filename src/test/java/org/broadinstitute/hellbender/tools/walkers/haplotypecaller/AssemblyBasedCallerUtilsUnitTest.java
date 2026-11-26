@@ -4,6 +4,7 @@ import com.google.common.collect.Maps;
 import htsjdk.samtools.*;
 import htsjdk.samtools.util.Locatable;
 import htsjdk.variant.variantcontext.*;
+import htsjdk.variant.vcf.VCFConstants;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.mutable.MutableInt;
 import org.apache.commons.lang3.tuple.Pair;
@@ -28,6 +29,7 @@ import org.testng.Assert;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -1126,6 +1128,53 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
             Assert.assertEquals(actualPhasedCalls.get(i).getSource(), expectedPhasedCalls.get(i).getSource());
         }
 
+    }
+
+    @Test
+    public void testPhaseCallsWithTwoSharedUpstreamSnps() {
+        final String contig = "20";
+        final Allele refC = Allele.create("C", true);
+        final Allele refT = Allele.create("T", true);
+        final Allele refDeletion = Allele.create("AGTCCT", true);
+        final Allele altA = Allele.create("A");
+        final Allele altG = Allele.create("G");
+
+        final VariantContext firstSharedSnp = new VariantContextBuilder().chr(contig).start(5).stop(5)
+                .alleles(List.of(refC, altA)).genotypes(GenotypeBuilder.create("sample", List.of(altA, altA))).make();
+        final VariantContext secondSharedSnp = new VariantContextBuilder().chr(contig).start(9).stop(9)
+                .alleles(List.of(refT, altG)).genotypes(GenotypeBuilder.create("sample", List.of(altG, altG))).make();
+        final VariantContext deletion = new VariantContextBuilder().chr(contig).start(15).stop(20)
+                .alleles(List.of(refDeletion, altA)).genotypes(GenotypeBuilder.create("sample", List.of(refDeletion, altA))).make();
+        final VariantContext spannedSnp = new VariantContextBuilder().chr(contig).start(18).stop(18)
+                .alleles(List.of(refC, altG, Allele.SPAN_DEL))
+                .genotypes(GenotypeBuilder.create("sample", List.of(altG, Allele.SPAN_DEL))).make();
+        final List<VariantContext> calls = List.of(firstSharedSnp, secondSharedSnp, deletion, spannedSnp);
+
+        // Both haplotypes carry the upstream SNPs. Only the intact copy carries the SNP inside the deletion.
+        final Haplotype deleted = new Haplotype("GTACACTGGGCTATAGTGAACTGGTAC".getBytes(StandardCharsets.US_ASCII));
+        deleted.setEventMap(EventMap.of(vcToEvent(firstSharedSnp), vcToEvent(secondSharedSnp), vcToEvent(deletion)));
+        final Haplotype intact = new Haplotype("GTACACTGGGCTATAGTGCTGTGAACTGGTAC".getBytes(StandardCharsets.US_ASCII));
+        intact.setEventMap(EventMap.of(vcToEvent(firstSharedSnp), vcToEvent(secondSharedSnp),
+                new Event(contig, 18, refC, altG)));
+
+        final List<VariantContext> phased = phaseCalls(calls, Set.of(deleted, intact));
+        Assert.assertEquals(phased.size(), calls.size());
+        for (int i = 0; i < calls.size(); i++) {
+            Assert.assertEquals(phased.get(i).getGenotype(0).getAlleles().stream().sorted().toList(),
+                    calls.get(i).getGenotype(0).getAlleles().stream().sorted().toList(),
+                    "Called alleles and dosage at " + calls.get(i).getStart());
+        }
+
+        final Genotype phasedDeletion = phased.get(2).getGenotype(0);
+        final Genotype phasedSnp = phased.get(3).getGenotype(0);
+        Assert.assertTrue(phasedDeletion.isPhased() && phasedSnp.isPhased(), "Both calls must be phased");
+        Assert.assertTrue(phasedDeletion.hasExtendedAttribute(VCFConstants.PHASE_SET_KEY));
+        Assert.assertEquals(phasedSnp.getExtendedAttribute(VCFConstants.PHASE_SET_KEY),
+                phasedDeletion.getExtendedAttribute(VCFConstants.PHASE_SET_KEY), "Calls must share a phase set");
+        final int deletionSlot = phasedDeletion.getAlleles().indexOf(altA);
+        final int starSlot = phasedSnp.getAlleles().indexOf(Allele.SPAN_DEL);
+        Assert.assertTrue(deletionSlot >= 0 && starSlot >= 0, "Both the deletion and the spanning-deletion allele must be called");
+        Assert.assertEquals(starSlot, deletionSlot, "The deletion and its spanning-deletion allele must be on the same haplotype");
     }
 
     @Test
