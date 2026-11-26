@@ -490,6 +490,9 @@ public final class AssemblyResultSet {
      * @throws NullPointerException if {@code logger} is {@code null}.
      */
     public void debugDump(final Logger logger) {
+        if (!logger.isDebugEnabled()) {
+            return;
+        }
         final StringWriter sw = new StringWriter();
         final PrintWriter pw = new PrintWriter(sw);
         debugDump(pw);

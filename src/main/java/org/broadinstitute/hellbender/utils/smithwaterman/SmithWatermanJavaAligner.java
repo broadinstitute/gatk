@@ -1,5 +1,6 @@
 package org.broadinstitute.hellbender.utils.smithwaterman;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.Lists;
 import htsjdk.samtools.Cigar;
 import htsjdk.samtools.CigarElement;
@@ -60,8 +61,6 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
     public SmithWatermanAlignment align(final byte[] reference, final byte[] alternate, final SWParameters parameters, final SWOverhangStrategy overhangStrategy) {
         long startTime = System.nanoTime();
 
-        new String(reference);
-
         if ( reference == null || reference.length == 0 || alternate == null || alternate.length == 0 ) {
             throw new IllegalArgumentException("Non-null, non-empty sequences are required for the Smith-Waterman calculation");
         }
@@ -76,25 +75,81 @@ public final class SmithWatermanJavaAligner implements SmithWatermanAligner {
             matchIndex = Utils.lastIndexOf(reference, alternate);
         }
 
-        final SmithWatermanAlignment alignmentResult;
-
-        if (matchIndex != -1) {
-            // generate the alignment result when the substring search was successful
-            alignmentResult = new SWPairwiseAlignmentResult(new Cigar(Collections.singletonList(new CigarElement(alternate.length, CigarOperator.M))), matchIndex);
+        // failing that, avoid it if the alternate matches somewhere in the reference with a single mismatch, which with
+        // the SOFTCLIP strategy and suitable parameters Smith-Waterman would find
+        if (matchIndex == -1 && overhangStrategy == SWOverhangStrategy.SOFTCLIP) {
+            matchIndex = lastIndexOfOneMismatchAlignment(reference, alternate, parameters);
         }
-        else {
-            // run full Smith-Waterman
-            final int n = reference.length+1;
-            final int m = alternate.length+1;
-            final int[][] sw = new int[n][m];
-            final int[][] btrack=new int[n][m];
 
-            calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
-            alignmentResult = calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
-        }
+        final SmithWatermanAlignment alignmentResult = matchIndex != -1 ?
+                new SWPairwiseAlignmentResult(new Cigar(Collections.singletonList(new CigarElement(alternate.length, CigarOperator.M))), matchIndex) :
+                alignWithoutShortcuts(reference, alternate, parameters, overhangStrategy);
 
         totalComputeTime += System.nanoTime() - startTime;
         return alignmentResult;
+    }
+
+    /**
+     * Full Smith-Waterman, without the shortcuts of {@link #align}
+     */
+    @VisibleForTesting
+    static SmithWatermanAlignment alignWithoutShortcuts(final byte[] reference, final byte[] alternate, final SWParameters parameters,
+                                                        final SWOverhangStrategy overhangStrategy) {
+        final int n = reference.length+1;
+        final int m = alternate.length+1;
+        final int[][] sw = new int[n][m];
+        final int[][] btrack=new int[n][m];
+
+        calculateMatrix(reference, alternate, sw, btrack, overhangStrategy, parameters);
+        return calculateCigar(sw, btrack, overhangStrategy); // length of the segment (continuous matches, insertions or deletions)
+    }
+
+    /**
+     * The offset of the last placement of the whole alternate within the reference with exactly one mismatch, if that is the
+     * alignment that Smith-Waterman with the {@link SWOverhangStrategy#SOFTCLIP} strategy finds, otherwise -1.  The
+     * alternate must have no exact match in the reference.
+     *
+     * Such a placement of n bases scores (n - 1) * match + mismatch.  If opening a gap costs more than the difference
+     * between a match and a mismatch, and extending a gap costs nothing or more, every alignment with a gap scores less:
+     * one with a deletion at most n * match + gapOpen, and one with an insertion less still.  So does every other
+     * placement with mismatches.  With SOFTCLIP the alternate can be clipped only where it overhangs the start or end of
+     * the reference, and clipping c bases of an otherwise exact match scores (n - c) * match, which ties or beats one
+     * mismatch for c up to (match - mismatch) / match.  If such an alignment exists this returns -1, and otherwise the
+     * best alignments are the placements with one mismatch.  {@link #calculateCigar} breaks ties in favor of the
+     * alignment ending furthest along the reference, ie the last placement.
+     */
+    @VisibleForTesting
+    static int lastIndexOfOneMismatchAlignment(final byte[] reference, final byte[] alternate, final SWParameters parameters) {
+        final int match = parameters.getMatchValue();
+        final int mismatch = parameters.getMismatchPenalty();
+        final int refLength = reference.length;
+        final int altLength = alternate.length;
+        if (match <= 0 || mismatch >= 0 || parameters.getGapExtendPenalty() > 0 ||
+                parameters.getGapOpenPenalty() >= mismatch - match || altLength > refLength) {
+            return -1;
+        }
+
+        // alignments that soft-clip overhanging bases from an otherwise exact match, at the start or end of the reference
+        final int maxClip = Math.min((match - mismatch) / match, altLength - 1);
+        for (int clip = 1; clip <= maxClip; clip++) {
+            if (Arrays.equals(alternate, clip, altLength, reference, 0, altLength - clip) ||
+                    Arrays.equals(alternate, 0, altLength - clip, reference, refLength - altLength + clip, refLength)) {
+                return -1;
+            }
+        }
+
+        for (int offset = refLength - altLength; offset >= 0; offset--) {
+            int mismatches = 0;
+            for (int n = 0; n < altLength && mismatches < 2; n++) {
+                if (reference[offset + n] != alternate[n]) {
+                    mismatches++;
+                }
+            }
+            if (mismatches == 1) {
+                return offset;
+            }
+        }
+        return -1;
     }
 
     /**

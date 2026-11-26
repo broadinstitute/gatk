@@ -2,7 +2,6 @@ package org.broadinstitute.hellbender.tools.walkers.haplotypecaller;
 
 import com.google.common.annotations.VisibleForTesting;
 import htsjdk.samtools.SAMFileHeader;
-import org.apache.commons.lang3.tuple.Pair;
 import org.broadinstitute.hellbender.utils.QualityUtils;
 import org.broadinstitute.hellbender.utils.Utils;
 import org.broadinstitute.hellbender.utils.genotyper.AlleleLikelihoods;
@@ -189,10 +188,17 @@ public interface ReadLikelihoodCalculationEngine extends AutoCloseable {
      */
     double DEFAULT_EXPECTED_ERROR_RATE_PER_BASE = 0.02;
 
+    /**
+     * The length of the tandem repeat at an offset of the read's bases, combining the repeats of the best repeat unit
+     * ending at the offset and of the one starting after it, at most {@link #MAX_REPEAT_LENGTH}.  Repeat units are
+     * compared in place in the read's bases rather than copied, since this runs for every base of every read.
+     */
     @VisibleForTesting
-    static Pair<byte[], Integer> findTandemRepeatUnits(byte[] readBases, int offset) {
+    static int findTandemRepeatLength(final byte[] readBases, final int offset) {
+        // the backward repeat unit, ending at the offset, is readBases[bwStart, bwStart + bwLength)
         int maxBW = 0;
-        byte[] bestBWRepeatUnit = {readBases[offset]};
+        int bwStart = offset;
+        int bwLength = 1;
         for (int str = 1; str <= MAX_STR_UNIT_LENGTH; str++) {
             // fix repeat unit length
             //edge case: if candidate tandem repeat unit falls beyond edge of read, skip
@@ -203,15 +209,17 @@ public interface ReadLikelihoodCalculationEngine extends AutoCloseable {
             // get backward repeat unit and # repeats
             maxBW = GATKVariantContextUtils.findNumberOfRepetitions(readBases, offset - str + 1,  str , readBases, 0, offset + 1, false);
             if (maxBW > 1) {
-                bestBWRepeatUnit = Arrays.copyOfRange(readBases, offset - str + 1, offset + 1);
+                bwStart = offset - str + 1;
+                bwLength = str;
                 break;
             }
         }
-        byte[] bestRepeatUnit = bestBWRepeatUnit;
         int maxRL = maxBW;
 
         if (offset < readBases.length-1) {
-            byte[] bestFWRepeatUnit = {readBases[offset+1]};
+            // the forward repeat unit, starting after the offset, is readBases[fwStart, fwStart + fwLength)
+            final int fwStart = offset + 1;
+            int fwLength = 1;
             int maxFW = 0;
 
             for (int str = 1; str <= MAX_STR_UNIT_LENGTH; str++) {
@@ -222,16 +230,15 @@ public interface ReadLikelihoodCalculationEngine extends AutoCloseable {
                 }
 
                 // get forward repeat unit and # repeats
-                maxFW = GATKVariantContextUtils.findNumberOfRepetitions(readBases, offset + 1, str, readBases, offset + 1, readBases.length-offset -1, true);
+                maxFW = GATKVariantContextUtils.findNumberOfRepetitions(readBases, fwStart, str, readBases, fwStart, readBases.length-offset -1, true);
                 if (maxFW > 1) {
-                    bestFWRepeatUnit = Arrays.copyOfRange(readBases, offset + 1, offset+str+1);
+                    fwLength = str;
                     break;
                 }
             }
             // if FW repeat unit = BW repeat unit it means we're in the middle of a tandem repeat - add FW and BW components
-            if (Arrays.equals(bestFWRepeatUnit, bestBWRepeatUnit)) {
+            if (Arrays.equals(readBases, fwStart, fwStart + fwLength, readBases, bwStart, bwStart + bwLength)) {
                 maxRL = maxBW + maxFW;
-                bestRepeatUnit = bestFWRepeatUnit; // arbitrary
             } else {
                 // tandem repeat starting forward from current offset.
                 // It could be the case that best BW unit was different from FW unit, but that BW still contains FW unit.
@@ -239,17 +246,11 @@ public interface ReadLikelihoodCalculationEngine extends AutoCloseable {
                 // but correct representation at that place might be (C)4.
                 // Hence, if the FW and BW units don't match, check if BW unit can still be a part of FW unit and add
                 // representations to total
-                final byte[] testString = Arrays.copyOfRange(readBases, 0, offset + 1);
-                maxBW = GATKVariantContextUtils.findNumberOfRepetitions(bestFWRepeatUnit, testString, false);
-                maxRL = maxFW + maxBW;
-                bestRepeatUnit = bestFWRepeatUnit;
+                maxRL = maxFW + GATKVariantContextUtils.findNumberOfRepetitions(readBases, fwStart, fwLength, readBases, 0, offset + 1, false);
             }
         }
 
-        if(maxRL > MAX_REPEAT_LENGTH) {
-            maxRL = MAX_REPEAT_LENGTH;
-        }
-        return Pair.of(bestRepeatUnit, maxRL);
+        return Math.min(maxRL, MAX_REPEAT_LENGTH);
     }
 
 
