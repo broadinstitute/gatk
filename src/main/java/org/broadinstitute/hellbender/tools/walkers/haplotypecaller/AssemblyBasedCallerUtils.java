@@ -853,16 +853,17 @@ public final class AssemblyBasedCallerUtils {
                         phaseSetMapping.put(call, Pair.of(uniqueCounter, PhaseGroup.PHASE_01));
                         phaseSetMapping.put(comp, Pair.of(uniqueCounter, PhaseGroup.PHASE_01));
 
-                        // if the call was on all alternate haps but the comp isn't, we need to narrow down the set of
-                        // alt haps we'll consider for further phasing other variants with the call
-                        callHaplotypesAvailableForPhasing.retainAll(haplotypesWithComp);
-
                         uniqueCounter++;
                     }
                     // otherwise it's part of an existing group so use that group's unique ID
                     else if ( ! phaseSetMapping.containsKey(comp) ) {
                         final Pair<Integer, PhaseGroup> callPhase = phaseSetMapping.get(call);
                         phaseSetMapping.put(comp, Pair.of(callPhase.getLeft(), callPhase.getRight()));
+                    }
+
+                    // Narrow a shared anchor only for a comparison in the same group and orientation.
+                    if ( callIsOnAllAltHaps && phaseSetMapping.get(call).equals(phaseSetMapping.get(comp)) ) {
+                        callHaplotypesAvailableForPhasing.retainAll(haplotypesWithComp);
                     }
                 }
                 // if the variants are apart on *all* alternate haplotypes, record that fact
