@@ -28,7 +28,11 @@ public class Mutect2ActivityProfile extends ActivityProfile {
     private static final int PADDING = 15;
 
     private final Mutect2AssemblyRegionArgumentCollection args;
-    private final Random rng = Utils.getRandomGenerator();
+    // The germline-cluster coin flips get a generator of their own.  The reservoir downsampler draws from
+    // Utils.getRandomGenerator() as reads arrive, so sharing it would make which reads are kept depend on when the
+    // traversal pulls reads relative to forming regions.
+    private static final long GERMLINE_CLUSTER_SEED = 47382911L;
+    private final Random rng = new Random(GERMLINE_CLUSTER_SEED);
 
     public Mutect2ActivityProfile(final Mutect2AssemblyRegionArgumentCollection args, final SAMFileHeader header) {
         // In this class maxProbPropagationDistance is interpreted as a maximum phasing distance.

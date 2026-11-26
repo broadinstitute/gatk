@@ -271,12 +271,15 @@ public final class Mutect2 extends AssemblyRegionWalker {
         return new MutectDownsampler(assemblyRegionArgs.maxReadsPerAlignmentStart, MTAC.maxSuspiciousReadsPerAlignmentStart, MTAC.downsamplingStride);
     }
 
+    /**
+     * Mutect2 decides whether loci are active from evidence that it accumulates one read at a time rather than from a
+     * pileup at each locus
+     */
     @Override
-    public AssemblyRegionEvaluator assemblyRegionEvaluator() { return m2Engine; }
-
-    @Override
-    public boolean shouldTrackPileupsForAssemblyRegions() {
-        return MTAC.pileupDetectionArgs.usePileupDetection;
+    protected Iterator<AssemblyRegion> makeAssemblyRegionIterator(final MultiIntervalLocalReadShard shard, final ReferenceDataSource reference,
+                                                                  final FeatureManager features) {
+        return new AssemblyRegionIterator(shard, getHeaderForReads(), assemblyRegionArgs, reads -> new Mutect2ActivityStates(reads,
+                shard.getIntervals(), getHeaderForReads(), reference, features, m2Engine, MTAC.pileupDetectionArgs.usePileupDetection));
     }
 
     @Override

@@ -7,6 +7,7 @@ import org.broadinstitute.hellbender.engine.filters.ReadFilter;
 import org.broadinstitute.hellbender.engine.filters.ReadFilterLibrary;
 import org.broadinstitute.hellbender.engine.filters.WellformedReadFilter;
 import org.broadinstitute.hellbender.engine.spark.AssemblyRegionArgumentCollection;
+import org.broadinstitute.hellbender.exceptions.GATKException;
 import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.utils.IGVUtils;
 import org.broadinstitute.hellbender.utils.IntervalUtils;
@@ -190,7 +191,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
     }
 
     /**
-     * Divide the given Shard up into active/inactive AssemblyRegions using the {@link #assemblyRegionEvaluator},
+     * Divide the given Shard up into active/inactive AssemblyRegions using {@link #makeAssemblyRegionIterator},
      * and send each region to the tool implementation for processing.
      *
      * @param shard MultiIntervalLocalReadShard to process
@@ -198,7 +199,7 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
      * @param features FeatureManager
      */
     private void processReadShard(MultiIntervalLocalReadShard shard, ReferenceDataSource reference, FeatureManager features ) {
-        final Iterator<AssemblyRegion> assemblyRegionIter = new AssemblyRegionIterator(shard, getHeaderForReads(), reference, features, assemblyRegionEvaluator(), assemblyRegionArgs, shouldTrackPileupsForAssemblyRegions());
+        final Iterator<AssemblyRegion> assemblyRegionIter = makeAssemblyRegionIterator(shard, reference, features);
 
         // Call into the tool implementation to process each assembly region from this shard.
         while ( assemblyRegionIter.hasNext() ) {
@@ -244,16 +245,38 @@ public abstract class AssemblyRegionWalker extends WalkerBase {
     }
 
     /**
-     * @return The evaluator to be used to determine whether each locus is active or not. Must be implemented by tool authors.
-     *         The results of this per-locus evaluator are used to determine the bounds of each active and inactive region.
+     * The active and inactive assembly regions of a shard, whose reads come filtered, transformed and downsampled.  By default
+     * an {@link AssemblyRegionIterator} finds them by evaluating the pileup at each locus with {@link #assemblyRegionEvaluator}.
+     * Tools that find them another way override this, and need not override {@link #assemblyRegionEvaluator} or
+     * {@link #shouldTrackPileupsForAssemblyRegions}.
+     *
+     * @param shard MultiIntervalLocalReadShard to process
+     * @param reference Reference data source
+     * @param features FeatureManager
      */
-    public abstract AssemblyRegionEvaluator assemblyRegionEvaluator();
+    protected Iterator<AssemblyRegion> makeAssemblyRegionIterator(final MultiIntervalLocalReadShard shard, final ReferenceDataSource reference,
+                                                                  final FeatureManager features) {
+        return new AssemblyRegionIterator(shard, getHeaderForReads(), reference, features, assemblyRegionEvaluator(), assemblyRegionArgs,
+                shouldTrackPileupsForAssemblyRegions());
+    }
+
+    /**
+     * @return The evaluator to be used to determine whether each locus is active or not. Must be implemented by tool authors
+     *         unless they override {@link #makeAssemblyRegionIterator}.  The results of this per-locus evaluator are used
+     *         to determine the bounds of each active and inactive region.
+     */
+    public AssemblyRegionEvaluator assemblyRegionEvaluator() {
+        throw new GATKException(getClass().getSimpleName() + " must override assemblyRegionEvaluator() or makeAssemblyRegionIterator()");
+    }
 
     /**
      * Allows implementing tools to decide whether pileups must be tracked and attached to assembly regions for later processing.
      * This is configurable for now in order to save on potential increases in memory consumption variant calling machinery.
+     * Only the default {@link #makeAssemblyRegionIterator} uses it.
      */
-    public abstract boolean shouldTrackPileupsForAssemblyRegions();
+    public boolean shouldTrackPileupsForAssemblyRegions() {
+        return false;
+    }
 
     /**
      * Process an individual AssemblyRegion. Must be implemented by tool authors.
