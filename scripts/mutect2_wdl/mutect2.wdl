@@ -6,40 +6,85 @@ version 1.0
 ## and performs additional filtering.
 ##
 ## Main requirements/expectations :
-## - One analysis-ready BAM file (and its index) for each sample
+## - One analysis-ready BAM or CRAM file for each sample, with its index beside it (see tumor_reads below)
 ##
 ## Description of inputs:
 ##
 ## ** Runtime **
 ## gatk_docker: docker image to use for GATK 4 Mutect2
-## preemptible: how many preemptions to tolerate before switching to a non-preemptible machine (on Google)
+## <task>.preemptible, eg M2.preemptible: each task's own number of preemptible VMs to try on Google before a regular
+##     one (see above the Runtime struct for the defaults)
 ## max_retries: how many times to retry failed tasks -- very important on the cloud when there are transient errors
+## <task>.mem, <task>.disk_space, eg Filter.mem: each task sizes its memory and disk from its inputs (see above the
+##     Runtime struct), and these override that: memory in MB (in GB for M2.mem), disk in GB
+## emergency_extra_disk: GB added to every task's disk, as a last resort for ill-behaved data
 ## gatk_override: (optional) local file or Google bucket path to a GATK 4 java jar file to be used instead of the GATK 4 jar
 ##                in the docker image.  This must be supplied when running in an environment that does not support docker
 ##                (e.g. SGE cluster on a Broad on-prem VM)
 ##
 ## ** Workflow options **
-## intervals: genomic intervals (will be used for scatter)
+## intervals: files of the genomic intervals to call, such as .interval_list or .bed files, or [] to call the whole
+##     genome.  Tasks give GATK each file with its own -L, and GATK takes the union of their intervals, which the
+##     workflow splits into scatter_count parts.  In a Terra configuration, an attribute expression such as
+##     workspace.intervals gives a one-element array.  (Earlier versions took a single, optional file.)
 ## scatter_count: number of parallel jobs to generate when scattering over intervals
 ## m2_extra_args, m2_extra_filtering_args: additional arguments for Mutect2 calling and filtering (optional)
 ## split_intervals_extra_args: additional arguments for splitting intervals before scattering (optional)
 ## run_orientation_bias_mixture_model_filter: (optional) if true, filter orientation bias sites with the read orientation artifact mixture model.
 ##
 ## ** Primary inputs **
-## ref_fasta, ref_fai, ref_dict: reference genome, index, and dictionary
-## tumor_reas, tumor_reads_index: BAM and index for the tumor sample
-## normal_reads, normal_reads_index: BAM and index for the normal sample
+## ref_fasta: reference genome FASTA.  Its companion files are not inputs: GATK finds them by name in the FASTA's directory
+##     and accepts no other names, so they must exist there under these names:
+##     - its index, the FASTA's path plus .fai
+##     - its sequence dictionary, the FASTA's path with its extension (.fasta, .fa, .fna, .fas or .txt, optionally
+##       followed by .gz) replaced by .dict
+##     - for a bgzipped FASTA (.gz), its block index, the FASTA's path plus .gzi
+##     For example Homo_sapiens_assembly38.fasta, Homo_sapiens_assembly38.fasta.fai and Homo_sapiens_assembly38.dict.
+##     The workflow passes these files to tasks along with the FASTA, so that backends that localize files put them
+##     beside it.  (Earlier versions took the index and dictionary as the inputs ref_fai and ref_dict.)
+## tumor_reads: the tumor sample's reads, as an array whose first element is a BAM or CRAM file and whose optional second
+##     element is its index, eg ["gs://bucket/tumor.bam"] or ["/data/tumor.bam", "/data/tumor.bai"].  Tasks use
+##     tumor_reads[0] as the reads, and take the whole array so that the index travels with them.  GATK finds the index
+##     only by name in the reads' directory, so it must be there under one of these names, whether or not the array
+##     includes it:
+##     - for x.bam: x.bai, x.bam.bai, x.csi or x.bam.csi
+##     - for x.cram: x.crai or x.cram.crai
+##     Whether to include the index depends on the backend:
+##     - On Terra and other Google Cloud backends, the tasks stream the reads from the bucket rather than localizing them,
+##       and GATK finds the index there, so the BAM or CRAM alone suffices.  In a Terra configuration, an attribute
+##       expression such as this.tumor_bam gives a one-element array, and [this.tumor_bam, this.tumor_bai] a two-element
+##       one.
+##     - On backends that localize files, such as a local Cromwell or a cluster with a shared filesystem, include the
+##       index, so that it is localized beside the reads.  Otherwise Mutect2 may fail for lack of an index.
+##     Including the index always works.  (Earlier versions took it as the separate input tumor_reads_index.)
+## normal_reads: the normal sample's reads, likewise, or [] for tumor-only calling.  In a Terra configuration,
+##     this.normal_bam or [this.normal_bam, this.normal_bai] gives [] if the attributes are unset.  (Earlier versions took
+##     the index as the separate input normal_reads_index, and the reads as an optional input that was left unset for
+##     tumor-only calling.)
 ##
-## ** Primary resources ** (optional but strongly recommended)
-## pon: optional panel of normals in VCF format containing probable technical artifacts (false positves)
-## germline_resource: optional database of known germline variants (see http://gnomad.broadinstitute.org/downloads)
+## ** Primary resources ** (optional but strongly recommended, so each must be given deliberately, if only as [] to go
+## without it)
+## pon: panel of normals in VCF format containing probable technical artifacts (false positives)
+## germline_resource: database of known germline variants with population allele frequencies (see
+##     http://gnomad.broadinstitute.org/downloads)
 ## common_variants_vcf: VCF of common variants with allele frequencies, at whose sites Mutect2 tabulates pileup summaries,
 ##                      for calculating contamination
 ##
-## ** VCF indices ** (usually unnecessary)
-## pon_idx, germline_resource_idx, common_variants_vcf_idx, etc: each VCF's index is assumed to be the VCF's path plus .tbi
-##     for a bgzipped VCF (.vcf.gz or .vcf.bgz) or .idx for a plain .vcf.  Specify an index only to override that, for
-##     example for an index with a non-standard extension.
+## ** Other VCFs ** (genuinely optional, so they may be left unset)
+## gga_vcf: alleles to force-call
+## permutect_training_dataset_truth_vcf, permutect_test_dataset_truth_vcf: truth VCFs that label the Permutect datasets
+##
+## ** VCFs and their indices **
+## Each VCF input above is an array of the VCF and, optionally, its index: [vcf] or [vcf, idx], or [] for none, eg
+##     ["gs://bucket/af-only-gnomad.hg38.vcf.gz"].  GATK finds a VCF's index only by name beside the VCF: the VCF's path
+##     plus .tbi for a bgzipped VCF (.vcf.gz or .vcf.bgz), or plus .idx for a plain .vcf, such as
+##     af-only-gnomad.hg38.vcf.gz.tbi.  Given [vcf], the workflow derives that path and passes the index to tasks along
+##     with the VCF, so that backends that localize files put it beside the VCF, while on Terra the tasks stream both.
+##     So [vcf] suffices on every backend, and an index given as the second element must be that same file.  In a Terra
+##     configuration, an attribute expression such as workspace.gnomad gives a one-element array, and [workspace.gnomad,
+##     workspace.gnomad_idx] a two-element one.  (Earlier versions took each index as a separate input, such as
+##     germline_resource_idx, and also accepted the former names gnomad and variants_for_contamination of
+##     germline_resource and common_variants_vcf.)
 ##
 ## ** Secondary resources ** (for optional tasks)
 ## realignment_index_bundle: resource for FilterAlignmentArtifacts, which runs if and only if it is specified.  Generated by BwaMemIndexImageCreator.
@@ -62,57 +107,56 @@ version 1.0
 ## pertaining to the included programs.
 
 
+# Every task but M2 runs on 1 CPU, since its tools are single-threaded.  Mutect2's native PairHMM can use more threads,
+# but a larger scatter_count is a cheaper way to speed up M2 than more CPUs per scatter.
+# Every task requests 4 GB of boot disk, beyond the 30 GB that Cromwell on GCP Batch adds for the OS and the docker image
+# (Terra records 42 GB for a request of 12).  That leaves room for the GATK and Permutect images, 2.4 and 3.9 GB
+# compressed, and tasks write their files to the working disk, not the boot disk.
+# Each task's preemptible input is how many preemptible (spot) VMs Google tries before a regular one: 3 for tasks that
+# take minutes, 2 for tasks that can take an hour or two, and 1 for M2, whose scatters can take hours on genomes and
+# hold up the workflow when they're preempted.
+# Each task sizes its memory and its disk from the sizes of its inputs, by rules fit to a benchmark on Terra in November
+# 2026 of exomes, genomes and FFPE samples, in which each JVM's heap after garbage collection and each disk's peak use
+# were logged.  The JVMs get the machine's memory less 500 MB, and a disk is at least 10 GB.  Every disk is an SSD: the
+# disks are small, an SSD localizes files several times faster than a standard disk of any size (half a minute against
+# 1.6 minutes for the 3.2 GB hg38 reference), and the price of a small SSD is a few percent of the VM's.  Backends other
+# than Google's ignore disk sizes and types.
 struct Runtime {
     String gatk_docker
     File? gatk_override
     Int max_retries
-    Int preemptible
-    Int cpu
-    Int machine_mem
-    Int command_mem
-    Int disk
-    Int boot_disk_size
+    # GB added to every disk
+    Int emergency_extra_disk
 }
 
 workflow Mutect2 {
     input {
         # basic inputs
-        File? intervals
+        # files of the genomic intervals to call, whose union the workflow calls, or [] for the whole genome
+        Array[File] intervals
         File? masked_intervals
+        # the reference FASTA, whose index and dictionary must be beside it under the names GATK expects (see the
+        # derivation of reference below)
         File ref_fasta
-        File ref_fai
-        File ref_dict
-        File tumor_reads
-        File tumor_reads_index
-        File? normal_reads
-        File? normal_reads_index
+        # The tumor's reads: a BAM or CRAM, optionally followed by its index, eg ["gs://bucket/tumor.bam"] on Terra or
+        # ["/data/tumor.bam", "/data/tumor.bai"] on a backend that localizes files, which needs the index.  The index must
+        # be beside the reads under a name GATK looks for, such as tumor.bai or tumor.bam.bai (see tumor_reads in the
+        # header).  Tasks use tumor_reads[0] as the reads.
+        Array[File]+ tumor_reads
+        # the normal's reads, likewise, or [] for tumor-only calling
+        Array[File] normal_reads
 
-        # VCFs: optional but usually recommended resources (germline_resource, pon, common_variants_vcf), alleles to
-        # force-call (gga_vcf), and truth VCFs for Permutect datasets
-        File? germline_resource
-        File? pon
-        File? gga_vcf
-        File? common_variants_vcf
-        File? permutect_training_dataset_truth_vcf
-        File? permutect_test_dataset_truth_vcf
-
-        # Indices of the VCFs above, usually unnecessary on both local and cloud backends.  Each VCF's index is assumed to
-        # be the VCF's path plus .tbi for a bgzipped VCF (.vcf.gz or .vcf.bgz) or .idx for a plain .vcf, and is passed to
-        # tasks along with the VCF.  Specify an index only to override that, for example for a non-standard extension.
-        File? germline_resource_idx
-        File? pon_idx
-        File? gga_vcf_idx
-        File? common_variants_vcf_idx
-        File? permutect_training_dataset_truth_vcf_idx
-        File? permutect_test_dataset_truth_vcf_idx
-
-        # DEPRECATED: the former names of germline_resource, germline_resource_idx, common_variants_vcf and
-        # common_variants_vcf_idx, kept so that existing configurations still work, and to be removed in a future release.
-        # Each is used only if the input that replaced it is not given.  WDL 1.0 has no formal deprecation annotation.
-        File? gnomad
-        File? gnomad_idx
-        File? variants_for_contamination
-        File? variants_for_contamination_idx
+        # VCFs, each an array of the VCF and, optionally, its index: [vcf] or [vcf, idx], or [] for none (see "VCFs and
+        # their indices" in the header).  These resources are optional but strongly recommended, so each must be given,
+        # if only as [] to go without it.
+        Array[File] germline_resource
+        Array[File] pon
+        Array[File] common_variants_vcf
+        # These are genuinely optional and may be left unset: alleles to force-call, and truth VCFs for Permutect
+        # datasets
+        Array[File]? gga_vcf
+        Array[File]? permutect_training_dataset_truth_vcf
+        Array[File]? permutect_test_dataset_truth_vcf
 
         # extra arguments
         String? m2_extra_args
@@ -146,84 +190,67 @@ workflow Mutect2 {
         File? gatk_override
         String basic_bash_docker = "ubuntu:16.04"
         Int scatter_count
-        Int preemptible = 2
+        # each task has its own preemptible input, and sizes its memory and disk (see above the Runtime struct)
         Int max_retries = 1
-        Int small_task_cpu = 2
-        Int small_task_mem = 4
-        Int small_task_disk = 100
-        Int boot_disk_size = 12
-        Int learn_read_orientation_mem = 8000
-        Int filter_alignment_artifacts_mem = 9000
         String? gcs_project_for_requester_pays
 
         # Use as a last resort to increase the disk given to every task in case of ill behaving data
         Int emergency_extra_disk = 0
     }
 
-    # the inputs, or their deprecated former names if they are not given
-    File? germline_resource_or_alias = if defined(germline_resource) then germline_resource else gnomad
-    File? germline_resource_idx_or_alias = if defined(germline_resource_idx) then germline_resource_idx else gnomad_idx
-    File? common_variants_vcf_or_alias = if defined(common_variants_vcf) then common_variants_vcf else variants_for_contamination
-    File? common_variants_vcf_idx_or_alias = if defined(common_variants_vcf_idx) then common_variants_vcf_idx else variants_for_contamination_idx
-
-    # Each VCF's index, unless given, is the VCF's path plus .tbi for a bgzipped VCF (.vcf.gz or .vcf.bgz) or .idx for a
-    # plain .vcf.  Tasks take both, so that a backend that localizes files puts each index beside its VCF, while on Terra
-    # both are streamed.  WDL has no user-defined functions, so we scatter this rule over the VCFs; a scatter without calls
-    # only evaluates declarations.  The arrays hold paths, with "" for a file that isn't given, because Cromwell can't
-    # evaluate an Array[File?] with undefined elements.  Keep the two arrays and the indices below in the same order.
-    Array[String] vcf_paths = ["~{germline_resource_or_alias}", "~{pon}", "~{gga_vcf}", "~{common_variants_vcf_or_alias}",
-        "~{permutect_training_dataset_truth_vcf}", "~{permutect_test_dataset_truth_vcf}"]
-    Array[String] given_vcf_idx_paths = ["~{germline_resource_idx_or_alias}", "~{pon_idx}", "~{gga_vcf_idx}", "~{common_variants_vcf_idx_or_alias}",
-        "~{permutect_training_dataset_truth_vcf_idx}", "~{permutect_test_dataset_truth_vcf_idx}"]
-    scatter (n in range(length(vcf_paths))) {
-        String vcf_idx_path = if given_vcf_idx_paths[n] != "" then given_vcf_idx_paths[n]
-            else if vcf_paths[n] == "" then ""
-            else vcf_paths[n] + (if sub(vcf_paths[n], "\\.b?gz$", "") != vcf_paths[n] then ".tbi" else ".idx")
+    # Each VCF with its index: [] without the VCF, the array as given if it has the index, and otherwise the VCF and the
+    # index where GATK looks for it, the VCF's path plus .tbi for a bgzipped VCF (.vcf.gz or .vcf.bgz) or .idx for a
+    # plain .vcf.  Tasks take both, so that a backend that localizes files puts the index beside the VCF, while on Terra
+    # both are streamed.  WDL has no user-defined functions, so we scatter this rule over the VCFs; a scatter without
+    # calls only evaluates declarations.  Keep given_vcfs and the indices into vcf_with_index below in the same order.
+    Array[Array[File]] given_vcfs = [germline_resource, pon, common_variants_vcf, select_first([gga_vcf, []]),
+        select_first([permutect_training_dataset_truth_vcf, []]), select_first([permutect_test_dataset_truth_vcf, []])]
+    scatter (given_vcf in given_vcfs) {
+        String vcf_path = if length(given_vcf) > 0 then "~{given_vcf[0]}" else ""
+        Array[File] vcf_with_index = if length(given_vcf) == 1
+            then [vcf_path, vcf_path + (if sub(vcf_path, "\\.b?gz$", "") != vcf_path then ".tbi" else ".idx")]
+            else given_vcf
     }
+    Array[File] germline_resource_with_index = vcf_with_index[0]
+    Array[File] pon_with_index = vcf_with_index[1]
+    Array[File] common_variants_vcf_with_index = vcf_with_index[2]
+    Array[File] gga_vcf_with_index = vcf_with_index[3]
+    Array[File] permutect_training_dataset_truth_vcf_with_index = vcf_with_index[4]
+    Array[File] permutect_test_dataset_truth_vcf_with_index = vcf_with_index[5]
 
-    # WDL 1.0 has no literal for an undefined optional, but a declaration inside a conditional is undefined outside it
-    # when the condition is false
-    if (false) {
-        File NONE = ""
-    }
-    File? germline_resource_idx_or_conventional = if vcf_idx_path[0] == "" then NONE else vcf_idx_path[0]
-    File? pon_idx_or_conventional = if vcf_idx_path[1] == "" then NONE else vcf_idx_path[1]
-    File? gga_vcf_idx_or_conventional = if vcf_idx_path[2] == "" then NONE else vcf_idx_path[2]
-    File? common_variants_vcf_idx_or_conventional = if vcf_idx_path[3] == "" then NONE else vcf_idx_path[3]
-    File? permutect_training_dataset_truth_vcf_idx_or_conventional = if vcf_idx_path[4] == "" then NONE else vcf_idx_path[4]
-    File? permutect_test_dataset_truth_vcf_idx_or_conventional = if vcf_idx_path[5] == "" then NONE else vcf_idx_path[5]
-
-    # Disk sizes used for dynamic sizing
-    Int ref_size = ceil(size(ref_fasta, "GB") + size(ref_dict, "GB") + size(ref_fai, "GB"))
-    Int tumor_reads_size = ceil(size(tumor_reads, "GB") + size(tumor_reads_index, "GB"))
-    Int germline_resource_vcf_size = if defined(germline_resource_or_alias) then ceil(size(germline_resource_or_alias, "GB")) else 0
-    Int normal_reads_size = if defined(normal_reads) then ceil(size(normal_reads, "GB") + size(normal_reads_index, "GB")) else 0
-
-    # This is added to every task as padding, should increase if systematically you need more disk for every call
-    Int disk_pad = 10 + emergency_extra_disk
+    # The reference FASTA and its companion files, which GATK finds by name in the FASTA's directory, accepting no other
+    # names:
+    # - its index, the FASTA's path plus .fai
+    # - its sequence dictionary, the FASTA's path with its extension (.fasta, .fa, .fna, .fas or .txt, optionally followed
+    #   by .gz) replaced by .dict
+    # - for a bgzipped FASTA (.gz), its block index, the FASTA's path plus .gzi
+    # Since only these names work, the workflow derives them rather than taking them as inputs.  Tasks take the files as
+    # one array, so that a backend that localizes files puts them beside the FASTA, while on Terra the tasks that mark the
+    # array localization_optional stream all of them from the bucket.  Keep the order: tasks use reference[0] as the
+    # FASTA, and MergeMutect2Outputs takes reference[2], the dictionary.
+    String ref_fasta_path = "~{ref_fasta}"
+    Array[String] ref_gzi = if sub(ref_fasta_path, "\\.gz$", "") != ref_fasta_path then [ref_fasta_path + ".gzi"] else []
+    Array[File] reference = flatten([[ref_fasta_path, ref_fasta_path + ".fai",
+        sub(ref_fasta_path, "\\.(fasta|fas|fa|fna|txt)(\\.gz)?$", "") + ".dict"], ref_gzi])
 
     Runtime standard_runtime = {"gatk_docker": gatk_docker, "gatk_override": gatk_override,
-            "max_retries": max_retries, "preemptible": preemptible, "cpu": small_task_cpu,
-            "machine_mem": small_task_mem * 1000, "command_mem": small_task_mem * 1000 - 500,
-            "disk": small_task_disk + disk_pad, "boot_disk_size": boot_disk_size}
+            "max_retries": max_retries, "emergency_extra_disk": emergency_extra_disk}
 
-    Int tumor_reads_size = ceil(size(tumor_reads, "GB") + size(tumor_reads_index, "GB"))
-    Int normal_reads_size = if defined(normal_reads) then ceil(size(normal_reads, "GB") + size(normal_reads_index, "GB")) else 0
+    # M2 localizes the reference and streams its other inputs, so its disk holds the reference and its outputs: at most
+    # 0.25 GB on Terra in November 2026, but for a bamout, which this bounds by the tumor reads in a scatter's share of
+    # the genome.  The workflow sizes M2's disk because the task doesn't know the scatter count.
+    Int m2_output_size = if make_bamout then ceil(size(tumor_reads, "GB")) / scatter_count + 1 else 1
+    Int m2_disk_size = ceil(size(reference, "GB")) + m2_output_size + 5 + emergency_extra_disk
 
-    Int m2_output_size = tumor_reads_size / scatter_count
-    #TODO: do we need to change this disk size now that NIO is always going to happen (for the google backend only)
-    Int m2_per_scatter_size = (tumor_reads_size + normal_reads_size) + ref_size + germline_resource_vcf_size + m2_output_size + disk_pad
-
-    Boolean calculate_contamination = defined(common_variants_vcf_or_alias) && !skip_filtering && !skip_calculate_contamination
+    Boolean calculate_contamination = length(common_variants_vcf) > 0 && !skip_filtering
+        && !skip_calculate_contamination
     Float pileups_max_af = select_first([pileups_max_population_af, contamination_max_population_af])
 
     call SplitIntervals {
         input:
             intervals = intervals,
             masked_intervals = masked_intervals,
-            ref_fasta = ref_fasta,
-            ref_fai = ref_fai,
-            ref_dict = ref_dict,
+            reference = reference,
             scatter_count = scatter_count,
             split_intervals_extra_args = split_intervals_extra_args,
             runtime_params = standard_runtime
@@ -233,52 +260,37 @@ workflow Mutect2 {
         call M2 {
             input:
                 intervals = subintervals,
-                ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
+                reference = reference,
                 tumor_reads = tumor_reads,
-                tumor_reads_index = tumor_reads_index,
                 normal_reads = normal_reads,
-                normal_reads_index = normal_reads_index,
-                pon = pon,
-                pon_idx = pon_idx_or_conventional,
-                germline_resource = germline_resource_or_alias,
-                germline_resource_idx = germline_resource_idx_or_conventional,
-                preemptible = preemptible,
+                pon = pon_with_index,
+                germline_resource = germline_resource_with_index,
                 max_retries = max_retries,
                 m2_extra_args = m2_extra_args,
-                common_variants_vcf = common_variants_vcf_or_alias,
-                common_variants_vcf_idx = common_variants_vcf_idx_or_conventional,
+                common_variants_vcf = common_variants_vcf_with_index,
                 pileups_min_population_af = pileups_min_population_af,
                 pileups_max_population_af = pileups_max_af,
                 dragstr_model = dragstr_model,
                 make_bamout = make_bamout,
                 run_ob_filter = run_orientation_bias_mixture_model_filter,
                 compress_vcfs = compress_vcfs,
-                gga_vcf = gga_vcf,
-                gga_vcf_idx = gga_vcf_idx_or_conventional,
+                gga_vcf = gga_vcf_with_index,
                 make_permutect_training_dataset = make_permutect_training_dataset,
                 make_permutect_test_dataset = make_permutect_test_dataset,
-                permutect_training_dataset_truth_vcf = permutect_training_dataset_truth_vcf,
-                permutect_training_dataset_truth_vcf_idx = permutect_training_dataset_truth_vcf_idx_or_conventional,
-                permutect_test_dataset_truth_vcf = permutect_test_dataset_truth_vcf,
-                permutect_test_dataset_truth_vcf_idx = permutect_test_dataset_truth_vcf_idx_or_conventional,
+                permutect_training_dataset_truth_vcf = permutect_training_dataset_truth_vcf_with_index,
+                permutect_test_dataset_truth_vcf = permutect_test_dataset_truth_vcf_with_index,
                 gatk_override = gatk_override,
                 gatk_docker = gatk_docker,
-                disk_space = m2_per_scatter_size,
+                disk_space = m2_disk_size,
                 gcs_project_for_requester_pays = gcs_project_for_requester_pays
         }
     }
-
-    Int merged_vcf_size = ceil(size(M2.unfiltered_vcf, "GB"))
-    Int merged_bamout_size = ceil(size(M2.output_bamOut, "GB"))
 
     if (run_orientation_bias_mixture_model_filter && (!skip_filtering)) {
         call LearnReadOrientationModel {
             input:
                 f1r2_tar_gz = M2.f1r2_counts,
-                runtime_params = standard_runtime,
-                mem = learn_read_orientation_mem
+                runtime_params = standard_runtime
         }
     }
 
@@ -290,19 +302,15 @@ workflow Mutect2 {
             stats = M2.stats,
             tumor_pileups = flatten(M2.tumor_pileups),
             normal_pileups = flatten(M2.normal_pileups),
-            ref_dict = ref_dict,
+            ref_dict = reference[2],
             runtime_params = standard_runtime
     }
 
     if (make_bamout) {
         call MergeBamOuts {
             input:
-                ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
                 bam_outs = M2.output_bamOut,
-                runtime_params = standard_runtime,
-                disk_space = ceil(merged_bamout_size * 10) + disk_pad,
+                runtime_params = standard_runtime
         }
     }
 
@@ -323,7 +331,7 @@ workflow Mutect2 {
         call Concatenate as ConcatenatePermutectTrainingData {
             input:
                 input_files = M2.permutect_training_dataset,
-                gatk_docker = gatk_docker
+                runtime_params = standard_runtime
         }
     }
 
@@ -331,17 +339,14 @@ workflow Mutect2 {
         call Concatenate as ConcatenatePermutectTestData {
             input:
                 input_files = M2.permutect_test_dataset,
-                gatk_docker = gatk_docker
+                runtime_params = standard_runtime
         }
     }
 
     if (!skip_filtering) {
         call Filter {
             input:
-                ref_fasta = ref_fasta,
-                ref_fai = ref_fai,
-                ref_dict = ref_dict,
-                intervals = intervals,
+                reference = reference,
                 unfiltered_vcf = MergeMutect2Outputs.merged_vcf,
                 unfiltered_vcf_idx = MergeMutect2Outputs.merged_vcf_idx,
                 compress_vcfs = compress_vcfs,
@@ -350,25 +355,20 @@ workflow Mutect2 {
                 maf_segments = CalculateContamination.maf_segments,
                 artifact_priors_tar_gz = LearnReadOrientationModel.artifact_prior_table,
                 m2_extra_filtering_args = m2_extra_filtering_args,
-                runtime_params = standard_runtime,
-                disk_space = ceil(size(MergeMutect2Outputs.merged_vcf, "GB") * 4) + disk_pad
+                runtime_params = standard_runtime
         }
 
         if (defined(realignment_index_bundle)) {
             call FilterAlignmentArtifacts {
                 input:
-                    ref_fasta = ref_fasta,
-                    ref_fai = ref_fai,
-                    ref_dict = ref_dict,
+                    reference = reference,
                     reads = tumor_reads,
-                    reads_index = tumor_reads_index,
                     realignment_index_bundle = select_first([realignment_index_bundle]),
                     realignment_extra_args = realignment_extra_args,
                     compress_vcfs = compress_vcfs,
                     input_vcf = Filter.filtered_vcf,
                     input_vcf_idx = Filter.filtered_vcf_idx,
                     runtime_params = standard_runtime,
-                    mem = filter_alignment_artifacts_mem,
                     gcs_project_for_requester_pays = gcs_project_for_requester_pays
             }
         }
@@ -398,16 +398,31 @@ workflow Mutect2 {
 
 task SplitIntervals {
     input {
-      File? intervals
+      # files of genomic intervals, whose union the task splits, or none for the whole genome
+      Array[File] intervals
       File? masked_intervals
-      File ref_fasta
-      File ref_fai
-      File ref_dict
+      # the reference FASTA, then its .fai index, its .dict dictionary and, if it's bgzipped, its .gzi block index
+      Array[File] reference
       Int scatter_count
       String? split_intervals_extra_args
 
       # runtime
       Runtime runtime_params
+      Int preemptible = 3
+      Int? mem
+      Int? disk_space
+    }
+
+    # memory in MB and disk in GB, from the interval files (a heap of 320 MB for 17 MB of hg38 intervals)
+    Float intervals_mb = size(intervals, "MB") + size(masked_intervals, "MB")
+    Int machine_mem = select_first([mem, 1500 + ceil(30 * intervals_mb)])
+    Int disk_needed = ceil(3 * intervals_mb / 1000) + 5 + runtime_params.emergency_extra_disk
+    Int disk = select_first([disk_space, if disk_needed > 10 then disk_needed else 10])
+
+    # SplitIntervals needs only the reference's dictionary and index, so on Terra GATK streams them rather than the
+    # whole FASTA being copied to the disk
+    parameter_meta {
+      reference: {localization_optional: true}
     }
 
     command {
@@ -415,9 +430,9 @@ task SplitIntervals {
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
 
         mkdir interval-files
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" SplitIntervals \
-            -R ~{ref_fasta} \
-            ~{"-L " + intervals} \
+        gatk --java-options "-Xmx~{machine_mem - 500}m" SplitIntervals \
+            -R ~{reference[0]} \
+            ~{if length(intervals) > 0 then "-L " else ""}~{sep=" -L " intervals} \
             ~{"-XL " + masked_intervals} \
             -scatter ~{scatter_count} \
             -O interval-files \
@@ -427,12 +442,12 @@ task SplitIntervals {
 
     runtime {
         docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
-        memory: runtime_params.machine_mem + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
+        bootDiskSizeGb: 4
+        memory: machine_mem + " MB"
+        disks: "local-disk " + disk + " SSD"
+        preemptible: preemptible
         maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
+        cpu: 1
     }
 
     output {
@@ -443,25 +458,23 @@ task SplitIntervals {
 task M2 {
     input {
         File? intervals
-        File ref_fasta
-        File ref_fai
-        File ref_dict
-        File tumor_reads
-        File tumor_reads_index
-        File? normal_reads
-        File? normal_reads_index
-        File? pon
-        File? pon_idx
-        File? germline_resource
-        File? germline_resource_idx
+        # the reference FASTA, then its .fai index, its .dict dictionary and, if it's bgzipped, its .gzi block index
+        Array[File] reference
+        # Each sample's reads: a BAM or CRAM, optionally followed by its index, which GATK finds by name beside the reads
+        # (see tumor_reads in the workflow's header).  The command uses tumor_reads[0] and normal_reads[0] as the reads,
+        # and there is no normal if normal_reads is empty.
+        Array[File]+ tumor_reads
+        Array[File] normal_reads
+        # Each VCF with its index, or [] for none (see "VCFs and their indices" in the workflow's header).  The command
+        # uses element 0 as the VCF, and GATK finds the index by name beside it.
+        Array[File] pon
+        Array[File] germline_resource
         String? m2_extra_args
         Boolean? make_bamout
         Boolean? run_ob_filter
         Boolean compress_vcfs
-        File? gga_vcf
-        File? gga_vcf_idx
-        File? common_variants_vcf
-        File? common_variants_vcf_idx
+        Array[File] gga_vcf
+        Array[File] common_variants_vcf
         Float pileups_min_population_af = 0.01
         Float pileups_max_population_af = 0.2
         File? dragstr_model
@@ -472,19 +485,21 @@ task M2 {
 
         Boolean make_permutect_training_dataset = false
         Boolean make_permutect_test_dataset = false
-        File? permutect_training_dataset_truth_vcf
-        File? permutect_training_dataset_truth_vcf_idx
-        File? permutect_test_dataset_truth_vcf
-        File? permutect_test_dataset_truth_vcf_idx
+        Array[File] permutect_training_dataset_truth_vcf
+        Array[File] permutect_test_dataset_truth_vcf
 
         # runtime
         String gatk_docker
         Int? mem
-        Int? preemptible
+        Int preemptible = 1
         Int? max_retries
         Int? disk_space
         Int? cpu
-        Boolean use_ssd = false
+        # The CPU platform Google gives the scatters.  On Terra in November 2026, Intel Ice Lake ran scatters in 0.51
+        # to 0.66 times the time on the default CPUs (2.3 GHz Haswell) for 0.97 to 1.03 times the cost: Cromwell gives
+        # it an N2 machine, with at least 2 CPUs, both of which the native PairHMM uses, and its AVX-512 instructions.
+        # "Intel Skylake" gives a 1-CPU N1 machine with AVX-512 at the default's price, for 0.8 to 0.9 times the time.
+        String cpu_platform = "Intel Ice Lake"
     }
 
     String output_vcf = "output" + if compress_vcfs then ".vcf.gz" else ".vcf"
@@ -492,10 +507,12 @@ task M2 {
 
     String output_stats = output_vcf + ".stats"
 
+    Boolean has_normal = length(normal_reads) > 0
+
     # Mutect2 tabulates the pileup summaries of the tumor and normal at the common variants as it traverses the reads
-    String pileup_summaries_args = if defined(common_variants_vcf) then
+    String pileup_summaries_args = if length(common_variants_vcf) > 0 then
         "--tumor-pileup-summaries tumor-pileups.table" +
-        (if defined(normal_reads) then " --normal-pileup-summaries normal-pileups.table" else "") +
+        (if has_normal then " --normal-pileup-summaries normal-pileups.table" else "") +
         " --pileup-summaries-min-population-af ~{pileups_min_population_af} --pileup-summaries-max-population-af ~{pileups_max_population_af}"
         else ""
 
@@ -503,25 +520,20 @@ task M2 {
     Int machine_mem = if defined(mem) then mem * 1000 else 3500
     Int command_mem = machine_mem - 500
 
+    # The reference is localized rather than streamed.  GATK reads a streamed FASTA one 128 kB request at a time, and
+    # on Terra in November 2026 that cost each scatter about 4 to 7 minutes of waiting, while localizing the reference
+    # to an SSD took half a minute.  Once GATK streams FASTAs efficiently, this may be reversed: mark the reference
+    # localization_optional again, leave it out of the disk size, and drop the SSD.
     parameter_meta{
         intervals: {localization_optional: true}
-        ref_fasta: {localization_optional: true}
-        ref_fai: {localization_optional: true}
-        ref_dict: {localization_optional: true}
         tumor_reads: {localization_optional: true}
-        tumor_reads_index: {localization_optional: true}
         normal_reads: {localization_optional: true}
-        normal_reads_index: {localization_optional: true}
         pon: {localization_optional: true}
-        pon_idx: {localization_optional: true}
         germline_resource: {localization_optional: true}
-        germline_resource_idx: {localization_optional: true}
         gga_vcf: {localization_optional: true}
-        gga_vcf_idx: {localization_optional: true}
         common_variants_vcf: {localization_optional: true}
-        common_variants_vcf_idx: {localization_optional: true}
         permutect_training_dataset_truth_vcf: {localization_optional: true}
-        permutect_training_dataset_truth_vcf_idx: {localization_optional: true}
+        permutect_test_dataset_truth_vcf: {localization_optional: true}
     }
 
     command <<<
@@ -537,45 +549,55 @@ task M2 {
         touch contigs.table
         touch read-groups.table
 
-        if [[ ! -z "~{normal_reads}" ]]; then
-            gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{ref_fasta} -I ~{normal_reads} -O normal_names.txt -encode \
+        # The normal's BAM or CRAM, or "" without a normal.  Cromwell evaluates every placeholder, even in a part of the
+        # script that doesn't run, so the condition keeps it from indexing an empty array.  (A declaration such as
+        # String normal = normal_reads[0] wouldn't do, because it would hold the path from before localization.)
+        normal_bam_or_cram="~{if has_normal then normal_reads[0] else ""}"
+
+        if [[ -n "$normal_bam_or_cram" ]]; then
+            gatk --java-options "-Xmx~{command_mem}m" GetSampleName -R ~{reference[0]} -I $normal_bam_or_cram -O normal_names.txt -encode \
             ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
             # add "-normal " to the start of each line and " " to the end, then remove newlines
             # to get -normal sample1 -normal sample2 etc
             normal_sample_line=`awk '{ print "-normal", $0 }' normal_names.txt | tr '\n' ' '`
+            normal_input="-I $normal_bam_or_cram"
         fi
 
+        # Each VCF array is empty or holds the VCF and its index, so an argument indexes it only if it isn't empty
         gatk --java-options "-Xmx~{command_mem}m" Mutect2 \
-            -R ~{ref_fasta} \
-            -I ~{tumor_reads} \
-            ~{"-I " + normal_reads} \
+            -R ~{reference[0]} \
+            -I ~{tumor_reads[0]} \
+            $normal_input \
             $normal_sample_line \
-            ~{"--germline-resource " + germline_resource} \
-            ~{"-pon " + pon} \
+            ~{if length(germline_resource) > 0 then "--germline-resource " + germline_resource[0] else ""} \
+            ~{if length(pon) > 0 then "-pon " + pon[0] else ""} \
             ~{"-L " + intervals} \
-            ~{"--alleles " + gga_vcf} \
+            ~{if length(gga_vcf) > 0 then "--alleles " + gga_vcf[0] else ""} \
             ~{"--dragstr-params-path " + dragstr_model} \
             -O "~{output_vcf}" \
             ~{true='--bam-output bamout.bam' false='' make_bamout} \
             ~{true='--f1r2-tar-gz f1r2.tar.gz' false='' run_ob_filter} \
-            ~{"--common-variants-for-pileup-summaries " + common_variants_vcf} \
+            ~{if length(common_variants_vcf) > 0 then "--common-variants-for-pileup-summaries " + common_variants_vcf[0] else ""} \
             ~{pileup_summaries_args} \
             ~{true='--permutect-training-dataset training-dataset.txt' false='' make_permutect_training_dataset} \
             ~{true='--permutect-test-dataset test-dataset.txt' false='' make_permutect_test_dataset} \
-            ~{"--permutect-training-truth " + permutect_training_dataset_truth_vcf} \
-            ~{"--permutect-test-truth " + permutect_test_dataset_truth_vcf} \
+            ~{if length(permutect_training_dataset_truth_vcf) > 0 then "--permutect-training-truth " + permutect_training_dataset_truth_vcf[0] else ""} \
+            ~{if length(permutect_test_dataset_truth_vcf) > 0 then "--permutect-test-truth " + permutect_test_dataset_truth_vcf[0] else ""} \
             ~{m2_extra_args} \
             ~{"--gcs-project-for-requester-pays " + gcs_project_for_requester_pays}
     >>>
 
     runtime {
         docker: gatk_docker
-        bootDiskSizeGb: 12
+        bootDiskSizeGb: 4
         memory: machine_mem + " MB"
-        disks: "local-disk " + select_first([disk_space, 100]) + if use_ssd then " SSD" else " HDD"
-        preemptible: select_first([preemptible, 10])
+        # an SSD, which localizes the reference (3.2 GB for hg38) in half a minute, against more than a minute and a
+        # half for a standard disk of any size
+        disks: "local-disk " + select_first([disk_space, 100]) + " SSD"
+        preemptible: preemptible
         maxRetries: select_first([max_retries, 0])
         cpu: select_first([cpu, 1])
+        cpuPlatform: cpu_platform
     }
 
     output {
@@ -606,10 +628,22 @@ task MergeMutect2Outputs {
       Array[File] normal_pileups = []
       File ref_dict
       Runtime runtime_params
+      Int preemptible = 3
+      Int? mem
+      Int? disk_space
     }
 
     String output_vcf = if compress_vcfs then "merged.vcf.gz" else "merged.vcf"
     String output_vcf_idx = output_vcf + if compress_vcfs then ".tbi" else ".idx"
+
+    # memory in MB and disk in GB, from the VCFs and pileups (for a genome's 0.3 to 0.4 GB of VCFs and 0.54 GB of
+    # pileups, a heap of 1 GB and 1.3 GB of disk)
+    Float vcfs_gb = size(input_vcfs, "GB") + size(input_vcf_indices, "GB")
+    Float pileups_gb = size(tumor_pileups, "GB") + size(normal_pileups, "GB")
+    Int machine_mem = select_first([mem, 2000 + ceil(2000 * (vcfs_gb + pileups_gb))])
+    Int command_mem = machine_mem - 500
+    Int disk_needed = ceil(2 * vcfs_gb + pileups_gb) + 5 + runtime_params.emergency_extra_disk
+    Int disk = select_first([disk_space, if disk_needed > 10 then disk_needed else 10])
 
     # GatherPileupSummaries streams the pileups from the bucket on Terra
     parameter_meta {
@@ -623,30 +657,30 @@ task MergeMutect2Outputs {
 
         # using MergeVcfs instead of GatherVcfs so we can create indices
         # WARNING 2015-10-28 15:01:48 GatherVcfs  Index creation not currently supported when gathering block compressed VCFs.
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" MergeVcfs -I ~{sep=' -I ' input_vcfs} -O ~{output_vcf}
+        gatk --java-options "-Xmx~{command_mem}m" MergeVcfs -I ~{sep=' -I ' input_vcfs} -O ~{output_vcf}
 
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" MergeMutectStats \
+        gatk --java-options "-Xmx~{command_mem}m" MergeMutectStats \
             -stats ~{sep=" -stats " stats} -O merged.stats
 
         if [ ~{length(tumor_pileups)} -gt 0 ]; then
-            gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherPileupSummaries \
+            gatk --java-options "-Xmx~{command_mem}m" GatherPileupSummaries \
                 --sequence-dictionary ~{ref_dict} -I ~{sep=' -I ' tumor_pileups} -O tumor-pileups.tsv
         fi
 
         if [ ~{length(normal_pileups)} -gt 0 ]; then
-            gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherPileupSummaries \
+            gatk --java-options "-Xmx~{command_mem}m" GatherPileupSummaries \
                 --sequence-dictionary ~{ref_dict} -I ~{sep=' -I ' normal_pileups} -O normal-pileups.tsv
         fi
     >>>
 
     runtime {
         docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
-        memory: runtime_params.machine_mem + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
+        bootDiskSizeGb: 4
+        memory: machine_mem + " MB"
+        disks: "local-disk " + disk + " SSD"
+        preemptible: preemptible
         maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
+        cpu: 1
     }
 
     output {
@@ -660,38 +694,45 @@ task MergeMutect2Outputs {
 
 task MergeBamOuts {
     input {
-      File ref_fasta
-      File ref_fai
-      File ref_dict
       Array[File]+ bam_outs
       Runtime runtime_params
-      Int? disk_space   #override to request more disk than default small task params
+      Int preemptible = 2
+      Int? mem
+      Int? disk_space
     }
+
+    # memory in MB, enough for the 500,000 reads SortSam keeps in memory, and disk in GB, from the bamouts (sorting
+    # used 4.2 times their size)
+    Int machine_mem = select_first([mem, 4000])
+    Int command_mem = machine_mem - 500
+    Int disk_needed = ceil(5 * size(bam_outs, "GB")) + 5 + runtime_params.emergency_extra_disk
+    Int disk = select_first([disk_space, if disk_needed > 10 then disk_needed else 10])
 
     command <<<
         # This command block assumes that there is at least one file in bam_outs.
         #  Do not call this task if len(bam_outs) == 0
         set -e
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" GatherBamFiles \
-            -I ~{sep=" -I " bam_outs} -O unsorted.out.bam -R ~{ref_fasta}
+        gatk --java-options "-Xmx~{command_mem}m" GatherBamFiles \
+            -I ~{sep=" -I " bam_outs} -O unsorted.out.bam
 
         # We must sort because adjacent scatters may have overlapping (padded) assembly regions, hence
-        # overlapping bamouts
+        # overlapping bamouts.  SortSam spills to the working disk, which is sized for it, rather than to /tmp on the
+        # boot disk.
 
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" SortSam -I unsorted.out.bam \
-            -O bamout.bam --SORT_ORDER coordinate -VALIDATION_STRINGENCY LENIENT
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" BuildBamIndex -I bamout.bam -VALIDATION_STRINGENCY LENIENT
+        gatk --java-options "-Xmx~{command_mem}m" SortSam -I unsorted.out.bam \
+            -O bamout.bam --SORT_ORDER coordinate -VALIDATION_STRINGENCY LENIENT --TMP_DIR .
+        gatk --java-options "-Xmx~{command_mem}m" BuildBamIndex -I bamout.bam -VALIDATION_STRINGENCY LENIENT
     >>>
 
     runtime {
         docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
-        memory: runtime_params.machine_mem + " MB"
-        disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " HDD"
-        preemptible: runtime_params.preemptible
+        bootDiskSizeGb: 4
+        memory: machine_mem + " MB"
+        disks: "local-disk " + disk + " SSD"
+        preemptible: preemptible
         maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
+        cpu: 1
     }
 
     output {
@@ -705,11 +746,18 @@ task LearnReadOrientationModel {
     input {
       Array[File] f1r2_tar_gz
       Runtime runtime_params
-      Int? mem  #override memory
+      Int preemptible = 3
+      Int? mem
+      Int? disk_space
     }
 
-    Int machine_mem = select_first([mem, runtime_params.machine_mem])
-    Int command_mem = machine_mem - 1000
+    # memory in MB and disk in GB, from the F1R2 counts (for a genome's 80 MB, a heap of 150 MB; they extract to 5 times
+    # their size)
+    Float f1r2_gb = size(f1r2_tar_gz, "GB")
+    Int machine_mem = select_first([mem, 2000 + ceil(4000 * f1r2_gb)])
+    Int command_mem = machine_mem - 500
+    Int disk_needed = ceil(6 * f1r2_gb) + 5 + runtime_params.emergency_extra_disk
+    Int disk = select_first([disk_space, if disk_needed > 10 then disk_needed else 10])
 
     command {
         set -e
@@ -722,12 +770,12 @@ task LearnReadOrientationModel {
 
     runtime {
         docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
+        bootDiskSizeGb: 4
         memory: machine_mem + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
+        disks: "local-disk " + disk + " SSD"
+        preemptible: preemptible
         maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
+        cpu: 1
     }
 
     output {
@@ -744,26 +792,37 @@ task CalculateContamination {
       Float min_population_af = 0.01
       Float max_population_af = 0.2
       Runtime runtime_params
+      Int preemptible = 3
+      Int? mem
+      Int? disk_space
     }
+
+    # memory in MB and disk in GB, from the pileups (for a genome's 0.43 to 0.54 GB of tumor and normal pileups, a heap
+    # of up to 2.2 GB)
+    Float pileups_gb = size(tumor_pileups, "GB") + size(normal_pileups, "GB")
+    Int machine_mem = select_first([mem, 2000 + ceil(10000 * pileups_gb)])
+    Int command_mem = machine_mem - 500
+    Int disk_needed = ceil(2 * pileups_gb) + 5 + runtime_params.emergency_extra_disk
+    Int disk = select_first([disk_space, if disk_needed > 10 then disk_needed else 10])
 
     command {
         set -e
 
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
 
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" CalculateContamination -I ~{tumor_pileups} \
+        gatk --java-options "-Xmx~{command_mem}m" CalculateContamination -I ~{tumor_pileups} \
         -O contamination.table --tumor-segmentation segments.table ~{"-matched " + normal_pileups} \
         --minimum-population-allele-frequency ~{min_population_af} --maximum-population-allele-frequency ~{max_population_af}
     }
 
     runtime {
         docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
-        memory: runtime_params.machine_mem + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
+        bootDiskSizeGb: 4
+        memory: machine_mem + " MB"
+        disks: "local-disk " + disk + " SSD"
+        preemptible: preemptible
         maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
+        cpu: 1
     }
 
     output {
@@ -774,10 +833,8 @@ task CalculateContamination {
 
 task Filter {
     input {
-        File? intervals
-        File ref_fasta
-        File ref_fai
-        File ref_dict
+        # the reference FASTA, then its .fai index, its .dict dictionary and, if it's bgzipped, its .gzi block index
+        Array[File] reference
         File unfiltered_vcf
         File unfiltered_vcf_idx
         Boolean compress_vcfs
@@ -788,25 +845,35 @@ task Filter {
         String? m2_extra_filtering_args
 
         Runtime runtime_params
+        Int preemptible = 2
+        Int? mem
         Int? disk_space
     }
+
+    # memory in MB, from the VCF (for a 0.4 GB VCF, a heap of 0.9 GB), and disk in GB, for the reference, the VCF and
+    # the outputs, twice its size
+    Float vcf_gb = size(unfiltered_vcf, "GB")
+    Int machine_mem = select_first([mem, 2000 + ceil(4000 * vcf_gb)])
+    Int command_mem = machine_mem - 500
+    Int disk_needed = ceil(size(reference, "GB") + 3 * vcf_gb) + 5 + runtime_params.emergency_extra_disk
+    Int disk = select_first([disk_space, if disk_needed > 10 then disk_needed else 10])
 
     String output_vcf = if compress_vcfs then "filtered.vcf.gz" else "filtered.vcf"
     String output_vcf_idx = output_vcf + if compress_vcfs then ".tbi" else ".idx"
 
-    parameter_meta{
-      ref_fasta: {localization_optional: true}
-      ref_fai: {localization_optional: true}
-      ref_dict: {localization_optional: true}
-    }
+    # The reference is localized rather than streamed.  With read orientation priors FilterMutectCalls reads reference
+    # bases around every SNV on each of its passes, and GATK reads a streamed FASTA one 128 kB request at a time: on
+    # Terra in November 2026 the task took 52 to 128 minutes per sample with its CPUs 11% to 18% busy.  This may be
+    # reversed (reference: {localization_optional: true}, the reference left out of the disk size and a standard disk)
+    # once GATK streams FASTAs efficiently.
 
     command {
         set -e
 
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
 
-        gatk --java-options "-Xmx~{runtime_params.command_mem}m" FilterMutectCalls -V ~{unfiltered_vcf} \
-            -R ~{ref_fasta} \
+        gatk --java-options "-Xmx~{command_mem}m" FilterMutectCalls -V ~{unfiltered_vcf} \
+            -R ~{reference[0]} \
             -O ~{output_vcf} \
             ~{"--contamination-table " + contamination_table} \
             ~{"--tumor-segmentation " + maf_segments} \
@@ -818,12 +885,12 @@ task Filter {
 
     runtime {
         docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
-        memory: runtime_params.machine_mem + " MB"
-        disks: "local-disk " + select_first([disk_space, runtime_params.disk]) + " HDD"
-        preemptible: runtime_params.preemptible
+        bootDiskSizeGb: 4
+        memory: machine_mem + " MB"
+        disks: "local-disk " + disk + " SSD"
+        preemptible: preemptible
         maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
+        cpu: 1
     }
 
     output {
@@ -835,35 +902,43 @@ task Filter {
 
 task FilterAlignmentArtifacts {
     input {
-      File ref_fasta
-      File ref_fai
-      File ref_dict
+      # the reference FASTA, then its .fai index, its .dict dictionary and, if it's bgzipped, its .gzi block index
+      Array[File] reference
       File input_vcf
       File input_vcf_idx
-      File reads
-      File reads_index
+      # the reads: a BAM or CRAM, which the command uses as reads[0], optionally followed by its index, which GATK finds
+      # by name beside the reads (see tumor_reads in the workflow's header)
+      Array[File]+ reads
       Boolean compress_vcfs
       File realignment_index_bundle
       String? realignment_extra_args
       String? gcs_project_for_requester_pays
       Runtime runtime_params
-      Int mem
+      Int preemptible = 2
+      Int? mem
+      Int? disk_space
     }
 
     String output_vcf = if compress_vcfs then "filtered.vcf.gz" else "filtered.vcf"
     String output_vcf_idx = output_vcf +  if compress_vcfs then ".tbi" else ".idx"
 
-    Int machine_mem = mem
-    Int command_mem = machine_mem - 500
+    # Memory in MB for the BWA-MEM index image, which BWA maps into memory outside the JVM's heap, and the heap (at most
+    # 0.6 GB), and disk in GB for the reference, the image and the output VCF, which is no bigger than the input VCF
+    Float image_gb = size(realignment_index_bundle, "GB")
+    Int machine_mem = select_first([mem, 3500 + ceil(1000 * image_gb)])
+    Int command_mem = machine_mem - ceil(1000 * image_gb) - 1000
+    Int disk_needed = ceil(size(reference, "GB") + image_gb + size(input_vcf, "GB")) + 5
+        + runtime_params.emergency_extra_disk
+    Int disk = select_first([disk_space, if disk_needed > 10 then disk_needed else 10])
 
+    # The reference is localized rather than streamed: FilterAlignmentArtifacts assembles around every variant, and
+    # GATK reads a streamed FASTA one 128 kB request at a time, so on Terra in November 2026 it spent about half its
+    # time waiting on exomes.  This may be reversed (localization_optional, the reference left out of the disk size
+    # and a standard disk) once GATK streams FASTAs efficiently.
     parameter_meta{
-      ref_fasta: {localization_optional: true}
-      ref_fai: {localization_optional: true}
-      ref_dict: {localization_optional: true}
       input_vcf: {localization_optional: true}
       input_vcf_idx: {localization_optional: true}
       reads: {localization_optional: true}
-      reads_index: {localization_optional: true}
     }
 
     command {
@@ -872,9 +947,9 @@ task FilterAlignmentArtifacts {
         export GATK_LOCAL_JAR=~{default="/root/gatk.jar" runtime_params.gatk_override}
 
         gatk --java-options "-Xmx~{command_mem}m" FilterAlignmentArtifacts \
-            -R ~{ref_fasta} \
+            -R ~{reference[0]} \
             -V ~{input_vcf} \
-            -I ~{reads} \
+            -I ~{reads[0]} \
             --bwa-mem-index-image ~{realignment_index_bundle} \
             ~{realignment_extra_args} \
             -O ~{output_vcf} \
@@ -883,12 +958,12 @@ task FilterAlignmentArtifacts {
 
     runtime {
         docker: runtime_params.gatk_docker
-        bootDiskSizeGb: runtime_params.boot_disk_size
+        bootDiskSizeGb: 4
         memory: machine_mem + " MB"
-        disks: "local-disk " + runtime_params.disk + " HDD"
-        preemptible: runtime_params.preemptible
+        disks: "local-disk " + disk + " SSD"
+        preemptible: preemptible
         maxRetries: runtime_params.max_retries
-        cpu: runtime_params.cpu
+        cpu: 1
     }
 
     output {
@@ -900,24 +975,29 @@ task FilterAlignmentArtifacts {
 task Concatenate {
     input {
         Array[File] input_files
+        Runtime runtime_params
+        Int preemptible = 3
         Int? mem
-        String gatk_docker
+        Int? disk_space
     }
 
-    Int machine_mem = if defined(mem) then mem * 1000 else 7000
+    # memory in MB, which cat hardly uses, and disk in GB for the files and their concatenation
+    Int machine_mem = select_first([mem, 2000])
+    Int disk_needed = ceil(2 * size(input_files, "GB")) + 5 + runtime_params.emergency_extra_disk
+    Int disk = select_first([disk_space, if disk_needed > 10 then disk_needed else 10])
 
     command {
         cat ~{sep=' ' input_files} > output.txt
     }
 
     runtime {
-        docker: gatk_docker
-        bootDiskSizeGb: 12
+        docker: runtime_params.gatk_docker
+        bootDiskSizeGb: 4
         memory: machine_mem + " MB"
-        disks: "local-disk 100 HDD"
-        preemptible: 1
-        maxRetries: 1
-        cpu: 2
+        disks: "local-disk " + disk + " SSD"
+        preemptible: preemptible
+        maxRetries: runtime_params.max_retries
+        cpu: 1
     }
 
     output {
