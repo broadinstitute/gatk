@@ -37,6 +37,7 @@ workflow GvsCreateNoCallSetsFromVDS {
         Int? num_master_local_ssds
         String worker_machine_type = "n2d-highmem-8"
         String master_machine_type = "n2d-highmem-32"
+        String? secondary_worker_machine_types
         Boolean use_tiny_dataproc_cluster = false
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
@@ -70,6 +71,9 @@ workflow GvsCreateNoCallSetsFromVDS {
         }
         use_existing_hail_outputs: {
             help: "Skip the Hail job and build the tables from outputs already at nocall_sets_path. The Hail job has no resume state of its own, so use this to rerun the table build after it has finished."
+        }
+        secondary_worker_machine_types: {
+            help: "Comma-separated machine types for the secondary workers, in order of preference; Dataproc falls back to a later type when an earlier one is stocked out. Left unset, secondary workers use `worker_machine_type`. Unlike `worker_machine_type` these need not be in hailctl's MACHINE_MEM table, so newer families can be used here on Hail 0.2.134; use the -lssd shape of a C4, C4D, N4 or N4D type to get local SSD, as in `c4-highmem-8-lssd`. Each type needs at least the YARN memory of `worker_machine_type`, because Spark executors are sized from that. All listed types must share a disk configuration, so do not mix those families with others."
         }
         max_secondary_workers: {
             help: "Ceiling on the preemptible secondary workers the autoscaling policy may add."
@@ -144,6 +148,7 @@ workflow GvsCreateNoCallSetsFromVDS {
                 num_master_local_ssds = num_master_local_ssds,
                 worker_machine_type = worker_machine_type,
                 master_machine_type = master_machine_type,
+                secondary_worker_machine_types = secondary_worker_machine_types,
                 use_tiny_dataproc_cluster = use_tiny_dataproc_cluster,
                 cluster_max_idle_minutes = cluster_max_idle_minutes,
                 cluster_max_age_minutes = cluster_max_age_minutes,
@@ -221,6 +226,7 @@ task CreateNoCallSets {
         Int? num_master_local_ssds
         String worker_machine_type
         String master_machine_type
+        String? secondary_worker_machine_types
         Boolean use_tiny_dataproc_cluster
         Int? cluster_max_idle_minutes
         Int? cluster_max_age_minutes
@@ -292,6 +298,7 @@ task CreateNoCallSets {
             ~{'--num-master-local-ssds ' + num_master_local_ssds} \
             --worker-machine-type ~{worker_machine_type} \
             --master-machine-type ~{master_machine_type} \
+            ~{'--secondary-worker-machine-types ' + secondary_worker_machine_types} \
             --workspace-project ~{workspace_project} \
             --cluster-name ${cluster_name} \
             ~{'--cluster-max-idle-minutes ' + cluster_max_idle_minutes} \

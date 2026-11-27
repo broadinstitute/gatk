@@ -71,6 +71,36 @@ confirm lineage from the ticket that produced the artifact, or from the inputs
 recorded in the Cromwell metadata of the workflow that built it. A differing
 patch number alone should not be flagged.
 
+The same reasoning runs the other way: an unchanged release level means an
+unchanged participant set, whatever the steps in between did. Rebuilding a VDS
+within a release can remove samples and later add them back. In VS-2023,
+`GvsRemoveSamplesFromVDS` took two superpartitions' samples out of the r2 p1
+VDS, and `GvsMergeAndRescoreVDSes` merged them back in from a rebuilt VDS, so
+the r2 p5 VDS holds the same samples as r2 p1. So do not infer a changed sample
+set from one step's name. Check the release level, or the net effect of the
+whole procedure.
+
+### Set provenance-bearing inputs explicitly on AoU runs
+
+For an AoU deliverable, set explicitly in the Terra configuration any input
+whose default decides what the artifact contains, even when the default is the
+value you want. The configuration and the Cromwell metadata then record what
+was used. Left to a default, the answer depends on which WDL version happened
+to run, and a later change to the default silently changes what a rerun
+produces. For example, `GvsCreateVATfromVDS`'s `manual_clinvar_path_prefix`
+decides which ClinVar build annotates the VAT (VS-2052).
+
+`git_branch_or_tag` belongs in the same category, but it does not do what its
+name suggests. It does not choose the code that runs. Terra runs whichever
+Dockstore version is selected in the configuration. The input is passed to
+`GetToolVersions`, which clones that branch and records its HEAD as the run's
+`git_hash`. So set it to the release branch *and* select that branch's version
+in Terra. Set it to one while running the other, and the metadata names a commit
+that is not the code that ran. Selecting the version requires the workflow to be
+registered for the branch in `.dockstore.yml`. Release branches are
+usually registered only for the workflows they were cut to run, so check before
+the run is due.
+
 ## Key Concepts
 
 ### Hard filtered versus soft filtered variants
@@ -925,17 +955,89 @@ A preemption burst while the cluster is fully allocated looks like stalls:
 allocation dips with nothing pending, then the backlog comes back as lost work
 is recomputed.
 
+## Why Hail is pinned at 0.2.134
+
+Nothing in GVS itself needs 0.2.134. Each workflow installs whatever
+`hail_version` names and starts its own cluster with `hailctl`, so it can run
+any version. The pin matches Terra instead. As of November 2026, Terra's
+Leonardo runtime ships Hail 0.2.134 on Dataproc 2.2.52
+(`leo-dataproc-image-2-2-52-debian12-...`). A VDS written with that version
+opens in a Terra notebook as Terra ships it, and an ad-hoc check there runs
+the same Hail as the workflows. So the limit falls on what readers can open,
+not on what GVS can run.
+
+Each Hail release fixes its Dataproc image in `IMAGE_VERSION` in
+`hailtop/hailctl/dataproc/start.py`:
+
+| Hail            | Dataproc image  | Spark |
+|-----------------|-----------------|-------|
+| 0.2.131–0.2.135 | 2.2.5-debian12  | 3.5.0 |
+| 0.2.136         | 2.2.60-debian12 | 3.5.0 |
+| 0.2.137–0.2.139 | 2.3.17-debian12 | 3.5.3 |
+| 0.2.140         | 3.0.1-debian13  | 4.1.2 |
+
+The change log does not mention the image changes in 0.2.136 and 0.2.137, so
+read the source at the release tag rather than relying on the log.
+
+Ad-hoc work in a Terra runtime therefore stops at the 2.2 line. That means
+0.2.135, or 0.2.136 if it is tested first. Beyond that, the newer version
+has to run on a cluster you start with `hailctl` yourself. Start it from the
+Terra terminal, which runs as the workspace's pet service account, with the
+`--service-account` and `--subnet` flags that `run_in_hail_cluster.py`
+passes. From your own account it cannot work, because you can neither act as
+the pet service account nor impersonate it. In VS-2067, a cluster create in a
+Terra workspace project as the pet account failed with
+`iam.serviceAccounts.getAccessToken` denied. Once the cluster is up, your own
+account can submit jobs to it, because that needs only `dataproc.jobs.create`.
+
+### Hail's version numbers do not signal breaking changes
+
+Every Hail release is numbered `0.2.N`, so the version number never says
+whether a release breaks anything. Breaking changes do arrive under these
+increments:
+
+- **0.2.139 changed the on-disk index format, in one direction only.**
+  hail#15445 writes each index as a single flat `partname.idx` file instead of
+  a `partname.idx/` directory. Newer Hail still reads the old layout, but older
+  Hail cannot read the new one, and there is no option to keep writing the old
+  format. A VDS contains row indexes, so a VDS written by 0.2.139 or later
+  cannot be read by anyone on an older Hail. For an AoU deliverable that means
+  any researcher whose Workbench environment is older.
+- **0.2.140 changed the whole runtime.** It moves to Spark 4.1, Scala 2.13,
+  Java 17 or later, Dataproc 3.0 images, and Python 3.12 or later.
+
+So before proposing a `hail_version` bump, read the changelog
+(`hail/python/hail/docs/change_log.md` at the target tag) for every release
+between the pinned version and the target, not only the target's entry, and
+read `start.py` at the target tag for its Dataproc image, which the changelog
+may not mention. Then check two things. First, that researchers' Hail can
+read a VDS written by the new version. Because of the 0.2.139 index change, no
+release from 0.2.139 on passes this for readers on an older Hail, so raise it
+with AoU before a GVS VDS is written with one. For any other candidate, write
+a small VDS with it and read it with the readers' version. Second, if the new
+version needs a newer Dataproc image than Terra's, ad-hoc work moves to
+clusters launched with `hailctl`. VS-2066 tracks the upgrade.
+
 ## Changing a Dataproc machine type is more than a name swap
 
 `run_in_hail_cluster.py` starts clusters through `hailctl dataproc start`, and
-two constraints apply to any machine type passed to it. Both pass `womtool
+three constraints apply to any machine type passed to it. All pass `womtool
 validate` and fail only when the cluster is created.
 
 1. **hailctl only knows the families in its `MACHINE_MEM` table.** It looks the
    type up there to size Spark memory, so an unlisted type fails with a
-   `KeyError`. As of Hail 0.2.134 (`hail_version` in `GvsUtils.wdl`) the table
-   covers n1, n2, n2d, e2, c2, m1 and m2, but not C3, C3D or any 4th-generation
-   family. Read the pinned version's table before proposing a type.
+   `KeyError`. Through Hail 0.2.139 the table covers n1, n2, n2d, e2, c2, m1
+   and m2, but not C3, C3D, N4 or any C4 family. The pinned version
+   (`hail_version` in `GvsUtils.wdl`) is 0.2.134. Hail 0.2.140 removes the
+   table and asks `gcloud compute machine-types list` for the vCPUs and memory
+   instead, so it accepts any type that gcloud knows. Upgrading to get that is
+   not a small change, though: see "Why Hail is pinned at 0.2.134" above. To
+   try a newer family on the pinned version, add entries to the table before
+   hailctl starts, since memory sizing is the only thing it uses the table
+   for. For secondary workers alone there is a second route that needs no
+   table entry: `--secondary-worker-machine-types`, described in "Newer
+   families as Spot secondaries" below. Read the pinned version's `start.py`
+   before proposing a type.
 2. **Valid local SSD counts depend on the machine family and vCPU count.** n1
    accepts one SSD at any size, but N2 and N2D raise the minimum as vCPUs
    grow. N2D machines with 32 or 48 vCPUs reject 1 and accept 2, 4, 8, 16 or
@@ -950,6 +1052,19 @@ validate` and fail only when the cluster is created.
    n2-highmem-32 or an n2d-highmem-64 still fails with it. Look up the allowed
    counts for both shapes in the Compute Engine local SSD documentation before
    changing either one, and set the master's count explicitly.
+3. **Newer families fix the local SSD count in the machine type.** C3, C3D, C4
+   and C4D get local SSD only through `-lssd` shapes, with a fixed number of
+   disks: one each for `c4-highmem-8-lssd` and `c4d-highmem-8-lssd`, five for
+   `c4-highmem-32-lssd`. C3 has no highmem `-lssd` shape at all, and N4, N4D
+   and C4A support no local SSD. For the master and primary workers,
+   `run_in_hail_cluster.py` always passes `--num-worker-local-ssds` and
+   `--num-master-local-ssds`, and its "1 becomes 2" master rule is wrong for
+   these shapes. Secondary workers are handled: `--secondary-worker-machine-types`
+   requests 0 for an `-lssd` shape, and Dataproc still mounts the built-in SSD
+   and gives it to YARN (see "Newer families as Spot secondaries" below).
+   Dataproc's supported machine types page lists C3, C4, N4 and N4D, but not
+   C3D or C4D (checked November 2026). C4D nonetheless ran as Spot secondaries
+   in VS-2067.
 
 An error message describes one machine shape, not its family or its
 neighbors. In VS-2055 the n2d-highmem-32 error above was taken to mean that N2
@@ -968,6 +1083,43 @@ editing both.
 The memory per vCPU differs too: an n2d-highmem-8 has 64 GB against an
 n1-highmem-8's 52 GB. So a run on a new family is not a like-for-like
 comparison of Spark settings tuned on n1.
+
+### Newer families as Spot secondaries, and the per-family local SSD quota
+
+Families that hailctl does not know, such as C4 and C4D, can still run as
+secondary workers. `--secondary-worker-machine-types` in
+`run_in_hail_cluster.py` (`secondary_worker_machine_types` in
+`GvsCreateVDS.wdl`) passes them to Dataproc as ranked flexible VMs. hailctl
+sizes Spark from the primary worker type, so a secondary type needs at least
+that type's YARN memory. Three constraints apply:
+
+1. C4, C4D, N4 and N4D boot only from `hyperdisk-balanced`. Their `-lssd`
+   shapes carry a built-in 375 GB local SSD, so the requested local SSD count
+   must be 0.
+2. Dataproc gives every secondary worker the same disk configuration, so the
+   listed types must agree on it. N2D cannot be the fallback for C4D, but C4
+   can.
+3. The `-lssd` disks count against
+   `LOCAL-SSD-TOTAL-GB-PER-VM-FAMILY-per-project-region`, which defaults to
+   30,000 GB per family per region. That allows 80 VMs per family. N2D's
+   attached SSDs did not count against it in VS-2067: N2D clusters held 200.
+
+So a cluster of newer families that stops short of its maximum size is not
+necessarily stocked out. Before concluding that it is, check the creation
+errors for `QUOTA_EXCEEDED`. In VS-2067, a C4/C4D cluster peaked at 160
+secondaries, 80 of each family. 360 creates failed on the quota and only 58
+on stockout. Spot CPUs come out of `PREEMPTIBLE_CPUS`, not the per-family CPU
+quotas, so the CPU quotas are not the limit.
+
+N4 and N4D are in `HYPERDISK_ONLY_FAMILIES` only so that they get the right
+boot disk. They have no local SSD in any form, neither attached nor as an
+`-lssd` shape, so the script gives them none, and Spark's shuffle and spill
+data then lands on the Hyperdisk boot disk. VS-2067 benchmarked C4 and C4D
+rather than these cheaper families for that reason: a comparison against n2d
+would have changed the I/O path as well as the CPU. So do not propose N4 or
+N4D as a drop-in replacement for an SSD-backed type. Treat them as untested
+until a benchmark has sized the boot disk and its Hyperdisk throughput for
+shuffle.
 
 ## Compare cluster configurations over repeated runs
 
