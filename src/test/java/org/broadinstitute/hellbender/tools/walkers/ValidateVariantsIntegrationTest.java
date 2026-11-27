@@ -1,14 +1,20 @@
 package org.broadinstitute.hellbender.tools.walkers;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.core.Logger;
+import org.apache.logging.log4j.core.appender.WriterAppender;
 import org.broadinstitute.hellbender.CommandLineProgramTest;
 import org.broadinstitute.hellbender.GATKBaseTest;
 import org.broadinstitute.hellbender.exceptions.UserException;
+import org.broadinstitute.hellbender.testutils.ArgumentsBuilder;
 import org.broadinstitute.hellbender.testutils.IntegrationTestSpec;
 import org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants;
+import org.testng.Assert;
 import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.StringWriter;
 import java.util.Collections;
 
 import static org.broadinstitute.hellbender.tools.walkers.variantutils.ValidateVariants.ValidationType.*;
@@ -382,6 +388,58 @@ public final class ValidateVariantsIntegrationTest extends CommandLineProgramTes
                         true, ALLELES, "chr4:24339199-24339226", hg38Reference) + " -gvcf --no-overlaps ",
                 0, UserException.ValidationFailure.class);
         spec.executeTest("tests a gvcf with reference block overlapping variant and --no-overlaps arg", this);
+    }
+
+    @Test
+    public void testGvcfOverlapDiagnostics() {
+        final ArgumentsBuilder args = gvcfOverlapArgs("overlap-regression-mixed.g.vcf");
+        final UserException.ValidationFailure failure =
+                Assert.expectThrows(UserException.ValidationFailure.class, () -> runCommandLine(args));
+        final String firstOverlap = "First overlap: Current interval ctgA:4-6 (reference block) overlaps prior record ctgA:1-20 (variant)";
+        assertContains(failure.getMessage(), firstOverlap);
+
+        final String warnings = captureOverlapWarnings(args.addFlag("warn-on-errors"));
+        assertContains(warnings, firstOverlap);
+        Assert.assertFalse(warnings.contains("Current interval ctgA:9-10"), warnings);
+        assertContains(warnings, "Current interval ctgA:20-25 (reference block) overlaps prior record ctgA:1-20 (variant)");
+        assertContains(warnings, "Current interval ctgB:9-10 (variant) overlaps prior record ctgB:1-18 (reference block)");
+    }
+
+    @Test
+    public void testGvcfVariantOverlapsAllowed() {
+        runCommandLine(gvcfOverlapArgs("overlap-regression-variants-only.g.vcf"));
+    }
+
+    @Test
+    public void testGvcfOverlapReportingWarnsWhenOutOfOrder() {
+        final String warnings = captureOverlapWarnings(gvcfOverlapArgs("overlap-regression-out-of-order.g.vcf")
+                .addFlag("warn-on-errors"));
+        assertContains(warnings, "covers a position previously traversed. Overlap reporting may be incomplete.");
+    }
+
+    private ArgumentsBuilder gvcfOverlapArgs(final String input) {
+        return new ArgumentsBuilder().addVCF(getTestFile(input))
+                .add("validation-type-to-exclude", "ALL")
+                .addFlag(ValidateVariants.GVCF_VALIDATE)
+                .addFlag("fail-gvcf-on-overlap");
+    }
+
+    private String captureOverlapWarnings(final ArgumentsBuilder args) {
+        final StringWriter warnings = new StringWriter();
+        final Logger validatorLogger = (Logger) LogManager.getLogger(ValidateVariants.class);
+        final WriterAppender appender = WriterAppender.newBuilder()
+                .setName("validateVariantsOverlapTest")
+                .setTarget(warnings)
+                .build();
+        appender.start();
+        validatorLogger.addAppender(appender);
+        try {
+            runCommandLine(args);
+            return warnings.toString();
+        } finally {
+            validatorLogger.removeAppender(appender);
+            appender.stop();
+        }
     }
 
     @Test
