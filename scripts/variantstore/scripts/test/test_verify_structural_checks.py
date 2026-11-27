@@ -703,6 +703,50 @@ class TestRunStructuralChecks(unittest.TestCase):
              regular_table_prefixes=["sample_chromosome_ploidy", "vcf_header_lines_scratch"])
         self.footer_query.assert_called_once_with("proj", OUTPUT_GCS_DIR, [])
 
+    VRS_REGULAR = ["sample_chromosome_ploidy", "vrs_allele_scratch"]
+
+    def _vrs_listing(self, samples, vrs_samples):
+        listing = self._listing(samples)
+        listing.update({("vrs_allele_scratch", sid): [_uri("vrs_allele_scratch", sid)] for sid in vrs_samples})
+        return listing
+
+    def test_lost_vrs_scratch_row_is_flagged(self):
+        # vrs_allele_scratch is drained after verification, so until then its rows are exactly what the
+        # Parquet declares; sample 2 lost one on the way into BigQuery.
+        samples = (1, 2)
+        part = [("vet_001", i, 100) for i in samples] + [("ref_ranges_001", i, 50) for i in samples]
+        file_rows = {_uri("vet_001", i): 100 for i in samples}
+        file_rows.update({_uri("ref_ranges_001", i): 50 for i in samples})
+        file_rows.update({_uri("sample_chromosome_ploidy", i): 24 for i in samples})
+        file_rows.update({_uri("vrs_allele_scratch", i): 10 for i in samples})
+        self._patch_regular(part, {"sample_chromosome_ploidy": {i: (24, 24) for i in samples},
+                                   "vrs_allele_scratch": {1: 10, 2: 9}}, file_rows)
+        exp = {"vet": set(samples), "ref_ranges": set(samples),
+               "sample_chromosome_ploidy": set(samples), "vrs_allele_scratch": set(samples)}
+        r = _run(exp, self._vrs_listing(samples, samples), regular_table_prefixes=self.VRS_REGULAR)
+        self.footer_query.assert_called_once_with(
+            "proj", OUTPUT_GCS_DIR, ["vet", "ref_ranges", "sample_chromosome_ploidy", "vrs_allele_scratch"])
+        self.assertEqual(r["row_count_mismatch_samples"], [2])
+        mismatched = r["details"]["footer_row_counts"]["per_family"]["vrs_allele_scratch"]["mismatched"]
+        self.assertEqual(mismatched, [{"table": "vrs_allele_scratch", "sample_id": 2,
+                                       "footer_rows": 10, "bigquery_rows": 9}])
+
+    def test_missing_vrs_file_fails_cross_family(self):
+        # VRS alleles are written in the same pass as vet, so a sample with vet data and no VRS Parquet
+        # is a partial upload. Completeness alone passes it: nothing is expected for sample 2's VRS.
+        samples = (1, 2)
+        part = [("vet_001", i, 100) for i in samples] + [("ref_ranges_001", i, 50) for i in samples]
+        self._patch_regular(part, {"sample_chromosome_ploidy": {i: (24, 24) for i in samples},
+                                   "vrs_allele_scratch": {1: 10}})
+        exp = {"vet": set(samples), "ref_ranges": set(samples),
+               "sample_chromosome_ploidy": set(samples), "vrs_allele_scratch": {1}}
+        r = _run(exp, regular_table_prefixes=self.VRS_REGULAR)
+        self.assertTrue(r["completeness_ok"])
+        self.assertFalse(r["cross_family_ok"])
+        self.assertEqual(
+            r["details"]["cross_family_consistency"]["per_family"]["vrs_allele_scratch"]["missing_samples"], [2]
+        )
+
     def test_clean_run_flags_no_samples(self):
         part = [("vet_001", i, 100) for i in (1, 2)] + [("ref_ranges_001", i, 50) for i in (1, 2)]
         self._patch(part, {1: 24, 2: 24})

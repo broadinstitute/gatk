@@ -8,6 +8,7 @@ import org.broadinstitute.hellbender.tools.gvs.ingest.VetWriter;
 import org.json.JSONObject;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * Parquet writer for variant data.
@@ -26,8 +27,8 @@ public class VetParquetFileWriter extends AbstractParquetFileWriter implements V
     }
 
     @Override
-    public void write(long location, VariantContext variant, long sampleId) throws IOException {
-        JSONObject jsonObject = createJson(location, variant, sampleId, skipLoadingVqsrFields, forceLoadingFromNonAlleleSpecific);
+    public void write(long location, VariantContext variant, long sampleId, List<String> vrsAlleleIds) throws IOException {
+        JSONObject jsonObject = createJson(location, variant, sampleId, skipLoadingVqsrFields, forceLoadingFromNonAlleleSpecific, vrsAlleleIds);
         this.write(jsonObject);
     }
 }

@@ -146,7 +146,7 @@ task GetToolVersions {
     # Must stay in lockstep with `cloud_sdk_docker_decl` above -- 565.0.0 is the last tag whose `-slim`
     # sibling is Debian 12 / Python 3.11. See the note there before bumping.
     String cloud_sdk_slim_docker = "gcr.io/google.com/cloudsdktool/cloud-sdk:565.0.0-slim"
-    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-11-18-alpine-1cd7b1430c22"
+    String variants_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/variants:2026-11-24-alpine-71d062d7d48c"
     String variants_nirvana_docker = "us.gcr.io/broad-dsde-methods/variantstore:nirvana_2022_10_19"
     # The hex suffix on a GATK tag is the Docker image ID that `build_docker_tag.py` was handed, but *which* digest
     # that ID refers to depends on the Docker version of the machine that built it, so do not compare suffixes across
@@ -159,8 +159,8 @@ task GetToolVersions {
     #     attestation manifest (it shows up as an `unknown/unknown` platform entry).
     # Both forms pull correctly under modern Docker and Cromwell. Neither the suffix nor the manifest media type says
     # anything about image contents -- verify a tag by layer count and size, not by the shape of its name.
-    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-11-05-gatkbase-lite-7e0158d58a6a"
-    String gatk_heavy_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-11-05-gatkbase-b2099b68c00e"
+    String gatk_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-11-23-gatkbase-lite-29fb5593cf52"
+    String gatk_heavy_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/gatk:2026-11-23-gatkbase-debdaaa16b56"
     String real_time_genomics_docker = "docker.io/realtimegenomics/rtg-tools:latest"
     String gotc_imputation_docker = "us.gcr.io/broad-gotc-prod/imputation-bcf-vcf:1.0.5-1.10.2-0.1.16-1649948623"
     String plink_docker = "us-central1-docker.pkg.dev/broad-dsde-methods/gvs/plink2:2024-04-23-slim-a0a65f52cc0e"
@@ -1167,6 +1167,123 @@ task IsUsingCompressedReferences {
     disks: "local-disk 500 HDD"
     preemptible: 3
     cpu: 1
+  }
+}
+
+# Decides whether this ingest computes VRS allele IDs, from the dataset as well as the flag.
+#
+# A dataset either carries VRS IDs for every sample or for none, and the vrs_allele_ids column on its vet
+# tables records which: a VRS-on ingest creates vet tables with the column, a VRS-off ingest without it. So:
+#   - no vet tables yet (a new dataset): the flag decides, and unset means off;
+#   - vet tables with the column: VRS is on. An unset flag follows the dataset; false fails;
+#   - vet tables without the column: VRS is off. An unset flag follows the dataset; true fails,
+#     since the Parquet load cannot add the column (adding IDs to an existing dataset is VS-2064);
+#   - vet tables that disagree with each other: fails.
+# Failing on a contradiction, rather than overriding it, keeps an operator from getting the opposite of
+# what they asked for without noticing: VRS-off rows loaded into a VRS dataset would load silently, with
+# empty vrs_allele_ids. GvsAssignIds runs this before assigning sample IDs, and GvsImportGenomes runs it
+# again before loading, so calling GvsImportGenomes directly is checked too.
+task ResolveEnableVrsIds {
+  input {
+    String project_id
+    String dataset_name
+    Boolean? enable_vrs_ids
+    # Intentionally unused: this input exists solely to enforce task ordering - the upstream task's `done` output
+    # is passed here to prevent this task from running until the upstream task has completed.
+    #@ except: UnusedInput
+    Boolean go = true
+    String cloud_sdk_docker
+  }
+
+  String requested = if defined(enable_vrs_ids) then (if select_first([enable_vrs_ids]) then "true" else "false") else "unset"
+
+  meta {
+    description: "Resolves enable_vrs_ids against the dataset's vet tables, failing if the flag contradicts the dataset."
+    volatile: true
+  }
+
+  command <<<
+    # Prepend date, time and pwd to xtrace log entries.
+    PS4='\D{+%F %T} \w $ '
+    set -o errexit -o nounset -o pipefail -o xtrace
+
+    echo "project_id = ~{project_id}" > ~/.bigqueryrc
+
+    # One row per vet table: its name, and whether it has the vrs_allele_ids column.
+    bq --apilog=false query --project_id=~{project_id} --format=csv --use_legacy_sql=false --max_rows=10000 '
+      SELECT
+        t.table_name,
+        c.column_name IS NOT NULL AS has_vrs_allele_ids
+      FROM
+        `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.TABLES` t
+      LEFT JOIN (
+        SELECT table_name, column_name
+        FROM `~{project_id}.~{dataset_name}.INFORMATION_SCHEMA.COLUMNS`
+        WHERE column_name = "vrs_allele_ids") c
+      USING (table_name)
+      WHERE
+        REGEXP_CONTAINS(t.table_name, r"^vet_[0-9]{3}$")
+      ORDER BY t.table_name ' | sed 1d > vet_tables.csv
+
+    awk -F, '$2 == "true"  {print $1}' vet_tables.csv > with_column.txt
+    awk -F, '$2 == "false" {print $1}' vet_tables.csv > without_column.txt
+    with=$(wc -l < with_column.txt | tr -d ' ')
+    without=$(wc -l < without_column.txt | tr -d ' ')
+    requested="~{requested}"
+    where="'~{project_id}:~{dataset_name}'"
+
+    # Turn off xtrace so the messages below are easy to read in the task log.
+    set +o xtrace
+    if [ "${with}" -gt 0 ] && [ "${without}" -gt 0 ]; then
+      echo "ERROR: the vet tables in ${where} disagree on whether the dataset carries VRS IDs." >&2
+      echo "With the vrs_allele_ids column:" >&2
+      sed 's/^/    /' with_column.txt >&2
+      echo "Without it:" >&2
+      sed 's/^/    /' without_column.txt >&2
+      echo "A dataset carries VRS IDs for every sample or for none, so this one needs repair before any ingest." >&2
+      exit 1
+    elif [ "${with}" -gt 0 ]; then
+      if [ "${requested}" = "false" ]; then
+        echo "ERROR: enable_vrs_ids is false, but the vet tables in ${where} have the vrs_allele_ids column," >&2
+        echo "so this dataset carries VRS IDs. Ingesting without them would load these samples with empty" >&2
+        echo "vrs_allele_ids. Leave enable_vrs_ids unset to follow the dataset, or ingest into a new dataset." >&2
+        exit 1
+      fi
+      resolved=true
+      reason="its vet tables have the vrs_allele_ids column"
+    elif [ "${without}" -gt 0 ]; then
+      if [ "${requested}" = "true" ]; then
+        echo "ERROR: enable_vrs_ids is true, but the vet tables in ${where} have no vrs_allele_ids column," >&2
+        echo "so this dataset was ingested without VRS IDs:" >&2
+        sed 's/^/    /' without_column.txt >&2
+        echo "Adding VRS IDs to an existing dataset is not supported yet (VS-2064). Ingest into a new dataset," >&2
+        echo "or leave enable_vrs_ids unset to follow this one." >&2
+        exit 1
+      fi
+      resolved=false
+      reason="its vet tables have no vrs_allele_ids column"
+    else
+      if [ "${requested}" = "true" ]; then resolved=true; else resolved=false; fi
+      reason="it has no vet tables yet, so enable_vrs_ids (${requested}) decides"
+    fi
+
+    echo "VRS IDs: ${resolved} for ${where}, because ${reason}."
+    echo "${resolved}" > resolved_enable_vrs_ids.txt
+  >>>
+
+  runtime {
+    docker: cloud_sdk_docker
+    memory: "3 GB"
+    cpu: 1
+    preemptible: 1
+    # Retries a transient BigQuery error. A contradiction fails the same way each time, in seconds.
+    maxRetries: 3
+    disks: "local-disk 100 HDD"
+  }
+
+  output {
+    Boolean resolved_enable_vrs_ids = read_boolean("resolved_enable_vrs_ids.txt")
+    Boolean done = true
   }
 }
 

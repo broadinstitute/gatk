@@ -20,6 +20,10 @@ workflow GvsAssignIds {
 
     Boolean load_vet_and_ref_ranges
     Boolean load_vcf_headers
+    # Unset (the default) follows the dataset: on if its vet tables have vrs_allele_ids, off if they do not,
+    # and off for a new dataset. Set it to choose for a new dataset; on an existing one, a value that
+    # contradicts the dataset fails (see ResolveEnableVrsIds in GvsUtils.wdl).
+    Boolean? enable_vrs_ids
 
     Boolean use_compressed_references = false
     String? cloud_sdk_docker
@@ -29,6 +33,8 @@ workflow GvsAssignIds {
   String sample_info_schema_json = '[{"name": "sample_name","type": "STRING","mode": "REQUIRED"},{"name": "sample_id","type": "INTEGER","mode": "NULLABLE"},{"name":"is_loaded","type":"BOOLEAN","mode":"NULLABLE"},{"name":"is_control","type":"BOOLEAN","mode":"REQUIRED"},{"name":"withdrawn","type":"TIMESTAMP","mode":"NULLABLE"}]'
   String vcf_header_lines_scratch_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"vcf_header_lines","type":"STRING","mode":"NULLABLE"},{"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"},{"name":"is_expected_unique","type":"BOOLEAN","mode":"REQUIRED"}]'
   String vcf_header_lines_schema_json = '[{"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}, {"name":"vcf_header_lines","type":"STRING","mode":"REQUIRED"},{"name":"is_expected_unique","type":"BOOLEAN","mode":"REQUIRED"}]'
+  String vrs_allele_schema_json = '[{"name": "vrs_allele_id", "type": "STRING", "mode": "REQUIRED"},{"name": "vrs_location_id", "type": "STRING", "mode": "REQUIRED"},{"name": "refget_accession", "type": "STRING", "mode": "REQUIRED"},{"name": "ref_genome_coord_start", "type": "INTEGER", "mode": "REQUIRED"},{"name": "ref_genome_coord_end", "type": "INTEGER", "mode": "REQUIRED"},{"name": "state_type", "type": "STRING", "mode": "REQUIRED"},{"name": "state_sequence", "type": "STRING", "mode": "NULLABLE"},{"name": "state_length", "type": "INTEGER", "mode": "NULLABLE"},{"name": "state_repeat_subunit_length", "type": "INTEGER", "mode": "NULLABLE"}]'
+  String vrs_allele_scratch_schema_json = '[{"name": "sample_id", "type": "INTEGER", "mode": "REQUIRED"},{"name": "vrs_allele_id", "type": "STRING", "mode": "REQUIRED"},{"name": "vrs_location_id", "type": "STRING", "mode": "REQUIRED"},{"name": "refget_accession", "type": "STRING", "mode": "REQUIRED"},{"name": "ref_genome_coord_start", "type": "INTEGER", "mode": "REQUIRED"},{"name": "ref_genome_coord_end", "type": "INTEGER", "mode": "REQUIRED"},{"name": "state_type", "type": "STRING", "mode": "REQUIRED"},{"name": "state_sequence", "type": "STRING", "mode": "NULLABLE"},{"name": "state_length", "type": "INTEGER", "mode": "NULLABLE"},{"name": "state_repeat_subunit_length", "type": "INTEGER", "mode": "NULLABLE"}]'
   String sample_vcf_header_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"}, {"name":"vcf_header_lines_hash","type":"STRING","mode":"REQUIRED"}]'
   String sample_load_status_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name":"status","type":"STRING","mode":"REQUIRED"}, {"name":"event_timestamp","type":"TIMESTAMP","mode":"REQUIRED"}]'
   String sample_chromosome_ploidy_schema_json = '[{"name": "sample_id","type": "INTEGER","mode": "REQUIRED"},{"name": "chromosome","type": "INTEGER","mode": "REQUIRED"},{"name": "ploidy","type": "INTEGER","mode": "REQUIRED"}]'
@@ -145,6 +151,48 @@ workflow GvsAssignIds {
     }
   }
 
+  # Runs on every ingest, VRS or not: it is what keeps a dataset all-VRS or all-non-VRS.
+  call Utils.ResolveEnableVrsIds as ResolveVrsIds {
+    input:
+      project_id = project_id,
+      dataset_name = dataset_name,
+      enable_vrs_ids = enable_vrs_ids,
+      go = ValidateDatasetExists.done,
+      cloud_sdk_docker = effective_cloud_sdk_docker,
+  }
+
+  if (ResolveVrsIds.resolved_enable_vrs_ids) {
+    # Ingest writes each sample's VRS alleles here, tagged with its sample_id so the Parquet ingest
+    # verification covers them; ProcessVrsAlleles in GvsImportGenomes merges the distinct alleles into
+    # vrs_allele and then empties this table. Same pattern as vcf_header_lines_scratch.
+    # Intentionally unused: runs for its side effect of creating the BQ table; its output is not consumed downstream.
+    #@ except: UnusedCall
+    call GvsCreateTables.CreateSingleTable as CreateVrsAlleleScratchTable {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        go = ValidateSamples.done && ResolveVrsIds.done,
+        table_name = "vrs_allele_scratch",
+        schema_json = vrs_allele_scratch_schema_json,
+        clustering_fields = "sample_id",
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+
+    # One row per distinct VRS allele, keyed on vrs_allele_id; vet.vrs_allele_ids holds the per-sample association.
+    # Intentionally unused: runs for its side effect of creating the BQ table; its output is not consumed downstream.
+    #@ except: UnusedCall
+    call GvsCreateTables.CreateSingleTable as CreateVrsAlleleTable {
+      input:
+        project_id = project_id,
+        dataset_name = dataset_name,
+        go = ValidateSamples.done && ResolveVrsIds.done,
+        table_name = "vrs_allele",
+        schema_json = vrs_allele_schema_json,
+        clustering_fields = "vrs_allele_id",
+        cloud_sdk_docker = effective_cloud_sdk_docker,
+    }
+  }
+
   # Intentionally unused: runs for its side effect of creating the BQ table; its output is not consumed downstream.
   #@ except: UnusedCall
   call CreateCostObservabilityTable {
@@ -162,7 +210,8 @@ workflow GvsAssignIds {
       dataset_name = dataset_name,
       sample_info_table = sample_info_table,
       samples_are_controls = samples_are_controls,
-      go = CreateSampleInfoTable.done,
+      # Assign no IDs to samples whose ingest the VRS check has ruled out.
+      go = CreateSampleInfoTable.done && ResolveVrsIds.done,
       cloud_sdk_docker = effective_cloud_sdk_docker,
   }
 
@@ -176,6 +225,7 @@ workflow GvsAssignIds {
         max_table_id = AssignIds.max_table_id,
         cloud_sdk_docker = effective_cloud_sdk_docker,
         use_compressed_references = use_compressed_references,
+        enable_vrs_ids = ResolveVrsIds.resolved_enable_vrs_ids,
     }
   }
 
@@ -183,6 +233,8 @@ workflow GvsAssignIds {
     Boolean done = true
     File gvs_ids_tsv = AssignIds.gvs_ids_tsv
     String recorded_git_hash = effective_git_hash
+    # Resolved against the dataset. Callers pass this, not their own input, on to GvsImportGenomes.
+    Boolean enable_vrs_ids = ResolveVrsIds.resolved_enable_vrs_ids
   }
 }
 

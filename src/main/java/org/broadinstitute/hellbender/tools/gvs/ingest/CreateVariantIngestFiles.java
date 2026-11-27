@@ -20,6 +20,7 @@ import org.broadinstitute.hellbender.engine.ReadsContext;
 import org.broadinstitute.hellbender.engine.ReferenceContext;
 import org.broadinstitute.hellbender.engine.VariantWalker;
 import org.broadinstitute.hellbender.exceptions.GATKException;
+import org.broadinstitute.hellbender.exceptions.UserException;
 import org.broadinstitute.hellbender.tools.gvs.common.*;
 import org.broadinstitute.hellbender.tools.gvs.ingest.bq.RefRangesBQWriter;
 import org.broadinstitute.hellbender.utils.GenomeLoc;
@@ -45,6 +46,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private RefRangesCreator refRangesCreator;
     private VetCreator vetCreator;
+    private VrsAlleleCreator vrsAlleleCreator;
     private VcfHeaderLineScratchCreator vcfHeaderLineScratchCreator;
     private SamplePloidyCreator samplePloidyCreator;
     private LoadStatus loadStatus;
@@ -80,6 +82,14 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             doc = "write vet data",
             optional = true)
     public boolean enableVet = true;
+
+    @Argument(fullName = "enable-vrs-ids",
+            shortName = "vrs",
+            doc = "compute and write VRS allele IDs into the vrs_allele_ids column of VET output, " +
+                  "and produce a vrs_allele_scratch output file. Requires a reference (--reference), --ref-version 38 " +
+                  "and --output-type PARQUET.",
+            optional = true)
+    public boolean enableVrsIds = false;
 
     @Argument(
             fullName = "enable-vcf-headers",
@@ -172,8 +182,13 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
     private final Set<GQStateEnum> gqStatesToIgnore = new HashSet<>();
 
-    public final MessageType variantRowSchema = MessageTypeParser
-            .parseMessageType("""
+    /**
+     * The vet Parquet schema. {@code vrs_allele_ids} is declared only with VRS IDs enabled: the Parquet load
+     * appends with an autodetected schema and cannot add a column, so a file that declares it fails to load
+     * into a vet table created before the column existed, even when every value is empty.
+     */
+    static MessageType variantRowSchema(final boolean withVrsAlleleIds) {
+        return MessageTypeParser.parseMessageType("""
             message VariantRow {
             	required int64 sample_id;
             	required int64 location;
@@ -193,6 +208,23 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             	optional binary call_PID (UTF8);
             	optional int64 call_PS;
             	optional binary call_PL (UTF8);
+            %s}
+            """.formatted(withVrsAlleleIds ? "repeated binary vrs_allele_ids (UTF8);\n" : ""));
+    }
+
+    public final MessageType vrsAlleleRowSchema = MessageTypeParser
+            .parseMessageType("""
+            message VrsAlleleRow {
+                required int64 sample_id;
+                required binary vrs_allele_id (UTF8);
+                required binary vrs_location_id (UTF8);
+                required binary refget_accession (UTF8);
+                required int64 ref_genome_coord_start;
+                required int64 ref_genome_coord_end;
+                required binary state_type (UTF8);
+                optional binary state_sequence (UTF8);
+                optional int64 state_length;
+                optional int64 state_repeat_subunit_length;
             }
             """);
 
@@ -256,6 +288,17 @@ public final class CreateVariantIngestFiles extends VariantWalker {
     public void onTraversalStart() {
         if (!enableVet && !enableReferenceRanges && !enableVCFHeaders) {
             throw new RuntimeIOException("Invalid invocation: variants, references, and VCF header writing all set to false");
+        }
+        if (enableVrsIds && !hasReference()) {
+            throw new UserException("--enable-vrs-ids requires a reference (--reference): VRS normalization reads reference bases");
+        }
+        if (enableVrsIds && !"38".equals(refVersion)) {
+            throw new UserException("--enable-vrs-ids requires --ref-version 38: VRS IDs use GRCh38 RefGet accessions, " +
+                    "and GVS supports no other reference");
+        }
+        if (enableVrsIds && outputType != CommonCode.OutputType.PARQUET) {
+            throw new UserException("--enable-vrs-ids requires --output-type PARQUET: VRS IDs are loaded only through " +
+                    "Parquet ingest, and the BigQuery Write API path does not write them");
         }
 
         // Set up output directory:
@@ -388,7 +431,10 @@ public final class CreateVariantIngestFiles extends VariantWalker {
 
         if (enableVet && vetRowsExist == Boolean.FALSE) {
             logger.info("Writing vet data for sample id = {}, name = {}", sampleId, sampleName);
-            vetCreator = new VetCreator(inputVcfFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, variantRowSchema);
+            if (enableVrsIds) {
+                vrsAlleleCreator = new VrsAlleleCreator(inputVcfFileName, sampleId, outputDir, outputType, vrsAlleleRowSchema);
+            }
+            vetCreator = new VetCreator(inputVcfFileName, sampleId, tableNumber, outputDir, outputType, projectID, datasetName, forceLoadingFromNonAlleleSpecific, skipLoadingVqsrFields, variantRowSchema(enableVrsIds), enableVrsIds, vrsAlleleCreator);
         }
         if (enableVCFHeaders && vcfHeaderRowsExist == Boolean.FALSE) {
             logger.info("Writing vcf header data for sample id = {}, name = {}", sampleId, sampleName);
@@ -438,7 +484,7 @@ public final class CreateVariantIngestFiles extends VariantWalker {
             // write to VET if NOT reference block and NOT a no call
             if (!variant.isReferenceBlock() && !isNoCall(variant)) {
                 if (vetCreator != null) {
-                    vetCreator.apply(variant);
+                    vetCreator.apply(variant, referenceContext);
                 }
             }
         } catch (IOException ioe) {
@@ -495,6 +541,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         if (vetCreator != null) {
             vetCreator.commitData();
         }
+        if (vrsAlleleCreator != null) {
+            vrsAlleleCreator.commitData();
+        }
 
         if (outputType == CommonCode.OutputType.BQ || outputType == CommonCode.OutputType.PARQUET) {
             if (shouldWriteVCFHeadersLoadedStatusRow) loadStatus.writeHeadersLoadedStatus(sampleId);
@@ -512,6 +561,9 @@ public final class CreateVariantIngestFiles extends VariantWalker {
         }
         if (vetCreator != null) {
             vetCreator.closeTool();
+        }
+        if (vrsAlleleCreator != null) {
+            vrsAlleleCreator.closeTool();
         }
         if (samplePloidyCreator != null) {
             samplePloidyCreator.closeTool();

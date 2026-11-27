@@ -39,6 +39,9 @@ workflow GvsBulkIngestGenomes {
 
         # Begin GvsImportGenomes
         String reference_name = "hg38"
+        File? reference_fasta
+        File? reference_fasta_index
+        File? reference_dict
         File? interval_list
 
         # set to "NONE" to ingest all the reference data into GVS for VDS (instead of VCF) output
@@ -60,6 +63,10 @@ workflow GvsBulkIngestGenomes {
         # the initial validation pass regardless of this setting. Set this to true only when bypassing
         # validation (validate_vcf_headers=false) while still wanting headers loaded in a single direct pass.
         Boolean load_vcf_headers = false
+        # Compute VRS allele IDs at ingest (VS-2058). Unset (the default) follows the dataset: on if its vet
+        # tables have vrs_allele_ids, off if they do not, and off for a new dataset. Set true to start a new
+        # VRS dataset. A value that contradicts an existing dataset fails before any sample gets an ID.
+        Boolean? enable_vrs_ids
         Boolean tighter_gcp_quotas = false
         Boolean is_wgs = true
         # End GvsImportGenomes
@@ -184,6 +191,7 @@ workflow GvsBulkIngestGenomes {
             external_sample_names = SplitBulkImportFofn.sample_name_fofn,
             load_vcf_headers = (load_vcf_headers || validate_vcf_headers),
             load_vet_and_ref_ranges = load_vet_and_ref_ranges,
+            enable_vrs_ids = enable_vrs_ids,
             cloud_sdk_docker = effective_cloud_sdk_docker,
             use_compressed_references = use_compressed_references,
             samples_are_controls = samples_are_controls,
@@ -270,6 +278,9 @@ workflow GvsBulkIngestGenomes {
                 input_vcfs = SplitBulkImportFofn.vcf_file_name_fofn,
                 input_vcf_indexes = SplitBulkImportFofn.vcf_index_file_name_fofn,
                 reference_name = reference_name,
+                reference_fasta = reference_fasta,
+                reference_fasta_index = reference_fasta_index,
+                reference_dict = reference_dict,
                 interval_list = interval_list,
                 load_data_scatter_width = effective_data_load_data_scatter_width,
                 load_data_maxretries_override = load_data_maxretries_override,
@@ -284,6 +295,8 @@ workflow GvsBulkIngestGenomes {
                 use_compressed_references = use_compressed_references,
                 load_vet_and_ref_ranges = load_vet_and_ref_ranges,
                 load_vcf_headers = data_pass_loads_vcf_headers,
+                # The value GvsAssignIds resolved against the dataset, which also decided the vet tables' schema.
+                enable_vrs_ids = AssignIds.enable_vrs_ids,
                 is_rate_limited_beta_customer = tighter_gcp_quotas,
                 use_parquet_ingest = use_parquet_ingest,
                 parquet_output_gcs_dir = data_parquet_output_gcs_dir,
