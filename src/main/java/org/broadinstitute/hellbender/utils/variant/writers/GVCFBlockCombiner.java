@@ -203,7 +203,8 @@ public class GVCFBlockCombiner implements PushPullTransformer<VariantContext> {
         } else {
             // g is variant, so flush the bands and emit vc
             emitCurrentBlock();
-            nextAvailableStart = vc.getEnd();
+            nextAvailableStart = vc.getContig().equals(contigOfNextAvailableStart)
+                    ? Math.max(nextAvailableStart, vc.getEnd()) : vc.getEnd();
             contigOfNextAvailableStart = vc.getContig();
             toOutput.add(vc);
         }
