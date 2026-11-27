@@ -569,7 +569,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
     public void testNestedVariantKeepsFurthestEncodedEnd(final boolean reblock) {
         final MockVcfWriter output = new MockVcfWriter();
         final GVCFWriter writer = nestedVariantWriter(output, reblock);
-        final VariantContext deletion = withVariantLikelihoods(makeDeletion(100, 13));
+        final VariantContext deletion = nestedVariantDeletion(100, 13);
         final VariantContext nested = withVariantLikelihoods(makeNonRef(CHR1, 106));
         writer.add(deletion);
         writer.add(nested);
@@ -578,7 +578,7 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
         }
         final List<VariantContext> suffix = List.of(refSite(113, 25, 30), refSite(114, 30, 60), refSite(115, 40, 40));
         suffix.forEach(writer::add);
-        final VariantContext endOfFirstContig = withVariantLikelihoods(makeDeletion(120, 13));
+        final VariantContext endOfFirstContig = nestedVariantDeletion(120, 13);
         final VariantContext nextContig = withVariantLikelihoods(makeNonRef(CHR2, 1));
         writer.add(endOfFirstContig);
         writer.add(nextContig);
@@ -621,6 +621,12 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
         return new VariantContextBuilder(variant)
                 .genotypes(new GenotypeBuilder(variant.getGenotype(0)).PL(new int[]{40, 0, 60}).make())
                 .make();
+    }
+
+    private static VariantContext nestedVariantDeletion(final int start, final int encodedLength) {
+        final List<Allele> alleles = List.of(Allele.create("G".repeat(encodedLength), true), Allele.create("G"));
+        final VariantContextBuilder variant = new VariantContextBuilder("test", CHR1, start, start + encodedLength - 1, alleles);
+        return withVariantLikelihoods(makeVariantContext(variant, alleles, 50));
     }
 
     private static VariantContext refSite(final int pos, final int gq, final int depth) {
