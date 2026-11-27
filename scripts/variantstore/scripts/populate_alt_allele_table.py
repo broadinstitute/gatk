@@ -18,11 +18,15 @@ def alt_allele_positions_sql(template_text, include_vrs_allele_id):
     positional, so the column is selected only then. It is the vet.vrs_allele_ids entry for the row's ALT, at the same
     offset the row reads from SPLIT(alt, ','). NULLIF turns the empty-string placeholder that ingest writes for a `*`
     ALT, or for an ALT on a contig with no refget accession, into NULL.
+
+    OFFSET rather than SAFE_OFFSET: ingest writes one entry per ALT, so an array shorter than the ALT list means the
+    data is broken. Failing the query, as the OFFSET read of alt does, keeps that from turning into NULL IDs that look
+    like placeholders.
     """
     def column(offset):
         if not include_vrs_allele_id:
             return ""
-        return f", NULLIF(vrs_allele_ids[SAFE_OFFSET({offset})], '') as vrs_allele_id"
+        return f", NULLIF(vrs_allele_ids[OFFSET({offset})], '') as vrs_allele_id"
 
     return Template(template_text).substitute(vrs_allele_id_alt1=column(0), vrs_allele_id_alt2=column(1))
 

@@ -32,7 +32,7 @@ class TestAltAllelePositionsSql(unittest.TestCase):
         for branch in branches:
             allele_pos = int(re.search(r'(\d+) as allele_pos', branch).group(1))
             alt_offsets = {int(n) for n in re.findall(r"SPLIT\(alt,','\)\[OFFSET\((\d+)\)\]", branch)}
-            id_offsets = [int(n) for n in re.findall(r"NULLIF\(vrs_allele_ids\[SAFE_OFFSET\((\d+)\)\], ''\)", branch)]
+            id_offsets = [int(n) for n in re.findall(r"NULLIF\(vrs_allele_ids\[OFFSET\((\d+)\)\], ''\)", branch)]
             self.assertEqual(alt_offsets, {allele_pos - 1}, branch)
             self.assertEqual(id_offsets, [allele_pos - 1], branch)
             seen.append(allele_pos)
