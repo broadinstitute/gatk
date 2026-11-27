@@ -4,7 +4,7 @@
 
 This document describes the VRS (Variant Representation Specification) allele ID feature integrated into GATK's variant store ingest pipeline. VRS IDs provide standardized, globally-unique identifiers for genomic alleles, enabling interoperability across bioinformatics tools and databases.
 
-**Current status**: Implemented from the Java ingest tool through WDL orchestration to BigQuery loading, behind `enable_vrs_ids`. A dataset either carries VRS IDs or does not, and an ingest follows the dataset (see Enable VRS ID Computation). The IDs match vrs-python 2.3.3 on a fixed set of chr20 and chr21 cases, except where the GVS reference N-masks sequence (VS-2059), and `alt_allele` does not carry them yet (VS-2061).
+**Current status**: Implemented from the Java ingest tool through WDL orchestration to BigQuery loading, behind `enable_vrs_ids`. A dataset either carries VRS IDs or does not, and an ingest follows the dataset (see Enable VRS ID Computation). The IDs match vrs-python 2.3.3 on a fixed set of chr20 and chr21 cases, except where the GVS reference N-masks sequence (VS-2059). `GvsPopulateAltAllele` copies them into `alt_allele` in a dataset that carries them (VS-2061).
 
 ---
 
@@ -48,7 +48,7 @@ This enables downstream queries to identify and retrieve specific alleles across
 
 ## WDL Integration
 
-VRS ID flow is wired through four WDL workflows, with the decision made once per ingest by `ResolveEnableVrsIds` (`GvsUtils.wdl`):
+VRS ID flow is wired through five WDL workflows. `ResolveEnableVrsIds` (`GvsUtils.wdl`) makes the decision: each ingest runs it, and `GvsPopulateAltAllele` runs it read-only, with the flag unset:
 
 | Workflow                     | Role                                                                                                                                                                                                                                                                                              |
 |------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -56,6 +56,7 @@ VRS ID flow is wired through four WDL workflows, with the decision made once per
 | **GvsAssignIds.wdl**         | Orchestrates sample ID assignment; resolves `enable_vrs_ids` against the dataset before assigning any sample ID, failing on a contradiction, then creates the vet tables to match and, with VRS on, the vrs_allele_scratch and vrs_allele tables. Outputs the resolved value                      |
 | **GvsImportGenomes.wdl**     | Main ingestion engine; resolves `enable_vrs_ids` again before loading, so a direct run is checked too, and passes the result to the ingest tool. With VRS on, uploads vrs_allele_scratch parquet files, includes them in parquet discovery, loading and verification, then runs ProcessVrsAlleles |
 | **GvsBulkIngestGenomes.wdl** | High-level bulk orchestrator; passes an optional `enable_vrs_ids` to GvsAssignIds, and the value GvsAssignIds resolved to the data pass of GvsImportGenomes                                                                                                                                       |
+| **GvsPopulateAltAllele.wdl** | Reads the dataset's VRS state with `ResolveEnableVrsIds` (flag unset), creates `alt_allele` with `vrs_allele_id` only when the vet tables have `vrs_allele_ids`, fails if an existing `alt_allele` disagrees, and fills the column (see alt_allele below)                                         |
 
 With VRS IDs on, the parquet discovery logic includes the `vrs_allele_scratch` prefix, ensuring those files are discovered, loaded into BigQuery and verified.
 
@@ -129,6 +130,16 @@ These load into BigQuery as:
    - `vet_*`, with the `vrs_allele_ids` column
    - `vrs_allele_scratch`, emptied after each ingest (see Loading and verification)
    - `vrs_allele` (shared across all samples), one row per distinct allele
+
+### alt_allele
+
+`alt_allele` follows the vet tables, as an ingest does. In a dataset whose vet tables have `vrs_allele_ids`, `GvsPopulateAltAllele` creates `alt_allele` with a nullable STRING `vrs_allele_id` as its last column and fills it. In a dataset without them, `alt_allele` has no such column, and the query is the same as before VS-2061. `GvsPopulateAltAllele` does not take `enable_vrs_ids`: it calls `ResolveEnableVrsIds` with the flag unset, which reports the dataset's state and fails if the vet tables disagree.
+
+`alt_allele` has one row per allele, so each row takes one entry of `vet.vrs_allele_ids`: the entry at `allele_pos - 1`, the offset `alt_allele_positions.sql` uses for `alt`. The empty-string placeholder becomes NULL, so a `*` row, or a row on a contig with no refget accession, has a NULL ID. Every non-NULL ID has a `vrs_allele` row.
+
+An existing `alt_allele` that disagrees with the vet tables fails the workflow before anything is written: one built before the dataset had VRS IDs lacks the column, and the column would be empty if it were added. `alt_allele` is built entirely from the vet tables, so the recovery the error gives is to drop it and rerun `GvsPopulateAltAllele`. Converting an existing dataset to VRS IDs (VS-2064) has to fill `alt_allele.vrs_allele_id` as well as `vet.vrs_allele_ids`, or the dataset fails this check afterwards.
+
+The ID does not depend on where the caller placed an indel, so it can join `alt_allele` directly to any VRS-keyed source. That could replace the windowed synonym search that maps left-aligned vids to `alt_allele` rows (`GvsMapUnmappedVIDs`), which is not part of VS-2061.
 
 ### Handling Heterozygous Variants
 
