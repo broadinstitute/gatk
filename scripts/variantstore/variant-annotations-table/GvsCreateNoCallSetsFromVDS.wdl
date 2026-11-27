@@ -354,7 +354,8 @@ task LoadNoCallSets {
         }
 
         # --parquet_enable_list_inference loads Spark's arrays as REPEATED columns rather than list.element structs.
-        # Genome-wide on Foxtrot the sets are estimated at 4.5 TiB, under the 15 TB a single load job may read.
+        # Foxtrot chr21 is 121 GB of Parquet, which scales to about 8.7 TB genome-wide, under the 15 TB a single load
+        # job may read.
         sets=$(part_wildcards nocall_sets.parquet)
         if [[ -z "${sets}" ]]
         then

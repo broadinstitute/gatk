@@ -228,6 +228,14 @@ tables and a given VDS can differ as well: a VDS with dropouts has no-calls
 that the tables do not. Derive per-sample call status from the VDS the VAT was
 built from (VS-2054).
 
+The same holds for whether the VDS has a row at a locus. In VS-2054, the VAT,
+the participant mapping tables and `alt_allele` together suggested that every
+Foxtrot vid from several non-left-aligned keys had a row at its left-aligned
+locus, because `alt_allele` had a row at each one. A chr21 run over the VDS
+found 8 of 36 such vids with no row there. So treat a count inferred from the
+tables as a hypothesis, and say so when reporting it. The exact count is
+`no_lookup_location` in the override summary of `GvsCreateNoCallSetsFromVDS`.
+
 
 # High-Level Architecture (WDLs, BigQuery, Terra)
 
@@ -1170,6 +1178,19 @@ Local Storage attached to Spot Preemptible VMs", at about 60% of the on-demand
 rate. Pricing it on demand overstated the SSD's share of the VS-2055 costs by
 about 80%. Rates change, so look them up in the Cloud Billing Catalog API
 rather than reusing figures from an earlier write-up.
+
+Worker-hours come from integrating the secondary worker count in the
+autoscaler log's recommendation entries (`currentClusterSize`). That count is
+the size Dataproc has asked for, not the number of VMs running. The two agree
+when creates succeed, and diverge when they fail on quota. In the VS-2054
+Foxtrot chr21 run, C4D-only secondaries were held at 80 by the local SSD
+quota while the log's count reached 181, so integrating it gave 299
+worker-hours against a true figure of about 200. YARN shows the real size:
+`avg-yarn-allocated-cores` plus `avg-yarn-available-cores` in the same entries
+never exceeded 656, which is 82 eight-core nodes. So before integrating,
+compare the log's peak count with YARN's peak cores. If they disagree,
+integrate YARN's capacity instead, or cap the count at the quota, and report
+the result as a range.
 
 ## Interpolated multi-line text defeats both heredoc conventions
 
