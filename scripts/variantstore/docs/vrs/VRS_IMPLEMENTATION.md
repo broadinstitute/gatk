@@ -48,7 +48,7 @@ This enables downstream queries to identify and retrieve specific alleles across
 
 ## WDL Integration
 
-VRS ID flow is wired through five WDL workflows, with the decision made once per ingest by `ResolveEnableVrsIds` (`GvsUtils.wdl`):
+VRS ID flow is wired through five WDL workflows. `ResolveEnableVrsIds` (`GvsUtils.wdl`) makes the decision: each ingest runs it, and `GvsPopulateAltAllele` runs it read-only, with the flag unset:
 
 | Workflow                     | Role                                                                                                                                                                                                                                                                                              |
 |------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
