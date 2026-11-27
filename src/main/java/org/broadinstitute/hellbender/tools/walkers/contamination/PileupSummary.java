@@ -47,12 +47,18 @@ public class PileupSummary implements Locatable {
     }
 
     public PileupSummary(final VariantContext vc, final ReadPileup pileup) {
+        this(vc, pileup.getBaseCounts());
+    }
+
+    /**
+     * @param baseCounts the counts of A, C, G and T in the pileup at a biallelic SNP, as {@link ReadPileup#getBaseCounts} gives them
+     */
+    public PileupSummary(final VariantContext vc, final int[] baseCounts) {
         contig = vc.getContig();
         position = vc.getStart();
         alleleFrequency = vc.getAttributeAsDouble(VCFConstants.ALLELE_FREQUENCY_KEY, 0);
         final byte altBase = vc.getAlternateAllele(0).getBases()[0];
         final byte refBase = vc.getReference().getBases()[0];
-        final int[] baseCounts = pileup.getBaseCounts();
         altCount = baseCounts[BaseUtils.simpleBaseToBaseIndex(altBase)];
         refCount = baseCounts[BaseUtils.simpleBaseToBaseIndex(refBase)];
         totalCount = (int) MathUtils.sum(baseCounts);

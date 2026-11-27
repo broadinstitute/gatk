@@ -12,13 +12,13 @@ import org.broadinstitute.hellbender.utils.activityprofile.ActivityProfileState;
 import org.broadinstitute.hellbender.utils.activityprofile.BandPassActivityProfile;
 import org.broadinstitute.hellbender.utils.downsampling.DownsamplingMethod;
 import org.broadinstitute.hellbender.utils.iterators.IntervalLocusIterator;
-import org.broadinstitute.hellbender.utils.iterators.ReadCachingIterator;
 import org.broadinstitute.hellbender.utils.locusiterator.IntervalAlignmentContextIterator;
 import org.broadinstitute.hellbender.utils.locusiterator.LocusIteratorByState;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 
 import java.util.*;
+import java.util.function.Function;
 
 /**
  * Given a {@link MultiIntervalShard} of {@link GATKRead}, iterates over each {@link AssemblyRegion} within
@@ -35,22 +35,27 @@ import java.util.*;
 public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
     private static final Logger logger = LogManager.getLogger(AssemblyRegionIterator.class);
 
-    private final MultiIntervalShard<GATKRead> readShard;
+    /**
+     * The activity state of each locus of a shard's intervals, in order, evaluated as the shard's reads are taken in.  By
+     * default the states come from the pileup at each locus; a tool can evaluate loci another way.
+     */
+    public interface ActivityStates extends Iterator<ActivityProfileState> {
+        /**
+         * Attach the pileups of a region's loci to it, if pileups are tracked, once the region has its reads
+         */
+        default void addPileupData(final AssemblyRegion region) { }
+    }
+
     private final SAMFileHeader readHeader;
-    private final ReferenceDataSource reference;
-    private final FeatureManager features;
-    private final AssemblyRegionEvaluator evaluator;
     final AssemblyRegionArgumentCollection assemblyRegionArgs;
-    
+
     private AssemblyRegion readyRegion;
     private Queue<AssemblyRegion> pendingRegions;
     private List<GATKRead> previousRegionReads;
-    private final ReadCachingIterator readCachingIterator;
-    private Queue<GATKRead> readCache;
-    private final Iterator<AlignmentContext> locusIterator;
-    private final LocusIteratorByState libs;
+    private final Iterator<GATKRead> reads;
+    private final Queue<GATKRead> readCache;
+    private final ActivityStates activityStates;
     private final ActivityProfile activityProfile;
-    private Queue<AlignmentAndReferenceContext> pendingAlignmentData;
 
     /**
      * Constructs an AssemblyRegionIterator over a provided read shard
@@ -69,33 +74,48 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
                                   final AssemblyRegionEvaluator evaluator,
                                   final AssemblyRegionArgumentCollection assemblyRegionArgs,
                                   final boolean trackPileups ) {
+        this(readShard, readHeader, assemblyRegionArgs, reads -> new PileupActivityStates(reads, readShard, readHeader,
+                reference, features, Utils.nonNull(evaluator), trackPileups));
+    }
+
+    /**
+     * Constructs an AssemblyRegionIterator over a provided read shard whose loci are evaluated by a tool's own activity states
+     *
+     * @param makeActivityStates  makes the activity states of the shard's loci from an iterator over its reads
+     */
+    public AssemblyRegionIterator(final MultiIntervalShard<GATKRead> readShard,
+                                  final SAMFileHeader readHeader,
+                                  final AssemblyRegionArgumentCollection assemblyRegionArgs,
+                                  final Function<Iterator<GATKRead>, ActivityStates> makeActivityStates) {
 
         Utils.nonNull(readShard);
         Utils.nonNull(readHeader);
-        Utils.nonNull(evaluator);
         assemblyRegionArgs.validate();
 
-
-        this.readShard = readShard;
         this.readHeader = readHeader;
-        this.reference = reference;
-        this.features = features;
-        this.evaluator = evaluator;
         this.assemblyRegionArgs = assemblyRegionArgs;
 
         this.readyRegion = null;
         this.previousRegionReads = null;
         this.pendingRegions = new ArrayDeque<>();
-        this.readCachingIterator = new ReadCachingIterator(readShard.iterator());
         this.readCache = new ArrayDeque<>();
-        this.activityProfile = ActivityProfile.create(assemblyRegionArgs, readHeader);
-        this.pendingAlignmentData = trackPileups ? new ArrayDeque<>() : null;
+        final Iterator<GATKRead> shardReads = readShard.iterator();
+        // the reads, which are cached, in coordinate order, as the activity states take them in
+        this.reads = new Iterator<>() {
+            @Override
+            public boolean hasNext() {
+                return shardReads.hasNext();
+            }
 
-        // We wrap our LocusIteratorByState inside an IntervalAlignmentContextIterator so that we get empty loci
-        // for uncovered locations. This is critical for reproducing GATK 3.x behavior!
-        this.libs = new LocusIteratorByState(readCachingIterator, DownsamplingMethod.NONE, ReadUtils.getSamplesFromHeader(readHeader), readHeader, true);
-        final IntervalLocusIterator intervalLocusIterator = new IntervalLocusIterator(readShard.getIntervals().iterator());
-        this.locusIterator = new IntervalAlignmentContextIterator(libs, intervalLocusIterator, readHeader.getSequenceDictionary());
+            @Override
+            public GATKRead next() {
+                final GATKRead read = shardReads.next();
+                readCache.add(read);
+                return read;
+            }
+        };
+        this.activityProfile = ActivityProfile.create(assemblyRegionArgs, readHeader);
+        this.activityStates = makeActivityStates.apply(reads);
 
         readyRegion = loadNextAssemblyRegion();
     }
@@ -120,52 +140,35 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
     private AssemblyRegion loadNextAssemblyRegion() {
         AssemblyRegion nextRegion = null;
 
-        while ( locusIterator.hasNext() && nextRegion == null ) {
-            final AlignmentContext pileup = locusIterator.next();
-
-            logger.debug(()->"AssemblyRegionIterator pileup: " + pileup);
+        while ( activityStates.hasNext() && nextRegion == null ) {
+            final ActivityProfileState state = activityStates.next();
 
             // Pop any new pending regions off of the activity profile. These pending regions will not become ready
             // until we've traversed all the reads that belong in them.
             //
-            // Ordering matters here: need to check for forceConversion before adding current pileup to the activity profile
+            // Ordering matters here: need to check for forceConversion before adding the current state to the activity profile
             if ( ! activityProfile.isEmpty() ) {
-                final boolean forceConversion = pileup.getLocation().getStart() != activityProfile.getEnd() + 1;
+                final boolean forceConversion = state.getLoc().getStart() != activityProfile.getEnd() + 1;
                 pendingRegions.addAll(activityProfile.popReadyAssemblyRegions(assemblyRegionArgs.assemblyRegionPadding, assemblyRegionArgs.minAssemblyRegionSize, assemblyRegionArgs.maxAssemblyRegionSize, forceConversion));
             }
 
-            // Add the current pileup to the activity profile
-            final SimpleInterval pileupInterval = new SimpleInterval(pileup);
-            final ReferenceContext pileupRefContext = new ReferenceContext(reference, pileupInterval);
-            final FeatureContext pileupFeatureContext = new FeatureContext(features, pileupInterval);
-
-
-            final ActivityProfileState profile = evaluator.isActive(pileup, pileupRefContext, pileupFeatureContext);
-            logger.debug(() -> profile.toString());
-            activityProfile.add(profile);
-
-            if (pendingAlignmentData!=null) {
-                AlignmentAndReferenceContext alignmentAndRefContext = new AlignmentAndReferenceContext(pileup, pileupRefContext);
-                alignmentAndRefContext.setActivityScore(profile.getOriginalActiveProb());
-                pendingAlignmentData.add(alignmentAndRefContext);
-            }
+            activityProfile.add(state);
 
             // A pending region only becomes ready once our locus iterator has advanced beyond the end of its extended span
             // (this ensures that we've loaded all reads that belong in the new region)
-            if ( ! pendingRegions.isEmpty() && IntervalUtils.isAfter(pileup.getLocation(), pendingRegions.peek().getPaddedSpan(), readHeader.getSequenceDictionary()) ) {
+            if ( ! pendingRegions.isEmpty() && IntervalUtils.isAfter(state.getLoc(), pendingRegions.peek().getPaddedSpan(), readHeader.getSequenceDictionary()) ) {
                 nextRegion = pendingRegions.poll();
             }
         }
 
         // When we run out of loci, close out the activity profile, and close out any remaining pending regions one at a time
         // It may require multiple invocations before the pendingRegions queue is cleared out.
-        if ( ! locusIterator.hasNext() ) {
-            
-            // Pull on the encapsulated LocusIteratorByState until it's exhausted, as the enclosing
-            // IntervalLocusIterator is not guaranteed to exhaust it. This guarantees that the reads
-            // in the final padded region end up in our read cache.
-            while ( libs.hasNext() ) {
-                libs.next();
+        if ( ! activityStates.hasNext() ) {
+
+            // Take in the rest of the shard's reads, which the evaluation of loci needn't reach. This guarantees that
+            // the reads in the final padded region end up in our read cache.
+            while ( reads.hasNext() ) {
+                reads.next();
             }
 
             if ( ! activityProfile.isEmpty() ) {
@@ -183,8 +186,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         // If there's a region ready, fill it with reads before returning
         if ( nextRegion != null ) {
             fillNextAssemblyRegionWithReads(nextRegion);
-            // fillnextessemblyregion; check you are on correct chr; if alignment data is not in the assembly region then pop it
-            fillNextAssemblyRegionWithPileupData(nextRegion);
+            activityStates.addPileupData(nextRegion);
         }
 
         return nextRegion;
@@ -200,11 +202,7 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
             }
         }
 
-        // Update our read cache with the reads newly-read by our locus iterator.
-        // Note that the cache is (crucially) maintained in coordinate order.
-        readCache.addAll(readCachingIterator.consumeCachedReads());
-
-        // Add all reads from the cache that belong in this region
+        // Add all reads from the cache, which is (crucially) in coordinate order, that belong in this region
         while ( ! readCache.isEmpty() ) {
             final GATKRead nextRead = readCache.peek();
 
@@ -225,44 +223,97 @@ public class AssemblyRegionIterator implements Iterator<AssemblyRegion> {
         }
     }
 
-    private void fillNextAssemblyRegionWithPileupData(final AssemblyRegion region){
-        // Save ourselves the memory footprint and work of saving the pileups in the event they aren't needed for processing.
-        if (pendingAlignmentData == null){
-            return;
-        }
-        final List<AlignmentAndReferenceContext> overlappingAlignmentData = new ArrayList<>();
-        final Queue<AlignmentAndReferenceContext> previousAlignmentData = new ArrayDeque<>();
-
-        while (!pendingAlignmentData.isEmpty()) {
-            final AlignmentContext pendingAlignmentContext = pendingAlignmentData.peek().getAlignmentContext();
-            if (!pendingAlignmentContext.contigsMatch(region) ||
-                pendingAlignmentContext.getStart() < region.getStart()) {
-                pendingAlignmentData.poll(); // pop this
-            } else {
-                break;
-            }
-        }
-        while (!pendingAlignmentData.isEmpty()) {
-            final AlignmentContext pendingAlignmentContext = pendingAlignmentData.peek().getAlignmentContext();
-
-            if (!pendingAlignmentContext.contigsMatch(region) ||
-                    pendingAlignmentContext.getStart() <= region.getEnd()) {
-                overlappingAlignmentData.add(pendingAlignmentData.poll()); // pop into overlappingAlignmentData
-            } else {
-                break;
-            }
-        }
-
-        // reconstructing queue to contain items that may be in the next assembly region
-        previousAlignmentData.addAll(overlappingAlignmentData);
-        previousAlignmentData.addAll(pendingAlignmentData);
-        pendingAlignmentData = previousAlignmentData;
-
-        region.addAllAlignmentData(overlappingAlignmentData);
-    }
-
     @Override
     public void remove() {
         throw new UnsupportedOperationException("remove() not supported by AssemblyRegionIterator");
+    }
+
+    /**
+     * The activity states that an {@link AssemblyRegionEvaluator} gives the pileup of each locus
+     */
+    private static final class PileupActivityStates implements ActivityStates {
+        private final ReferenceDataSource reference;
+        private final FeatureManager features;
+        private final AssemblyRegionEvaluator evaluator;
+        private final Iterator<AlignmentContext> locusIterator;
+        private Queue<AlignmentAndReferenceContext> pendingAlignmentData;
+
+        PileupActivityStates(final Iterator<GATKRead> reads, final MultiIntervalShard<GATKRead> readShard, final SAMFileHeader readHeader,
+                             final ReferenceDataSource reference, final FeatureManager features,
+                             final AssemblyRegionEvaluator evaluator, final boolean trackPileups) {
+            this.reference = reference;
+            this.features = features;
+            this.evaluator = evaluator;
+            this.pendingAlignmentData = trackPileups ? new ArrayDeque<>() : null;
+
+            // We wrap our LocusIteratorByState inside an IntervalAlignmentContextIterator so that we get empty loci
+            // for uncovered locations. This is critical for reproducing GATK 3.x behavior!
+            final LocusIteratorByState libs = new LocusIteratorByState(reads, DownsamplingMethod.NONE, ReadUtils.getSamplesFromHeader(readHeader), readHeader, true);
+            final IntervalLocusIterator intervalLocusIterator = new IntervalLocusIterator(readShard.getIntervals().iterator());
+            this.locusIterator = new IntervalAlignmentContextIterator(libs, intervalLocusIterator, readHeader.getSequenceDictionary());
+        }
+
+        @Override
+        public boolean hasNext() {
+            return locusIterator.hasNext();
+        }
+
+        @Override
+        public ActivityProfileState next() {
+            final AlignmentContext pileup = locusIterator.next();
+
+            logger.debug(()->"AssemblyRegionIterator pileup: " + pileup);
+
+            final SimpleInterval pileupInterval = new SimpleInterval(pileup);
+            final ReferenceContext pileupRefContext = new ReferenceContext(reference, pileupInterval);
+            final FeatureContext pileupFeatureContext = new FeatureContext(features, pileupInterval);
+
+            final ActivityProfileState profile = evaluator.isActive(pileup, pileupRefContext, pileupFeatureContext);
+            logger.debug(() -> profile.toString());
+
+            if (pendingAlignmentData!=null) {
+                AlignmentAndReferenceContext alignmentAndRefContext = new AlignmentAndReferenceContext(pileup, pileupRefContext);
+                alignmentAndRefContext.setActivityScore(profile.getOriginalActiveProb());
+                pendingAlignmentData.add(alignmentAndRefContext);
+            }
+            return profile;
+        }
+
+        @Override
+        public void addPileupData(final AssemblyRegion region){
+            // Save ourselves the memory footprint and work of saving the pileups in the event they aren't needed for processing.
+            if (pendingAlignmentData == null){
+                return;
+            }
+            final List<AlignmentAndReferenceContext> overlappingAlignmentData = new ArrayList<>();
+            final Queue<AlignmentAndReferenceContext> previousAlignmentData = new ArrayDeque<>();
+
+            while (!pendingAlignmentData.isEmpty()) {
+                final AlignmentContext pendingAlignmentContext = pendingAlignmentData.peek().getAlignmentContext();
+                if (!pendingAlignmentContext.contigsMatch(region) ||
+                    pendingAlignmentContext.getStart() < region.getStart()) {
+                    pendingAlignmentData.poll(); // pop this
+                } else {
+                    break;
+                }
+            }
+            while (!pendingAlignmentData.isEmpty()) {
+                final AlignmentContext pendingAlignmentContext = pendingAlignmentData.peek().getAlignmentContext();
+
+                if (!pendingAlignmentContext.contigsMatch(region) ||
+                        pendingAlignmentContext.getStart() <= region.getEnd()) {
+                    overlappingAlignmentData.add(pendingAlignmentData.poll()); // pop into overlappingAlignmentData
+                } else {
+                    break;
+                }
+            }
+
+            // reconstructing queue to contain items that may be in the next assembly region
+            previousAlignmentData.addAll(overlappingAlignmentData);
+            previousAlignmentData.addAll(pendingAlignmentData);
+            pendingAlignmentData = previousAlignmentData;
+
+            region.addAllAlignmentData(overlappingAlignmentData);
+        }
     }
 }

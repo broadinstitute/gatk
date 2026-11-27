@@ -115,12 +115,6 @@ public class F1R2CountsCollector {
         final String contig = referenceContext.getInterval().getContig();
         final int position = referenceContext.getInterval().getStart();
         updateBlock(contig, position);
-        // null at the ends of the contig and at Ns
-        final String refContext = referenceContextWindow.contextAt(referenceContext, contig, position);
-        if (refContext == null) {
-            return;
-        }
-        final Nucleotide refBase = Nucleotide.decode((byte) refContext.charAt(F1R2FilterConstants.MIDDLE_INDEX));
 
         // optimize the common case of a single tumor sample
         final String onlySample = samples.size() == 1 ? samples.iterator().next() : null;
@@ -128,67 +122,84 @@ public class F1R2CountsCollector {
                 Collections.singletonMap(onlySample, pileup.getPileupForSample(onlySample, header)) : pileup.splitBySample(header, null);
 
         for (final Map.Entry<String, ReadPileup> entry : splitPileup.entrySet()) {
-            final String sample = entry.getKey();
-            final ReadPileup samplePileup = entry.getValue();
-
             // one pass over the elements whose base qualities are above the minimum
             pileupStatistics.reset();
-            for (final PileupElement pe : samplePileup) {
+            for (final PileupElement pe : entry.getValue()) {
                 if (pe.getQual() > CF1R2Args.minBaseQuality) {
                     pileupStatistics.add(pe);
                 }
             }
-
-            if (!pileupStatistics.isGood()) {
-                continue;
-            }
-
-            final int[] baseCounts = pileupStatistics.baseCounts;
-            final int depth = pileupStatistics.depth;
-
-            // Make a copy of base counts and update the counts of ref to -1. Now the maxElementIndex of the array gives us
-            // the alt base.
-            final int[] baseCountsCopy = Arrays.copyOf(baseCounts, baseCounts.length);
-            baseCountsCopy[refBase.ordinal()] = -1;
-            final int altBaseIndex = MathUtils.maxElementIndex(baseCountsCopy);
-            final boolean referenceSite = baseCounts[altBaseIndex] == 0;
-
-            // If the site is ref, we simply update the coverage histogram
-            if (referenceSite) {
-                blockSiteCounts.get(sample).addRefSite(refContext, depth);
-                continue;
-            }
-
-            // If we got here, we have an alt site with a single alt base
-            final Nucleotide altBase = Nucleotide.decode(BaseUtils.baseIndexToSimpleBase(altBaseIndex));
-
-            final int refCount = baseCounts[refBase.ordinal()];
-            final int altCount = baseCounts[altBaseIndex];
-            Utils.validate(altCount > 0, "We must have a nonzero alt read but got " + altCount);
-
-            // a second pass over the elements, only at the few sites with alt reads
-            int refF1R2 = 0;
-            int altF1R2 = 0;
-            for (final PileupElement pe : samplePileup) {
-                if (pe.getQual() > CF1R2Args.minBaseQuality && ReadUtils.isF1R2(pe.getRead())) {
-                    final Nucleotide base = Nucleotide.decode(pe.getBase());
-                    refF1R2 += base == refBase ? 1 : 0;
-                    altF1R2 += base == altBase ? 1 : 0;
-                }
-            }
-
-            if (altCount == 1) {
-                final ReadOrientation type = altF1R2 == 1 ? ReadOrientation.F1R2 : ReadOrientation.F2R1;
-                blockSiteCounts.get(sample).addOneAltReadSite(refContext, altBase, type, depth);
-                continue;
-            }
-
-            try {
-                altTableWriters.get(sample).writeRecord(new AltSiteRecord(refContext, refCount, altCount, refF1R2, altF1R2, altBase, contig, position));
-            } catch (IOException e) {
-                throw new UserException("Encountered an IO Exception writing to the alt data table", e);
-            }
+            process(entry.getKey(), pileupStatistics, contig, position, referenceContext);
         }
+    }
+
+    /**
+     * Collect the F1R2 counts of a sample at a locus from the statistics of its pileup there, which the caller accumulated
+     * over the elements whose base qualities exceed {@link #getMinBaseQuality}, as Mutect2 does one read at a time.  Loci
+     * must come in order.
+     *
+     * @param referenceContext a reference context on the contig, whose data source supplies the reference bases
+     */
+    public void process(final String sample, final PileupStatistics statistics, final String contig, final int position,
+                        final ReferenceContext referenceContext) {
+        updateBlock(contig, position);
+        // null at the ends of the contig and at Ns
+        final String refContext = referenceContextWindow.contextAt(referenceContext, contig, position);
+        if (refContext == null || !statistics.isGood()) {
+            return;
+        }
+        final Nucleotide refBase = Nucleotide.decode((byte) refContext.charAt(F1R2FilterConstants.MIDDLE_INDEX));
+
+        final int[] baseCounts = statistics.baseCounts;
+        final int depth = statistics.depth;
+
+        // Make a copy of base counts and update the counts of ref to -1. Now the maxElementIndex of the array gives us
+        // the alt base.
+        final int[] baseCountsCopy = Arrays.copyOf(baseCounts, baseCounts.length);
+        baseCountsCopy[refBase.ordinal()] = -1;
+        final int altBaseIndex = MathUtils.maxElementIndex(baseCountsCopy);
+        final boolean referenceSite = baseCounts[altBaseIndex] == 0;
+
+        // If the site is ref, we simply update the coverage histogram
+        if (referenceSite) {
+            blockSiteCounts.get(sample).addRefSite(refContext, depth);
+            return;
+        }
+
+        // If we got here, we have an alt site with a single alt base
+        final Nucleotide altBase = Nucleotide.decode(BaseUtils.baseIndexToSimpleBase(altBaseIndex));
+
+        final int refCount = baseCounts[refBase.ordinal()];
+        final int altCount = baseCounts[altBaseIndex];
+        Utils.validate(altCount > 0, "We must have a nonzero alt read but got " + altCount);
+        final int refF1R2 = statistics.f1r2BaseCounts[refBase.ordinal()];
+        final int altF1R2 = statistics.f1r2BaseCounts[altBase.ordinal()];
+
+        if (altCount == 1) {
+            final ReadOrientation type = altF1R2 == 1 ? ReadOrientation.F1R2 : ReadOrientation.F2R1;
+            blockSiteCounts.get(sample).addOneAltReadSite(refContext, altBase, type, depth);
+            return;
+        }
+
+        try {
+            altTableWriters.get(sample).writeRecord(new AltSiteRecord(refContext, refCount, altCount, refF1R2, altF1R2, altBase, contig, position));
+        } catch (IOException e) {
+            throw new UserException("Encountered an IO Exception writing to the alt data table", e);
+        }
+    }
+
+    /**
+     * @return the minimum base quality, which the base qualities of the pileup elements whose statistics we use must exceed
+     */
+    public int getMinBaseQuality() {
+        return CF1R2Args.minBaseQuality;
+    }
+
+    /**
+     * @return empty statistics of a pileup, to which the caller adds elements
+     */
+    public PileupStatistics makePileupStatistics() {
+        return new PileupStatistics(CF1R2Args.minMedianMapQual);
     }
 
     /**
@@ -281,15 +292,18 @@ public class F1R2CountsCollector {
 
     /**
      * The statistics of a sample's pileup at a locus, accumulated in one pass over the elements whose base qualities are
-     * above the minimum: the counts of their A, C, G and T bases, and what decides whether the pileup is good, ie whether
-     * it has such bases, few elements next to indels, and a high median mapping quality.
+     * above the minimum: the counts of their A, C, G and T bases, overall and in F1R2 reads, and what decides whether the
+     * pileup is good, ie whether it has such bases, few elements next to indels, and a high median mapping quality.
      */
-    private static final class PileupStatistics {
+    public static final class PileupStatistics {
         private final int minMedianMappingQuality;
 
         // the counts of A, C, G and T, indexed as by BaseUtils.simpleBaseToBaseIndex, and their sum
         final int[] baseCounts = new int[4];
         int depth;
+
+        // the counts of A, C, G and T in F1R2 reads, indexed by Nucleotide.decode(base).ordinal()
+        final int[] f1r2BaseCounts = new int[4];
 
         private int numElements;
         private int numIndelElements;
@@ -304,8 +318,9 @@ public class F1R2CountsCollector {
             reset();
         }
 
-        void reset() {
+        public void reset() {
             Arrays.fill(baseCounts, 0);
+            Arrays.fill(f1r2BaseCounts, 0);
             depth = 0;
             numElements = 0;
             numIndelElements = 0;
@@ -315,18 +330,32 @@ public class F1R2CountsCollector {
         }
 
         void add(final PileupElement pe) {
+            add(pe.isDeletion(), pe.getBase(), ReadUtils.isF1R2(pe.getRead()),
+                    pe.isDeletion() || pe.isAfterInsertion() || pe.isBeforeDeletionStart(), pe.getMappingQual());
+        }
+
+        /**
+         * Add a pileup element, whose base quality must exceed the minimum
+         *
+         * @param isNextToIndel whether the element is a deletion, the first after an insertion or the last before a deletion
+         */
+        public void add(final boolean isDeletion, final byte base, final boolean isF1R2, final boolean isNextToIndel,
+                        final int mappingQuality) {
             numElements++;
-            if (!pe.isDeletion()) {
-                final int baseIndex = BaseUtils.simpleBaseToBaseIndex(pe.getBase());
+            if (!isDeletion) {
+                final int baseIndex = BaseUtils.simpleBaseToBaseIndex(base);
                 if (baseIndex != -1) {
                     baseCounts[baseIndex]++;
                     depth++;
                 }
+                final int nucleotide = Nucleotide.decode(base).ordinal();
+                if (isF1R2 && nucleotide < f1r2BaseCounts.length) {
+                    f1r2BaseCounts[nucleotide]++;
+                }
             }
-            if (pe.isDeletion() || pe.isAfterInsertion() || pe.isBeforeDeletionStart()) {
+            if (isNextToIndel) {
                 numIndelElements++;
             }
-            final int mappingQuality = pe.getMappingQual();
             if (mappingQuality >= minMedianMappingQuality) {
                 numAtLeastMinimum++;
                 minAtLeastMinimum = Math.min(minAtLeastMinimum, mappingQuality);
@@ -342,6 +371,13 @@ public class F1R2CountsCollector {
         boolean isGood() {
             return depth > 0 && numIndelElements <= depth / 100 &&
                     medianIsAtLeast(numElements, numAtLeastMinimum, maxBelowMinimum, minAtLeastMinimum, minMedianMappingQuality);
+        }
+
+        @Override
+        public String toString() {
+            return String.format("bases %s, F1R2 bases %s, %d elements, %d next to indels, MQ: %d >= minimum, max below %d, min at least %d",
+                    Arrays.toString(baseCounts), Arrays.toString(f1r2BaseCounts), numElements, numIndelElements,
+                    numAtLeastMinimum, maxBelowMinimum, minAtLeastMinimum);
         }
     }
 

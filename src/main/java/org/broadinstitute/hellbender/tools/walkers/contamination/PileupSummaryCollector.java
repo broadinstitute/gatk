@@ -82,16 +82,71 @@ public final class PileupSummaryCollector implements AutoCloseable {
 
         if ( vc.isBiallelic() && vc.isSNP() && alleleFrequencyInRange(vc) ) {
             final ReadPileup pileup = alignmentContext.getBasePileup();
-            for (final Table table : tables) {
-                final ReadPileup tablePileup = pileup.makeFilteredPileup(pe -> table.readFilter().test(pe.getRead()));
+            for (int table = 0; table < tables.size(); table++) {
+                final Predicate<GATKRead> readFilter = tables.get(table).readFilter();
+                final ReadPileup tablePileup = pileup.makeFilteredPileup(pe -> readFilter.test(pe.getRead()));
                 if (!tablePileup.isEmpty()) {
-                    try {
-                        table.writer().writeRecord(new PileupSummary(vc, tablePileup));
-                    } catch (final IOException ex) {
-                        throw new UserException(String.format("Encountered an IO exception while writing to %s", table.output()), ex);
-                    }
+                    writeRecord(table, new PileupSummary(vc, tablePileup));
                 }
             }
+        }
+    }
+
+    /**
+     * The variants at which {@link #process} might write records, for callers that count the bases of each table's
+     * pileups themselves, as Mutect2 does one read at a time: at each locus of an interval, the first variant overlapping
+     * it, which process would take, if it is a biallelic SNP.  Whether a site's population allele frequency is in range
+     * is left to {@link #summarizes}, because process checks it, and warns when it is missing, only at the loci it is given.
+     *
+     * @param intervalContext the features of an interval
+     * @return the sites in the interval, in order of position
+     */
+    public List<VariantContext> candidateSites(final FeatureContext intervalContext) {
+        final SimpleInterval interval = intervalContext.getInterval();
+        final List<VariantContext> sites = new ArrayList<>();
+        // the variants come in order of their starts, and the last locus that the variants so far overlap
+        int lastOverlappedLocus = Integer.MIN_VALUE;
+        for (final VariantContext vc : intervalContext.getValues(variants)) {
+            if (vc.getStart() > lastOverlappedLocus && vc.getStart() >= interval.getStart() && vc.isBiallelic() && vc.isSNP()) {
+                sites.add(vc);
+            }
+            lastOverlappedLocus = Math.max(lastOverlappedLocus, vc.getEnd());
+        }
+        return sites;
+    }
+
+    /**
+     * Whether a site from {@link #candidateSites} has pileup summaries, that is, whether its population allele frequency
+     * is in range.  Like process, ask only at loci that are traversed.
+     */
+    public boolean summarizes(final VariantContext site) {
+        return alleleFrequencyInRange(site);
+    }
+
+    public int numberOfTables() {
+        return tables.size();
+    }
+
+    /**
+     * Whether the pileups of a table include a read
+     */
+    public boolean tableIncludes(final int table, final GATKRead read) {
+        return tables.get(table).readFilter().test(read);
+    }
+
+    /**
+     * Write a table's record at a site from {@link #candidateSites} that it {@link #summarizes}, from the counts of A, C,
+     * G and T in the table's pileup there, which process would write if the pileup has elements, including deletions
+     */
+    public void writeRecord(final int table, final VariantContext site, final int[] baseCounts) {
+        writeRecord(table, new PileupSummary(site, baseCounts));
+    }
+
+    private void writeRecord(final int table, final PileupSummary record) {
+        try {
+            tables.get(table).writer().writeRecord(record);
+        } catch (final IOException ex) {
+            throw new UserException(String.format("Encountered an IO exception while writing to %s", tables.get(table).output()), ex);
         }
     }
 

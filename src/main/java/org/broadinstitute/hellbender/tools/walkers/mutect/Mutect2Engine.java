@@ -55,8 +55,6 @@ import org.broadinstitute.hellbender.utils.haplotype.Haplotype;
 import org.broadinstitute.hellbender.utils.haplotype.HaplotypeBAMWriter;
 import org.broadinstitute.hellbender.utils.io.IOUtils;
 import org.broadinstitute.hellbender.utils.pileup.PileupBasedAlleles;
-import org.broadinstitute.hellbender.utils.pileup.PileupElement;
-import org.broadinstitute.hellbender.utils.pileup.ReadPileup;
 import org.broadinstitute.hellbender.utils.read.GATKRead;
 import org.broadinstitute.hellbender.utils.read.ReadUtils;
 import org.broadinstitute.hellbender.utils.reference.ReferenceUtils;
@@ -75,7 +73,7 @@ import java.util.stream.IntStream;
 /**
  * Created by davidben on 9/15/16.
  */
-public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseable {
+public final class Mutect2Engine implements AutoCloseable {
 
     private static final List<String> STANDARD_MUTECT_INFO_FIELDS = Arrays.asList(GATKVCFConstants.NORMAL_LOG_10_ODDS_KEY, GATKVCFConstants.TUMOR_LOG_10_ODDS_KEY, GATKVCFConstants.NORMAL_ARTIFACT_LOG_10_ODDS_KEY,
             GATKVCFConstants.EVENT_COUNT_IN_REGION_KEY, GATKVCFConstants.EVENT_COUNT_IN_HAPLOTYPE_KEY, GATKVCFConstants.IN_PON_KEY, GATKVCFConstants.POPULATION_AF_KEY,
@@ -134,9 +132,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
     private final Optional<PileupSummaryCollector> pileupSummaryCollector;
 
-    private PileupQualBuffer tumorPileupQualBuffer;
-    private PileupQualBuffer normalPileupQualBuffer;
-
     /**
      * Create and initialize a new HaplotypeCallerEngine given a collection of HaplotypeCaller arguments, a reads header,
      * and a reference file
@@ -158,9 +153,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         referenceReader = ReferenceUtils.createReferenceReader(Utils.nonNull(referenceSpec));
         aligner = SmithWatermanAligner.getAligner(MTAC.smithWatermanImplementation);
         samplesList = new IndexedSampleList(new ArrayList<>(ReadUtils.getSamplesFromHeader(header)));
-
-        tumorPileupQualBuffer = new PileupQualBuffer(MTAC.activeRegionMultipleSubstitutionBaseQualCorrection);
-        normalPileupQualBuffer = new PileupQualBuffer(MTAC.activeRegionMultipleSubstitutionBaseQualCorrection);
 
         // optimize set operations for the common cases of no normal and one normal
         if (MTAC.normalSamples.isEmpty()) {
@@ -509,34 +501,51 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         genotypingEngine.close();
     }
 
-    @Override
-    public ActivityProfileState isActive(final AlignmentContext context, final ReferenceContext ref, final FeatureContext features) {
+    /**
+     * The evidence of the reads of a contig, from some locus on, which Mutect2 accumulates one read at a time and from
+     * which {@link #evaluateLocus} decides each locus
+     *
+     * @param reference the source of the reference bases with which reads' bases are compared
+     * @param features the source of the common variants of pileup summaries
+     */
+    LocusEvidence makeLocusEvidence(final String contig, final int start, final ReferenceDataSource reference, final FeatureManager features) {
+        return new LocusEvidence(header, contig, start, reference, features, normalSamples, MTAC.pcrSnvQual,
+                MTAC.activeRegionMultipleSubstitutionBaseQualCorrection, f1R2CountsCollector.orElse(null), pileupSummaryCollector.orElse(null));
+    }
+
+    /**
+     * Decide whether a locus is active from the evidence of the reads covering it, as isActive once did from its pileup.
+     * Also count the locus as callable if it is, and collect its pileup summaries and F1R2 counts.
+     *
+     * @param evidence the evidence of the locus's contig, to which every read starting at or before the locus has been added
+     * @param refInterval a single-base interval
+     * @param features the source of force-calling alleles, the panel of normals and the germline resource
+     * @param reference a reference context on the locus's contig, whose data source supplies F1R2 reference contexts
+     */
+    ActivityProfileState evaluateLocus(final LocusEvidence evidence, final SimpleInterval refInterval, final FeatureManager features,
+                                       final ReferenceContext reference) {
+        final int position = refInterval.getStart();
+
         // before any early return, so that the pileup summaries include force-called sites
-        pileupSummaryCollector.ifPresent(collector -> collector.process(context, features));
+        evidence.writePileupSummaries(position);
 
-        final byte refBase = ref.getBase();
-        final SimpleInterval refInterval = ref.getInterval();
-
-        if ( forceCallingAllelesPresent && features.getValues(MTAC.alleles, ref).stream().anyMatch(vc -> MTAC.forceCallFiltered || vc.isNotFiltered())) {
+        if ( forceCallingAllelesPresent && new FeatureContext(features, refInterval).getValues(MTAC.alleles).stream().anyMatch(vc -> MTAC.forceCallFiltered || vc.isNotFiltered())) {
             return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.SOMATIC, null);
         }
 
-        if( context == null || context.getBasePileup().isEmpty() ) {
+        // the sizes of the pileups, ie their numbers of bases and deletions
+        final int tumorDepth = evidence.depth(position, false);
+        final int depth = tumorDepth + evidence.depth(position, true);
+        if (depth == 0) {
             return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.NONE, null);
         }
 
-        final ReadPileup pileup = context.getBasePileup();
-        if (MTAC.pileupDetectionArgs.usePileupDetection) {
-            pileup.forEach(p -> PileupBasedAlleles.addMismatchPercentageToRead(p.getRead(), header, ref));
-        }
-        if (pileup.size() >= minCallableDepth) {
+        if (depth >= minCallableDepth) {
             callableSites.increment();
         }
-        final ReadPileup tumorPileup = pileup.getPileupForSamples(this::isTumorSample, header);
-        f1R2CountsCollector.ifPresent(collector -> collector.process(tumorPileup, ref));
-        tumorPileupQualBuffer.accumulateQuals(tumorPileup, refBase, MTAC.pcrSnvQual);
-        final Pair<Integer, ByteArrayList> bestTumorAltAllele = tumorPileupQualBuffer.likeliestIndexAndQuals();
-        final double tumorLogOdds = logLikelihoodRatio(tumorPileup.size() - bestTumorAltAllele.getRight().size(), bestTumorAltAllele.getRight());
+        evidence.collectF1R2Counts(position, reference);
+        final Pair<Integer, ByteArrayList> bestTumorAltAllele = evidence.altQuals(position, false).likeliestIndexAndQuals();
+        final double tumorLogOdds = logLikelihoodRatio(tumorDepth - bestTumorAltAllele.getRight().size(), bestTumorAltAllele.getRight());
 
         if (tumorLogOdds < MTAC.getInitialLogOdds()) {
             return new ActivityProfileState(refInterval, 0.0, ActivityProfileState.Type.NONE, null);
@@ -548,9 +557,9 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         // genotype germline sites, in which case they are candidates like any other site.
         // Genotyped panel of normals sites, which Permutect training data uses as examples of artifacts, are candidates like
         // any other site even if they also look germline, so that germline subsampling never discards them.
-        final SimpleInterval locus = new SimpleInterval(context.getContig(), (int) context.getPosition(), (int) context.getPosition());
-        final boolean genotypedPonSite = MTAC.genotypePonSites && !features.getValues(MTAC.pon, locus).isEmpty();
-        if (!genotypedPonSite && isGermlineSite(pileup, refBase, refInterval, features, bestTumorAltAllele)) {
+        final FeatureContext featureContext = new FeatureContext(features, refInterval);
+        final boolean genotypedPonSite = MTAC.genotypePonSites && !featureContext.getValues(MTAC.pon).isEmpty();
+        if (!genotypedPonSite && isGermlineSite(evidence, position, refInterval, featureContext, bestTumorAltAllele)) {
             if (usesMutect2ActivityProfile) {
                 return new ActivityProfileState(refInterval, 1.0, ActivityProfileState.Type.GERMLINE, null);
             } else if (!MTAC.genotypeGermlineSites) {
@@ -560,12 +569,12 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
 
         // likewise, panel of normals sites are not inherently active, but the Mutect2 activity profile uses them for phasing.
         // We genotype them when generating Permutect training data, which uses them as examples of artifacts.
-        if (!MTAC.genotypePonSites && !features.getValues(MTAC.pon, locus).isEmpty()) {
+        if (!MTAC.genotypePonSites && !featureContext.getValues(MTAC.pon).isEmpty()) {
             return new ActivityProfileState(refInterval, usesMutect2ActivityProfile ? 1.0 : 0.0, ActivityProfileState.Type.ARTIFACT, null);
         }
 
         // if a site is active, count it toward the total of callable sites even if its depth is below the threshold
-        if (pileup.size() < minCallableDepth) {
+        if (depth < minCallableDepth) {
             callableSites.increment();
         }
         return new ActivityProfileState( refInterval, 1.0, ActivityProfileState.Type.SOMATIC, null);
@@ -575,17 +584,16 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
      * Is the dominant tumor alt allele at this site apparently a germline variant, judging by the matched normal or, in
      * tumor-only mode, by the germline resource?
      */
-    private boolean isGermlineSite(final ReadPileup pileup, final byte refBase, final SimpleInterval refInterval,
+    private boolean isGermlineSite(final LocusEvidence evidence, final int position, final SimpleInterval refInterval,
                                    final FeatureContext features, final Pair<Integer, ByteArrayList> bestTumorAltAllele) {
         if (hasNormal()) {  // look for activity in the matched normal
-            final ReadPileup normalPileup = pileup.getPileupForSamples(this::isNormalSample, header);
-            normalPileupQualBuffer.accumulateQuals(normalPileup, refBase, MTAC.pcrSnvQual);
+            final PileupQualBuffer normalPileupQualBuffer = evidence.altQuals(position, true);
             final Pair<Integer, ByteArrayList> bestNormalAltAllele = normalPileupQualBuffer.likeliestIndexAndQuals();
             if (bestNormalAltAllele.getLeft() == bestTumorAltAllele.getLeft()) {
                 final int normalAltCount = bestNormalAltAllele.getRight().size();
                 final double normalQualSum = normalPileupQualBuffer.qualSum(bestNormalAltAllele.getLeft());
                 // TODO: split this classification -- low AF in normal is probably ARTIFACT, not GERMLINE
-                return normalAltCount > normalPileup.size() * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM;
+                return normalAltCount > evidence.depth(position, true) * MAX_ALT_FRACTION_IN_NORMAL && normalQualSum > MAX_NORMAL_QUAL_SUM;
             }
         } else {    // tumor-only: guess germline variants using the germline resource
             final List<VariantContext> germline = features.getValues(MTAC.germlineResource, refInterval);
@@ -672,11 +680,7 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
                 new HomogeneousPloidyModel(samplesList, 2), Collections.emptyList(), false, Collections.emptyList()); //TODO: clean up args
     }
 
-    private static int getCurrentOrFollowingIndelLength(final PileupElement pe) {
-        return pe.isDeletion() ? pe.getCurrentCigarElement().getLength() : pe.getLengthOfImmediatelyFollowingIndel();
-    }
-
-    private static byte indelQual(final int indelLength) {
+    static byte indelQual(final int indelLength) {
         return (byte) Math.min(INDEL_START_QUAL + (indelLength - 1) * INDEL_CONTINUATION_QUAL, Byte.MAX_VALUE);
     }
 
@@ -698,7 +702,8 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         final int nAlt = repeatFactor * altQuals.size();
         final int n = nRef + nAlt;
 
-        final double fTildeRatio = FastMath.exp(MathUtils.digamma(nRef + 1) - MathUtils.digamma(nAlt + 1));
+        // used only for alt reads, and costly enough to skip at the many loci without them
+        final double fTildeRatio = altQuals.isEmpty() ? Double.NaN : FastMath.exp(MathUtils.digamma(nRef + 1) - MathUtils.digamma(nAlt + 1));
 
 
         double readSum = 0;
@@ -733,15 +738,6 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
         return logLikelihoodRatio(refCount, Collections.singletonList(qual), altCount);
     }
 
-    // check that we're next to a soft clip that is not due to a read that got out of sync and ended in a bunch of BQ2's
-    // we only need to check the next base's quality
-    private static boolean isNextToUsefulSoftClip(final PileupElement pe) {
-        final int offset = pe.getOffset();
-        return pe.getQual() > MINIMUM_BASE_QUALITY &&
-                ((pe.isBeforeSoftClip() && pe.getRead().getBaseQuality(offset + 1) > MINIMUM_BASE_QUALITY)
-                        || (pe.isAfterSoftClip() && pe.getRead().getBaseQuality(offset - 1) > MINIMUM_BASE_QUALITY));
-    }
-
     private void checkSampleInBamHeader(final String sample) {
         if (sample != null && !samplesList.asListOfSamples().contains(sample)) {
             throw new UserException.BadInput("Sample " + sample + " is not in BAM header: " + samplesList.asListOfSamples());
@@ -755,36 +751,17 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
     /**
      * A resuable container class to accumulate qualities for each type of SNV and indels (all indels combined)
      */
-    private static class PileupQualBuffer {
+    static final class PileupQualBuffer {
         private static final int OTHER_SUBSTITUTION = 4;
         private static final int INDEL = 5;
 
-        private static double MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION;
+        private final double multipleSubstitutionBaseQualCorrection;
 
         // indices 0-3 are A,C,G,T; 4 is other substitution (just in case it's some exotic protocol); 5 is indel
         private List<ByteArrayList> buffers = IntStream.range(0,6).mapToObj(n -> new ByteArrayList()).collect(Collectors.toList());
 
         public PileupQualBuffer(final double multipleSubstitutionQualCorrection) {
-            MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION = multipleSubstitutionQualCorrection;
-        }
-
-        public void accumulateQuals(final ReadPileup pileup, final byte refBase, final int pcrErrorQual) {
-            clear();
-            final int position = pileup.getLocation().getStart();
-
-            for (final PileupElement pe : pileup) {
-                final int indelLength = getCurrentOrFollowingIndelLength(pe);
-                if (indelLength > 0) {
-                    accumulateIndel(indelQual(indelLength));
-                } else if (isNextToUsefulSoftClip(pe)) {
-                    accumulateIndel(indelQual(1));
-                } else if (pe.getBase() != refBase && pe.getQual() > MINIMUM_BASE_QUALITY) {
-                    final GATKRead read = pe.getRead();
-                    final int mateStart = (!read.isProperlyPaired() || read.mateIsUnmapped()) ? Integer.MAX_VALUE : read.getMateStart();
-                    final boolean overlapsMate = mateStart <= position && position < mateStart + read.getLength();
-                    accumulateSubstitution(pe.getBase(), overlapsMate ? (byte) FastMath.min(pe.getQual(), pcrErrorQual/2) : pe.getQual());
-                }
-            }
+            multipleSubstitutionBaseQualCorrection = multipleSubstitutionQualCorrection;
         }
 
         public Pair<Integer, ByteArrayList> likeliestIndexAndQuals() {
@@ -812,21 +789,34 @@ public final class Mutect2Engine implements AssemblyRegionEvaluator, AutoCloseab
             return BaseUtils.baseIndexToSimpleBase(index);
         }
 
-        private void accumulateSubstitution(final byte base, final byte qual) {
+        void accumulateSubstitution(final byte base, final byte qual) {
             final int index = BaseUtils.simpleBaseToBaseIndex(base);
             if (index == -1) {  // -1 is the hard-coded value for non-simple bases in BaseUtils
                 buffers.get(OTHER_SUBSTITUTION).add(qual);
             } else {
-                buffers.get(index).add((byte) FastMath.min(qual + MULTIPLE_SUBSTITUTION_BASE_QUAL_CORRECTION, QualityUtils.MAX_QUAL));
+                buffers.get(index).add((byte) FastMath.min(qual + multipleSubstitutionBaseQualCorrection, QualityUtils.MAX_QUAL));
             }
         }
 
-        private void accumulateIndel(final byte qual) {
+        void accumulateIndel(final byte qual) {
             buffers.get(INDEL).add(qual);
         }
 
-        private void clear() {
-            buffers.forEach(ByteArrayList::clear);
+        void addAll(final PileupQualBuffer other) {
+            for (int n = 0; n < buffers.size(); n++) {
+                buffers.get(n).addAll(other.buffers.get(n));
+            }
+        }
+
+        // the qualities of an index, as in likeliestIndexAndQuals
+        ByteArrayList quals(final int index) {
+            return buffers.get(index);
+        }
+
+        void clear() {
+            for (int n = 0; n < buffers.size(); n++) {
+                buffers.get(n).clear();
+            }
         }
 
         public long qualSum(final int index) {
