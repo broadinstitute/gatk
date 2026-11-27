@@ -728,7 +728,9 @@ public final class AssemblyBasedCallerUtils {
     public static List<VariantContext> phaseCalls(final List<VariantContext> calls, final Set<Haplotype> calledHaplotypes) {
 
         // construct a mapping from alternate allele to the set of haplotypes that contain that allele
-        final Map<VariantContext, Set<Haplotype>> haplotypeMap = constructHaplotypeMapping(calls, calledHaplotypes);
+        final Map<VariantContext, VariantContext> spanningDeletionParents = new HashMap<>();
+        final Map<VariantContext, Set<Haplotype>> haplotypeMap =
+                constructHaplotypeMapping(calls, calledHaplotypes, spanningDeletionParents);
 
         // construct a mapping from call to phase set ID
         final Map<VariantContext, Pair<Integer, PhaseGroup>> phaseSetMapping =
@@ -736,7 +738,15 @@ public final class AssemblyBasedCallerUtils {
         final int uniqueCounterEndValue = Math.toIntExact(phaseSetMapping.values().stream().map(Pair::getLeft).distinct().count());
 
         // we want to establish (potential) *groups* of phased variants, so we need to be smart when looking at pairwise phasing partners
-        return constructPhaseGroups(calls, phaseSetMapping, uniqueCounterEndValue);
+        final List<VariantContext> phased = constructPhaseGroups(calls, phaseSetMapping, uniqueCounterEndValue);
+        for (int i = 0; i < calls.size(); i++) {
+            final VariantContext child = calls.get(i);
+            final VariantContext parent = spanningDeletionParents.get(child);
+            if (parent != null && !Objects.equals(phaseSetMapping.get(child), phaseSetMapping.get(parent))) {
+                phased.set(i, child);
+            }
+        }
+        return phased;
     }
 
     /**
@@ -749,13 +759,24 @@ public final class AssemblyBasedCallerUtils {
     @VisibleForTesting
     static Map<VariantContext, Set<Haplotype>> constructHaplotypeMapping(final List<VariantContext> originalCalls,
                                                                                    final Set<Haplotype> calledHaplotypes) {
+        return constructHaplotypeMapping(originalCalls, calledHaplotypes, new HashMap<>());
+    }
+
+    private static Map<VariantContext, Set<Haplotype>> constructHaplotypeMapping(
+            final List<VariantContext> originalCalls, final Set<Haplotype> calledHaplotypes,
+            final Map<VariantContext, VariantContext> spanningDeletionParents) {
         final Map<VariantContext, Set<Haplotype>> haplotypeMap = new HashMap<>(originalCalls.size());
         for ( final VariantContext call : originalCalls ) {
             final Genotype genotype = call.getNSamples() == 1 ? call.getGenotype(0) : null;
             if (hasCalledSpanningDeletion(call, genotype)) {
                 final Map<Allele, List<Haplotype>> support =
                         createAlleleMapper(call, call.getStart(), new ArrayList<>(calledHaplotypes), true);
-                haplotypeMap.put(call, new HashSet<>(support.getOrDefault(Allele.SPAN_DEL, Collections.emptyList())));
+                final Set<Haplotype> starHaplotypes = new HashSet<>(support.getOrDefault(Allele.SPAN_DEL, Collections.emptyList()));
+                final VariantContext parent = getSpanningDeletionParent(call, starHaplotypes, haplotypeMap);
+                if (parent != null) {
+                    spanningDeletionParents.put(call, parent);
+                }
+                haplotypeMap.put(call, parent == null ? Collections.emptySet() : starHaplotypes);
                 continue;
             }
 
@@ -790,6 +811,45 @@ public final class AssemblyBasedCallerUtils {
         }
 
         return haplotypeMap;
+    }
+
+    // The generic star allele can pool support from distinct upstream deletions.
+    // Only use it for phase when every supporting haplotype identifies the same called parent.
+    private static VariantContext getSpanningDeletionParent(final VariantContext child, final Set<Haplotype> starHaplotypes,
+            final Map<VariantContext, Set<Haplotype>> earlierSupport) {
+        Event deletion = null;
+        for (final Haplotype haplotype : starHaplotypes) {
+            final List<Event> earlier = haplotype.getEventMap().getOverlappingEvents(child.getStart()).stream()
+                    .filter(event -> event.getStart() < child.getStart()).toList();
+            if (earlier.size() != 1 || !earlier.get(0).isSimpleDeletion()
+                    || !earlier.get(0).getContig().equals(child.getContig())
+                    || (deletion != null && !deletion.equals(earlier.get(0)))) {
+                return null;
+            }
+            deletion = earlier.get(0);
+        }
+        if (deletion == null) {
+            return null;
+        }
+
+        VariantContext parent = null;
+        final Event event = deletion;
+        for (final VariantContext candidate : earlierSupport.keySet()) {
+            if (!candidate.getContig().equals(child.getContig()) || candidate.getStart() != event.getStart()
+                    || candidate.getNSamples() != 1) {
+                continue;
+            }
+            final Genotype g = candidate.getGenotype(0);
+            if (g.getPloidy() == 2 && g.isHet() && g.getAlleles().stream().noneMatch(allele -> allele.isNoCall() || allele.isSymbolic())
+                    && g.getAlleles().stream().anyMatch(allele -> !allele.isReference()
+                    && allelesAreConsistent(event.refAllele(), event.altAllele(), candidate.getReference(), allele))) {
+                if (parent != null) {
+                    return null;
+                }
+                parent = candidate;
+            }
+        }
+        return parent != null && earlierSupport.get(parent).equals(starHaplotypes) ? parent : null;
     }
 
     /**

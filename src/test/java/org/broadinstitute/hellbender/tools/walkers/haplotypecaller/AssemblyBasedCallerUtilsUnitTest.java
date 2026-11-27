@@ -1259,6 +1259,27 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
     }
 
     @Test
+    public void testUncalledCoveringDeletionDoesNotOrientSpanningDeletion() {
+        final Allele siteAlt = Allele.create("G");
+        final VariantContext uncalled = phasingCall(15, List.of(Allele.create("AGTCCT", true), Allele.create("A")), 0, 0);
+        final VariantContext parent = phasingCall(16, List.of(Allele.create("GTCCT", true), siteAlt), 0, 1);
+        final Allele childRef = Allele.create("C", true);
+        final VariantContext child = phasingCall(18, List.of(childRef, siteAlt, Allele.SPAN_DEL, Allele.NON_REF_ALLELE), 0, 2);
+
+        final Haplotype withUncalledDeletion = phasingHaplotype("GTACCCTGTGCTATAGTGAACTGGTAC", vcToEvent(uncalled));
+        final Haplotype withCalledDeletion = phasingHaplotype("GTACCCTGTGCTATAGGTGAACTGGTAC", vcToEvent(parent));
+        final Haplotype withSiteAlt = phasingHaplotype("GTACCCTGTGCTATAGTGCTGTGTACTGGTAC",
+                new Event(child.getContig(), child.getStart(), childRef, siteAlt));
+        final List<VariantContext> calls = List.of(uncalled, parent, child);
+        final List<VariantContext> phased = phaseCalls(calls, Set.of(withUncalledDeletion, withCalledDeletion, withSiteAlt));
+        assertOnlyPhaseChanged(phased, calls);
+        final Genotype phasedChild = phased.get(2).getGenotype(0);
+        Assert.assertTrue(phasedChild.getAlleles().contains(Allele.SPAN_DEL));
+        Assert.assertFalse(phasedChild.isPhased(), "Two distinct assembly deletions support the called star");
+        Assert.assertFalse(phasedChild.hasExtendedAttribute(VCFConstants.PHASE_SET_KEY));
+    }
+
+    @Test
     public void testDoNotChooseBetweenTwoSpanningDeletions() {
         final Allele snp = Allele.create("G");
         final VariantContext firstDeletion = phasingCall(15, List.of(Allele.create("AGTCCT", true), Allele.create("A")), 0, 1);
@@ -1273,12 +1294,14 @@ public class AssemblyBasedCallerUtilsUnitTest extends GATKBaseTest {
                 new Event(child.getContig(), child.getStart(), childRef, snp), vcToEvent(downstream));
         final List<VariantContext> calls = List.of(firstDeletion, secondDeletion, child, downstream);
         final Set<Haplotype> haplotypes = Set.of(first, second, intact);
-        Assert.assertEquals(constructHaplotypeMapping(calls, haplotypes).get(child), Set.of(first, second),
-                "Both deletion haplotypes support the spanning-deletion allele");
+        Assert.assertTrue(constructHaplotypeMapping(calls, haplotypes).get(child).isEmpty(),
+                "Support from distinct covering deletions cannot identify the parent for phasing");
         final List<VariantContext> phased = phaseCalls(calls, haplotypes);
         assertOnlyPhaseChanged(phased, calls);
         Assert.assertFalse(phased.get(0).getGenotype(0).isPhased());
         Assert.assertFalse(phased.get(1).getGenotype(0).isPhased());
+        Assert.assertFalse(phased.get(2).getGenotype(0).isPhased());
+        Assert.assertFalse(phased.get(2).getGenotype(0).hasExtendedAttribute(VCFConstants.PHASE_SET_KEY));
     }
 
     private static VariantContext phasingCall(final int pos, final List<Allele> alleles, final int first, final int second) {
