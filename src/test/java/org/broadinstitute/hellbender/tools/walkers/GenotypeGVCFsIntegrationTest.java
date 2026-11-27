@@ -1154,6 +1154,59 @@ public class GenotypeGVCFsIntegrationTest extends CommandLineProgramTest {
     }
 
     @Test
+    public void testSingleSamplePhaseThroughGenotyping() {
+        final File output = createTempFile("singleSamplePhase", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addReference(getTestFile("single-sample-phase.fa"))
+                .addVCF(getTestFile("single-sample-phase.g.vcf"))
+                .addOutput(output);
+        runCommandLine(args);
+
+        final Map<Integer, VariantContext> byStart = VariantContextTestUtils.getVariantContexts(output).stream()
+                .collect(Collectors.toMap(VariantContext::getStart, vc -> vc));
+        Assert.assertEquals(byStart.keySet(), Set.of(100, 106, 108, 126, 140, 150));
+
+        final VariantContext deletion = byStart.get(100);
+        final Genotype deletionGT = deletion.getGenotype(0);
+        Assert.assertTrue(deletionGT.isPhased());
+        Assert.assertEquals(deletionGT.getAlleles(), List.of(deletion.getAlternateAllele(0), deletion.getReference()));
+        Assert.assertEquals(String.valueOf(deletionGT.getExtendedAttribute(VCFConstants.PHASE_SET_KEY)), "100");
+
+        // The star stays on the deleted copy and the site-specific ALT stays on the other copy.
+        for (final int pos : List.of(106, 108)) {
+            final VariantContext snv = byStart.get(pos);
+            final Genotype gt = snv.getGenotype(0);
+            Assert.assertTrue(gt.isPhased());
+            Assert.assertEquals(gt.getAlleles(), List.of(Allele.SPAN_DEL, snv.getAlternateAllele(1)));
+            Assert.assertEquals(String.valueOf(gt.getExtendedAttribute(VCFConstants.PHASE_SET_KEY)), "100");
+            Assert.assertEquals(gt.getExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY), "0|1");
+            Assert.assertEquals(gt.getExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY), "fixture_phase");
+        }
+
+        final VariantContext changed = byStart.get(126);
+        final Genotype changedGT = changed.getGenotype(0);
+        Assert.assertEquals(changedGT.getAlleles(), List.of(changed.getReference(), Allele.create("G")));
+        Assert.assertFalse(changedGT.isPhased());
+        Assert.assertFalse(changedGT.hasExtendedAttribute(VCFConstants.PHASE_SET_KEY));
+        Assert.assertFalse(changedGT.hasExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY));
+        Assert.assertFalse(changedGT.hasExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_ID_KEY));
+
+        final VariantContext renumbered = byStart.get(140);
+        final Genotype renumberedGT = renumbered.getGenotype(0);
+        Assert.assertEquals(renumbered.getAlternateAlleles(), List.of(Allele.create("G")));
+        Assert.assertTrue(renumberedGT.isPhased());
+        Assert.assertEquals(renumberedGT.getAlleles(), List.of(renumbered.getReference(), renumbered.getAlternateAllele(0)));
+        Assert.assertEquals(renumberedGT.getExtendedAttribute(GATKVCFConstants.HAPLOTYPE_CALLER_PHASING_GT_KEY), "0|1");
+        Assert.assertEquals(String.valueOf(renumberedGT.getExtendedAttribute(VCFConstants.PHASE_SET_KEY)), "140");
+
+        final VariantContext triploid = byStart.get(150);
+        final Genotype triploidGT = triploid.getGenotype(0);
+        Assert.assertEquals(triploidGT.getAlleles(), List.of(triploid.getReference(), triploid.getReference(), triploid.getAlternateAllele(0)));
+        Assert.assertTrue(triploidGT.isPhased());
+        Assert.assertEquals(String.valueOf(triploidGT.getExtendedAttribute(VCFConstants.PHASE_SET_KEY)), "150");
+    }
+
+    @Test
     public void testNoReadsOutputAsNoCall() {
         //The input data for this test comes from a GVCF produced from an empty region of one of the NA12878 test bams
         // and a GVCF that was edited to have a variant so we can force that position to be output.
