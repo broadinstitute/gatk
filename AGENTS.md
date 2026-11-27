@@ -1121,6 +1121,31 @@ N4D as a drop-in replacement for an SSD-backed type. Treat them as untested
 until a benchmark has sized the boot disk and its Hyperdisk throughput for
 shuffle.
 
+C4D's advantage over n2d has been measured on two different Hail jobs, with
+similar results. On AnVIL 3K VDS creation, C4D Spot secondaries ran about 1.7
+times as fast per task as n2d-highmem-8 (VS-2067). On the genome-wide no-call
+sets pass, which densifies the same VDS, they used 17.0 secondary worker-hours
+against n2d's 28.4, a factor of 1.67 (VS-2054). A C4D worker-hour costs about
+the same as an n2d one, so the saving in cost is close to the saving in
+worker-hours. Each figure is from one run per configuration, so treat it as an
+estimate (see "Compare cluster configurations over repeated runs" below). C4
+has only the VS-2067 measurement, about 1.5 times n2d.
+
+A ranked list is a preference, not a guarantee: Dataproc falls back to the
+next type on a stockout or the quota above. So before reading a run as a
+benchmark of one family, check which types its secondaries actually were, from
+the Compute Engine audit log:
+
+    gcloud logging read 'protoPayload.methodName:"compute.instances.insert"
+      AND protoPayload.resourceName:"<cluster name>-sw"' \
+      --project <project> --freshness=2d \
+      --format='value(protoPayload.resourceName,protoPayload.request.machineType)'
+
+Each create is logged twice, and only the first entry carries the machine
+type, so drop the lines without one. A replacement for a preempted worker
+reuses its name, so creates can outnumber instance names. In the VS-2054 run
+there were 54 creates under 51 names, all `c4d-highmem-8-lssd`.
+
 ## Compare cluster configurations over repeated runs
 
 Two identical runs of the same Hail job can differ by more than the
