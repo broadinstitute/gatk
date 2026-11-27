@@ -1,0 +1,18 @@
+##fileformat=VCFv4.2
+##FORMAT=<ID=DP,Number=1,Type=Integer,Description="Approximate read depth (reads with MQ=255 or with bad mates are filtered)">
+##FORMAT=<ID=GQ,Number=1,Type=Integer,Description="Genotype Quality">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+##FORMAT=<ID=MIN_DP,Number=1,Type=Integer,Description="Minimum DP observed within the GVCF block">
+##FORMAT=<ID=PGT,Number=1,Type=String,Description="Synthetic physical genotype">
+##FORMAT=<ID=PID,Number=1,Type=String,Description="Synthetic phase identifier">
+##FORMAT=<ID=PL,Number=G,Type=Integer,Description="Normalized, Phred-scaled likelihoods for genotypes as defined in the VCF specification">
+##FORMAT=<ID=PS,Number=1,Type=Integer,Description="Synthetic phase set">
+##INFO=<ID=END,Number=1,Type=Integer,Description="Stop position of the interval">
+##contig=<ID=fixture,length=200>
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	fabricated
+fixture	100	long_called	ATCGTACGA	A,<NON_REF>	.	.	.	GT:DP:GQ:PGT:PID:PL:PS	1|0:16:35:1|0:fixture_phase:90,0,95,100,110,120:100
+fixture	106	intervening	C	*,T,<NON_REF>	.	.	.	GT:DP:GQ:PGT:PID:PL:PS	1|2:9:24:0|1:fixture_phase:90,85,75,80,0,88,95,95,95,100:100
+fixture	108	following	A	*,C,<NON_REF>	.	.	.	GT:DP:GQ:PGT:PID:PL:PS	1|2:10:28:0|1:fixture_phase:90,85,75,80,0,88,95,95,95,100:100
+fixture	126	.	A	C,G,<NON_REF>	.	.	.	GT:DP:GQ:PGT:PID:PL:PS	1|0:18:75:1|0:fixture_phase:90,85,75,0,90,88,95,95,95,100:100
+fixture	140	.	A	*,G,<NON_REF>	.	.	.	GT:DP:GQ:PGT:PID:PL:PS	0|2:20:40:0|2:pruned_allele:40,22,51,0,52,63,30,73,75,81:140
+fixture	150	.	A	C,<NON_REF>	.	.	.	GT:DP:GQ:PL:PS	0|0|1:24:80:95,0,90,100,105,110,115,120,125,130:150
