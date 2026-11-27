@@ -276,21 +276,19 @@ baked into the image (a script, an added tool, or a Python package):
    tag. Workflows resolve the image through `GetToolVersions`, so this step is what makes the rebuilt
    image actually take effect.
 
-To run one of these scripts' unit tests locally before building, without pytest
-(it is not installed on developer machines), use unittest discovery from the
-scripts directory:
+To run these scripts' unit tests locally before building, use a virtualenv
+built from `requirements.txt` in the scripts directory. It holds everything the
+tests import and is what CI installs. Then use unittest discovery from that
+directory:
 
     cd scripts/variantstore/scripts
-    python3 -m unittest discover -s test -p test_run_in_hail_cluster.py
+    python3 -m venv ~/.venvs/gvs-scripts
+    ~/.venvs/gvs-scripts/bin/pip install -r requirements.txt
+    ~/.venvs/gvs-scripts/bin/python -m unittest discover -s test -p test_run_in_hail_cluster.py
 
 The dotted-module form, `python3 -m unittest test.test_run_in_hail_cluster`,
 fails with `ModuleNotFoundError`, because `test/` is not a package and the
 tests import their script as a top-level module.
-
-Run across the whole `test/` directory, discovery reports import errors for
-`test_create_*_bqloadjson_*` (no `ijson`) and `test_parquet_loading` (no
-`google-cloud-bigquery`) on a machine without those packages. CI installs them, so
-these errors locally do not indicate a problem with the change.
 
 ### Nirvana Docker Image
 
