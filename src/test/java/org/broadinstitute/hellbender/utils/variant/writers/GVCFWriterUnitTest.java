@@ -560,6 +560,74 @@ public class GVCFWriterUnitTest extends GATKBaseTest {
         IntegrationTestSpec.assertEqualTextFiles(outputFile, comparisonFile);
     }
 
+    @DataProvider
+    public Object[][] reblockingModes() {
+        return new Object[][] {{false}, {true}};
+    }
+
+    @Test(dataProvider = "reblockingModes")
+    public void testNestedVariantKeepsFurthestEncodedEnd(final boolean reblock) {
+        final MockVcfWriter output = new MockVcfWriter();
+        final GVCFWriter writer = nestedVariantWriter(output, reblock);
+        final VariantContext deletion = withVariantLikelihoods(makeDeletion(100, 13));
+        final VariantContext nested = withVariantLikelihoods(makeNonRef(CHR1, 106));
+        writer.add(deletion);
+        writer.add(nested);
+        for (int pos = 107; pos <= 112; pos++) {
+            writer.add(refSite(pos, 1, 2));
+        }
+        final List<VariantContext> suffix = List.of(refSite(113, 25, 30), refSite(114, 30, 60), refSite(115, 40, 40));
+        suffix.forEach(writer::add);
+        final VariantContext endOfFirstContig = withVariantLikelihoods(makeDeletion(120, 13));
+        final VariantContext nextContig = withVariantLikelihoods(makeNonRef(CHR2, 1));
+        writer.add(endOfFirstContig);
+        writer.add(nextContig);
+        writer.add(makeHomRef(CHR2, 2, 30));
+        writer.close();
+
+        Assert.assertEquals(output.emitted.size(), 6);
+        Assert.assertSame(output.emitted.get(0), deletion);
+        Assert.assertSame(output.emitted.get(1), nested);
+        final VariantContext block = output.emitted.get(2);
+        Assert.assertEquals(block.getStart(), 113);
+        Assert.assertEquals(block.getEnd(), 115);
+
+        final MockVcfWriter suffixOutput = new MockVcfWriter();
+        final GVCFWriter suffixWriter = nestedVariantWriter(suffixOutput, reblock);
+        suffix.forEach(suffixWriter::add);
+        suffixWriter.close();
+        Assert.assertEquals(suffixOutput.emitted.size(), 1);
+        final Genotype expected = suffixOutput.emitted.get(0).getGenotype(0);
+        final Genotype actual = block.getGenotype(0);
+        Assert.assertEquals(actual.getDP(), expected.getDP());
+        Assert.assertEquals(actual.getExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY),
+                expected.getExtendedAttribute(GATKVCFConstants.MIN_DP_FORMAT_KEY));
+        Assert.assertEquals(actual.getGQ(), expected.getGQ());
+        Assert.assertEquals(actual.getPL(), expected.getPL());
+
+        Assert.assertSame(output.emitted.get(3), endOfFirstContig);
+        Assert.assertSame(output.emitted.get(4), nextContig);
+        Assert.assertEquals(output.emitted.get(5).getContig(), CHR2);
+        Assert.assertEquals(output.emitted.get(5).getStart(), 2);
+    }
+
+    private static GVCFWriter nestedVariantWriter(final MockVcfWriter output, final boolean reblock) {
+        // Point reference records need no reference lookup to advance their start.
+        return reblock ? new ReblockingGVCFWriter(output, List.of(100), false, null, new ReblockingOptions())
+                : new GVCFWriter(output, List.of(100));
+    }
+
+    private static VariantContext withVariantLikelihoods(final VariantContext variant) {
+        return new VariantContextBuilder(variant)
+                .genotypes(new GenotypeBuilder(variant.getGenotype(0)).PL(new int[]{40, 0, 60}).make())
+                .make();
+    }
+
+    private static VariantContext refSite(final int pos, final int gq, final int depth) {
+        final VariantContext ref = makeHomRef(pos, gq);
+        return new VariantContextBuilder(ref).genotypes(new GenotypeBuilder(ref.getGenotype(0)).DP(depth).make()).make();
+    }
+
     @Test
     public void testOverlappingDeletions() {
         final Allele ref1 = Allele.create("TACACACACATACACACACAC", true);
