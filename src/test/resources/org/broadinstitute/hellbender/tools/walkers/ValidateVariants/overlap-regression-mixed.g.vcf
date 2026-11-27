@@ -1,0 +1,17 @@
+##fileformat=VCFv4.2
+##contig=<ID=ctgA,length=30>
+##contig=<ID=ctgB,length=30>
+##ALT=<ID=NON_REF,Description="Any non-reference allele">
+##INFO=<ID=END,Number=1,Type=Integer,Description="End of reference block">
+##FORMAT=<ID=GT,Number=1,Type=String,Description="Genotype">
+#CHROM	POS	ID	REF	ALT	QUAL	FILTER	INFO	FORMAT	FABRICATED
+ctgA	1	.	AAAAAAAAAAAAAAAAAAAA	A,<NON_REF>	.	PASS	.	GT	0/1
+ctgA	4	.	A	<NON_REF>	.	PASS	END=6	GT	0/0
+ctgA	9	.	AA	A,<NON_REF>	.	PASS	.	GT	0/1
+ctgA	20	.	A	<NON_REF>	.	PASS	END=25	GT	0/0
+ctgA	26	.	A	<NON_REF>	.	PASS	END=30	GT	0/0
+ctgB	1	.	A	<NON_REF>	.	PASS	END=18	GT	0/0
+ctgB	4	.	AAA	A,<NON_REF>	.	PASS	.	GT	0/1
+ctgB	9	.	AA	A,<NON_REF>	.	PASS	.	GT	0/1
+ctgB	18	.	A	<NON_REF>	.	PASS	END=22	GT	0/0
+ctgB	23	.	A	<NON_REF>	.	PASS	END=30	GT	0/0
