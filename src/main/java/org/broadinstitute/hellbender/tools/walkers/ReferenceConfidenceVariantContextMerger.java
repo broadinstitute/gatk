@@ -453,7 +453,9 @@ public final class ReferenceConfidenceVariantContextMerger {
     private void addReferenceConfidenceAttributes(final VCWithNewAlleles vcPair, final Map<String, List<?>> annotationMap) {
         for ( final Map.Entry<String, Object> p : vcPair.getVc().getAttributes().entrySet() ) {
             final String key = p.getKey();
-            if (SOMATIC_INFO_ANNOTATIONS_TO_MOVE.contains(key) ||
+            if (GATKVCFConstants.MLE_ALLELE_COUNT_KEY.equals(key) ||
+                    GATKVCFConstants.MLE_ALLELE_FREQUENCY_KEY.equals(key) ||
+                    SOMATIC_INFO_ANNOTATIONS_TO_MOVE.contains(key) ||
                     SOMATIC_INFO_ANNOTATIONS_TO_DROP.contains(key) || Mutect2FilteringEngine.STANDARD_MUTECT_INFO_FIELDS_FOR_FILTERING.contains(key)) {
                 continue;
             }
