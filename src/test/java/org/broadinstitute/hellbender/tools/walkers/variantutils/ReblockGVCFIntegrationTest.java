@@ -1,5 +1,7 @@
 package org.broadinstitute.hellbender.tools.walkers.variantutils;
 
+import htsjdk.samtools.reference.FastaReferenceWriter;
+import htsjdk.samtools.reference.FastaReferenceWriterBuilder;
 import htsjdk.variant.variantcontext.Allele;
 import htsjdk.variant.variantcontext.Genotype;
 import htsjdk.variant.variantcontext.VariantContext;
@@ -23,6 +25,7 @@ import org.testng.annotations.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -506,6 +509,97 @@ public class ReblockGVCFIntegrationTest extends CommandLineProgramTest {
         Assert.assertEquals(outVCs.get(0).getStart(), 18282464);
         Assert.assertEquals(outVCs.get(1).getContig(), "chr13");
         Assert.assertEquals(outVCs.get(1).getStart(), 18173860);
+    }
+
+    @DataProvider(name = "trimmedReferenceBlockCases")
+    public Object[][] trimmedReferenceBlockCases() {
+        return new Object[][] {
+                // The previous contig's position is beyond the end of the new contig (issue #9392).
+                {"chr1", 149, "A", 10},
+                // Even a valid coordinate on the new contig must not suppress its reference tail.
+                {"chr1", 49, "A", 10},
+                {"chr2", 5, "A", 10},
+                // Prior output on the same contig partially or fully covers the reference tail.
+                {"chr2", 5, "ACGTACG", 12},
+                {"chr2", 5, "ACGTACGTA", -1},
+                {null, 0, null, 10}
+        };
+    }
+
+    @Test(dataProvider = "trimmedReferenceBlockCases")
+    public void testTrimmedReferenceBlockAfterPreviousOutput(final String previousContig, final int previousStart,
+                                                            final String previousRef, final int expectedBlockStart) throws IOException {
+        final File reference = new File(createTempDir("reblockReference"), "reference.fasta");
+        try (final FastaReferenceWriter writer = new FastaReferenceWriterBuilder().setFastaFile(reference.toPath()).build()) {
+            writer.startSequence("chr1").appendBases("ACGT".repeat(50));
+            writer.startSequence("chr2").appendBases("ACGT".repeat(25));
+        }
+
+        final File input = createTempFile("trimmedReferenceBlock", ".g.vcf");
+        final String previousRecord = previousContig == null ? "" : String.format(
+                "%s\t%d\t.\t%s\t%s,<NON_REF>\t100\t.\tDP=10\tGT:AD:DP:GQ:PL\t1/1:0,10,0:10:99:100,100,0,200,200,200\n",
+                previousContig, previousStart, previousRef, previousRef.length() == 1 ? "T" : "A");
+        Files.writeString(input.toPath(),
+                "##fileformat=VCFv4.2\n" +
+                "##contig=<ID=chr1,length=200>\n" +
+                "##contig=<ID=chr2,length=100>\n" +
+                "##ALT=<ID=NON_REF,Description=\"Any other alternative allele\">\n" +
+                "##INFO=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">\n" +
+                "##FORMAT=<ID=GT,Number=1,Type=String,Description=\"Genotype\">\n" +
+                "##FORMAT=<ID=AD,Number=R,Type=Integer,Description=\"Allelic depths\">\n" +
+                "##FORMAT=<ID=DP,Number=1,Type=Integer,Description=\"Depth\">\n" +
+                "##FORMAT=<ID=GQ,Number=1,Type=Integer,Description=\"Genotype quality\">\n" +
+                "##FORMAT=<ID=PL,Number=G,Type=Integer,Description=\"Genotype likelihoods\">\n" +
+                "#CHROM\tPOS\tID\tREF\tALT\tQUAL\tFILTER\tINFO\tFORMAT\tsample\n" +
+                previousRecord +
+                "chr2\t9\t.\tACGTA\tA,ATCGTA,<NON_REF>\t100\t.\tDP=22\tGT:AD:DP:GQ:PL\t0/2:10,0,10,0:20:99:100,120,140,0,160,200,200,220,240,260\n");
+
+        final File output = createTempFile("reblockedgvcf", ".vcf");
+        final ArgumentsBuilder args = new ArgumentsBuilder()
+                .addReference(reference)
+                .add("V", input)
+                .add(ReblockGVCF.DROP_LOW_QUALS_ARG_NAME, true)
+                .add(ReblockGVCF.QUAL_APPROX_SHORT_NAME, true)
+                .addOutput(output);
+        runCommandLine(args);
+
+        final List<VariantContext> variants = VariantContextTestUtils.getVariantContexts(output);
+        final int variantIndex = previousContig == null ? 0 : 1;
+        Assert.assertEquals(variants.size(), variantIndex + 1 + (expectedBlockStart > 0 ? 1 : 0));
+        if (previousContig != null) {
+            final VariantContext previous = variants.get(0);
+            Assert.assertEquals(previous.getContig(), previousContig);
+            Assert.assertEquals(previous.getStart(), previousStart);
+            Assert.assertEquals(previous.getEnd(), previousStart + previousRef.length() - 1);
+            Assert.assertEquals(previous.getReference().getBaseString(), previousRef);
+            Assert.assertTrue(previous.getGenotype(0).isHomVar());
+            Assert.assertEquals(previous.getGenotype(0).getDP(), 10);
+            Assert.assertEquals(previous.getGenotype(0).getPL(), new int[]{100, 100, 0, 200, 200, 200});
+        }
+
+        final VariantContext trimmed = variants.get(variantIndex);
+        Assert.assertEquals(trimmed.getContig(), "chr2");
+        Assert.assertEquals(trimmed.getStart(), 9);
+        Assert.assertEquals(trimmed.getEnd(), 9);
+        Assert.assertEquals(trimmed.getAlleles(), Arrays.asList(Allele.REF_A, Allele.create("AT"), Allele.NON_REF_ALLELE));
+        Assert.assertTrue(trimmed.getGenotype(0).isHet());
+        Assert.assertEquals(trimmed.getGenotype(0).getAD(), new int[]{10, 10, 0});
+        Assert.assertEquals(trimmed.getGenotype(0).getPL(), new int[]{100, 0, 200, 200, 240, 260});
+        Assert.assertEquals(trimmed.getGenotype(0).getDP(), 20);
+
+        if (expectedBlockStart > 0) {
+            final VariantContext block = variants.get(variantIndex + 1);
+            Assert.assertEquals(block.getContig(), "chr2");
+            Assert.assertEquals(block.getStart(), expectedBlockStart);
+            Assert.assertEquals(block.getEnd(), 13);
+            Assert.assertEquals(block.getAttributeAsInt(VCFConstants.END_KEY, -1), 13);
+            Assert.assertEquals(block.getReference().getBaseString(), expectedBlockStart == 10 ? "C" : "T");
+            Assert.assertEquals(block.getAlternateAlleles(), Collections.singletonList(Allele.NON_REF_ALLELE));
+            Assert.assertTrue(block.getGenotype(0).isHomRef());
+            Assert.assertEquals(block.getGenotype(0).getPL(), new int[]{0, 20, 40});
+            Assert.assertEquals(block.getGenotype(0).getGQ(), 20);
+            Assert.assertEquals(block.getGenotype(0).getDP(), 22);
+        }
     }
 
     @Test

@@ -705,7 +705,7 @@ public final class ReblockGVCF extends MultiVariantWalker {
         final int oldLongestAlleleLength = originalVC.getReference().length();
         final int newLongestAlleleLength = newTrimmedAllelesVC.getReference().length();
         final Genotype genotype = originalVC.getGenotype(0);
-        final int vcfOutputEnd = vcfWriter.getVcfOutputEnd() == null ? -1 : vcfWriter.getVcfOutputEnd().getEnd();
+        final int vcfOutputEnd = originalVC.contigsMatch(vcfWriter.getVcfOutputEnd()) ? vcfWriter.getVcfOutputEnd().getEnd() : -1;
         if (newLongestAlleleLength < oldLongestAlleleLength) {
             //need to add a ref block to make up for the allele trimming or there will be a hole in the GVCF
             final int[] originalLikelihoods = getGenotypePosteriorsOtherwiseLikelihoods(genotype, posteriorsKey);
